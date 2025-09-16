@@ -1,4 +1,5 @@
 import gsap from 'gsap';
+import matrixConfig from './matrix-config.js';
 
 class ExtendedAnimations {
     constructor() {
@@ -306,14 +307,8 @@ class ExtendedAnimations {
     retroComputerBoot() {
         // Create old computer boot sequence effect
         const terminal = document.createElement('div');
-        const messages = [
-            'INITIALIZING...',
-            'LOADING SYSTEM...',
-            'MEMORY CHECK: OK',
-            'CPU: 100%',
-            'ESTABLISHING CONNECTION...',
-            'ACCESS GRANTED'
-        ];
+        // Load terminal messages from config
+        const messages = matrixConfig.terminalMessages;
 
         terminal.style.cssText = `
             position: fixed;

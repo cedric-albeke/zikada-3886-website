@@ -183,9 +183,13 @@ class BeehiveLogoBlend {
         if (this.videoElement.requestVideoFrameCallback) {
             this.videoElement.requestVideoFrameCallback(() => {});
         }
-        this.videoElement.play().catch(err => {
-            console.error('🐝 Video playback failed:', err);
-        });
+        // Only play if not already playing
+        if (this.videoElement.paused) {
+            this.videoElement.play().catch(err => {
+                // Silently handle autoplay failures
+                console.log('🐝 Video autoplay blocked - user interaction required');
+            });
+        }
 
         // Create the blend animation timeline
         const tl = gsap.timeline();

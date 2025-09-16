@@ -44,6 +44,9 @@ class MatrixMessages {
 
         // Start the message cycle
         this.startMessageCycle();
+
+        // Expose to window for testing
+        window.matrixMessages = this;
     }
 
     styleMessages() {
@@ -254,7 +257,10 @@ class MatrixMessages {
         if (this.isActive) return;
 
         this.isActive = true;
-        const message = this.messages[this.currentMessageIndex];
+        // Use random selection instead of sequential
+        const randomIndex = Math.floor(Math.random() * this.messages.length);
+        const message = this.messages[randomIndex];
+        console.log('📢 Showing matrix message:', message);
 
         // Trigger reactive effects on other elements
         this.triggerReactiveEffects('start');
@@ -337,9 +343,6 @@ class MatrixMessages {
             // Add screen distortion
             this.distortScreen();
         }, 30);
-
-        // Move to next message
-        this.currentMessageIndex = (this.currentMessageIndex + 1) % this.messages.length;
     }
 
     createAnalogGlitch() {
@@ -946,6 +949,11 @@ class MatrixMessages {
 
         // Start after initial delay
         setTimeout(showRandomMessage, 10000);
+    }
+
+    testMessage() {
+        console.log('🧪 Testing matrix message...');
+        this.showMessage();
     }
 
     destroy() {

@@ -2,6 +2,7 @@ import chaosEngine from './chaos-engine.js';
 import textEffects from './text-effects.js';
 import backgroundAnimator from './background-animator.js';
 import matrixMessages from './matrix-messages.js';
+import matrixConfig from './matrix-config.js';
 import subtleEffects from './subtle-effects.js';
 import randomAnimations from './random-animations.js';
 import extendedAnimations from './extended-animations.js';
@@ -11,6 +12,7 @@ import centerpieceLogo from './centerpiece-logo.js';
 import beehiveLogoBlend from './beehive-logo-blend.js';
 import performanceManager from './performance-manager.js';
 import debugConsole from './debug-console.js';
+import sonarEffect from './sonar-effect.js';
 import gsap from 'gsap';
 
 class ChaosInitializer {
@@ -202,6 +204,10 @@ class ChaosInitializer {
             // Initialize beehive logo blend effect
             beehiveLogoBlend.init();
             console.log('🐝 Beehive logo blend initialized');
+
+            // Initialize sonar effect
+            sonarEffect.init();
+            console.log('📡 Sonar effect initialized');
         } catch (error) {
             console.error('Failed to initialize Random Animations:', error);
         }
@@ -440,15 +446,8 @@ class ChaosInitializer {
     }
 
     runStartupSequence() {
-        // Cyberpunk-style startup sequence
-        const messages = [
-            'INITIALIZING NEURAL MATRIX...',
-            'LOADING CHAOS PROTOCOLS...',
-            'SYNCHRONIZING QUANTUM FLUX...',
-            'CALIBRATING REALITY DISTORTION...',
-            'ENGAGING TECHNO OVERDRIVE...',
-            'SYSTEM READY'
-        ];
+        // Cyberpunk-style startup sequence - load from config
+        const messages = matrixConfig.startupMessages;
 
         // Start phase-based animations after startup
         setTimeout(() => {
@@ -777,14 +776,12 @@ class ChaosInitializer {
                 logoAnimator.triggerSpecialAnimation();
             }
 
-            if (verbose) {
-                console.log('✅ Watchdog check #' + checkCount + ' - All systems running');
-            }
+            // Removed verbose watchdog logging for performance
         }, 10000); // Check every 10 seconds instead of 30
     }
 
     phaseIntense() {
-        console.log('🔥 INTENSE PHASE');
+        // Phase: Intense
         // Dispatch event for logo reaction
         window.dispatchEvent(new CustomEvent('animationPhase', { detail: { phase: 'intense' } }));
 
@@ -816,7 +813,7 @@ class ChaosInitializer {
     }
 
     phaseCalm() {
-        console.log('🌊 CALM PHASE');
+        // Phase: Calm
 
         // Slow everything down
         gsap.to('.bg', {
@@ -845,7 +842,7 @@ class ChaosInitializer {
     }
 
     phaseGlitch() {
-        console.log('⚡ GLITCH PHASE');
+        // Phase: Glitch
 
         // Heavy glitch effects
         const glitchBurst = () => {
@@ -873,7 +870,7 @@ class ChaosInitializer {
     }
 
     phaseTechno() {
-        console.log('🎵 TECHNO PHASE');
+        // Phase: Techno
 
         // REMOVED STROBE FLASH - No more flashing before color switch
 
@@ -895,7 +892,7 @@ class ChaosInitializer {
     }
 
     phaseMatrix() {
-        console.log('📟 MATRIX PHASE');
+        // Phase: Matrix
 
         // Green tint overlay
         const matrixOverlay = document.createElement('div');
@@ -1352,7 +1349,7 @@ class ChaosInitializer {
     }
 
     phaseMinimal() {
-        console.log('⚪ MINIMAL PHASE');
+        // Phase: Minimal
 
         // Reduce all effects to minimum
         gsap.to('.bg', {
@@ -1373,7 +1370,7 @@ class ChaosInitializer {
     }
 
     phaseChaotic() {
-        console.log('🌪️ CHAOTIC PHASE');
+        // Phase: Chaotic
 
         // More controlled chaos
         const chaos = () => {
@@ -1413,7 +1410,7 @@ class ChaosInitializer {
     }
 
     phaseRetro() {
-        console.log('📼 RETRO PHASE');
+        // Phase: Retro
 
         // Add CRT TV effect
         const crt = document.createElement('div');
@@ -1466,7 +1463,7 @@ class ChaosInitializer {
 
     // New color-themed phases
     phaseVaporwave() {
-        console.log('🌴 VAPORWAVE PHASE');
+        // Phase: Vaporwave
         window.dispatchEvent(new CustomEvent('animationPhase', { detail: { phase: 'vaporwave' } }));
 
         // Apply vaporwave color filter
@@ -1513,7 +1510,7 @@ class ChaosInitializer {
     }
 
     phaseCyberpunk() {
-        console.log('🤖 CYBERPUNK PHASE');
+        // Phase: Cyberpunk
         window.dispatchEvent(new CustomEvent('animationPhase', { detail: { phase: 'cyberpunk' } }));
 
         // Yellow/cyan color scheme
@@ -1560,7 +1557,7 @@ class ChaosInitializer {
     }
 
     phaseNeon() {
-        console.log('💫 NEON PHASE');
+        // Phase: Neon
         window.dispatchEvent(new CustomEvent('animationPhase', { detail: { phase: 'neon' } }));
 
         // Bright neon colors
@@ -1605,7 +1602,7 @@ class ChaosInitializer {
     }
 
     phaseAurora() {
-        console.log('🌌 AURORA PHASE');
+        // Phase: Aurora
         window.dispatchEvent(new CustomEvent('animationPhase', { detail: { phase: 'aurora' } }));
 
         // Northern lights gradient
@@ -1671,7 +1668,7 @@ class ChaosInitializer {
     }
     // New color phase implementations
     phaseSunset() {
-        console.log('🌅 SUNSET PHASE');
+        // Phase: Sunset
         window.dispatchEvent(new CustomEvent('animationPhase', { detail: { phase: 'sunset' } }));
 
         // Warm orange/pink gradient
@@ -1692,7 +1689,7 @@ class ChaosInitializer {
     }
 
     phaseOcean() {
-        console.log('🌊 OCEAN PHASE');
+        // Phase: Ocean
         window.dispatchEvent(new CustomEvent('animationPhase', { detail: { phase: 'ocean' } }));
 
         // Deep blue/teal theme
@@ -1712,7 +1709,7 @@ class ChaosInitializer {
     }
 
     phaseForest() {
-        console.log('🌲 FOREST PHASE');
+        // Phase: Forest
         window.dispatchEvent(new CustomEvent('animationPhase', { detail: { phase: 'forest' } }));
 
         // Deep green nature theme
@@ -1732,7 +1729,7 @@ class ChaosInitializer {
     }
 
     phaseFire() {
-        console.log('🔥 FIRE PHASE');
+        // Phase: Fire
         window.dispatchEvent(new CustomEvent('animationPhase', { detail: { phase: 'fire' } }));
 
         // Intense red/orange
@@ -1752,7 +1749,7 @@ class ChaosInitializer {
     }
 
     phaseIce() {
-        console.log('❄️ ICE PHASE');
+        // Phase: Ice
         window.dispatchEvent(new CustomEvent('animationPhase', { detail: { phase: 'ice' } }));
 
         // Cool blue/white
@@ -1772,7 +1769,7 @@ class ChaosInitializer {
     }
 
     phaseGalaxy() {
-        console.log('🌌 GALAXY PHASE');
+        // Phase: Galaxy
         window.dispatchEvent(new CustomEvent('animationPhase', { detail: { phase: 'galaxy' } }));
 
         // Deep purple/violet cosmic theme
@@ -1856,6 +1853,11 @@ window.ChaosControl = {
     restart: () => {
         chaosInit.destroy();
         setTimeout(() => chaosInit.init(), 100);
+    },
+    // Add test function for matrix messages
+    testMatrix: () => {
+        console.log('Testing matrix message...');
+        matrixMessages.testMessage();
     }
 };
 

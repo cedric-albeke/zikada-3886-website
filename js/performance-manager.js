@@ -25,13 +25,17 @@ class PerformanceManager {
         // Element pooling
         this.elementPools = new Map();
 
-        // Performance thresholds
+        // Performance thresholds - RELAXED for smoother operation
         this.thresholds = {
-            criticalFPS: 30,
-            lowFPS: 45,
+            criticalFPS: 20,     // Only go low mode under 20 FPS
+            lowFPS: 35,          // Medium mode under 35 FPS (was 45)
             memoryLimit: 512 * 1024 * 1024, // 512MB
-            elementLimit: 1000
+            elementLimit: 1500   // Increased element limit
         };
+
+        // Add debouncing for mode changes
+        this.lastModeChange = 0;
+        this.modeChangeDebounce = 3000; // Don't change modes more than once per 3 seconds
 
         // Optimization flags
         this.optimizations = {
@@ -110,8 +114,18 @@ class PerformanceManager {
     setPerformanceMode(mode) {
         if (this.performanceMode === mode) return;
 
+        // Debounce mode changes
+        const now = Date.now();
+        if (now - this.lastModeChange < this.modeChangeDebounce) {
+            return; // Too soon to change modes
+        }
+
         this.performanceMode = mode;
-        console.log(`⚡ Performance mode: ${mode}`);
+        this.lastModeChange = now;
+        // Reduce logging - only log important changes
+        if (mode === 'low') {
+            console.log(`⚡ Performance mode: ${mode} (reducing effects)`);
+        }
 
         switch (mode) {
             case 'low':

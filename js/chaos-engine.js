@@ -453,7 +453,7 @@ class ChaosEngine {
         // Create new particles with adjusted count
         this.particleCount = count;
         this.createParticles();
-        console.log(`⚡ Adjusted particle count to: ${count}`);
+        // console.log(`⚡ Adjusted particle count to: ${count}`);
     }
 
     adjustPostProcessing(quality) {
