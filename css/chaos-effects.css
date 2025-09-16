@@ -154,7 +154,7 @@
 
 .scanlines {
     z-index: 9997 !important;
-    opacity: 0.1 !important;
+    opacity: 0.05 !important;
 }
 
 /* Enhance button without breaking it */

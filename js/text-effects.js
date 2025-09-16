@@ -182,7 +182,7 @@ class TextEffects {
             }
 
             #matrix-rain {
-                mix-blend-mode: screen;
+                mix-blend-mode: multiply;
             }
         `;
         document.head.appendChild(style);
@@ -222,11 +222,11 @@ class TextEffects {
                 height: ${Math.random() * 20 + 5}px;
                 background: linear-gradient(90deg,
                     transparent,
-                    rgba(0, 255, 255, 0.3),
-                    rgba(255, 0, 255, 0.3),
+                    rgba(0, 255, 255, 0.15),
+                    rgba(255, 0, 255, 0.15),
                     transparent
                 );
-                mix-blend-mode: screen;
+                mix-blend-mode: multiply;
             `;
 
             corruptionOverlay.appendChild(block);

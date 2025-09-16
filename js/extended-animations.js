@@ -80,11 +80,11 @@ class ExtendedAnimations {
                 height: ${height}px;
                 background: linear-gradient(90deg,
                     transparent,
-                    rgba(255,255,255,0.5),
-                    rgba(0,255,255,0.8),
-                    rgba(255,0,255,0.8),
+                    rgba(255,255,255,0.1),
+                    rgba(0,255,255,0.2),
+                    rgba(255,0,255,0.2),
                     transparent);
-                mix-blend-mode: screen;
+                mix-blend-mode: multiply;
                 transform: translateX(${Math.random() * 20 - 10}px);
             `;
             container.appendChild(scanline);
@@ -781,7 +781,9 @@ class ExtendedAnimations {
             if (!this.isRunning) return;
 
             if (Math.random() > 0.7) {
-                // Occasional retro color flash
+                // DISABLED - Retro flash causes bright overlays
+                // Commented out to prevent flashing issues
+                /*
                 const flash = document.createElement('div');
                 flash.style.cssText = `
                     position: fixed;
@@ -800,13 +802,14 @@ class ExtendedAnimations {
                 document.body.appendChild(flash);
 
                 gsap.to(flash, {
-                    opacity: 0.2,  // Much less intense
-                    duration: 0.3,  // Slower fade
-                    ease: 'power2.inOut',  // Smoother easing
+                    opacity: 0.2,
+                    duration: 0.3,
+                    ease: 'power2.inOut',
                     yoyo: true,
                     repeat: 1,
                     onComplete: () => flash.remove()
                 });
+                */
             }
 
             setTimeout(retroWave, Math.random() * 15000 + 10000);

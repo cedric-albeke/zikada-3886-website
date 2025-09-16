@@ -80,14 +80,14 @@ class RandomAnimations {
             height: ${height}px;
             background: linear-gradient(90deg,
                 transparent,
-                rgba(0,255,133,0.1),
-                rgba(255,0,255,0.2),
-                rgba(0,255,255,0.1),
+                rgba(0,255,133,0.05),
+                rgba(255,0,255,0.1),
+                rgba(0,255,255,0.05),
                 transparent);
             pointer-events: none;
             z-index: 5;
             transform: skewY(${Math.random() * 10 - 5}deg);
-            mix-blend-mode: screen;
+            mix-blend-mode: multiply;
         `;
         document.body.appendChild(wave);
 
@@ -220,11 +220,11 @@ class RandomAnimations {
             height: 100%;
             background: linear-gradient(${Math.random() * 360}deg,
                 transparent,
-                hsla(${hue}, 100%, 50%, 0.1),
+                hsla(${hue}, 100%, 50%, 0.05),
                 transparent);
             pointer-events: none;
             z-index: 2;
-            mix-blend-mode: screen;
+            mix-blend-mode: multiply;
             opacity: 0;
         `;
         document.body.appendChild(overlay);
@@ -332,7 +332,7 @@ class RandomAnimations {
         elements.forEach((el, index) => {
             gsap.to(el, {
                 opacity: 0.3,
-                filter: 'brightness(2) saturate(0)',
+                filter: 'brightness(1.2) saturate(0.5)',
                 duration: 0.05,
                 delay: index * 0.02,
                 yoyo: true,
@@ -437,8 +437,8 @@ class RandomAnimations {
             top: ${Math.random() * (window.innerHeight - 200)}px;
             pointer-events: none;
             z-index: 5;
-            opacity: 0.3;
-            mix-blend-mode: screen;
+            opacity: 0.15;
+            mix-blend-mode: multiply;
             filter: blur(2px);
         `;
 

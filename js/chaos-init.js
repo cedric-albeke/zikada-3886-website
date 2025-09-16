@@ -266,12 +266,12 @@ class ChaosInitializer {
             z-index: 9997;
             background: repeating-linear-gradient(
                 0deg,
-                rgba(0, 0, 0, 0.02) 0px,
+                rgba(0, 0, 0, 0.01) 0px,
                 transparent 1px,
                 transparent 2px,
-                rgba(0, 0, 0, 0.02) 3px
+                rgba(0, 0, 0, 0.01) 3px
             );
-            opacity: 0.3;
+            opacity: 0.15;
             mix-blend-mode: multiply;
         `;
         document.body.appendChild(scanlines);

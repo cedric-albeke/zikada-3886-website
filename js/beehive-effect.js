@@ -11,21 +11,21 @@ class BeehiveEffect {
 
         // Effect settings
         this.settings = {
-            duration: 30000, // Show for 30 seconds
+            duration: 45000, // Show for 45 seconds (was 30)
             fadeInTime: 3,
             fadeOutTime: 3,
-            opacity: 0.7,
+            opacity: 0.85, // More visible
             blendMode: 'screen',
             interval: 180000 // Appear every 3 minutes
         };
 
-        // Visual modes for the video - adjusted opacity for better background effect
+        // Visual modes for the video - increased intensity
         this.modes = {
-            normal: { opacity: 0.3, blendMode: 'screen', hueRotate: 0 },
-            psychedelic: { opacity: 0.4, blendMode: 'difference', hueRotate: 180 },
-            electric: { opacity: 0.25, blendMode: 'color-dodge', hueRotate: 90 },
-            matrix: { opacity: 0.25, blendMode: 'multiply', hueRotate: 120 },
-            neon: { opacity: 0.5, blendMode: 'hard-light', hueRotate: 270 }
+            normal: { opacity: 0.5, blendMode: 'screen', hueRotate: 0, saturation: 1.5, brightness: 1.3 },
+            psychedelic: { opacity: 0.6, blendMode: 'difference', hueRotate: 180, saturation: 2, brightness: 1.4 },
+            electric: { opacity: 0.45, blendMode: 'color-dodge', hueRotate: 90, saturation: 1.8, brightness: 1.5 },
+            matrix: { opacity: 0.4, blendMode: 'multiply', hueRotate: 120, saturation: 1.6, brightness: 1.2 },
+            neon: { opacity: 0.7, blendMode: 'hard-light', hueRotate: 270, saturation: 2.2, brightness: 1.6 }
         };
 
         this.currentMode = 'normal';
@@ -191,6 +191,9 @@ class BeehiveEffect {
             }
         });
 
+        // Restore logo opacity when hiding beehive
+        this.restoreLogo();
+
         // Trigger exit effect
         this.triggerGlitchExit();
     }
@@ -200,37 +203,48 @@ class BeehiveEffect {
 
         this.container.style.mixBlendMode = modeSettings.blendMode;
 
-        // Apply filter effects
+        // Apply filter effects with enhanced settings
         const filters = [];
 
         if (modeSettings.hueRotate) {
             filters.push(`hue-rotate(${modeSettings.hueRotate}deg)`);
         }
 
-        // Add mode-specific filters
+        // Apply saturation and brightness from mode settings
+        if (modeSettings.saturation) {
+            filters.push(`saturate(${modeSettings.saturation})`);
+        }
+        if (modeSettings.brightness) {
+            filters.push(`brightness(${modeSettings.brightness})`);
+        }
+
+        // Add additional mode-specific enhancements
         switch(mode) {
             case 'psychedelic':
-                filters.push('contrast(1.5)', 'saturate(2)');
+                filters.push('contrast(1.8)');
                 this.addPsychedelicAnimation();
                 break;
 
             case 'electric':
-                filters.push('brightness(1.2)', 'contrast(1.3)');
+                filters.push('contrast(1.5)');
                 this.addElectricAnimation();
                 break;
 
             case 'matrix':
-                filters.push('saturate(0.5)', 'brightness(0.8)');
+                filters.push('contrast(1.3)');
                 this.addMatrixAnimation();
                 break;
 
             case 'neon':
-                filters.push('saturate(3)', 'contrast(1.5)');
+                filters.push('contrast(2)');
                 this.addNeonAnimation();
                 break;
         }
 
         this.videoElement.style.filter = filters.join(' ');
+
+        // Also reduce logo opacity during beehive effect
+        this.reduceLogo();
     }
 
     addPsychedelicAnimation() {
@@ -393,6 +407,30 @@ class BeehiveEffect {
             this.currentMode = mode;
             this.applyMode(mode);
         }
+    }
+
+    reduceLogo() {
+        // Reduce logo opacity during beehive effect
+        const logos = document.querySelectorAll('.image-wrapper, .image-2, img[src*="c01n"]');
+        logos.forEach(logo => {
+            gsap.to(logo, {
+                opacity: 0.3,  // Reduce to 30% opacity
+                duration: 2,
+                ease: 'power2.inOut'
+            });
+        });
+    }
+
+    restoreLogo() {
+        // Restore logo opacity after beehive effect
+        const logos = document.querySelectorAll('.image-wrapper, .image-2, img[src*="c01n"]');
+        logos.forEach(logo => {
+            gsap.to(logo, {
+                opacity: 1,  // Back to full opacity
+                duration: 2,
+                ease: 'power2.inOut'
+            });
+        });
     }
 
     destroy() {

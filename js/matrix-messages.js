@@ -295,11 +295,11 @@ class MatrixMessages {
 
             // Static TV-like glitch-in sequence (monochrome)
             const glitchSteps = [
-                { delay: 0, transform: 'translate(-50%, -50%) scaleY(0.01) scaleX(50) rotate(90deg)', filter: 'blur(20px) brightness(2) contrast(3)', opacity: '0' },
+                { delay: 0, transform: 'translate(-50%, -50%) scaleY(0.01) scaleX(50) rotate(90deg)', filter: 'blur(20px) brightness(1.2) contrast(2)', opacity: '0' },
                 { delay: 10, transform: 'translate(-50%, -50%) scaleY(50) scaleX(0.01) rotate(-90deg)', filter: 'blur(15px) brightness(0.3)', opacity: '1' },
-                { delay: 20, transform: 'translate(-30%, -50%) scaleY(0.5) scaleX(3) skewX(45deg)', filter: 'blur(10px) brightness(2) invert(1)', opacity: '1' },
+                { delay: 20, transform: 'translate(-30%, -50%) scaleY(0.5) scaleX(3) skewX(45deg)', filter: 'blur(10px) brightness(1.3) invert(1)', opacity: '1' },
                 { delay: 30, transform: 'translate(-70%, -50%) scaleY(3) scaleX(0.5) skewX(-45deg) rotate(5deg)', filter: 'blur(8px) brightness(0.5)', opacity: '1' },
-                { delay: 40, transform: 'translate(-50%, -30%) scaleY(1.5) scaleX(1.5) rotate(-5deg) skewY(10deg)', filter: 'blur(5px) brightness(1.5) contrast(2)', opacity: '1' },
+                { delay: 40, transform: 'translate(-50%, -30%) scaleY(1.5) scaleX(1.5) rotate(-5deg) skewY(10deg)', filter: 'blur(5px) brightness(1.2) contrast(1.5)', opacity: '1' },
                 { delay: 50, transform: 'translate(-50%, -70%) scaleY(0.8) scaleX(1.2) skewY(-10deg)', filter: 'blur(3px) brightness(1.3)', opacity: '1' },
                 { delay: 60, transform: 'translate(-45%, -50%) scaleY(1.2) scaleX(0.8) rotate(3deg)', filter: 'blur(2px) brightness(1.2)', opacity: '1' },
                 { delay: 70, transform: 'translate(-55%, -50%) scaleY(0.9) scaleX(1.1) rotate(-2deg)', filter: 'blur(1px) brightness(1.1)', opacity: '1' },
@@ -491,7 +491,7 @@ class MatrixMessages {
                 gsap.to(imageWrapper, {
                     scale: 1.2,
                     rotation: '+=45',
-                    filter: 'blur(3px) contrast(3) brightness(2)',
+                    filter: 'blur(3px) contrast(2) brightness(1.3)',
                     duration: 0.05,
                     repeat: 5,
                     yoyo: true,
@@ -562,7 +562,7 @@ class MatrixMessages {
                 gsap.to(logoWrapper, {
                     scale: 1.3,
                     rotation: Math.random() * 20 - 10,
-                    filter: 'blur(0px) saturate(3) brightness(2)',
+                    filter: 'blur(0px) saturate(2) brightness(1.3)',
                     duration: 0.05,
                     ease: 'power4.out',
                     onComplete: () => {
@@ -587,7 +587,7 @@ class MatrixMessages {
                     onComplete: () => {
                         gsap.to(imageWrapper, {
                             scale: 1.1,
-                            filter: 'blur(0px) saturate(2) brightness(1.5)',
+                            filter: 'blur(0px) saturate(1.5) brightness(1.2)',
                             duration: 0.15,
                             ease: 'back.out(3)'
                         });
@@ -611,12 +611,12 @@ class MatrixMessages {
                 // 3886 bounces back
                 gsap.to(text3886, {
                     scale: 2,
-                    filter: 'blur(0px) brightness(3)',
+                    filter: 'blur(0px) brightness(1.4)',
                     duration: 0.05,
                     onComplete: () => {
                         gsap.to(text3886, {
                             scale: 1.2,
-                            filter: 'blur(0px) brightness(1.5)',
+                            filter: 'blur(0px) brightness(1.2)',
                             duration: 0.1,
                             ease: 'elastic.out(1, 0.3)'
                         });
@@ -912,7 +912,7 @@ class MatrixMessages {
 
         timeline
             .to(distortion, {
-                backdropFilter: 'blur(5px) contrast(2) brightness(1.5)',
+                backdropFilter: 'blur(5px) contrast(1.5) brightness(1.2)',
                 scale: 1.05,
                 duration: 0.05
             })
