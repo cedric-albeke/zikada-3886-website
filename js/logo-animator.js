@@ -100,7 +100,7 @@ class LogoAnimator {
 
         this.breathTimeline
             .to(this.logo, {
-                scale: 1.05,
+                scale: 1.08,  // Increased for more visible breathing
                 duration: 4,
                 ease: 'sine.inOut'
             })
@@ -403,17 +403,8 @@ class LogoAnimator {
             attributeFilter: ['style', 'class']
         });
 
-        // Additional protection: Override any GSAP tweens that try to change opacity or filter
-        const originalTo = gsap.to;
-        gsap.to = function(target, vars) {
-            if (target === this.logo || (Array.isArray(target) && target.includes(this.logo))) {
-                // Remove opacity and filter from vars
-                delete vars.opacity;
-                delete vars.filter;
-                delete vars.autoAlpha;
-            }
-            return originalTo.call(gsap, target, vars);
-        }.bind(this);
+        // Note: Opacity and filter protection is handled by CSS and MutationObserver
+        // Animations are allowed for scale, rotation, and position
     }
 
     triggerSpecialAnimation() {

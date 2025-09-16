@@ -13,8 +13,9 @@ img[alt*="Logo"] {
     filter: none !important;
     -webkit-filter: none !important;
     mix-blend-mode: normal !important;
-    transform: none !important;
-    will-change: transform, scale, rotate !important; /* Don't allow opacity or filter changes */
+    /* Allow transforms for animations */
+    will-change: transform !important;
+    transform-style: preserve-3d !important;
 }
 
 /* Prevent any parent elements from affecting the logo */

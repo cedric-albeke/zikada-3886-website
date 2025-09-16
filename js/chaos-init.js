@@ -7,6 +7,7 @@ import randomAnimations from './random-animations.js';
 import extendedAnimations from './extended-animations.js';
 import timingController from './timing-controller.js';
 import logoAnimator from './logo-animator.js';
+import centerpieceLogo from './centerpiece-logo.js';
 import performanceManager from './performance-manager.js';
 import gsap from 'gsap';
 
@@ -150,6 +151,10 @@ class ChaosInitializer {
         try {
             logoAnimator.init();
             console.log('✨ Logo Animator initialized');
+
+            // Initialize the new centerpiece logo system
+            centerpieceLogo.init();
+            console.log('🎯 Centerpiece Logo System initialized');
         } catch (error) {
             console.error('Failed to initialize Logo Animator:', error);
         }
