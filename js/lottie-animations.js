@@ -22,7 +22,7 @@ class LottieAnimations {
                 opacity: 0.3,
                 triggerOnScroll: false,
                 blendMode: 'screen',
-                zIndex: 5,  // Behind main logo
+                zIndex: 3,  // Behind main logo (26)
                 displayDuration: 8000,  // Show for 8 seconds
                 displayInterval: 45000  // Every 45 seconds
             },
@@ -36,7 +36,7 @@ class LottieAnimations {
                 opacity: 0.6,
                 triggerOnScroll: true,
                 blendMode: 'add',
-                zIndex: 4,  // Behind main logo
+                zIndex: 2,  // Behind main logo (26)
                 displayDuration: 5000,  // Show for 5 seconds
                 displayInterval: 60000  // Every 60 seconds
             },
@@ -50,7 +50,7 @@ class LottieAnimations {
                 opacity: 0.5,  // More visible
                 triggerOnScroll: false,
                 blendMode: 'screen',  // Better color blending
-                zIndex: 8,  // Still behind main logo (26) but more prominent
+                zIndex: 4,  // Behind main logo (26)
                 displayDuration: 12000,  // Show for 12 seconds
                 displayInterval: 25000  // Every 25 seconds - more frequent
             }
@@ -106,7 +106,7 @@ class LottieAnimations {
             width: 100%;
             height: 100%;
             pointer-events: none;
-            z-index: 100;
+            z-index: 10;  /* Lower than main logo (26) */
         `;
         document.body.appendChild(mainContainer);
 
@@ -137,7 +137,7 @@ class LottieAnimations {
                 transition: opacity 0.5s ease-in-out;
                 mix-blend-mode: ${config.blendMode};
                 pointer-events: none;
-                z-index: ${config.zIndex || 100};
+                z-index: ${config.zIndex || 5};  /* Default to 5 if not specified */
                 width: ${config.size};
                 height: ${config.size};
                 border-radius: 50%;
