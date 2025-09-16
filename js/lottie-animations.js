@@ -45,14 +45,14 @@ class LottieAnimations {
                 loop: true,
                 autoplay: false,  // Don't autoplay initially
                 renderer: 'svg',
-                size: 'calc(min(60vw, 60vh))',  // Smaller inner circle
+                size: 'calc(min(75vw, 75vh))',  // Bigger - 75% of viewport
                 position: { top: '50%', left: '50%', transform: 'translate(-50%, -50%)' },
-                opacity: 0.2,
+                opacity: 0.5,  // More visible
                 triggerOnScroll: false,
-                blendMode: 'overlay',
-                zIndex: 6,  // Behind main logo but above others
-                displayDuration: 10000,  // Show for 10 seconds
-                displayInterval: 30000  // Every 30 seconds
+                blendMode: 'screen',  // Better color blending
+                zIndex: 8,  // Still behind main logo (26) but more prominent
+                displayDuration: 12000,  // Show for 12 seconds
+                displayInterval: 25000  // Every 25 seconds - more frequent
             }
         };
 
@@ -220,13 +220,13 @@ class LottieAnimations {
     startAnimationCycles() {
         console.log('🎬 Starting Lottie animation cycles');
 
-        // Planet Logo - shows every 30 seconds
+        // Planet Logo - shows more frequently with enhanced visuals
         setTimeout(() => {
             this.showAnimation('planetLogo');
             setInterval(() => {
                 this.showAnimation('planetLogo');
             }, this.config.planetLogo.displayInterval);
-        }, 5000); // Start after 5 seconds
+        }, 3000); // Start after 3 seconds - sooner
 
         // Planet Ring - shows every 45 seconds
         setTimeout(() => {
@@ -234,7 +234,7 @@ class LottieAnimations {
             setInterval(() => {
                 this.showAnimation('planetRing');
             }, this.config.planetRing.displayInterval);
-        }, 15000); // Start after 15 seconds
+        }, 18000); // Start after 18 seconds
 
         // Sun Reveal is triggered by events, not cycle
     }
@@ -246,14 +246,24 @@ class LottieAnimations {
 
         const wrapper = animation.parentElement;
 
-        // Fade in
-        wrapper.style.transition = 'opacity 0.5s ease-in-out';
+        // Fade in with enhanced effects for planet-logo
+        wrapper.style.transition = 'opacity 0.5s ease-in-out, filter 0.5s ease-in-out';
         wrapper.style.opacity = config.opacity.toString();
+
+        // Special enhancement for planet-logo
+        if (name === 'planetLogo') {
+            wrapper.style.filter = 'saturate(1.8) brightness(1.3) contrast(1.2) hue-rotate(10deg)';
+            // Add a glow effect
+            wrapper.style.boxShadow = '0 0 60px rgba(0, 255, 200, 0.4)';
+        }
+
         animation.play();
 
         // Fade out after display duration
         setTimeout(() => {
             wrapper.style.opacity = '0';
+            wrapper.style.filter = 'none';
+            wrapper.style.boxShadow = 'none';
             setTimeout(() => {
                 animation.stop();
             }, 500);
