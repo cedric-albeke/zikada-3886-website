@@ -348,20 +348,36 @@ class ChaosEngine {
             mesh.scale.set(scale, scale, scale);
         });
 
-        // Animate particles
+        // Animate particles - ensure continuous motion
         if (this.particles) {
-            this.particles.rotation.x += 0.0005;
-            this.particles.rotation.y += 0.0005;
+            // Continuous rotation
+            this.particles.rotation.x += 0.001;
+            this.particles.rotation.y += 0.0015;
+            this.particles.rotation.z += 0.0005;
 
-            // Particle wave effect
+            // Dynamic particle wave effect
             const positions = this.particles.geometry.attributes.position.array;
-            for (let i = 0; i < positions.length; i += 3) {
-                const x = positions[i];
-                const y = positions[i + 1];
+            const originalPositions = this.particles.geometry.userData.originalPositions;
 
-                positions[i + 2] += Math.sin(time + x * 0.1) * 0.01 * (1 + this.animationPhase);
+            // Store original positions if not already stored
+            if (!originalPositions) {
+                this.particles.geometry.userData.originalPositions = new Float32Array(positions);
+            }
+
+            for (let i = 0; i < positions.length; i += 3) {
+                const origX = originalPositions ? originalPositions[i] : positions[i];
+                const origY = originalPositions ? originalPositions[i + 1] : positions[i + 1];
+                const origZ = originalPositions ? originalPositions[i + 2] : positions[i + 2];
+
+                // Multiple wave effects for continuous motion
+                positions[i] = origX + Math.sin(time * 0.5 + origY * 0.1) * 2;
+                positions[i + 1] = origY + Math.cos(time * 0.3 + origX * 0.1) * 2;
+                positions[i + 2] = origZ + Math.sin(time + origX * 0.1 + origY * 0.1) * 3 * (1 + this.animationPhase);
             }
             this.particles.geometry.attributes.position.needsUpdate = true;
+
+            // Pulse particle size
+            this.particles.material.size = 0.5 + Math.sin(time * 2) * 0.2;
         }
 
         // Animate lights

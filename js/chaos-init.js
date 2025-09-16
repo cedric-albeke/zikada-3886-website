@@ -6,6 +6,7 @@ import subtleEffects from './subtle-effects.js';
 import randomAnimations from './random-animations.js';
 import extendedAnimations from './extended-animations.js';
 import timingController from './timing-controller.js';
+import logoAnimator from './logo-animator.js';
 import gsap from 'gsap';
 
 class ChaosInitializer {
@@ -35,6 +36,7 @@ class ChaosInitializer {
         // Initialize subsystems
         this.initPerformanceMonitor();
         this.initBackgroundAnimator();
+        this.initLogoAnimator();  // Initialize logo animator early
         this.initChaosEngine();
         this.initTextEffects();
         this.initAdditionalEffects();
@@ -54,6 +56,9 @@ class ChaosInitializer {
         setTimeout(() => {
             this.startAnimationPhases();
         }, 2000);
+
+        // Start animation watchdog to ensure animations never stop
+        this.startAnimationWatchdog();
     }
 
     handlePhaseChange(phase) {
@@ -139,6 +144,15 @@ class ChaosInitializer {
         }
     }
 
+    initLogoAnimator() {
+        try {
+            logoAnimator.init();
+            console.log('✨ Logo Animator initialized');
+        } catch (error) {
+            console.error('Failed to initialize Logo Animator:', error);
+        }
+    }
+
     initChaosEngine() {
         try {
             chaosEngine.init();
@@ -219,12 +233,12 @@ class ChaosInitializer {
             z-index: 9997;
             background: repeating-linear-gradient(
                 0deg,
-                rgba(0, 0, 0, 0.03) 0px,
+                rgba(0, 0, 0, 0.02) 0px,
                 transparent 1px,
                 transparent 2px,
-                rgba(0, 0, 0, 0.03) 3px
+                rgba(0, 0, 0, 0.02) 3px
             );
-            opacity: 0.5;
+            opacity: 0.3;
             mix-blend-mode: multiply;
         `;
         document.body.appendChild(scanlines);
@@ -612,6 +626,12 @@ class ChaosInitializer {
     }
 
     startAnimationPhases() {
+        // Prevent duplicate phase runners
+        if (this.phaseRunning) {
+            console.log('⚠️ Phase animations already running');
+            return;
+        }
+
         // Create a more dynamic, randomized animation sequence
         const phases = [
             () => this.phaseIntense(),
@@ -621,18 +641,39 @@ class ChaosInitializer {
             () => this.phaseMatrix(),
             () => this.phaseMinimal(),
             () => this.phaseChaotic(),
-            () => this.phaseRetro()
+            () => this.phaseRetro(),
+            // New color-themed phases
+            () => this.phaseVaporwave(),
+            () => this.phaseCyberpunk(),
+            () => this.phaseNeon(),
+            () => this.phaseAurora()
         ];
 
         let lastPhase = null;
+        this.phaseRunning = true;
+        this.currentPhase = null;
 
         const runRandomPhase = () => {
+            if (!this.phaseRunning) {
+                // Restart if stopped
+                this.phaseRunning = true;
+            }
+
+            // Smooth transition out of current phase
+            if (this.currentPhase) {
+                this.transitionOut();
+            }
+
             // Pick a random phase that isn't the last one
             let availablePhases = phases.filter(p => p !== lastPhase);
             const randomPhase = availablePhases[Math.floor(Math.random() * availablePhases.length)];
             lastPhase = randomPhase;
 
-            randomPhase();
+            // Smooth transition into new phase
+            setTimeout(() => {
+                randomPhase();
+                this.currentPhase = randomPhase.name;
+            }, 500);
 
             // Random duration between 15-40 seconds
             const nextDelay = Math.random() * 25000 + 15000;
@@ -642,8 +683,99 @@ class ChaosInitializer {
         runRandomPhase();
     }
 
+    transitionOut() {
+        // Smooth fade transition between phases
+        const overlay = document.createElement('div');
+        overlay.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(ellipse at center, transparent, rgba(0,0,0,0.3));
+            pointer-events: none;
+            z-index: 9998;
+            opacity: 0;
+        `;
+        document.body.appendChild(overlay);
+
+        gsap.to(overlay, {
+            opacity: 0.5,
+            duration: 0.3,
+            yoyo: true,
+            repeat: 1,
+            ease: 'power2.inOut',
+            onComplete: () => overlay.remove()
+        });
+    }
+
+    startAnimationWatchdog() {
+        // More aggressive watchdog - check every 10 seconds
+        let checkCount = 0;
+
+        setInterval(() => {
+            checkCount++;
+            const verbose = checkCount % 6 === 0; // Log every minute
+
+            // Check if random animations are running
+            if (randomAnimations) {
+                if (!randomAnimations.isRunning) {
+                    console.log('🔧 Restarting random animations...');
+                    randomAnimations.isRunning = true;
+                    randomAnimations.triggerRandomAnimation();
+                } else if (verbose) {
+                    // Force trigger new animation periodically to keep things fresh
+                    randomAnimations.triggerRandomAnimation();
+                }
+            }
+
+            // Check if extended animations are running
+            if (extendedAnimations) {
+                if (!extendedAnimations.isRunning) {
+                    console.log('🔧 Restarting extended animations...');
+                    extendedAnimations.isRunning = true;
+                    extendedAnimations.runRandomEffect();
+                } else if (verbose) {
+                    // Force trigger new effect periodically
+                    extendedAnimations.runRandomEffect();
+                }
+            }
+
+            // Check if phase animations are running
+            if (!this.phaseRunning) {
+                console.log('🔧 Restarting phase animations...');
+                this.phaseRunning = true;
+                this.startAnimationPhases();
+            }
+
+            // Ensure background animator is running
+            if (backgroundAnimator && !backgroundAnimator.initialized) {
+                console.log('🔧 Restarting background animator...');
+                backgroundAnimator.init();
+                backgroundAnimator.startGlitchSequence();
+            }
+
+            // Ensure logo animator is running
+            if (logoAnimator && !logoAnimator.isInitialized) {
+                console.log('🔧 Restarting logo animator...');
+                logoAnimator.init();
+            }
+
+            // Trigger special logo animation occasionally
+            if (logoAnimator && logoAnimator.isInitialized && Math.random() < 0.1) {
+                logoAnimator.triggerSpecialAnimation();
+            }
+
+            if (verbose) {
+                console.log('✅ Watchdog check #' + checkCount + ' - All systems running');
+            }
+        }, 10000); // Check every 10 seconds instead of 30
+    }
+
     phaseIntense() {
         console.log('🔥 INTENSE PHASE');
+        // Dispatch event for logo reaction
+        window.dispatchEvent(new CustomEvent('animationPhase', { detail: { phase: 'intense' } }));
 
         // Gentle rotation increase
         gsap.to('.bg', {
@@ -1337,7 +1469,195 @@ class ChaosInitializer {
         }, 8000);
     }
 
+    // New color-themed phases
+    phaseVaporwave() {
+        console.log('🌴 VAPORWAVE PHASE');
+        window.dispatchEvent(new CustomEvent('animationPhase', { detail: { phase: 'vaporwave' } }));
+
+        // Apply vaporwave color filter
+        gsap.to(document.body, {
+            filter: 'hue-rotate(45deg) saturate(1.2) contrast(0.95)',
+            duration: 2,
+            ease: 'power2.inOut'
+        });
+
+        // Subtle pink/purple overlay
+        const overlay = document.createElement('div');
+        overlay.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg,
+                rgba(255, 0, 128, 0.05),
+                rgba(128, 0, 255, 0.05));
+            pointer-events: none;
+            z-index: 9995;
+            opacity: 0;
+        `;
+        document.body.appendChild(overlay);
+
+        gsap.to(overlay, {
+            opacity: 0.3,
+            duration: 2,
+            ease: 'power2.inOut'
+        });
+
+        setTimeout(() => {
+            gsap.to(overlay, {
+                opacity: 0,
+                duration: 1,
+                onComplete: () => overlay.remove()
+            });
+            gsap.to(document.body, {
+                filter: 'none',
+                duration: 2
+            });
+        }, 10000);
+    }
+
+    phaseCyberpunk() {
+        console.log('🤖 CYBERPUNK PHASE');
+        window.dispatchEvent(new CustomEvent('animationPhase', { detail: { phase: 'cyberpunk' } }));
+
+        // Yellow/cyan color scheme
+        gsap.to(document.body, {
+            filter: 'contrast(1.2) saturate(0.8)',
+            duration: 2,
+            ease: 'power2.inOut'
+        });
+
+        // Add cyberpunk grid overlay
+        const grid = document.createElement('div');
+        grid.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image:
+                linear-gradient(rgba(255, 255, 0, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 255, 255, 0.03) 1px, transparent 1px);
+            background-size: 50px 50px;
+            pointer-events: none;
+            z-index: 9994;
+            opacity: 0;
+        `;
+        document.body.appendChild(grid);
+
+        gsap.to(grid, {
+            opacity: 0.5,
+            duration: 2
+        });
+
+        setTimeout(() => {
+            gsap.to(grid, {
+                opacity: 0,
+                duration: 1,
+                onComplete: () => grid.remove()
+            });
+            gsap.to(document.body, {
+                filter: 'none',
+                duration: 2
+            });
+        }, 10000);
+    }
+
+    phaseNeon() {
+        console.log('💫 NEON PHASE');
+        window.dispatchEvent(new CustomEvent('animationPhase', { detail: { phase: 'neon' } }));
+
+        // Bright neon colors
+        gsap.to(document.body, {
+            filter: 'brightness(1.1) saturate(1.5) contrast(1.1)',
+            duration: 2,
+            ease: 'power2.inOut'
+        });
+
+        // Neon glow pulses
+        const neonPulse = document.createElement('div');
+        neonPulse.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 9993;
+            box-shadow:
+                inset 0 0 100px rgba(0, 255, 255, 0.2),
+                inset 0 0 200px rgba(255, 0, 255, 0.1);
+            opacity: 0;
+        `;
+        document.body.appendChild(neonPulse);
+
+        gsap.to(neonPulse, {
+            opacity: 0.5,
+            duration: 2,
+            yoyo: true,
+            repeat: 4,
+            ease: 'sine.inOut'
+        });
+
+        setTimeout(() => {
+            neonPulse.remove();
+            gsap.to(document.body, {
+                filter: 'none',
+                duration: 2
+            });
+        }, 10000);
+    }
+
+    phaseAurora() {
+        console.log('🌌 AURORA PHASE');
+        window.dispatchEvent(new CustomEvent('animationPhase', { detail: { phase: 'aurora' } }));
+
+        // Northern lights gradient
+        const aurora = document.createElement('div');
+        aurora.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(
+                0deg,
+                transparent 60%,
+                rgba(0, 255, 133, 0.1) 70%,
+                rgba(0, 133, 255, 0.1) 80%,
+                rgba(133, 0, 255, 0.1) 90%,
+                transparent 100%
+            );
+            pointer-events: none;
+            z-index: 9992;
+            opacity: 0;
+            transform: translateY(-100%);
+        `;
+        document.body.appendChild(aurora);
+
+        gsap.timeline()
+            .to(aurora, {
+                y: '0%',
+                opacity: 0.6,
+                duration: 3,
+                ease: 'power2.inOut'
+            })
+            .to(aurora, {
+                backgroundPosition: '0 100%',
+                duration: 8,
+                ease: 'sine.inOut'
+            })
+            .to(aurora, {
+                y: '100%',
+                opacity: 0,
+                duration: 3,
+                onComplete: () => aurora.remove()
+            });
+    }
+
     destroy() {
+        this.phaseRunning = false;
         if (chaosEngine.isInitialized) {
             chaosEngine.destroy();
         }

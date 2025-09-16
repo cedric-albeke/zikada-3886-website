@@ -21,9 +21,8 @@ class RandomAnimations {
             () => this.dataGlitchWave(),
             () => this.neonPulse(),
             () => this.digitalRain(),
-            () => this.geometricPatterns(),
             () => this.colorWave(),
-            () => this.pixelStorm(),
+            // Removed pixelStorm - looked like confetti
             () => this.matrixCascade(),
             () => this.electricArc(),
             () => this.hologramFlicker(),
@@ -32,30 +31,40 @@ class RandomAnimations {
             () => this.quantumShift(),
             () => this.plasmaField(),
             () => this.circuitTrace(),
-            () => this.dataFragmentation()
+            () => this.dataFragmentation(),
+            // New animations
+            () => this.warpTunnel(),
+            () => this.ripplePulse(),
+            () => this.digitalCorruption(),
+            () => this.prismaticBurst(),
+            () => this.temporalGlitch()
         ];
     }
 
+    triggerRandomAnimation() {
+        if (!this.isRunning) {
+            // Auto-restart if stopped
+            console.log('🔄 Auto-restarting random animations...');
+            this.isRunning = true;
+        }
+
+        // Random chance to trigger an animation
+        if (Math.random() > 0.3) { // 70% chance
+            // Pick a random animation that isn't the last one
+            let animations = this.animationPool.filter(a => a !== this.lastAnimation);
+            const randomAnim = animations[Math.floor(Math.random() * animations.length)];
+            this.lastAnimation = randomAnim;
+            randomAnim();
+        }
+
+        // Random delay between 3-15 seconds
+        const nextDelay = Math.random() * 12000 + 3000;
+        setTimeout(() => this.triggerRandomAnimation(), nextDelay);
+    }
+
     startRandomSequence() {
-        const triggerRandomAnimation = () => {
-            if (!this.isRunning) return;
-
-            // Random chance to trigger an animation
-            if (Math.random() > 0.3) { // 70% chance
-                // Pick a random animation that isn't the last one
-                let animations = this.animationPool.filter(a => a !== this.lastAnimation);
-                const randomAnim = animations[Math.floor(Math.random() * animations.length)];
-                this.lastAnimation = randomAnim;
-                randomAnim();
-            }
-
-            // Random delay between 3-15 seconds
-            const nextDelay = Math.random() * 12000 + 3000;
-            setTimeout(triggerRandomAnimation, nextDelay);
-        };
-
         // Start after initial delay
-        setTimeout(triggerRandomAnimation, 2000);
+        setTimeout(() => this.triggerRandomAnimation(), 2000);
     }
 
     dataGlitchWave() {
@@ -107,9 +116,11 @@ class RandomAnimations {
         `;
         document.body.appendChild(pulse);
 
+        // Use same value for width and height to keep it circular
+        const targetSize = Math.random() * 500 + 300;
         gsap.to(pulse, {
-            width: Math.random() * 500 + 300,
-            height: Math.random() * 500 + 300,
+            width: targetSize,
+            height: targetSize,
             opacity: 0,
             borderWidth: 0,
             duration: Math.random() + 0.5,
@@ -232,39 +243,7 @@ class RandomAnimations {
         });
     }
 
-    pixelStorm() {
-        const pixels = Math.floor(Math.random() * 30 + 20);
-
-        for (let i = 0; i < pixels; i++) {
-            const pixel = document.createElement('div');
-            const size = Math.random() * 5 + 2;
-
-            pixel.style.cssText = `
-                position: fixed;
-                width: ${size}px;
-                height: ${size}px;
-                background: ${Math.random() > 0.5 ? '#00ff85' : '#ff00ff'};
-                left: 50%;
-                top: 50%;
-                pointer-events: none;
-                z-index: 5;
-                box-shadow: 0 0 ${size}px currentColor;
-            `;
-            document.body.appendChild(pixel);
-
-            const angle = (i / pixels) * Math.PI * 2;
-            const distance = Math.random() * 500 + 100;
-
-            gsap.to(pixel, {
-                x: Math.cos(angle) * distance,
-                y: Math.sin(angle) * distance,
-                opacity: 0,
-                duration: Math.random() + 0.5,
-                ease: 'power2.out',
-                onComplete: () => pixel.remove()
-            });
-        }
-    }
+    // pixelStorm removed - was creating confetti-like effects
 
     matrixCascade() {
         const cascade = document.createElement('div');
@@ -400,34 +379,27 @@ class RandomAnimations {
     }
 
     cyberGlitch() {
-        const glitchBox = document.createElement('div');
-        const width = Math.random() * 300 + 100;
-        const height = Math.random() * 50 + 20;
-
-        glitchBox.style.cssText = `
+        // Create subtle glitch effects without visible boxes
+        const glitchOverlay = document.createElement('div');
+        glitchOverlay.style.cssText = `
             position: fixed;
-            left: ${Math.random() * window.innerWidth}px;
-            top: ${Math.random() * window.innerHeight}px;
-            width: ${width}px;
-            height: ${height}px;
-            background: repeating-linear-gradient(
-                90deg,
-                rgba(255,0,0,0.5) 0px,
-                rgba(0,255,0,0.5) 2px,
-                rgba(0,0,255,0.5) 4px
-            );
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
             pointer-events: none;
             z-index: 8;
-            mix-blend-mode: difference;
-            transform: skewX(${Math.random() * 30 - 15}deg);
+            backdrop-filter: invert(0);
         `;
-        document.body.appendChild(glitchBox);
+        document.body.appendChild(glitchOverlay);
 
-        gsap.to(glitchBox, {
-            scaleX: 0,
-            duration: 0.2,
-            ease: 'power4.in',
-            onComplete: () => glitchBox.remove()
+        gsap.to(glitchOverlay, {
+            backdropFilter: 'invert(0.1) hue-rotate(90deg)',
+            duration: 0.05,
+            yoyo: true,
+            repeat: 3,
+            ease: 'steps(2)',
+            onComplete: () => glitchOverlay.remove()
         });
     }
 
@@ -664,6 +636,202 @@ class RandomAnimations {
         };
 
         setTimeout(distort, 5000);
+    }
+
+    // New warp tunnel effect
+    warpTunnel() {
+        const tunnel = document.createElement('div');
+        tunnel.style.cssText = `
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            width: 200%;
+            height: 200%;
+            transform: translate(-50%, -50%);
+            background: radial-gradient(ellipse at center,
+                transparent 0%,
+                rgba(0, 255, 255, 0.1) 25%,
+                rgba(255, 0, 255, 0.1) 50%,
+                transparent 75%);
+            pointer-events: none;
+            z-index: 5;
+            opacity: 0;
+        `;
+        document.body.appendChild(tunnel);
+
+        gsap.to(tunnel, {
+            rotation: 360,
+            scale: 0.1,
+            opacity: 0.6,
+            duration: 3,
+            ease: 'power2.inOut',
+            onComplete: () => tunnel.remove()
+        });
+    }
+
+    // Ripple pulse effect
+    ripplePulse() {
+        const x = Math.random() * window.innerWidth;
+        const y = Math.random() * window.innerHeight;
+
+        for (let i = 0; i < 3; i++) {
+            const ripple = document.createElement('div');
+            ripple.style.cssText = `
+                position: fixed;
+                left: ${x}px;
+                top: ${y}px;
+                width: 50px;
+                height: 50px;
+                border: 2px solid rgba(0, 255, 133, 0.6);
+                border-radius: 50%;
+                transform: translate(-50%, -50%);
+                pointer-events: none;
+                z-index: 4;
+            `;
+            document.body.appendChild(ripple);
+
+            gsap.to(ripple, {
+                width: 300,
+                height: 300,
+                opacity: 0,
+                duration: 2,
+                delay: i * 0.2,
+                ease: 'power2.out',
+                onComplete: () => ripple.remove()
+            });
+        }
+    }
+
+    // Digital corruption effect
+    digitalCorruption() {
+        const corruption = document.createElement('div');
+        const lines = Math.floor(Math.random() * 5 + 3);
+        let content = '';
+
+        for (let i = 0; i < lines; i++) {
+            const width = Math.random() * 100;
+            const left = Math.random() * 100;
+            const color = ['#00ffff', '#ff00ff', '#ffff00'][Math.floor(Math.random() * 3)];
+            content += `<div style="
+                position: absolute;
+                top: ${i * 20}%;
+                left: ${left}%;
+                width: ${width}%;
+                height: 2px;
+                background: ${color};
+                opacity: 0.8;
+            "></div>`;
+        }
+
+        corruption.innerHTML = content;
+        corruption.style.cssText = `
+            position: fixed;
+            top: ${Math.random() * 80}%;
+            left: 0;
+            width: 100%;
+            height: ${Math.random() * 100 + 50}px;
+            pointer-events: none;
+            z-index: 6;
+            filter: blur(1px);
+        `;
+        document.body.appendChild(corruption);
+
+        gsap.to(corruption, {
+            x: '100%',
+            opacity: 0,
+            duration: 1.5,
+            ease: 'steps(10)',
+            onComplete: () => corruption.remove()
+        });
+    }
+
+    // Prismatic light burst
+    prismaticBurst() {
+        const burst = document.createElement('div');
+        burst.style.cssText = `
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            width: 100px;
+            height: 100px;
+            transform: translate(-50%, -50%);
+            background: conic-gradient(
+                from 0deg,
+                rgba(255, 0, 0, 0.5),
+                rgba(255, 255, 0, 0.5),
+                rgba(0, 255, 0, 0.5),
+                rgba(0, 255, 255, 0.5),
+                rgba(0, 0, 255, 0.5),
+                rgba(255, 0, 255, 0.5),
+                rgba(255, 0, 0, 0.5)
+            );
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 7;
+            opacity: 0;
+            filter: blur(20px);
+        `;
+        document.body.appendChild(burst);
+
+        gsap.timeline()
+            .to(burst, {
+                scale: 10,
+                opacity: 0.3,
+                rotation: 180,
+                duration: 1,
+                ease: 'power2.out'
+            })
+            .to(burst, {
+                scale: 15,
+                opacity: 0,
+                rotation: 360,
+                duration: 1,
+                ease: 'power2.in',
+                onComplete: () => burst.remove()
+            });
+    }
+
+    // Temporal glitch lines
+    temporalGlitch() {
+        const container = document.createElement('div');
+        container.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 8;
+            overflow: hidden;
+        `;
+
+        for (let i = 0; i < 10; i++) {
+            const line = document.createElement('div');
+            const height = Math.random() * 3 + 1;
+            line.style.cssText = `
+                position: absolute;
+                left: 0;
+                top: ${Math.random() * 100}%;
+                width: 100%;
+                height: ${height}px;
+                background: linear-gradient(90deg,
+                    transparent,
+                    rgba(0, 255, 255, 0.5),
+                    transparent);
+                transform: translateX(-100%);
+            `;
+            container.appendChild(line);
+
+            gsap.to(line, {
+                x: '200%',
+                duration: Math.random() * 0.5 + 0.2,
+                delay: i * 0.05,
+                ease: 'none'
+            });
+        }
+
+        document.body.appendChild(container);
+        setTimeout(() => container.remove(), 1000);
     }
 
     destroy() {

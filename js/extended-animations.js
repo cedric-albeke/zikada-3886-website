@@ -16,33 +16,38 @@ class ExtendedAnimations {
     startExtendedSequence() {
         const effects = [
             () => this.vhsScanlineGlitch(),
-            // () => this.synthwaveGrid(),  // Disabled - causes perspective distortion
             () => this.dataCorruption(),
             () => this.neonCityLights(),
-            // () => this.retroComputerBoot(), // Removed - no status texts
-            () => this.glitchArtEffect(),
+            // Removed glitchArtEffect - creates random rectangles
             () => this.cyberPunkNoise(),
             () => this.matrixRainVariation(),
             () => this.analogTVDistortion(),
-            // () => this.laserGrid(),  // Disabled - causes misalignment
             () => this.digitalMeltdown(),
             () => this.holographicInterference(),
             () => this.terminalFlicker(),
-            () => this.pixelSortGlitch()
+            () => this.pixelSortGlitch(),
+            () => this.chromaticWave(),
+            () => this.dataMoshing(),
+            () => this.quantumFlicker()
         ];
 
-        const runRandomEffect = () => {
-            if (!this.isRunning) return;
+        this.runRandomEffect = () => {
+            if (!this.isRunning) {
+                // Auto-restart if stopped
+                console.log('🔄 Auto-restarting extended animations...');
+                this.isRunning = true;
+            }
 
             if (Math.random() > 0.4) {
                 const effect = effects[Math.floor(Math.random() * effects.length)];
                 effect();
             }
 
-            setTimeout(runRandomEffect, Math.random() * 8000 + 5000);
+            // Keep animations running more frequently
+            setTimeout(() => this.runRandomEffect(), Math.random() * 6000 + 3000);
         };
 
-        setTimeout(runRandomEffect, 3000);
+        setTimeout(() => this.runRandomEffect(), 3000);
     }
 
     vhsScanlineGlitch() {
@@ -812,6 +817,88 @@ class ExtendedAnimations {
         };
 
         setTimeout(retroWave, 5000);
+    }
+
+    chromaticWave() {
+        const wave = document.createElement('div');
+        wave.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 100;
+            background: linear-gradient(45deg,
+                rgba(255,0,0,0.1),
+                rgba(0,255,0,0.1),
+                rgba(0,0,255,0.1));
+            mix-blend-mode: screen;
+            opacity: 0;
+        `;
+        document.body.appendChild(wave);
+
+        gsap.to(wave, {
+            opacity: 0.3,
+            backgroundPosition: '200% 200%',
+            duration: 3,
+            ease: 'power2.inOut',
+            onComplete: () => wave.remove()
+        });
+    }
+
+    dataMoshing() {
+        const mosh = document.createElement('div');
+        mosh.style.cssText = `
+            position: fixed;
+            top: ${Math.random() * 50}%;
+            left: 0;
+            width: 100%;
+            height: ${Math.random() * 200 + 100}px;
+            pointer-events: none;
+            z-index: 150;
+            background: repeating-linear-gradient(
+                90deg,
+                transparent 0px,
+                rgba(0,255,255,0.2) 2px,
+                transparent 4px
+            );
+            transform: skewY(${Math.random() * 10 - 5}deg);
+            opacity: 0;
+        `;
+        document.body.appendChild(mosh);
+
+        gsap.to(mosh, {
+            opacity: 0.6,
+            x: '100%',
+            duration: 2,
+            ease: 'steps(10)',
+            onComplete: () => mosh.remove()
+        });
+    }
+
+    quantumFlicker() {
+        const quantum = document.createElement('div');
+        quantum.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 120;
+            backdrop-filter: invert(0);
+        `;
+        document.body.appendChild(quantum);
+
+        gsap.to(quantum, {
+            backdropFilter: 'invert(1)',
+            duration: 0.05,
+            yoyo: true,
+            repeat: 5,
+            ease: 'none',
+            onComplete: () => quantum.remove()
+        });
     }
 
     destroy() {
