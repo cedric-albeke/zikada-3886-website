@@ -22,7 +22,9 @@ class LottieAnimations {
                 opacity: 0.3,
                 triggerOnScroll: false,
                 blendMode: 'screen',
-                zIndex: 101
+                zIndex: 5,  // Behind main logo
+                displayDuration: 8000,  // Show for 8 seconds
+                displayInterval: 45000  // Every 45 seconds
             },
             sunReveal: {
                 path: '/animations/lottie/sun-reveal.lottie',
@@ -34,19 +36,23 @@ class LottieAnimations {
                 opacity: 0.6,
                 triggerOnScroll: true,
                 blendMode: 'add',
-                zIndex: 103
+                zIndex: 4,  // Behind main logo
+                displayDuration: 5000,  // Show for 5 seconds
+                displayInterval: 60000  // Every 60 seconds
             },
             planetLogo: {
                 path: '/animations/lottie/Planet-Logo.lottie',
                 loop: true,
-                autoplay: true,
+                autoplay: false,  // Don't autoplay initially
                 renderer: 'svg',
                 size: 'calc(min(60vw, 60vh))',  // Smaller inner circle
                 position: { top: '50%', left: '50%', transform: 'translate(-50%, -50%)' },
                 opacity: 0.2,
                 triggerOnScroll: false,
                 blendMode: 'overlay',
-                zIndex: 102
+                zIndex: 6,  // Behind main logo but above others
+                displayDuration: 10000,  // Show for 10 seconds
+                displayInterval: 30000  // Every 30 seconds
             }
         };
 
@@ -75,6 +81,9 @@ class LottieAnimations {
 
             // Set up interaction handlers
             this.setupInteractions();
+
+            // Start animation cycles
+            this.startAnimationCycles();
 
             // Add to window for debugging
             window.lottieAnimations = this;
@@ -116,9 +125,7 @@ class LottieAnimations {
             if (this.config[name].loop) {
                 container.setAttribute('loop', '');
             }
-            if (this.config[name].autoplay) {
-                container.setAttribute('autoplay', '');
-            }
+            // Don't autoplay - we'll control this with chaos engine
 
             const config = this.config[name];
             const wrapperDiv = document.createElement('div');
@@ -153,10 +160,8 @@ class LottieAnimations {
         const wrapper = this.containers.planetRing.parentElement;
         this.animations.planetRing = this.containers.planetRing;
 
-        // Fade in the container
-        setTimeout(() => {
-            wrapper.style.opacity = this.config.planetRing.opacity;
-        }, 100);
+        // Start hidden - will be shown by chaos engine
+        wrapper.style.opacity = '0';
 
         // Add hover effect
         wrapper.addEventListener('mousemove', (e) => {
@@ -202,16 +207,57 @@ class LottieAnimations {
         const wrapper = this.containers.planetLogo.parentElement;
         this.animations.planetLogo = this.containers.planetLogo;
 
-        // Fade in
-        setTimeout(() => {
-            wrapper.style.opacity = this.config.planetLogo.opacity;
-        }, 500);
+        // Start hidden - will be shown by chaos engine
+        wrapper.style.opacity = '0';
 
         // Click interaction
         wrapper.style.cursor = 'pointer';
         wrapper.addEventListener('click', () => {
             this.triggerCosmicBurst();
         });
+    }
+
+    startAnimationCycles() {
+        console.log('🎬 Starting Lottie animation cycles');
+
+        // Planet Logo - shows every 30 seconds
+        setTimeout(() => {
+            this.showAnimation('planetLogo');
+            setInterval(() => {
+                this.showAnimation('planetLogo');
+            }, this.config.planetLogo.displayInterval);
+        }, 5000); // Start after 5 seconds
+
+        // Planet Ring - shows every 45 seconds
+        setTimeout(() => {
+            this.showAnimation('planetRing');
+            setInterval(() => {
+                this.showAnimation('planetRing');
+            }, this.config.planetRing.displayInterval);
+        }, 15000); // Start after 15 seconds
+
+        // Sun Reveal is triggered by events, not cycle
+    }
+
+    showAnimation(name) {
+        const animation = this.animations[name];
+        const config = this.config[name];
+        if (!animation || !animation.parentElement) return;
+
+        const wrapper = animation.parentElement;
+
+        // Fade in
+        wrapper.style.transition = 'opacity 0.5s ease-in-out';
+        wrapper.style.opacity = config.opacity.toString();
+        animation.play();
+
+        // Fade out after display duration
+        setTimeout(() => {
+            wrapper.style.opacity = '0';
+            setTimeout(() => {
+                animation.stop();
+            }, 500);
+        }, config.displayDuration);
     }
 
     setupInteractions() {
@@ -256,6 +302,29 @@ class LottieAnimations {
                 this.resumeAll();
             }
         });
+
+        // Integration with chaos engine phases
+        window.addEventListener('chaosPhase', (event) => {
+            const phase = event.detail.phase;
+            console.log('🌀 Lottie reacting to chaos phase:', phase);
+
+            switch(phase) {
+                case 'intense':
+                    // Show planet ring during intense phase
+                    this.showAnimation('planetRing');
+                    break;
+                case 'glitch':
+                    // Show planet logo during glitch
+                    this.showAnimation('planetLogo');
+                    break;
+                case 'matrix':
+                    // Trigger sun reveal during matrix
+                    if (Math.random() > 0.5) {
+                        this.playSunReveal();
+                    }
+                    break;
+            }
+        });
     }
 
     playSunReveal() {
@@ -269,11 +338,10 @@ class LottieAnimations {
         this.createGlowEffect(wrapper);
 
         // Hide after animation completes
-        this.animations.sunReveal.addEventListener('complete', () => {
-            setTimeout(() => {
-                wrapper.style.opacity = '0';
-            }, 1000);
-        });
+        setTimeout(() => {
+            wrapper.style.opacity = '0';
+            this.animations.sunReveal.stop();
+        }, this.config.sunReveal.displayDuration);
     }
 
     triggerCosmicBurst() {
