@@ -13,6 +13,7 @@ import beehiveLogoBlend from './beehive-logo-blend.js';
 import performanceManager from './performance-manager.js';
 import debugConsole from './debug-console.js';
 import sonarEffect from './sonar-effect.js';
+import lottieAnimations from './lottie-animations.js';
 import gsap from 'gsap';
 
 class ChaosInitializer {
@@ -208,6 +209,10 @@ class ChaosInitializer {
             // Initialize sonar effect
             sonarEffect.init();
             console.log('📡 Sonar effect initialized');
+
+            // Initialize Lottie animations
+            lottieAnimations.init();
+            console.log('🌟 Lottie animations initialized');
         } catch (error) {
             console.error('Failed to initialize Random Animations:', error);
         }
@@ -1858,6 +1863,41 @@ window.ChaosControl = {
     testMatrix: () => {
         console.log('Testing matrix message...');
         matrixMessages.testMessage();
+    },
+
+    // Lottie animation controls
+    lottie: {
+        play: (name) => {
+            if (window.lottieAnimations) {
+                window.lottieAnimations.play(name);
+            }
+        },
+        pause: (name) => {
+            if (window.lottieAnimations) {
+                window.lottieAnimations.pause(name);
+            }
+        },
+        triggerSun: () => {
+            if (window.lottieAnimations) {
+                window.lottieAnimations.playSunReveal();
+            }
+        },
+        cosmicBurst: () => {
+            if (window.lottieAnimations) {
+                window.lottieAnimations.triggerCosmicBurst();
+            }
+        },
+        status: () => {
+            if (window.lottieAnimations) {
+                console.log('🌟 Lottie Animations Status:', {
+                    initialized: window.lottieAnimations.isInitialized,
+                    animations: Object.keys(window.lottieAnimations.animations).map(key => ({
+                        name: key,
+                        loaded: !!window.lottieAnimations.animations[key]
+                    }))
+                });
+            }
+        }
     }
 };
 
