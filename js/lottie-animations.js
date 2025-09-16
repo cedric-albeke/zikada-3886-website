@@ -140,6 +140,8 @@ class LottieAnimations {
                 z-index: ${config.zIndex || 100};
                 width: ${config.size};
                 height: ${config.size};
+                border-radius: 50%;
+                overflow: hidden;
             `;
 
             wrapperDiv.appendChild(container);
@@ -252,9 +254,8 @@ class LottieAnimations {
 
         // Special enhancement for planet-logo
         if (name === 'planetLogo') {
-            wrapper.style.filter = 'saturate(1.8) brightness(1.3) contrast(1.2) hue-rotate(10deg)';
-            // Add a glow effect
-            wrapper.style.boxShadow = '0 0 60px rgba(0, 255, 200, 0.4)';
+            // Use drop-shadow for circular glow that follows the content shape
+            wrapper.style.filter = 'saturate(1.8) brightness(1.3) contrast(1.2) hue-rotate(10deg) drop-shadow(0 0 30px rgba(0, 255, 200, 0.6))';
         }
 
         animation.play();
@@ -263,7 +264,6 @@ class LottieAnimations {
         setTimeout(() => {
             wrapper.style.opacity = '0';
             wrapper.style.filter = 'none';
-            wrapper.style.boxShadow = 'none';
             setTimeout(() => {
                 animation.stop();
             }, 500);
