@@ -1,0 +1,249 @@
+/* Chaos Engine Additional Effects */
+
+/* Preserve original text while adding glitch */
+.text-span-2,
+.text-span {
+    position: relative;
+    display: inline-block;
+}
+
+/* Subtle text glitch using pseudo-elements - DISABLED to preserve layout */
+.logo-text {
+    position: relative;
+}
+
+/* Glitch effect using shadows instead of pseudo-elements */
+@keyframes textGlitch {
+    0%, 100% {
+        text-shadow:
+            0 0 10px rgba(0, 255, 255, 0.5),
+            0 0 20px rgba(0, 255, 255, 0.3);
+    }
+    20% {
+        text-shadow:
+            -2px 0 #00ffff,
+            2px 0 #ff00ff,
+            0 0 10px rgba(0, 255, 255, 0.5);
+    }
+    21% {
+        text-shadow:
+            0 0 10px rgba(0, 255, 255, 0.5),
+            0 0 20px rgba(0, 255, 255, 0.3);
+    }
+    50% {
+        text-shadow:
+            0 0 10px rgba(0, 255, 255, 0.5),
+            0 0 20px rgba(0, 255, 255, 0.3);
+    }
+    52% {
+        text-shadow:
+            2px 0 #ff00ff,
+            -2px 0 #00ffff,
+            0 0 10px rgba(0, 255, 255, 0.5);
+    }
+    53% {
+        text-shadow:
+            0 0 10px rgba(0, 255, 255, 0.5),
+            0 0 20px rgba(0, 255, 255, 0.3);
+    }
+}
+
+/* No animation on either text - keep them clean */
+.text-span-2,
+.text-span {
+    animation: none;
+}
+
+/* Periodic glitch bursts */
+.logo-text {
+    animation: glitch-burst 8s infinite;
+}
+
+@keyframes glitch-burst {
+    0%, 90%, 100% {
+        filter: none;
+    }
+    91% {
+        filter: blur(0.5px);
+    }
+    92% {
+        filter: blur(0px);
+    }
+    93% {
+        filter: brightness(1.2) contrast(1.2);
+    }
+    94% {
+        filter: brightness(0.9) saturate(1.5);
+    }
+}
+
+/* Fix z-index issues - proper layering */
+.pre-loader {
+    position: relative;
+    z-index: 10;
+}
+
+.mid-loader-image {
+    position: relative;
+    z-index: 20;
+}
+
+/* Background should be behind everything and subtle */
+.bg {
+    z-index: 1 !important; /* Was 15, causing overlap */
+    max-opacity: 0.07 !important; /* Keep it subtle */
+    opacity: 0.05 !important;
+}
+
+/* Ensure logo elements are above background and properly centered */
+.image-wrapper {
+    z-index: 25 !important;
+    /* Maintain original flexbox centering */
+    min-opacity: 0.85 !important;
+    /* Protect from distortion */
+    transform: scale(1) !important;
+    aspect-ratio: 1 !important;
+}
+
+.image-2 {
+    z-index: 26 !important;
+    /* Keep cicada centered and always visible */
+    min-opacity: 0.8 !important;
+    opacity: 1 !important;
+    /* Ensure cicada stays circular */
+    transform: scale(1) !important;
+}
+
+.logo-text-wrapper {
+    z-index: 50 !important;
+    /* Maintain original absolute positioning */
+}
+
+/* Ensure ZIKADA text stays centered */
+.logo-text {
+    transform: translateX(0) !important;
+    margin: 0 auto;
+    text-align: center !important;
+}
+
+/* Ensure 3886 text stays centered */
+.text-3886 {
+    text-align: center !important;
+    margin: 0 auto;
+}
+
+#chaos-canvas {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    z-index: -2 !important;
+}
+
+#cyber-grid {
+    z-index: -1 !important;
+}
+
+#matrix-rain {
+    position: fixed !important;
+    opacity: 0.05 !important;
+    z-index: 0 !important;
+    pointer-events: none !important;
+}
+
+.scanlines {
+    z-index: 9997 !important;
+    opacity: 0.1 !important;
+}
+
+/* Enhance button without breaking it */
+.button-primary.overlay {
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s;
+}
+
+.button-primary.overlay::before {
+    content: '';
+    position: absolute;
+    top: -2px;
+    left: -2px;
+    right: -2px;
+    bottom: -2px;
+    background: linear-gradient(45deg, #00ffff, #ff00ff, #00ffff);
+    z-index: -1;
+    opacity: 0;
+    animation: button-glow 3s infinite;
+    border-radius: inherit;
+}
+
+@keyframes button-glow {
+    0%, 100% {
+        opacity: 0;
+    }
+    50% {
+        opacity: 0.5;
+    }
+}
+
+/* Data corruption overlay should be subtle */
+.data-corruption {
+    mix-blend-mode: screen !important;
+    opacity: 0.3 !important;
+}
+
+/* Console messages styling */
+.console-message {
+    font-family: 'Space Mono', 'Courier New', monospace !important;
+    letter-spacing: 0.05em;
+}
+
+/* Image glow effect */
+.image-wrapper-glow {
+    filter: drop-shadow(0 0 10px rgba(0, 255, 255, 0.3));
+}
+
+.glow {
+    mix-blend-mode: screen;
+    opacity: 0.6 !important;
+}
+
+/* Ensure text stays readable */
+.scramble-text {
+    position: relative;
+    z-index: 10;
+}
+
+/* Subtle VHS effect */
+@keyframes vhs-wobble {
+    0%, 100% {
+        transform: translateX(0) scaleX(1);
+    }
+    25% {
+        transform: translateX(-0.5px) scaleX(1.002);
+    }
+    50% {
+        transform: translateX(0.5px) scaleX(0.998);
+    }
+    75% {
+        transform: translateX(-0.3px) scaleX(1.001);
+    }
+}
+
+.welcome-wrapper {
+    animation: vhs-wobble 12s infinite;
+}
+
+/* Performance mode adjustments */
+.performance-low #chaos-canvas {
+    display: none;
+}
+
+.performance-low .scanlines {
+    display: none;
+}
+
+.performance-low #matrix-rain {
+    display: none;
+}

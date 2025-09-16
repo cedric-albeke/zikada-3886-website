@@ -1,0 +1,32 @@
+{
+  "name": "zikada-3886-website",
+  "version": "1.0.0",
+  "description": "ZIKADA 3886 Records - Psy & Techno Website",
+  "main": "index.html",
+  "scripts": {
+    "dev": "vite --port 3886",
+    "build": "vite build",
+    "serve": "npx http-server . -p 3886",
+    "preview": "vite preview --port 3886"
+  },
+  "keywords": [
+    "webflow",
+    "music",
+    "psy",
+    "techno",
+    "3886",
+    "zikada"
+  ],
+  "author": "ZIKADA",
+  "license": "UNLICENSED",
+  "devDependencies": {
+    "http-server": "^14.1.1",
+    "vite": "^5.4.11"
+  },
+  "dependencies": {
+    "three": "^0.169.0",
+    "postprocessing": "^6.36.4",
+    "gsap": "^3.12.5",
+    "simplex-noise": "^4.0.3"
+  }
+}
