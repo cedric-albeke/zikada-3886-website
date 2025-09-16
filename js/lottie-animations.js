@@ -3,8 +3,15 @@ class LottieAnimations {
     constructor() {
         this.animations = {
             planetRing: null,
-            sunReveal: null,
-            planetLogo: null
+            planetLogo: null,
+            abstraction: null,
+            hexagon: null,
+            morphingParticle: null,
+            sacredGeometry: null,
+            transparentDiamond: null,
+            circuitRound: null,
+            geometricalLines: null,
+            circularDots: null
         };
 
         this.containers = {};
@@ -17,50 +24,158 @@ class LottieAnimations {
                 loop: true,
                 autoplay: false,
                 renderer: 'svg',
-                size: 'calc(min(80vw, 80vh))',  // Responsive size
+                size: 'calc(min(90vw, 90vh))',  // Scaled up
                 position: { top: '50%', left: '50%', transform: 'translate(-50%, -50%)' },
-                opacity: 0.25,  // Slightly more subtle
+                opacity: 0.08,  // Further reduced opacity (was 0.15)
                 triggerOnScroll: false,
                 blendMode: 'screen',
-                zIndex: 3,  // Behind main logo (26)
+                zIndex: 2,  // Lower z-index
                 displayDuration: 6000,  // Show for 6 seconds
-                displayInterval: 75000  // Every 75 seconds (was 45)
-            },
-            sunReveal: {
-                path: '/animations/lottie/sun-reveal.lottie',
-                loop: false,
-                autoplay: false,
-                renderer: 'canvas',
-                size: 'calc(min(90vw, 90vh))',  // Larger for dramatic effect
-                position: { top: '50%', left: '50%', transform: 'translate(-50%, -50%)' },
-                opacity: 0.4,  // Reduced from 0.6
-                triggerOnScroll: true,
-                blendMode: 'add',
-                zIndex: 2,  // Behind main logo (26)
-                displayDuration: 4000,  // Show for 4 seconds
-                displayInterval: 90000  // Every 90 seconds (was 60)
+                displayInterval: 75000  // Every 75 seconds
             },
             planetLogo: {
                 path: '/animations/lottie/Planet-Logo.lottie',
                 loop: true,
                 autoplay: false,  // Don't autoplay initially
                 renderer: 'svg',
-                size: 'calc(min(75vw, 75vh))',  // Bigger - 75% of viewport
+                size: 'calc(min(95vw, 95vh))',  // Scaled up
                 position: { top: '50%', left: '50%', transform: 'translate(-50%, -50%)' },
-                opacity: 0.35,  // Reduced from 0.5 for subtlety
+                opacity: 0.2,  // Reduced opacity
                 triggerOnScroll: false,
                 blendMode: 'screen',  // Better color blending
-                zIndex: 4,  // Behind main logo (26)
+                zIndex: 3,  // Lower z-index
                 displayDuration: 8000,  // Show for 8 seconds
-                displayInterval: 60000  // Every 60 seconds (was 25)
+                displayInterval: 60000  // Every 60 seconds
+            },
+            abstraction: {
+                path: '/animations/lottie/Abstraction.lottie',
+                loop: true,
+                autoplay: false,
+                renderer: 'svg',
+                size: 'calc(min(150vw, 150vh))',
+                position: { top: '50%', left: '50%', transform: 'translate(-50%, -50%)' },
+                opacity: 0.02,  // DRASTICALLY reduced opacity (was 0.06)
+                triggerOnScroll: false,
+                blendMode: 'multiply',
+                zIndex: 1,
+                displayDuration: 7000,
+                displayInterval: 85000
+            },
+            // REMOVED - hexagon animation disabled per request
+            /*
+            hexagon: {
+                path: '/animations/lottie/Impossible-Hexagon-black.lottie',
+                loop: true,
+                autoplay: false,
+                renderer: 'svg',
+                size: 'calc(min(106vw, 106vh))',
+                position: { top: '50%', left: '50%', transform: 'translate(-50%, -50%)' },
+                opacity: 0.15,
+                triggerOnScroll: false,
+                blendMode: 'screen',
+                zIndex: 2,
+                displayDuration: 5000,
+                displayInterval: 65000
+            },
+            */
+            morphingParticle: {
+                path: '/animations/lottie/Morphing-Particle-Loader.lottie',
+                loop: true,
+                autoplay: false,
+                renderer: 'canvas',
+                size: 'calc(min(80vw, 80vh))',  // Scaled up
+                position: { top: '50%', left: '50%', transform: 'translate(-50%, -50%)' },
+                opacity: 0.22,  // Reduced opacity
+                triggerOnScroll: false,
+                blendMode: 'add',
+                zIndex: 2,  // Lower z-index
+                displayDuration: 4000,
+                displayInterval: 55000
+            },
+            sacredGeometry: {
+                path: '/animations/lottie/Sacred-Geometry.lottie',
+                loop: true,
+                autoplay: false,
+                renderer: 'svg',
+                size: 'calc(min(110vw, 110vh))',  // Scaled up more for dramatic effect
+                position: { top: '50%', left: '50%', transform: 'translate(-50%, -50%)' },
+                opacity: 0.1,  // Very subtle
+                triggerOnScroll: true,
+                blendMode: 'overlay',
+                zIndex: 1,  // Lowest z-index
+                displayDuration: 9000,
+                displayInterval: 95000
+            },
+            transparentDiamond: {
+                path: '/animations/lottie/transparent-diamond-dark.lottie',
+                loop: true,
+                autoplay: false,
+                renderer: 'svg',
+                size: 'calc(min(70vw, 70vh))',  // Scaled up significantly
+                position: { top: '50%', left: '50%', transform: 'translate(-50%, -50%)' },
+                opacity: 0.25,  // Reduced opacity
+                triggerOnScroll: false,
+                blendMode: 'screen',
+                zIndex: 3,  // Lower z-index
+                displayDuration: 3500,
+                displayInterval: 45000
+            },
+            circuitRound: {
+                path: '/animations/lottie/circuit-round-ani.lottie',
+                loop: true,
+                autoplay: false,
+                renderer: 'svg',
+                size: 'calc(min(100vw, 100vh))',  // Full coverage
+                position: { top: '50%', left: '50%', transform: 'translate(-50%, -50%)' },
+                opacity: 0.15,  // Subtle opacity
+                triggerOnScroll: false,
+                blendMode: 'overlay',
+                zIndex: 2,
+                displayDuration: 6000,
+                displayInterval: 70000  // Every 70 seconds
+            },
+            geometricalLines: {
+                path: '/animations/lottie/geometrical-lines.lottie',
+                loop: true,
+                autoplay: false,
+                renderer: 'svg',
+                size: 'calc(min(120vw, 120vh))',  // Larger for dramatic effect
+                position: { top: '50%', left: '50%', transform: 'translate(-50%, -50%)' },
+                opacity: 0.08,  // Very subtle
+                triggerOnScroll: false,
+                blendMode: 'add',
+                zIndex: 1,
+                displayDuration: 8000,
+                displayInterval: 80000  // Every 80 seconds
+            },
+            circularDots: {
+                path: '/animations/lottie/circular-dots.lottie',
+                loop: true,
+                autoplay: false,
+                renderer: 'canvas',  // Canvas for better performance with dots
+                size: 'calc(min(85vw, 85vh))',
+                position: { top: '50%', left: '50%', transform: 'translate(-50%, -50%)' },
+                opacity: 0.18,  // Medium opacity
+                triggerOnScroll: false,
+                blendMode: 'screen',
+                zIndex: 2,
+                displayDuration: 5000,
+                displayInterval: 65000  // Every 65 seconds
             }
         };
 
         // Store JSON data locally for better performance
         this.animationData = {
             planetRing: null,
-            sunReveal: null,
-            planetLogo: null
+            planetLogo: null,
+            abstraction: null,  // Re-enabled with low opacity
+            // hexagon: null,  // REMOVED
+            morphingParticle: null,
+            sacredGeometry: null,
+            transparentDiamond: null,
+            circuitRound: null,
+            geometricalLines: null,
+            circularDots: null
         };
     }
 
@@ -76,8 +191,15 @@ class LottieAnimations {
 
             // Initialize all animations
             this.initPlanetRing();
-            this.initSunReveal();
             this.initPlanetLogo();
+            this.initAbstraction();  // Re-enabled with low opacity
+            // this.initHexagon();  // REMOVED
+            this.initMorphingParticle();
+            this.initSacredGeometry();
+            this.initTransparentDiamond();
+            this.initCircuitRound();
+            this.initGeometricalLines();
+            this.initCircularDots();
 
             // Set up interaction handlers
             this.setupInteractions();
@@ -106,12 +228,12 @@ class LottieAnimations {
             width: 100%;
             height: 100%;
             pointer-events: none;
-            z-index: 5 !important;  /* Much lower than main logo (26) */
+            z-index: 1 !important;  /* Ensure animations stay behind everything */
         `;
         document.body.appendChild(mainContainer);
 
         // Create individual animation containers with dotlottie-player elements
-        ['planetRing', 'sunReveal', 'planetLogo'].forEach(name => {
+        ['planetRing', 'planetLogo', 'abstraction', 'morphingParticle', 'sacredGeometry', 'transparentDiamond', 'circuitRound', 'geometricalLines', 'circularDots'].forEach(name => {
             const container = document.createElement('dotlottie-player');
             container.className = `lottie-${name}`;
             container.id = `lottie-${name}`;
@@ -134,7 +256,7 @@ class LottieAnimations {
                 position: absolute;
                 ${Object.entries(config.position).map(([key, value]) => `${key}: ${value}`).join('; ')};
                 opacity: 0;
-                transition: opacity 0.5s ease-in-out;
+                transition: opacity 1.5s ease-in-out;  /* Smoother, slower transitions */
                 mix-blend-mode: ${config.blendMode};
                 pointer-events: none;
                 z-index: ${config.zIndex || 5};  /* Default to 5 if not specified */
@@ -177,9 +299,9 @@ class LottieAnimations {
             );
 
             if (distance < 300) {
-                player.setAttribute('speed', '2');
-                wrapper.style.opacity = '0.5';  // Brighten on hover
-                wrapper.style.filter = 'brightness(1.3)';
+                player.setAttribute('speed', '1.2');  // Less dramatic speed change
+                wrapper.style.opacity = '0.15';  // More subtle brighten on hover
+                wrapper.style.filter = 'brightness(1.05)';  // Gentler brightness
             } else {
                 player.setAttribute('speed', '1');
                 wrapper.style.opacity = this.config.planetRing.opacity.toString();
@@ -188,19 +310,162 @@ class LottieAnimations {
         });
     }
 
-    initSunReveal() {
-        if (!this.containers.sunReveal) return;
+    initAbstraction() {
+        if (!this.containers.abstraction) return;
 
-        const wrapper = this.containers.sunReveal.parentElement;
-        this.animations.sunReveal = this.containers.sunReveal;
+        const wrapper = this.containers.abstraction.parentElement;
+        this.animations.abstraction = this.containers.abstraction;
 
-        // Don't autoplay initially
-        this.containers.sunReveal.removeAttribute('autoplay');
+        // Start hidden - will be shown by chaos engine
+        wrapper.style.opacity = '0';
+    }
 
-        // Trigger on matrix message or special events
-        window.addEventListener('matrixMessageStart', () => {
-            this.playSunReveal();
+    // REMOVED - hexagon animation disabled
+    /*
+    initHexagon() {
+        if (!this.containers.hexagon) return;
+
+        const wrapper = this.containers.hexagon.parentElement;
+        this.animations.hexagon = this.containers.hexagon;
+
+        // Start hidden
+        wrapper.style.opacity = '0';
+
+        // Subtle pulsing effect on hover
+        wrapper.addEventListener('mouseenter', () => {
+            wrapper.style.filter = 'brightness(1.15) saturate(1.2)';
         });
+        wrapper.addEventListener('mouseleave', () => {
+            wrapper.style.filter = 'brightness(1)';
+        });
+    }
+    */
+
+    initMorphingParticle() {
+        if (!this.containers.morphingParticle) return;
+
+        const wrapper = this.containers.morphingParticle.parentElement;
+        this.animations.morphingParticle = this.containers.morphingParticle;
+
+        // Start hidden
+        wrapper.style.opacity = '0';
+    }
+
+    initSacredGeometry() {
+        if (!this.containers.sacredGeometry) return;
+
+        const wrapper = this.containers.sacredGeometry.parentElement;
+        this.animations.sacredGeometry = this.containers.sacredGeometry;
+
+        // Start hidden
+        wrapper.style.opacity = '0';
+
+        // Trigger on scroll
+        window.addEventListener('scroll', () => {
+            if (window.scrollY > 800 && !this.sacredGeometryTriggered) {
+                this.showAnimation('sacredGeometry');
+                this.sacredGeometryTriggered = true;
+            }
+        });
+    }
+
+    initTransparentDiamond() {
+        if (!this.containers.transparentDiamond) return;
+
+        const wrapper = this.containers.transparentDiamond.parentElement;
+        this.animations.transparentDiamond = this.containers.transparentDiamond;
+
+        // Start hidden
+        wrapper.style.opacity = '0';
+
+        // Sparkle effect on click
+        wrapper.style.cursor = 'pointer';
+        wrapper.addEventListener('click', () => {
+            this.createSparkleEffect(wrapper);
+        });
+    }
+
+    initCircuitRound() {
+        if (!this.containers.circuitRound) return;
+
+        const wrapper = this.containers.circuitRound.parentElement;
+        this.animations.circuitRound = this.containers.circuitRound;
+
+        // Start hidden - will be shown by animation cycles
+        wrapper.style.opacity = '0';
+
+        // Add subtle rotation on hover
+        wrapper.addEventListener('mouseenter', () => {
+            wrapper.style.transition = 'transform 1s ease-in-out';
+            wrapper.style.transform = `${this.config.circuitRound.position.transform || ''} rotate(5deg)`;
+        });
+        wrapper.addEventListener('mouseleave', () => {
+            wrapper.style.transform = this.config.circuitRound.position.transform || '';
+        });
+    }
+
+    initGeometricalLines() {
+        if (!this.containers.geometricalLines) return;
+
+        const wrapper = this.containers.geometricalLines.parentElement;
+        this.animations.geometricalLines = this.containers.geometricalLines;
+
+        // Start hidden
+        wrapper.style.opacity = '0';
+
+        // Subtle brightness effect on proximity
+        document.addEventListener('mousemove', (e) => {
+            const rect = wrapper.getBoundingClientRect();
+            const centerX = rect.left + rect.width / 2;
+            const centerY = rect.top + rect.height / 2;
+            const distance = Math.sqrt(
+                Math.pow(e.clientX - centerX, 2) +
+                Math.pow(e.clientY - centerY, 2)
+            );
+
+            if (distance < 400) {
+                const proximity = 1 - (distance / 400);
+                wrapper.style.filter = `brightness(${1 + proximity * 0.1})`;
+            } else {
+                wrapper.style.filter = 'brightness(1)';
+            }
+        });
+    }
+
+    initCircularDots() {
+        if (!this.containers.circularDots) return;
+
+        const wrapper = this.containers.circularDots.parentElement;
+        this.animations.circularDots = this.containers.circularDots;
+
+        // Start hidden
+        wrapper.style.opacity = '0';
+
+        // Pulsing effect on click
+        wrapper.style.cursor = 'pointer';
+        wrapper.addEventListener('click', () => {
+            wrapper.style.animation = 'dotsPulse 1s ease-out';
+            setTimeout(() => {
+                wrapper.style.animation = '';
+            }, 1000);
+        });
+
+        // Add the pulse animation if it doesn't exist
+        if (!document.querySelector('#dots-pulse-style')) {
+            const style = document.createElement('style');
+            style.id = 'dots-pulse-style';
+            style.textContent = `
+                @keyframes dotsPulse {
+                    0%, 100% {
+                        transform: translate(-50%, -50%) scale(1);
+                    }
+                    50% {
+                        transform: translate(-50%, -50%) scale(1.1);
+                    }
+                }
+            `;
+            document.head.appendChild(style);
+        }
     }
 
     initPlanetLogo() {
@@ -222,23 +487,84 @@ class LottieAnimations {
     startAnimationCycles() {
         console.log('🎬 Starting Lottie animation cycles');
 
-        // Planet Logo - special highlight animation
+        // Limit to 2-3 animations maximum at once
+        // Stagger them more to reduce overlap
+
+        // Planet Logo - main animation
         setTimeout(() => {
             this.showAnimation('planetLogo');
             setInterval(() => {
                 this.showAnimation('planetLogo');
             }, this.config.planetLogo.displayInterval);
-        }, 10000); // Start after 10 seconds
+        }, 15000); // Start after 15 seconds
 
-        // Planet Ring - occasional atmosphere
+        // Planet Ring - secondary animation
         setTimeout(() => {
             this.showAnimation('planetRing');
             setInterval(() => {
                 this.showAnimation('planetRing');
             }, this.config.planetRing.displayInterval);
+        }, 45000); // Start after 45 seconds (increased gap)
+
+        // Abstraction - with very low opacity
+        setTimeout(() => {
+            this.showAnimation('abstraction');
+            setInterval(() => {
+                this.showAnimation('abstraction');
+            }, this.config.abstraction.displayInterval);
+        }, 75000); // Start after 75 seconds
+
+        // REMOVED - hexagon animation disabled
+        /*
+        setTimeout(() => {
+            this.showAnimation('hexagon');
+            setInterval(() => {
+                this.showAnimation('hexagon');
+            }, this.config.hexagon.displayInterval * 1.5);
+        }, 105000);
+        */
+
+        // Morphing Particle - reduced frequency
+        setTimeout(() => {
+            this.showAnimation('morphingParticle');
+            setInterval(() => {
+                this.showAnimation('morphingParticle');
+            }, this.config.morphingParticle.displayInterval * 1.5); // Increase interval
+        }, 135000); // Start after 135 seconds
+
+        // Sacred Geometry is triggered by scroll
+
+        // Transparent Diamond - reduced frequency
+        setTimeout(() => {
+            this.showAnimation('transparentDiamond');
+            setInterval(() => {
+                this.showAnimation('transparentDiamond');
+            }, this.config.transparentDiamond.displayInterval * 2); // Double interval
+        }, 165000); // Start after 165 seconds
+
+        // Circuit Round animation
+        setTimeout(() => {
+            this.showAnimation('circuitRound');
+            setInterval(() => {
+                this.showAnimation('circuitRound');
+            }, this.config.circuitRound.displayInterval);
         }, 30000); // Start after 30 seconds
 
-        // Sun Reveal is triggered by events, not cycle
+        // Geometrical Lines animation
+        setTimeout(() => {
+            this.showAnimation('geometricalLines');
+            setInterval(() => {
+                this.showAnimation('geometricalLines');
+            }, this.config.geometricalLines.displayInterval);
+        }, 90000); // Start after 90 seconds
+
+        // Circular Dots animation
+        setTimeout(() => {
+            this.showAnimation('circularDots');
+            setInterval(() => {
+                this.showAnimation('circularDots');
+            }, this.config.circularDots.displayInterval);
+        }, 120000); // Start after 120 seconds
     }
 
     showAnimation(name) {
@@ -248,14 +574,19 @@ class LottieAnimations {
 
         const wrapper = animation.parentElement;
 
-        // Fade in with enhanced effects for planet-logo
-        wrapper.style.transition = 'opacity 0.5s ease-in-out, filter 0.5s ease-in-out';
+        // Dispatch event for logo animations to react
+        window.dispatchEvent(new CustomEvent('lottieAnimationStart', {
+            detail: { name: name }
+        }));
+
+        // Fade in with smoother transitions
+        wrapper.style.transition = 'opacity 2s ease-in-out, filter 2s ease-in-out';
         wrapper.style.opacity = config.opacity.toString();
 
         // Special enhancement for planet-logo
         if (name === 'planetLogo') {
-            // Subtle enhancement with gentle glow
-            wrapper.style.filter = 'saturate(1.4) brightness(1.1) contrast(1.1) drop-shadow(0 0 20px rgba(0, 255, 200, 0.3))';
+            // Very subtle enhancement with minimal glow
+            wrapper.style.filter = 'saturate(1.2) brightness(1.05) contrast(1.05) drop-shadow(0 0 15px rgba(0, 255, 200, 0.15))';
         }
 
         animation.play();
@@ -273,6 +604,41 @@ class LottieAnimations {
     setupInteractions() {
         // Scroll-based triggers
         let lastScrollY = window.scrollY;
+        let rotationDirections = {};  // Track rotation direction for each animation
+        let rotationValues = {};  // Track current rotation values
+
+        // Initialize rotation values
+        Object.keys(this.containers).forEach(name => {
+            rotationValues[name] = 0;
+            rotationDirections[name] = 1;  // 1 = forward, -1 = reverse
+        });
+
+        // Create reverse rotation scenes
+        const createRotationReversal = () => {
+            // Every 10-20 seconds, randomly reverse some animations
+            setInterval(() => {
+                // Randomly select 2-3 animations to reverse
+                const animations = Object.keys(this.containers);
+                const numToReverse = Math.floor(Math.random() * 2) + 2;
+
+                for (let i = 0; i < numToReverse; i++) {
+                    const randomAnim = animations[Math.floor(Math.random() * animations.length)];
+                    rotationDirections[randomAnim] *= -1;  // Reverse direction
+
+                    // Smooth transition when reversing
+                    const wrapper = this.containers[randomAnim]?.parentElement;
+                    if (wrapper) {
+                        wrapper.style.transition = 'transform 2s cubic-bezier(0.4, 0, 0.2, 1)';
+                        setTimeout(() => {
+                            wrapper.style.transition = '';  // Remove transition after
+                        }, 2000);
+                    }
+                }
+            }, Math.random() * 10000 + 10000);  // 10-20 seconds
+        };
+
+        createRotationReversal();
+
         window.addEventListener('scroll', () => {
             const currentScrollY = window.scrollY;
             const scrollDelta = currentScrollY - lastScrollY;
@@ -280,25 +646,29 @@ class LottieAnimations {
             // Rotation effect on scroll for all animations with different speeds
             const rotationSpeeds = {
                 planetRing: 0.05,
-                sunReveal: 0.02,
-                planetLogo: -0.08  // Negative for opposite direction
+                planetLogo: -0.08,  // Negative for opposite direction
+                abstraction: 0.03,
+                hexagon: -0.06,
+                morphingParticle: 0.07,
+                sacredGeometry: -0.04,
+                transparentDiamond: 0.09,
+                circuitRound: -0.05,
+                geometricalLines: 0.04,
+                circularDots: -0.07
             };
 
             Object.keys(this.containers).forEach(name => {
                 const wrapper = this.containers[name]?.parentElement;
                 if (wrapper) {
-                    // Different rotation speeds for variety
-                    const rotation = (currentScrollY * (rotationSpeeds[name] || 0.1)) % 360;
+                    // Apply rotation with direction multiplier
+                    const speed = rotationSpeeds[name] || 0.1;
+                    rotationValues[name] += scrollDelta * speed * rotationDirections[name] * 0.1;
+
                     wrapper.style.transform =
-                        `${this.config[name].position.transform || ''} rotate(${rotation}deg)`;
+                        `${this.config[name].position.transform || ''} rotate(${rotationValues[name]}deg)`;
                 }
             });
 
-            // Trigger sun reveal at certain scroll point
-            if (this.config.sunReveal.triggerOnScroll && currentScrollY > 500 && !this.sunRevealTriggered) {
-                this.playSunReveal();
-                this.sunRevealTriggered = true;
-            }
 
             lastScrollY = currentScrollY;
         });
@@ -328,30 +698,75 @@ class LottieAnimations {
                     this.showAnimation('planetLogo');
                     break;
                 case 'matrix':
-                    // Trigger sun reveal during matrix
+                    // Show multiple animations during matrix phase
                     if (Math.random() > 0.5) {
-                        this.playSunReveal();
+                        this.showAnimation('abstraction');
+                    }
+                    if (Math.random() > 0.6) {
+                        this.showAnimation('transparentDiamond');
                     }
                     break;
             }
         });
     }
 
-    playSunReveal() {
-        if (!this.animations.sunReveal) return;
+    createSparkleEffect(container) {
+        const sparkle = document.createElement('div');
+        sparkle.style.cssText = `
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 300px;
+            height: 300px;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            z-index: 1000;
+        `;
 
-        const wrapper = this.animations.sunReveal.parentElement;
-        wrapper.style.opacity = this.config.sunReveal.opacity;
-        this.animations.sunReveal.play();
+        // Create sparkle particles
+        for (let i = 0; i < 12; i++) {
+            const particle = document.createElement('div');
+            const angle = (i / 12) * Math.PI * 2;
+            const distance = Math.random() * 100 + 50;
 
-        // Create glow effect
-        this.createGlowEffect(wrapper);
+            particle.style.cssText = `
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                width: 4px;
+                height: 4px;
+                background: white;
+                box-shadow: 0 0 6px white, 0 0 12px rgba(255, 255, 255, 0.8);
+                border-radius: 50%;
+                animation: sparkleMove 0.8s ease-out forwards;
+                transform: translate(-50%, -50%);
+                --end-x: ${Math.cos(angle) * distance}px;
+                --end-y: ${Math.sin(angle) * distance}px;
+            `;
+            sparkle.appendChild(particle);
+        }
 
-        // Hide after animation completes
-        setTimeout(() => {
-            wrapper.style.opacity = '0';
-            this.animations.sunReveal.stop();
-        }, this.config.sunReveal.displayDuration);
+        // Add animation
+        if (!document.querySelector('#sparkle-style')) {
+            const style = document.createElement('style');
+            style.id = 'sparkle-style';
+            style.textContent = `
+                @keyframes sparkleMove {
+                    0% {
+                        transform: translate(-50%, -50%);
+                        opacity: 1;
+                    }
+                    100% {
+                        transform: translate(calc(-50% + var(--end-x)), calc(-50% + var(--end-y)));
+                        opacity: 0;
+                    }
+                }
+            `;
+            document.head.appendChild(style);
+        }
+
+        container.appendChild(sparkle);
+        setTimeout(() => sparkle.remove(), 800);
     }
 
     triggerCosmicBurst() {

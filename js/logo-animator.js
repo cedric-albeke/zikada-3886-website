@@ -19,6 +19,8 @@ class LogoAnimator {
     }
 
     init() {
+        console.log('🎬 LogoAnimator.init() called');
+
         // Target the correct logo element - image-2 with c01n.svg
         this.logo = document.querySelector('.image-2') ||
                     document.querySelector('img[src*="c01n"]') ||
@@ -27,9 +29,39 @@ class LogoAnimator {
         this.textElements.zikada = document.querySelector('.zikada-text');
         this.textElements.text3886 = document.querySelector('.text-3886');
 
+        console.log('🔍 Logo search results:', {
+            logo: this.logo,
+            logoSrc: this.logo?.src,
+            logoClass: this.logo?.className,
+            logoWrapper: this.logoWrapper,
+            zikadaText: this.textElements.zikada,
+            text3886: this.textElements.text3886
+        });
+
         if (!this.logo) {
+            console.error('❌ Logo element not found! Aborting initialization.');
+
+            // Try to find ANY image element for debugging
+            const allImages = document.querySelectorAll('img');
+            console.log('All images on page:', allImages.length);
+            allImages.forEach((img, index) => {
+                console.log(`  Image ${index}: src="${img.src}", class="${img.className}"`);
+            });
+
             return;
         }
+
+        console.log('✅ Logo element found! Continuing with animation setup...');
+
+        // Listen for Webflow override completion
+        window.addEventListener('webflowOverridden', (event) => {
+            console.log('🎉 Webflow has been overridden! Re-initializing animations...');
+            // Re-trigger test animations
+            setTimeout(() => {
+                this.triggerWobble();
+                setTimeout(() => this.triggerPump(), 500);
+            }, 500);
+        });
 
         // Remove any existing glow elements first (in case of restart)
         const existingGlow = document.querySelector('.logo-glow');
@@ -64,6 +96,47 @@ class LogoAnimator {
         this.protectOpacity();
 
         this.isInitialized = true;
+
+        // DEBUGGING: Trigger a test animation after 3 seconds
+        console.log('⏱️ Setting up test animation in 3 seconds...');
+        setTimeout(() => {
+            console.log('🧪 RUNNING TEST ANIMATIONS NOW!');
+
+            // Test 1: Direct GSAP animation
+            console.log('Test 1: Direct scale animation');
+            gsap.to(this.logo, {
+                scale: 1.5,
+                duration: 1,
+                ease: 'power2.inOut',
+                onStart: () => console.log('Scale animation started'),
+                onComplete: () => {
+                    console.log('Scale animation completed');
+                    gsap.to(this.logo, { scale: 1, duration: 1 });
+                }
+            });
+
+            // Test 2: Trigger wobble after 2 seconds
+            setTimeout(() => {
+                console.log('Test 2: Triggering wobble');
+                this.triggerWobble();
+            }, 2000);
+
+            // Test 3: Trigger pump after 4 seconds
+            setTimeout(() => {
+                console.log('Test 3: Triggering pump');
+                this.triggerPump();
+            }, 4000);
+
+        }, 3000);
+
+        // Also expose to window for manual testing
+        window.testLogoAnimation = () => {
+            console.log('Manual test triggered!');
+            this.triggerWobble();
+            setTimeout(() => this.triggerPump(), 1000);
+            setTimeout(() => this.triggerSquish(), 2000);
+        };
+        console.log('💡 You can also run: window.testLogoAnimation()');
     }
 
     createGlowEffect() {
@@ -158,16 +231,22 @@ class LogoAnimator {
         const phaseHandler = (e) => this.reactToPhase(e.detail.phase);
         const matrixHandler = () => this.matrixReaction();
         const glitchHandler = () => this.glitchReaction();
+        const lottieHandler = (e) => this.reactToLottieAnimation(e.detail.name);
+        const vhsHandler = () => this.vhsDistortion();
 
         window.addEventListener('animationPhase', phaseHandler);
         window.addEventListener('matrixMessage', matrixHandler);
         window.addEventListener('glitchEvent', glitchHandler);
+        window.addEventListener('lottieAnimationStart', lottieHandler);
+        window.addEventListener('vhsGlitch', vhsHandler);
 
         // Store for cleanup
         this.eventListeners.push(
             { type: 'animationPhase', handler: phaseHandler },
             { type: 'matrixMessage', handler: matrixHandler },
-            { type: 'glitchEvent', handler: glitchHandler }
+            { type: 'glitchEvent', handler: glitchHandler },
+            { type: 'lottieAnimationStart', handler: lottieHandler },
+            { type: 'vhsGlitch', handler: vhsHandler }
         );
     }
 
@@ -241,7 +320,7 @@ class LogoAnimator {
     }
 
     glitchReaction() {
-        // Quick glitch effect
+        // Gentle glitch effect (reduced intensity)
         const tl = gsap.timeline();
 
         tl.to(this.logo, {
@@ -265,29 +344,272 @@ class LogoAnimator {
     }
 
     technoReaction() {
-        // Techno strobe effect
-        const tl = gsap.timeline({ repeat: 3 });
+        // Gentle techno pulse (removed strobe)
+        const tl = gsap.timeline({ repeat: 1 });  // Reduced repeats
 
-        // Techno strobe without filters
+        // Slower, gentler pulse
         tl.to(this.logo, {
-            scale: 1.02,
-            duration: 0.1
+            scale: 1.01,  // Reduced scale change
+            duration: 0.3   // Much slower
         })
         .to(this.logo, {
-            scale: 0.98,
-            duration: 0.1
+            scale: 0.99,
+            duration: 0.3
+        });
+    }
+
+    // New reactive animations for Lottie events
+    reactToLottieAnimation(animationName) {
+        console.log('🎬 Logo reacting to Lottie:', animationName);
+
+        switch(animationName) {
+            case 'planetRing':
+                this.triggerWobble();
+                break;
+            case 'planetLogo':
+                this.triggerPump();
+                break;
+            case 'morphingParticle':
+                this.triggerBreathe();
+                break;
+            case 'transparentDiamond':
+                this.triggerSquish();
+                break;
+            case 'circuitRound':
+                this.triggerRotateWobble();
+                break;
+            case 'geometricalLines':
+                this.triggerGlitchWave();
+                break;
+            case 'circularDots':
+                this.triggerPulse();
+                break;
+            case 'abstraction':
+            case 'sacredGeometry':
+                this.triggerSubtleReaction();
+                break;
+        }
+    }
+
+    // Wobble effect
+    triggerWobble() {
+        console.log('🌊 triggerWobble called!', {
+            logo: this.logo,
+            isInitialized: this.isInitialized,
+            isTweening: gsap.isTweening(this.logo)
+        });
+
+        if (!this.logo) {
+            console.error('❌ Cannot wobble: logo is null');
+            return;
+        }
+
+        const tl = gsap.timeline({
+            onStart: () => console.log('Wobble animation started'),
+            onComplete: () => console.log('Wobble animation completed')
+        });
+
+        tl.to(this.logo, {
+            rotation: '+=3',
+            duration: 0.1,
+            ease: 'power2.inOut'
+        })
+        .to(this.logo, {
+            rotation: '-=6',
+            duration: 0.2,
+            ease: 'power2.inOut'
+        })
+        .to(this.logo, {
+            rotation: '+=5',
+            duration: 0.2,
+            ease: 'power2.inOut'
+        })
+        .to(this.logo, {
+            rotation: '-=3',
+            duration: 0.15,
+            ease: 'power2.inOut'
+        })
+        .to(this.logo, {
+            rotation: '+=1',
+            duration: 0.1,
+            ease: 'power2.out'
+        });
+    }
+
+    // Pump effect
+    triggerPump() {
+        const tl = gsap.timeline();
+
+        tl.to(this.logo, {
+            scale: 1.15,
+            duration: 0.2,
+            ease: 'power2.out'
+        })
+        .to(this.logo, {
+            scale: 0.95,
+            duration: 0.1,
+            ease: 'power2.in'
+        })
+        .to(this.logo, {
+            scale: 1.08,
+            duration: 0.15,
+            ease: 'power2.out'
+        })
+        .to(this.logo, {
+            scale: 1,
+            duration: 0.2,
+            ease: 'elastic.out(1, 0.3)'
+        });
+    }
+
+    // Enhanced breathe effect
+    triggerBreathe() {
+        gsap.to(this.logo, {
+            scale: 1.1,
+            duration: 2,
+            ease: 'sine.inOut',
+            yoyo: true,
+            repeat: 2
+        });
+    }
+
+    // Squish effect
+    triggerSquish() {
+        const tl = gsap.timeline();
+
+        tl.to(this.logo, {
+            scaleY: 0.8,
+            scaleX: 1.2,
+            duration: 0.15,
+            ease: 'power2.in'
+        })
+        .to(this.logo, {
+            scaleY: 1.2,
+            scaleX: 0.8,
+            duration: 0.15,
+            ease: 'power2.out'
+        })
+        .to(this.logo, {
+            scaleY: 0.95,
+            scaleX: 1.05,
+            duration: 0.1,
+            ease: 'power2.inOut'
+        })
+        .to(this.logo, {
+            scaleY: 1,
+            scaleX: 1,
+            duration: 0.2,
+            ease: 'elastic.out(1, 0.3)'
+        });
+    }
+
+    // Rotate wobble
+    triggerRotateWobble() {
+        const tl = gsap.timeline();
+
+        tl.to(this.logo, {
+            rotation: '+=360',
+            scale: 1.1,
+            duration: 0.8,
+            ease: 'power2.inOut'
+        })
+        .to(this.logo, {
+            rotation: '+=5',
+            scale: 0.95,
+            duration: 0.2,
+            ease: 'power2.out'
+        })
+        .to(this.logo, {
+            rotation: '-=5',
+            scale: 1,
+            duration: 0.3,
+            ease: 'elastic.out(1, 0.5)'
+        });
+    }
+
+    // Glitch wave
+    triggerGlitchWave() {
+        const tl = gsap.timeline();
+
+        for (let i = 0; i < 5; i++) {
+            tl.to(this.logo, {
+                x: gsap.utils.random(-5, 5),
+                y: gsap.utils.random(-5, 5),
+                skewX: gsap.utils.random(-3, 3),
+                skewY: gsap.utils.random(-3, 3),
+                duration: 0.05,
+                ease: 'none'
+            });
+        }
+
+        tl.to(this.logo, {
+            x: 0,
+            y: 0,
+            skewX: 0,
+            skewY: 0,
+            duration: 0.1,
+            ease: 'power2.out'
+        });
+    }
+
+    // Rhythmic pulse
+    triggerPulse() {
+        const tl = gsap.timeline();
+
+        for (let i = 0; i < 3; i++) {
+            tl.to(this.logo, {
+                scale: 1.08,
+                duration: 0.15,
+                ease: 'power2.out'
+            })
+            .to(this.logo, {
+                scale: 1,
+                duration: 0.15,
+                ease: 'power2.in'
+            });
+        }
+    }
+
+    // VHS distortion
+    vhsDistortion() {
+        gsap.to(this.logo, {
+            skewX: gsap.utils.random(-5, 5),
+            scaleY: gsap.utils.random(0.98, 1.02),
+            duration: 0.1,
+            ease: 'none',
+            yoyo: true,
+            repeat: 3
+        });
+    }
+
+    // Subtle reaction
+    triggerSubtleReaction() {
+        gsap.to(this.logo, {
+            scale: 1.02,
+            rotation: '+=1',
+            duration: 0.3,
+            ease: 'power2.inOut',
+            yoyo: true,
+            repeat: 1
         });
     }
 
     startLogoRotation() {
-        // Very slow, subtle rotation
+        console.log('🔄 startLogoRotation called');
+
+        // TEMPORARILY SIMPLIFIED FOR DEBUGGING
+        // Just do a simple rotation to test
         gsap.to(this.logo, {
             rotation: 360,
-            duration: 180,
+            duration: 10,  // Much faster for testing
             repeat: -1,
-            ease: 'none'
+            ease: 'none',
+            onStart: () => console.log('✅ Rotation animation started'),
+            onRepeat: () => console.log('🔄 Rotation loop')
         });
 
+        // Comment out 3D rotation for now
+        /*
         // Subtle 3D rotation
         gsap.to(this.logo, {
             rotationY: 5,
@@ -297,6 +619,7 @@ class LogoAnimator {
             repeat: -1,
             ease: 'sine.inOut'
         });
+        */
     }
 
     startTextAnimations() {
@@ -343,6 +666,9 @@ class LogoAnimator {
     }
 
     protectOpacity() {
+        // Re-enabled now that Webflow is blocked
+        console.log('🛡️ protectOpacity enabled');
+
         // ULTRA aggressive opacity and filter protection
         const protectLogo = () => {
             if (!this.isInitialized) return; // Stop if destroyed

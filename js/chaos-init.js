@@ -7,13 +7,16 @@ import subtleEffects from './subtle-effects.js';
 import randomAnimations from './random-animations.js';
 import extendedAnimations from './extended-animations.js';
 import timingController from './timing-controller.js';
-import logoAnimator from './logo-animator.js';
+import enhancedLogoAnimator from './enhanced-logo-animator.js';
 import centerpieceLogo from './centerpiece-logo.js';
 import beehiveLogoBlend from './beehive-logo-blend.js';
 import performanceManager from './performance-manager.js';
 import debugConsole from './debug-console.js';
 import sonarEffect from './sonar-effect.js';
 import lottieAnimations from './lottie-animations.js';
+import introAnimations from './intro-animations.js';
+import beehiveBackground from './beehive-background.js';
+import directLogoAnimation from './direct-logo-animation.js';
 import gsap from 'gsap';
 
 class ChaosInitializer {
@@ -39,6 +42,12 @@ class ChaosInitializer {
 
         // Initialize timing controller first for coordination
         timingController.init();
+
+        // Initialize intro animations first for reveal effect
+        introAnimations.init();
+
+        // Initialize beehive background for subtle effect
+        beehiveBackground.init();
 
         // Initialize subsystems
         this.initPerformanceMonitor();
@@ -89,6 +98,7 @@ class ChaosInitializer {
     }
 
     initPerformanceMonitor() {
+        let frameCount = 0;
         const monitorFPS = () => {
             const now = performance.now();
             const delta = now - this.lastFrameTime;
@@ -101,11 +111,12 @@ class ChaosInitializer {
 
             this.fps = this.fpsHistory.reduce((a, b) => a + b, 0) / this.fpsHistory.length;
 
-            // Auto-adjust quality based on performance
-            if (this.performanceMode === 'auto') {
-                if (this.fps < 30 && chaosEngine.isInitialized) {
+            // Auto-adjust quality based on performance - less aggressive
+            frameCount++;
+            if (frameCount % 300 === 0 && this.performanceMode === 'auto') {  // Check every 5 seconds
+                if (this.fps < 25 && chaosEngine.isInitialized) {
                     this.setPerformanceMode('low');
-                } else if (this.fps > 50 && this.performanceMode !== 'high') {
+                } else if (this.fps > 55 && this.performanceMode !== 'high') {
                     this.setPerformanceMode('high');
                 }
             }
@@ -154,14 +165,14 @@ class ChaosInitializer {
 
     initLogoAnimator() {
         try {
-            logoAnimator.init();
-            console.log('✨ Logo Animator initialized');
+            enhancedLogoAnimator.init();
+            console.log('✨ Enhanced Logo Animator initialized');
 
             // Initialize the new centerpiece logo system
             centerpieceLogo.init();
             console.log('🎯 Centerpiece Logo System initialized');
         } catch (error) {
-            console.error('Failed to initialize Logo Animator:', error);
+            console.error('Failed to initialize Enhanced Logo Animator:', error);
         }
     }
 
@@ -213,6 +224,8 @@ class ChaosInitializer {
             // Initialize Lottie animations
             lottieAnimations.init();
             console.log('🌟 Lottie animations initialized');
+
+            // Logo animations are now integrated into logo-animator.js
         } catch (error) {
             console.error('Failed to initialize Random Animations:', error);
         }
@@ -271,17 +284,17 @@ class ChaosInitializer {
                 transparent 2px,
                 rgba(0, 0, 0, 0.01) 3px
             );
-            opacity: 0.15;
+            opacity: 0.001;  // Practically invisible scanlines
             mix-blend-mode: multiply;
         `;
         document.body.appendChild(scanlines);
 
-        // Slower, subtler animation
+        // Slower, subtler animation with smooth easing
         gsap.to(scanlines, {
             backgroundPosition: '0 4px',
-            duration: 2,
+            duration: 3,
             repeat: -1,
-            ease: 'none'
+            ease: 'sine.inOut'
         });
     }
 
@@ -342,7 +355,7 @@ class ChaosInitializer {
             height: 40%;
             pointer-events: none;
             z-index: -1;
-            opacity: 0.15;
+            opacity: 0.002;  // Extremely minimal - almost invisible
         `;
 
         document.body.appendChild(gridCanvas);
@@ -618,7 +631,7 @@ class ChaosInitializer {
                 y: window.innerHeight + 200,
                 duration: Math.random() * 10 + 5,
                 repeat: -1,
-                ease: 'none',
+                ease: 'linear',  // Smoother than none
                 delay: Math.random() * 5
             });
         }
@@ -647,7 +660,7 @@ class ChaosInitializer {
             y: '200%',
             duration: 15,
             repeat: -1,
-            ease: 'none'
+            ease: 'linear'  // Smoother continuous movement
         });
     }
 
@@ -697,17 +710,20 @@ class ChaosInitializer {
             const randomPhase = availablePhases[Math.floor(Math.random() * availablePhases.length)];
             lastPhase = randomPhase;
 
-            // Smooth transition - no delay, just direct transition
+            // Smooth transition with overlap
             if (this.currentPhase) {
                 this.transitionOut();
+                // Delay new phase slightly for overlap
+                setTimeout(() => {
+                    randomPhase();
+                }, 500);
+            } else {
+                randomPhase();
             }
-
-            // Apply new phase immediately for smooth transition
-            randomPhase();
             this.currentPhase = randomPhase.name;
 
-            // Random duration between 15-40 seconds
-            const nextDelay = Math.random() * 25000 + 15000;
+            // Random duration between 30-60 seconds (increased from 15-40)
+            const nextDelay = Math.random() * 30000 + 30000;
             setTimeout(runRandomPhase, nextDelay);
         };
 
@@ -719,8 +735,38 @@ class ChaosInitializer {
         // Simply reset any filters smoothly
         gsap.to(document.body, {
             filter: 'none',
-            duration: 0.5,  // Smooth transition to neutral
-            ease: 'power2.inOut'
+            duration: 2,  // Much slower transition for smoothness
+            ease: 'sine.inOut'  // Smoother easing
+        });
+
+        // Also ensure no grey overlays are stuck
+        this.cleanupPhaseElements();
+    }
+
+    cleanupPhaseElements() {
+        // Clean up any lingering elements from previous phases
+        const temporaryElements = document.querySelectorAll('.vhs-overlay, .flash-overlay, .warp-effect, .phase-overlay, .glitch-overlay, div[style*="z-index: 999"]');
+        temporaryElements.forEach(el => {
+            // Skip essential elements
+            if (el.classList.contains('matrix-messages') || el.classList.contains('matrix-blackout')) {
+                return;
+            }
+            // Cancel any running animations on the element
+            gsap.killTweensOf(el);
+            el.remove();
+        });
+
+        // Clean up orphaned canvases
+        const canvases = document.querySelectorAll('canvas');
+        canvases.forEach(canvas => {
+            // Keep essential canvases
+            if (canvas.id === 'cyber-grid' || canvas.id === 'chaos-canvas') {
+                return;
+            }
+            // Remove temporary effect canvases
+            if (canvas.style.position === 'fixed' && !canvas.id) {
+                canvas.remove();
+            }
         });
     }
 
@@ -731,6 +777,46 @@ class ChaosInitializer {
         setInterval(() => {
             checkCount++;
             const verbose = checkCount % 6 === 0; // Log every minute
+
+            // Clean up any stuck grey filters every 30 seconds
+            if (checkCount % 3 === 0) {
+                const bodyFilter = window.getComputedStyle(document.body).filter;
+                // Check for problematic filters (low saturation or high sepia)
+                if (bodyFilter && (bodyFilter.includes('saturate(0') || bodyFilter.includes('sepia'))) {
+                    console.log('🔧 Clearing stuck grey/sepia filter...');
+                    gsap.to(document.body, {
+                        filter: 'none',
+                        duration: 1,
+                        ease: 'power2.inOut'
+                    });
+                }
+
+                // Clean up stuck blackout overlays - don't remove, just reset
+                const blackouts = document.querySelectorAll('.matrix-blackout');
+                if (blackouts.length > 0 && !window.matrixMessages?.isActive) {
+                    blackouts.forEach(blackout => {
+                        // Only clear if it's stuck in active state
+                        if (blackout.classList.contains('active') || parseFloat(blackout.style.opacity) > 0) {
+                            console.log('🔧 Clearing stuck blackout overlay...');
+                            blackout.classList.remove('active');
+                            blackout.style.opacity = '0';
+                            blackout.style.display = 'none';
+                        }
+                    });
+                }
+
+                // Also check for orphaned blackout elements but keep the main one
+                const allBlackouts = document.querySelectorAll('.matrix-blackout');
+                if (allBlackouts.length > 1) {
+                    console.log('🔧 Removing duplicate blackout elements...');
+                    // Keep the first one, remove duplicates
+                    for (let i = 1; i < allBlackouts.length; i++) {
+                        if (allBlackouts[i] && allBlackouts[i].parentNode) {
+                            allBlackouts[i].remove();
+                        }
+                    }
+                }
+            }
 
             // Check if random animations are running
             if (randomAnimations) {
@@ -770,15 +856,15 @@ class ChaosInitializer {
                 backgroundAnimator.startGlitchSequence();
             }
 
-            // Ensure logo animator is running
-            if (logoAnimator && !logoAnimator.isInitialized) {
-                console.log('🔧 Restarting logo animator...');
-                logoAnimator.init();
+            // Ensure enhanced logo animator is running
+            if (enhancedLogoAnimator && !enhancedLogoAnimator.isInitialized) {
+                console.log('🔧 Restarting enhanced logo animator...');
+                enhancedLogoAnimator.init();
             }
 
-            // Trigger special logo animation occasionally
-            if (logoAnimator && logoAnimator.isInitialized && Math.random() < 0.1) {
-                logoAnimator.triggerSpecialAnimation();
+            // Trigger random special logo animation occasionally
+            if (enhancedLogoAnimator && enhancedLogoAnimator.isInitialized && Math.random() < 0.1) {
+                enhancedLogoAnimator.triggerRandomSpecial();
             }
 
             // Removed verbose watchdog logging for performance
@@ -810,7 +896,7 @@ class ChaosInitializer {
         gsap.to(document.body, {
             x: 1,
             y: 1,
-            duration: 0.1,
+            duration: 0.5,  // Slower for smoothness
             yoyo: true,
             repeat: 10,
             ease: 'sine.inOut'
@@ -868,9 +954,9 @@ class ChaosInitializer {
             }, 100);
         };
 
-        // Multiple glitch bursts
-        for (let i = 0; i < 10; i++) {
-            setTimeout(glitchBurst, i * 300);
+        // Reduced glitch bursts (was 10, now 3)
+        for (let i = 0; i < 3; i++) {
+            setTimeout(glitchBurst, i * 800);  // Slower interval (was 300ms)
         }
     }
 
@@ -882,17 +968,17 @@ class ChaosInitializer {
         // Apply techno blue color theme smoothly
         gsap.to(document.body, {
             filter: 'hue-rotate(-30deg) saturate(1.3) brightness(1.05)',
-            duration: 2,  // Smooth transition
-            ease: 'power2.inOut'
+            duration: 3,  // Slower for better flow
+            ease: 'sine.inOut'  // Smoother easing
         });
 
         // Very subtle pulsing
         gsap.to('.logo-text-wrapper, .image-wrapper, .text-3886', {
-            scale: 1.03,  // Reduced from 1.1
-            duration: 0.3,  // Slightly slower
+            scale: 1.02,  // Even more subtle
+            duration: 2,  // Much slower for smooth flow
             repeat: 10,
             yoyo: true,
-            ease: 'power2.inOut'
+            ease: 'sine.inOut'  // Smoother easing
         });
     }
 
@@ -950,7 +1036,7 @@ class ChaosInitializer {
             gsap.to(codeStream, {
                 y: window.innerHeight * 2,
                 duration: Math.random() * 5 + 3,
-                ease: 'none',
+                ease: 'linear',  // Smoother than none
                 onComplete: () => codeStream.remove()
             });
         }
@@ -989,7 +1075,7 @@ class ChaosInitializer {
             gsap.to(line, {
                 opacity: 0,
                 scaleX: 0,
-                duration: 0.2,
+                duration: 0.5,  // Slower fade out
                 ease: 'power4.out',
                 onComplete: () => line.remove()
             });
@@ -1081,7 +1167,7 @@ class ChaosInitializer {
             backgroundPosition: '200% 200%',
             duration: 8,
             repeat: -1,
-            ease: 'none'
+            ease: 'linear'  // Smoother continuous movement
         });
     }
 
@@ -1112,7 +1198,7 @@ class ChaosInitializer {
                     {
                         x: window.innerWidth,
                         duration: Math.random() * 3 + 2,
-                        ease: 'none',
+                        ease: 'linear',  // Smoother than none
                         onComplete: () => artifact.remove()
                     }
                 );
@@ -1130,7 +1216,7 @@ class ChaosInitializer {
                     {
                         y: window.innerHeight,
                         duration: Math.random() * 3 + 2,
-                        ease: 'none',
+                        ease: 'linear',  // Smoother than none
                         onComplete: () => artifact.remove()
                     }
                 );
@@ -1203,7 +1289,7 @@ class ChaosInitializer {
             rotation: 360,
             duration: 30,
             repeat: -1,
-            ease: 'none'
+            ease: 'linear'  // Smoother continuous movement
         });
 
         // Second layer of energy
@@ -1229,7 +1315,7 @@ class ChaosInitializer {
             rotation: -360,
             duration: 25,
             repeat: -1,
-            ease: 'none'
+            ease: 'linear'  // Smoother continuous movement
         });
     }
 
@@ -1384,14 +1470,14 @@ class ChaosInitializer {
 
             elements.forEach(el => {
                 gsap.to(el, {
-                    x: Math.random() * 6 - 3,  // Much smaller movement
-                    y: Math.random() * 6 - 3,  // Much smaller movement
-                    rotation: Math.random() * 3 - 1.5,  // Smaller rotation
-                    scale: 0.99 + Math.random() * 0.02,  // Even smaller scale change
-                    duration: 0.2,
+                    x: Math.random() * 4 - 2,  // Even smaller movement
+                    y: Math.random() * 4 - 2,  // Even smaller movement
+                    rotation: Math.random() * 2 - 1,  // Smaller rotation
+                    scale: 0.995 + Math.random() * 0.01,  // Minimal scale change
+                    duration: 0.4,
                     yoyo: true,
                     repeat: 1,
-                    ease: 'power2.inOut'
+                    ease: 'sine.inOut'  // Smoother easing
                 });
             });
         };
@@ -1434,7 +1520,7 @@ class ChaosInitializer {
                 transparent 4px,
                 rgba(0,0,0,0.1) 6px
             );
-            animation: crtFlicker 0.1s infinite;
+            animation: crtFlicker 4s infinite ease-in-out;  /* Even smoother flicker */
         `;
         document.body.appendChild(crt);
 
@@ -1442,17 +1528,17 @@ class ChaosInitializer {
         const style = document.createElement('style');
         style.textContent = `
             @keyframes crtFlicker {
-                0% { opacity: 0.9; }
-                50% { opacity: 1; }
-                100% { opacity: 0.95; }
+                0%, 100% { opacity: 0.95; }
+                50% { opacity: 0.98; }
             }
         `;
         document.head.appendChild(style);
 
-        // Color distortion
+        // Color distortion with smooth transition
         gsap.to(document.body, {
-            filter: 'contrast(1.2) saturate(0.8) sepia(0.1)',
-            duration: 0.5
+            filter: 'contrast(1.1) saturate(1.1)',  // Removed sepia and increased saturation
+            duration: 1.5,
+            ease: 'power2.inOut'
         });
 
         // Remove after phase
@@ -1461,7 +1547,8 @@ class ChaosInitializer {
             style.remove();
             gsap.to(document.body, {
                 filter: 'none',
-                duration: 0.5
+                duration: 1.5,
+                ease: 'power2.inOut'
             });
         }, 8000);
     }
@@ -1520,7 +1607,7 @@ class ChaosInitializer {
 
         // Yellow/cyan color scheme
         gsap.to(document.body, {
-            filter: 'contrast(1.2) saturate(0.8)',
+            filter: 'contrast(1.1) saturate(1.1)',  // Increased saturation to prevent greying
             duration: 2,
             ease: 'power2.inOut'
         });
@@ -1534,8 +1621,8 @@ class ChaosInitializer {
             width: 100%;
             height: 100%;
             background-image:
-                linear-gradient(rgba(255, 255, 0, 0.03) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(0, 255, 255, 0.03) 1px, transparent 1px);
+                linear-gradient(rgba(255, 255, 0, 0.002) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 255, 255, 0.002) 1px, transparent 1px);
             background-size: 50px 50px;
             pointer-events: none;
             z-index: 9994;
@@ -1544,7 +1631,7 @@ class ChaosInitializer {
         document.body.appendChild(grid);
 
         gsap.to(grid, {
-            opacity: 0.5,
+            opacity: 0.02,  // Ultra minimal visibility
             duration: 2
         });
 
@@ -1759,7 +1846,7 @@ class ChaosInitializer {
 
         // Cool blue/white
         gsap.to(document.body, {
-            filter: 'hue-rotate(-60deg) saturate(0.8) brightness(1.1) contrast(1.05)',
+            filter: 'hue-rotate(-30deg) saturate(1.2) brightness(1.05) contrast(1.02)',  // Increased saturation
             duration: 2.5,
             ease: 'power2.inOut'
         });

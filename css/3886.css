@@ -371,11 +371,12 @@
 }
 
 .logo-text {
-  color: var(--primary-green);
+  color: var(--bg-accent);
   text-align: center;
-  letter-spacing: 5px;
-  -webkit-text-stroke-width: 2px;
-  text-shadow: 0 1px 14px var(--primary-green);
+  letter-spacing: 0;
+  -webkit-text-stroke-width: 1.3886px;
+  -webkit-text-stroke-color: #006e37;
+  text-shadow: 0 3px 5px var(--secondary-green);
   font-family: Anta, sans-serif;
   font-size: 6rem;
   font-weight: 400;
@@ -704,11 +705,11 @@
 }
 
 .text-span {
-  color: var(--bg-accent);
-  letter-spacing: 0;
-  -webkit-text-stroke-width: 1.3886px;
-  -webkit-text-stroke-color: #006e37;
-  text-shadow: 0 3px 5px var(--secondary-green);
+  color: var(--primary-green);
+  letter-spacing: 5px;
+  -webkit-text-stroke-width: 2px;
+  -webkit-text-stroke-color: var(--primary-green);
+  text-shadow: 0 1px 14px var(--primary-green);
   font-family: Anta, sans-serif;
   font-size: 50px;
   font-weight: 400;

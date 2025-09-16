@@ -79,16 +79,16 @@ class SubtleEffects {
                 duration: 10
             })
             .to(imageWrapper, {
-                opacity: 0.98,  // Much higher minimum
-                duration: 0.05
+                opacity: 0.99,  // Very subtle change
+                duration: 0.5   // Much slower transition
             })
             .to(imageWrapper, {
                 opacity: 1,
-                duration: 0.05
+                duration: 0.5
             })
             .to(imageWrapper, {
-                opacity: 0.96,  // Much higher minimum
-                duration: 0.1
+                opacity: 0.98,  // Very subtle change
+                duration: 0.8   // Much slower
             })
             .to(imageWrapper, {
                 opacity: 1,
@@ -255,11 +255,13 @@ class SubtleEffects {
     }
 
     triggerMidnightEffect() {
-        // Midnight effect
-        document.body.style.filter = 'invert(1)';
-        setTimeout(() => {
-            document.body.style.filter = 'none';
-        }, 1000);
+        // Midnight effect - only 5% chance of occurring
+        if (Math.random() < 0.05) {
+            document.body.style.filter = 'invert(1)';
+            setTimeout(() => {
+                document.body.style.filter = 'none';
+            }, 1000);
+        }
     }
 
     // RGB channel shift effect
@@ -492,7 +494,7 @@ class SubtleEffects {
                     })
                     .to([logoText, text3886], {
                         skewY: -skewAmount,
-                        filter: 'blur(2px) saturate(0.5)',
+                        filter: 'blur(2px) saturate(0.85)',  // Increased to avoid grey
                         duration: 0.05
                     })
                     .to([logoText, text3886], {

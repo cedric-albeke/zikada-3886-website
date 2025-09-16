@@ -48,8 +48,8 @@ class RandomAnimations {
             this.isRunning = true;
         }
 
-        // Random chance to trigger an animation
-        if (Math.random() > 0.3) { // 70% chance
+        // Random chance to trigger an animation (reduced)
+        if (Math.random() > 0.5) { // 50% chance (was 70%)
             // Pick a random animation that isn't the last one
             let animations = this.animationPool.filter(a => a !== this.lastAnimation);
             const randomAnim = animations[Math.floor(Math.random() * animations.length)];
@@ -57,8 +57,8 @@ class RandomAnimations {
             randomAnim();
         }
 
-        // Random delay between 3-15 seconds
-        const nextDelay = Math.random() * 12000 + 3000;
+        // Random delay between 8-20 seconds (increased from 3-15)
+        const nextDelay = Math.random() * 12000 + 8000;
         setTimeout(() => this.triggerRandomAnimation(), nextDelay);
     }
 
@@ -332,7 +332,7 @@ class RandomAnimations {
         elements.forEach((el, index) => {
             gsap.to(el, {
                 opacity: 0.3,
-                filter: 'brightness(1.2) saturate(0.5)',
+                filter: 'brightness(1.1) saturate(0.85)',  // Increased saturation to avoid grey
                 duration: 0.05,
                 delay: index * 0.02,
                 yoyo: true,
@@ -379,6 +379,9 @@ class RandomAnimations {
     }
 
     cyberGlitch() {
+        // Only 10% chance of executing this effect
+        if (Math.random() > 0.1) return;
+
         // Create subtle glitch effects without visible boxes
         const glitchOverlay = document.createElement('div');
         glitchOverlay.style.cssText = `
@@ -394,10 +397,10 @@ class RandomAnimations {
         document.body.appendChild(glitchOverlay);
 
         gsap.to(glitchOverlay, {
-            backdropFilter: 'invert(0.1) hue-rotate(90deg)',
+            backdropFilter: 'invert(0.05) hue-rotate(45deg)',  // Reduced from 0.1 to 0.05 and 90deg to 45deg
             duration: 0.05,
             yoyo: true,
-            repeat: 3,
+            repeat: 1,  // Reduced from 3 to 1
             ease: 'steps(2)',
             onComplete: () => glitchOverlay.remove()
         });

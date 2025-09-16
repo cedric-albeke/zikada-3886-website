@@ -28,11 +28,32 @@ class MatrixMessages {
         this.scrambleInterval = null;
     }
 
-    init() {
-        // Create blackout overlay
+    createBlackoutElement() {
+        // Create or recreate blackout overlay
+        if (this.blackoutElement && this.blackoutElement.parentNode) {
+            this.blackoutElement.remove();
+        }
+
         this.blackoutElement = document.createElement('div');
         this.blackoutElement.className = 'matrix-blackout';
+        this.blackoutElement.style.cssText = `
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100% !important;
+            height: 100% !important;
+            background: #000000 !important;
+            opacity: 0;
+            pointer-events: none !important;
+            z-index: 9998 !important;
+            display: block !important;
+        `;
         document.body.appendChild(this.blackoutElement);
+    }
+
+    init() {
+        // Create blackout overlay
+        this.createBlackoutElement();
 
         // Create message container
         this.messageElement = document.createElement('div');
@@ -54,20 +75,22 @@ class MatrixMessages {
         style.textContent = `
             /* Blackout overlay - 100% darken everything else */
             .matrix-blackout {
-                position: fixed;
-                top: 0;
-                left: 0;
-                width: 100%;
-                height: 100%;
-                background: #000000;
+                position: fixed !important;
+                top: 0 !important;
+                left: 0 !important;
+                width: 100% !important;
+                height: 100% !important;
+                background: #000000 !important;
                 opacity: 0;
-                pointer-events: none;
-                z-index: 9998;
-                transition: opacity 0.2s ease-in-out;
+                pointer-events: none !important;
+                z-index: 9998 !important;
+                transition: opacity 0.4s ease-in-out;
+                display: none;
             }
 
             .matrix-blackout.active {
-                opacity: 1;
+                opacity: 1 !important;  /* Full blackout - no see-through */
+                display: block !important;
             }
 
             .matrix-messages {
@@ -113,79 +136,43 @@ class MatrixMessages {
             }
 
             @keyframes analogTear {
-                0% {
+                0%, 100% {
                     transform: translate(-50%, -50%) skewX(0deg);
                     clip-path: inset(0 0 0 0);
                 }
-                10% {
-                    transform: translate(-48%, -50%) skewX(5deg);
-                    clip-path: inset(10% 0 20% 0);
-                }
-                20% {
-                    transform: translate(-52%, -50%) skewX(-5deg);
-                    clip-path: inset(30% 0 10% 0);
-                }
-                30% {
-                    transform: translate(-50%, -50%) skewX(3deg);
-                    clip-path: inset(0 0 70% 0);
-                }
-                40% {
-                    transform: translate(-51%, -50%) skewX(-3deg);
-                    clip-path: inset(50% 0 20% 0);
+                25% {
+                    transform: translate(-49.5%, -50%) skewX(0.5deg);
+                    clip-path: inset(5% 0 5% 0);
                 }
                 50% {
-                    transform: translate(-50%, -50%) skewX(0deg);
-                    clip-path: inset(0 0 0 0);
+                    transform: translate(-50.5%, -50%) skewX(-0.5deg);
+                    clip-path: inset(2% 0 2% 0);
                 }
-                60% {
-                    transform: translate(-49%, -50%) skewX(2deg);
-                    clip-path: inset(80% 0 5% 0);
-                }
-                70% {
-                    transform: translate(-50%, -50%) skewX(-1deg);
-                    clip-path: inset(0 0 0 0);
-                }
-                80% {
-                    transform: translate(-52%, -50%) skewX(4deg);
-                    clip-path: inset(20% 0 60% 0);
-                }
-                90% {
-                    transform: translate(-50%, -50%) skewX(0deg);
-                    clip-path: inset(0 0 0 0);
+                75% {
+                    transform: translate(-50%, -50%) skewX(0.2deg);
+                    clip-path: inset(1% 0 1% 0);
                 }
             }
 
             @keyframes rgbGlitch {
                 0%, 100% {
                     text-shadow:
-                        2px 0 rgba(255,0,0,0.8),
-                        -2px 0 rgba(0,255,255,0.8),
-                        0 0 10px rgba(0, 255, 133, 0.5);
-                }
-                25% {
-                    text-shadow:
-                        -3px 0 rgba(255,0,255,0.8),
-                        3px 0 rgba(0,255,0,0.8),
-                        0 0 20px rgba(255, 0, 255, 0.5);
+                        1px 0 rgba(0,255,133,0.4),
+                        -1px 0 rgba(0,255,133,0.4),
+                        0 0 10px rgba(0, 255, 133, 0.6);
                 }
                 50% {
                     text-shadow:
-                        0 2px rgba(0,0,255,0.8),
-                        0 -2px rgba(255,255,0,0.8),
-                        0 0 15px rgba(0, 255, 255, 0.5);
-                }
-                75% {
-                    text-shadow:
-                        4px 0 rgba(255,0,0,0.8),
-                        -4px 0 rgba(0,255,255,0.8),
-                        0 0 25px rgba(255, 255, 0, 0.5);
+                        2px 0 rgba(0,255,133,0.3),
+                        -2px 0 rgba(0,255,133,0.3),
+                        0 0 15px rgba(0, 255, 133, 0.8);
                 }
             }
 
             .matrix-messages.glitching {
                 animation:
-                    analogTear 0.15s infinite steps(10),
-                    rgbGlitch 0.1s infinite;
+                    analogTear 0.5s ease-in-out 1,  /* Single smooth tear */
+                    rgbGlitch 0.3s ease-in-out 1;  /* Single subtle glitch */
             }
         `;
         document.head.appendChild(style);
@@ -216,13 +203,8 @@ class MatrixMessages {
                 element.textContent = text;
                 element.classList.remove('glitching');
 
-                // Add final glitch burst
-                setTimeout(() => {
-                    element.classList.add('glitching');
-                    setTimeout(() => {
-                        element.classList.remove('glitching');
-                    }, 150);
-                }, 1500);
+                // Removed final glitch burst to reduce strobe
+                // No more flashing at the end
 
                 // Keep message visible for a moment
                 setTimeout(() => {
@@ -230,27 +212,46 @@ class MatrixMessages {
                 }, 2500);
             }
             iterations++;
-        }, 15); // Faster scramble
+        }, 25); // Smoother scramble speed
     }
 
     fadeOutMessage() {
         // Trigger ending reactive effects
         this.triggerReactiveEffects('end');
 
-        // Glitch out effect
-        this.messageElement.style.transform = 'translate(-50%, -50%) scaleY(0.1)';
-        this.messageElement.style.filter = 'blur(10px)';
-
-        setTimeout(() => {
-            this.messageElement.style.opacity = '0';
-            this.messageElement.classList.remove('active');
-            // Remove blackout
-            this.blackoutElement.classList.remove('active');
-            this.isActive = false;
-
-            // Restore elements after glitch
-            this.restoreElements();
-        }, 100);
+        // Smooth fade out effect with subtle glitch
+        gsap.timeline()
+            .to(this.messageElement, {
+                scale: 1.02,
+                filter: 'blur(0.5px) brightness(1.2)',
+                duration: 0.1,
+                ease: 'power2.in'
+            })
+            .to(this.messageElement, {
+                scaleY: 0.02,
+                opacity: 0,
+                filter: 'blur(8px) brightness(1.2)',  // Reduced from 2 to avoid white flash
+                duration: 0.3,
+                ease: 'power3.in',
+                onComplete: () => {
+                    this.messageElement.classList.remove('active');
+                    this.messageElement.style.opacity = '0';
+                    // Smooth blackout removal
+                    if (this.blackoutElement) {
+                        gsap.to(this.blackoutElement, {
+                            opacity: 0,
+                            duration: 0.4,
+                            ease: 'power2.inOut',
+                            onComplete: () => {
+                                this.blackoutElement.classList.remove('active');
+                                this.blackoutElement.style.display = 'none';
+                            }
+                        });
+                    }
+                    this.isActive = false;
+                    this.restoreElements();
+                }
+            });
     }
 
     showMessage() {
@@ -262,49 +263,41 @@ class MatrixMessages {
         const message = this.messages[randomIndex];
         console.log('📢 Showing matrix message:', message);
 
+        // Ensure blackout element exists and is properly styled
+        if (!this.blackoutElement) {
+            this.createBlackoutElement();
+        }
+
         // Trigger reactive effects on other elements
         this.triggerReactiveEffects('start');
 
-        // Activate blackout immediately
+        // Activate blackout immediately with forced inline style - FULL OPACITY
         this.blackoutElement.classList.add('active');
+        this.blackoutElement.style.opacity = '1';  // Full opacity - no transparency
+        this.blackoutElement.style.display = 'block';
+        this.blackoutElement.style.background = '#000000';
 
-        // HEAVY ANALOG TV GLITCH - Chromatic aberration + horizontal tear
-        this.createAnalogGlitch();
+        // Subtle entrance effect - removed heavy glitch
+        // this.createAnalogGlitch();  // Disabled for less strobe
 
         // Reset message element
         this.messageElement.style.opacity = '0';
         this.messageElement.classList.add('active');
 
-        // VIOLENT DIGITAL TEAR IN with enhanced glitch
+        // Smooth digital fade in - removed violent effects
         setTimeout(() => {
-            // Create data burst explosion
-            this.createDataBurst();
+            // Minimal entrance effect
+            // this.createDataBurst();  // Disabled for less strobe
 
-            // Create multiple glitch echo layers
+            // Removed glitch echo layers to reduce visual noise
             const glitchLayers = [];
-            for (let i = 0; i < 3; i++) {
-                const layer = this.messageElement.cloneNode(true);
-                layer.style.position = 'fixed';
-                layer.style.opacity = '0.4';
-                layer.style.mixBlendMode = i % 2 === 0 ? 'screen' : 'difference';
-                layer.style.color = '#ffffff';  // Monochrome white only, no rainbow colors
-                layer.style.zIndex = '9997';
-                document.body.appendChild(layer);
-                glitchLayers.push(layer);
-            }
 
-            // Static TV-like glitch-in sequence (monochrome)
+            // Smooth fade-in sequence without aggressive transforms
             const glitchSteps = [
-                { delay: 0, transform: 'translate(-50%, -50%) scaleY(0.01) scaleX(50) rotate(90deg)', filter: 'blur(20px) brightness(1.2) contrast(2)', opacity: '0' },
-                { delay: 10, transform: 'translate(-50%, -50%) scaleY(50) scaleX(0.01) rotate(-90deg)', filter: 'blur(15px) brightness(0.3)', opacity: '1' },
-                { delay: 20, transform: 'translate(-30%, -50%) scaleY(0.5) scaleX(3) skewX(45deg)', filter: 'blur(10px) brightness(1.3) invert(1)', opacity: '1' },
-                { delay: 30, transform: 'translate(-70%, -50%) scaleY(3) scaleX(0.5) skewX(-45deg) rotate(5deg)', filter: 'blur(8px) brightness(0.5)', opacity: '1' },
-                { delay: 40, transform: 'translate(-50%, -30%) scaleY(1.5) scaleX(1.5) rotate(-5deg) skewY(10deg)', filter: 'blur(5px) brightness(1.2) contrast(1.5)', opacity: '1' },
-                { delay: 50, transform: 'translate(-50%, -70%) scaleY(0.8) scaleX(1.2) skewY(-10deg)', filter: 'blur(3px) brightness(1.3)', opacity: '1' },
-                { delay: 60, transform: 'translate(-45%, -50%) scaleY(1.2) scaleX(0.8) rotate(3deg)', filter: 'blur(2px) brightness(1.2)', opacity: '1' },
-                { delay: 70, transform: 'translate(-55%, -50%) scaleY(0.9) scaleX(1.1) rotate(-2deg)', filter: 'blur(1px) brightness(1.1)', opacity: '1' },
-                { delay: 80, transform: 'translate(-50%, -50%) scaleX(1) scaleY(1)', filter: 'brightness(1.2)', opacity: '1' },
-                { delay: 90, transform: 'translate(-50%, -50%) scaleX(1) scaleY(1)', filter: 'none', opacity: '1' }
+                { delay: 0, transform: 'translate(-50%, -50%) scale(0.95)', filter: 'blur(2px)', opacity: '0' },
+                { delay: 30, transform: 'translate(-50%, -50%) scale(0.98)', filter: 'blur(1px)', opacity: '0.5' },
+                { delay: 60, transform: 'translate(-50%, -50%) scale(1)', filter: 'blur(0.5px)', opacity: '0.8' },
+                { delay: 90, transform: 'translate(-50%, -50%) scale(1)', filter: 'none', opacity: '1' }
             ];
 
             glitchSteps.forEach(step => {
@@ -323,18 +316,8 @@ class MatrixMessages {
 
                     // Start scramble on final step
                     if (step.delay === 90) {
-                        // Remove echo layers with burst effect
-                        glitchLayers.forEach((layer, index) => {
-                            gsap.to(layer, {
-                                scale: 2,
-                                opacity: 0,
-                                rotation: Math.random() * 360,
-                                duration: 0.3,
-                                delay: index * 0.05,
-                                ease: 'power2.out',
-                                onComplete: () => layer.remove()
-                            });
-                        });
+                        // Clean up any layers without effects
+                        glitchLayers.forEach(layer => layer && layer.remove());
                         this.scrambleText(this.messageElement, message);
                     }
                 }, step.delay);
@@ -352,8 +335,8 @@ class MatrixMessages {
             position: fixed;
             width: 100%;
             height: 3px;
-            background: white;
-            opacity: 0.8;
+            background: rgba(0, 255, 133, 0.6);  // Changed from white to green
+            opacity: 0.3;  // Reduced opacity
             z-index: 10000;
             pointer-events: none;
             top: ${Math.random() * window.innerHeight}px;
@@ -462,47 +445,24 @@ class MatrixMessages {
         if (phase === 'start') {
             // Violent reaction when message appears
 
-            // Logo and cicada image distort and glitch
+            // Logo subtle fade - no aggressive distortion
             if (logoWrapper) {
                 gsap.to(logoWrapper, {
-                    scale: 0.8,
-                    skewX: Math.random() * 20 - 10,
-                    skewY: Math.random() * 10 - 5,
-                    rotation: Math.random() * 10 - 5,
-                    filter: 'blur(2px) saturate(0) brightness(0.5)',
-                    duration: 0.1,
-                    repeat: 3,
-                    yoyo: true,
-                    ease: 'steps(3)',
-                    onComplete: () => {
-                        gsap.to(logoWrapper, {
-                            scale: 0.9,
-                            skewX: 0,
-                            skewY: 0,
-                            rotation: 0,
-                            filter: 'blur(0.5px) saturate(0.3) brightness(0.7)',
-                            duration: 0.2
-                        });
-                    }
+                    scale: 0.95,
+                    opacity: 0.1,
+                    filter: 'blur(1px) brightness(0.3)',
+                    duration: 0.5,
+                    ease: 'power2.inOut'
                 });
             }
 
             if (imageWrapper) {
                 gsap.to(imageWrapper, {
-                    scale: 1.2,
-                    rotation: '+=45',
-                    filter: 'blur(3px) contrast(2) brightness(1.3)',
-                    duration: 0.05,
-                    repeat: 5,
-                    yoyo: true,
-                    ease: 'steps(2)',
-                    onComplete: () => {
-                        gsap.to(imageWrapper, {
-                            scale: 0.85,
-                            filter: 'blur(1px) contrast(0.5) brightness(0.6)',
-                            duration: 0.3
-                        });
-                    }
+                    scale: 0.95,
+                    opacity: 0.1,
+                    filter: 'blur(1px) brightness(0.3)',
+                    duration: 0.5,
+                    ease: 'power2.inOut'
                 });
             }
 
@@ -528,27 +488,12 @@ class MatrixMessages {
             }
 
             if (text3886) {
-                // 3886 text glitches hard
+                // 3886 text subtle fade
                 gsap.to(text3886, {
-                    x: Math.random() * 100 - 50,
-                    y: Math.random() * 50 - 25,
-                    scale: Math.random() * 0.5 + 0.5,
-                    filter: 'blur(5px)',
-                    opacity: 0.2,
-                    duration: 0.1,
-                    repeat: 3,
-                    yoyo: true,
-                    ease: 'steps(5)',
-                    onComplete: () => {
-                        gsap.to(text3886, {
-                            x: 0,
-                            y: 0,
-                            scale: 1,
-                            filter: 'none',
-                            opacity: 0.3,
-                            duration: 0.2
-                        });
-                    }
+                    opacity: 0.1,
+                    filter: 'blur(1px)',
+                    duration: 0.5,
+                    ease: 'power2.inOut'
                 });
             }
 
@@ -556,42 +501,27 @@ class MatrixMessages {
             // this.shakeScreen();  // Disabled for now
 
         } else if (phase === 'end') {
-            // Snap-back when message ends
+            // Gentle restoration when message ends
 
             if (logoWrapper) {
                 gsap.to(logoWrapper, {
-                    scale: 1.3,
-                    rotation: Math.random() * 20 - 10,
-                    filter: 'blur(0px) saturate(2) brightness(1.3)',
-                    duration: 0.05,
-                    ease: 'power4.out',
-                    onComplete: () => {
-                        gsap.to(logoWrapper, {
-                            scale: 1.05,
-                            rotation: 0,
-                            filter: 'blur(0px) saturate(1.5) brightness(1.2)',
-                            duration: 0.1,
-                            yoyo: true,
-                            repeat: 1
-                        });
-                    }
+                    scale: 1,
+                    rotation: 0,
+                    opacity: 1,
+                    filter: 'none',
+                    duration: 1,
+                    ease: 'power2.inOut'
                 });
             }
 
             if (imageWrapper) {
                 gsap.to(imageWrapper, {
-                    scale: 0.7,
-                    rotation: '-=90',
-                    filter: 'blur(10px) saturate(0)',
-                    duration: 0.05,
-                    onComplete: () => {
-                        gsap.to(imageWrapper, {
-                            scale: 1.1,
-                            filter: 'blur(0px) saturate(1.5) brightness(1.2)',
-                            duration: 0.15,
-                            ease: 'back.out(3)'
-                        });
-                    }
+                    scale: 1,
+                    rotation: 0,
+                    opacity: 1,
+                    filter: 'none',
+                    duration: 1,
+                    ease: 'power2.inOut'
                 });
             }
 
@@ -608,19 +538,13 @@ class MatrixMessages {
             }
 
             if (text3886) {
-                // 3886 bounces back
+                // 3886 gentle restoration
                 gsap.to(text3886, {
-                    scale: 2,
-                    filter: 'blur(0px) brightness(1.4)',
-                    duration: 0.05,
-                    onComplete: () => {
-                        gsap.to(text3886, {
-                            scale: 1.2,
-                            filter: 'blur(0px) brightness(1.2)',
-                            duration: 0.1,
-                            ease: 'elastic.out(1, 0.3)'
-                        });
-                    }
+                    scale: 1,
+                    opacity: 1,
+                    filter: 'none',
+                    duration: 1,
+                    ease: 'power2.inOut'
                 });
             }
 
@@ -636,7 +560,7 @@ class MatrixMessages {
         const bgElement = document.querySelector('.bg');
         const text3886 = document.querySelector('.text-3886');
 
-        const restoreDuration = 0.8;
+        const restoreDuration = 1.5;  // Slower restoration for smoother transition
 
         if (logoWrapper) {
             gsap.to(logoWrapper, {
@@ -923,7 +847,7 @@ class MatrixMessages {
                 duration: 0.05
             })
             .to(distortion, {
-                backdropFilter: 'blur(8px) contrast(3) saturate(0)',
+                backdropFilter: 'blur(8px) contrast(1.5) saturate(0.7)',  // Reduced contrast to avoid flash
                 scale: 1.1,
                 rotateX: -5,
                 duration: 0.05

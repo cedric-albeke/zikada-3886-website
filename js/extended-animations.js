@@ -52,6 +52,12 @@ class ExtendedAnimations {
     }
 
     vhsScanlineGlitch() {
+        // Only 5% chance of executing this effect
+        if (Math.random() > 0.05) return;
+
+        // Dispatch event for logo animations to react
+        window.dispatchEvent(new CustomEvent('vhsGlitch'));
+
         // Create VHS-style horizontal distortion
         const container = document.createElement('div');
         container.style.cssText = `
@@ -66,8 +72,8 @@ class ExtendedAnimations {
         `;
         document.body.appendChild(container);
 
-        // Multiple scan line tears
-        for (let i = 0; i < 10; i++) {
+        // Multiple scan line tears - minimal count
+        for (let i = 0; i < 2; i++) {  // Further reduced to 2
             const scanline = document.createElement('div');
             const height = Math.random() * 10 + 2;
             const y = Math.random() * window.innerHeight;
@@ -80,9 +86,9 @@ class ExtendedAnimations {
                 height: ${height}px;
                 background: linear-gradient(90deg,
                     transparent,
-                    rgba(255,255,255,0.1),
-                    rgba(0,255,255,0.2),
-                    rgba(255,0,255,0.2),
+                    rgba(255,255,255,0.005),  // Ultra minimal
+                    rgba(0,255,255,0.01),     // Barely visible
+                    rgba(255,0,255,0.01),     // Barely visible
                     transparent);
                 mix-blend-mode: multiply;
                 transform: translateX(${Math.random() * 20 - 10}px);
@@ -107,9 +113,9 @@ class ExtendedAnimations {
             width: 100%;
             height: 100%;
             background: linear-gradient(0deg,
-                rgba(255,0,0,0.1),
+                rgba(255,0,0,0.005),  // Ultra minimal
                 transparent,
-                rgba(0,255,0,0.1),
+                rgba(0,255,0,0.005),  // Ultra minimal
                 transparent,
                 rgba(0,0,255,0.1));
             mix-blend-mode: screen;
@@ -708,14 +714,15 @@ class ExtendedAnimations {
         `;
         document.body.appendChild(flicker);
 
-        const flickerSequence = [1, 0, 1, 0, 0.5, 0, 1, 0.3, 0, 1];
+        // Reduced flicker intensity and slowed down
+        const flickerSequence = [0.8, 0.6, 0.8, 0.7, 0.8];  // Less dramatic changes
         flickerSequence.forEach((opacity, index) => {
             setTimeout(() => {
-                flicker.style.opacity = String(opacity * 0.1);
-            }, index * 50);
+                flicker.style.opacity = String(opacity * 0.05);  // Very subtle
+            }, index * 150);  // Slower timing (was 50ms)
         });
 
-        setTimeout(() => flicker.remove(), 600);
+        setTimeout(() => flicker.remove(), 1000);  // Longer duration
     }
 
     pixelSortGlitch() {
@@ -877,6 +884,9 @@ class ExtendedAnimations {
     }
 
     quantumFlicker() {
+        // Only 5% chance of executing this effect
+        if (Math.random() > 0.05) return;
+
         const quantum = document.createElement('div');
         quantum.style.cssText = `
             position: fixed;
@@ -891,10 +901,10 @@ class ExtendedAnimations {
         document.body.appendChild(quantum);
 
         gsap.to(quantum, {
-            backdropFilter: 'invert(1)',
+            backdropFilter: 'invert(0.2)',  // Reduced intensity from 1 to 0.2
             duration: 0.05,
             yoyo: true,
-            repeat: 5,
+            repeat: 2,  // Reduced from 5 to 2
             ease: 'none',
             onComplete: () => quantum.remove()
         });
