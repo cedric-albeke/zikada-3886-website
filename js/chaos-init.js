@@ -664,11 +664,18 @@ class ChaosInitializer {
             () => this.phaseMinimal(),
             () => this.phaseChaotic(),
             () => this.phaseRetro(),
-            // New color-themed phases
+            // Color-themed phases
             () => this.phaseVaporwave(),
             () => this.phaseCyberpunk(),
             () => this.phaseNeon(),
-            () => this.phaseAurora()
+            () => this.phaseAurora(),
+            // New additional color phases
+            () => this.phaseSunset(),
+            () => this.phaseOcean(),
+            () => this.phaseForest(),
+            () => this.phaseFire(),
+            () => this.phaseIce(),
+            () => this.phaseGalaxy()
         ];
 
         let lastPhase = null;
@@ -681,21 +688,19 @@ class ChaosInitializer {
                 this.phaseRunning = true;
             }
 
-            // Smooth transition out of current phase
-            if (this.currentPhase) {
-                this.transitionOut();
-            }
-
             // Pick a random phase that isn't the last one
             let availablePhases = phases.filter(p => p !== lastPhase);
             const randomPhase = availablePhases[Math.floor(Math.random() * availablePhases.length)];
             lastPhase = randomPhase;
 
-            // Smooth transition into new phase
-            setTimeout(() => {
-                randomPhase();
-                this.currentPhase = randomPhase.name;
-            }, 500);
+            // Smooth transition - no delay, just direct transition
+            if (this.currentPhase) {
+                this.transitionOut();
+            }
+
+            // Apply new phase immediately for smooth transition
+            randomPhase();
+            this.currentPhase = randomPhase.name;
 
             // Random duration between 15-40 seconds
             const nextDelay = Math.random() * 25000 + 15000;
@@ -706,28 +711,12 @@ class ChaosInitializer {
     }
 
     transitionOut() {
-        // Smooth fade transition between phases
-        const overlay = document.createElement('div');
-        overlay.style.cssText = `
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: radial-gradient(ellipse at center, transparent, rgba(0,0,0,0.3));
-            pointer-events: none;
-            z-index: 9998;
-            opacity: 0;
-        `;
-        document.body.appendChild(overlay);
-
-        gsap.to(overlay, {
-            opacity: 0.5,
-            duration: 0.3,
-            yoyo: true,
-            repeat: 1,
-            ease: 'power2.inOut',
-            onComplete: () => overlay.remove()
+        // REMOVED FLASH - Just smooth color transition, no overlay flash
+        // Simply reset any filters smoothly
+        gsap.to(document.body, {
+            filter: 'none',
+            duration: 0.5,  // Smooth transition to neutral
+            ease: 'power2.inOut'
         });
     }
 
@@ -886,30 +875,14 @@ class ChaosInitializer {
     phaseTechno() {
         console.log('🎵 TECHNO PHASE');
 
-        // Strobe-like effects
-        const strobe = document.createElement('div');
-        strobe.style.cssText = `
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: white;
-            pointer-events: none;
-            z-index: 10000;
-            opacity: 0;
-        `;
-        document.body.appendChild(strobe);
+        // REMOVED STROBE FLASH - No more flashing before color switch
 
-        // Strobe animation
-        const strobeTimeline = gsap.timeline({ repeat: 5 });
-        strobeTimeline
-            .to(strobe, { opacity: 0.1, duration: 0.05 })
-            .to(strobe, { opacity: 0, duration: 0.05 })
-            .to(strobe, { opacity: 0.08, duration: 0.05 })
-            .to(strobe, { opacity: 0, duration: 0.1 });
-
-        setTimeout(() => strobe.remove(), 3000);
+        // Apply techno blue color theme smoothly
+        gsap.to(document.body, {
+            filter: 'hue-rotate(-30deg) saturate(1.3) brightness(1.05)',
+            duration: 2,  // Smooth transition
+            ease: 'power2.inOut'
+        });
 
         // Very subtle pulsing
         gsap.to('.logo-text-wrapper, .image-wrapper, .text-3886', {
@@ -1696,6 +1669,128 @@ class ChaosInitializer {
         // Remove added elements
         document.querySelectorAll('.scanlines, #cyber-grid, #static-noise, .data-streams, .holographic-shimmer, .glitch-lines, .chromatic-pulse, .energy-field, .quantum-particles').forEach(el => el.remove());
     }
+    // New color phase implementations
+    phaseSunset() {
+        console.log('🌅 SUNSET PHASE');
+        window.dispatchEvent(new CustomEvent('animationPhase', { detail: { phase: 'sunset' } }));
+
+        // Warm orange/pink gradient
+        gsap.to(document.body, {
+            filter: 'hue-rotate(15deg) saturate(1.4) brightness(1.1) contrast(1.05)',
+            duration: 2.5,
+            ease: 'power2.inOut'
+        });
+
+        // Reset after duration
+        setTimeout(() => {
+            gsap.to(document.body, {
+                filter: 'none',
+                duration: 2,
+                ease: 'power2.inOut'
+            });
+        }, 8000);
+    }
+
+    phaseOcean() {
+        console.log('🌊 OCEAN PHASE');
+        window.dispatchEvent(new CustomEvent('animationPhase', { detail: { phase: 'ocean' } }));
+
+        // Deep blue/teal theme
+        gsap.to(document.body, {
+            filter: 'hue-rotate(-45deg) saturate(1.2) brightness(0.95)',
+            duration: 2.5,
+            ease: 'power2.inOut'
+        });
+
+        setTimeout(() => {
+            gsap.to(document.body, {
+                filter: 'none',
+                duration: 2,
+                ease: 'power2.inOut'
+            });
+        }, 8000);
+    }
+
+    phaseForest() {
+        console.log('🌲 FOREST PHASE');
+        window.dispatchEvent(new CustomEvent('animationPhase', { detail: { phase: 'forest' } }));
+
+        // Deep green nature theme
+        gsap.to(document.body, {
+            filter: 'hue-rotate(60deg) saturate(1.1) brightness(0.98)',
+            duration: 2.5,
+            ease: 'power2.inOut'
+        });
+
+        setTimeout(() => {
+            gsap.to(document.body, {
+                filter: 'none',
+                duration: 2,
+                ease: 'power2.inOut'
+            });
+        }, 8000);
+    }
+
+    phaseFire() {
+        console.log('🔥 FIRE PHASE');
+        window.dispatchEvent(new CustomEvent('animationPhase', { detail: { phase: 'fire' } }));
+
+        // Intense red/orange
+        gsap.to(document.body, {
+            filter: 'hue-rotate(25deg) saturate(1.5) brightness(1.05) contrast(1.1)',
+            duration: 2.5,
+            ease: 'power2.inOut'
+        });
+
+        setTimeout(() => {
+            gsap.to(document.body, {
+                filter: 'none',
+                duration: 2,
+                ease: 'power2.inOut'
+            });
+        }, 8000);
+    }
+
+    phaseIce() {
+        console.log('❄️ ICE PHASE');
+        window.dispatchEvent(new CustomEvent('animationPhase', { detail: { phase: 'ice' } }));
+
+        // Cool blue/white
+        gsap.to(document.body, {
+            filter: 'hue-rotate(-60deg) saturate(0.8) brightness(1.1) contrast(1.05)',
+            duration: 2.5,
+            ease: 'power2.inOut'
+        });
+
+        setTimeout(() => {
+            gsap.to(document.body, {
+                filter: 'none',
+                duration: 2,
+                ease: 'power2.inOut'
+            });
+        }, 8000);
+    }
+
+    phaseGalaxy() {
+        console.log('🌌 GALAXY PHASE');
+        window.dispatchEvent(new CustomEvent('animationPhase', { detail: { phase: 'galaxy' } }));
+
+        // Deep purple/violet cosmic theme
+        gsap.to(document.body, {
+            filter: 'hue-rotate(90deg) saturate(1.3) brightness(0.95) contrast(1.1)',
+            duration: 2.5,
+            ease: 'power2.inOut'
+        });
+
+        setTimeout(() => {
+            gsap.to(document.body, {
+                filter: 'none',
+                duration: 2,
+                ease: 'power2.inOut'
+            });
+        }, 8000);
+    }
+
     addSubtleColorVariations() {
         // Subtle color shifts for text elements
         const textColorTimeline = gsap.timeline({ repeat: -1 });

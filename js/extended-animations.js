@@ -805,8 +805,9 @@ class ExtendedAnimations {
                 document.body.appendChild(flash);
 
                 gsap.to(flash, {
-                    opacity: 0.5,
-                    duration: 0.1,
+                    opacity: 0.2,  // Much less intense
+                    duration: 0.3,  // Slower fade
+                    ease: 'power2.inOut',  // Smoother easing
                     yoyo: true,
                     repeat: 1,
                     onComplete: () => flash.remove()

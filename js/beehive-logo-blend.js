@@ -11,15 +11,15 @@ class BeehiveLogoBlend {
         this.isActive = false;
         this.isInitialized = false;
 
-        // Effect settings - GLITCHY AND SUPER FAST
+        // Effect settings - OPTIMIZED FOR PERFORMANCE
         this.settings = {
-            duration: 3000, // Much shorter - only 3 seconds (was 15)
-            fadeInTime: 0.05,  // INSTANT glitch in (was 0.2)
-            fadeOutTime: 0.1, // INSTANT glitch out (was 0.3)
-            interval: 60000, // Every minute
-            logoOpacityMin: 0.99, // Even MORE subtle - 99% opacity (was 98%)
+            duration: 2000, // Shorter duration to reduce lag
+            fadeInTime: 0.3,  // Smoother fade to reduce jarring
+            fadeOutTime: 0.3, // Smoother fade
+            interval: 90000, // Less frequent - every 90 seconds
+            logoOpacityMin: 0.9, // Less dramatic opacity change
             logoOpacityMax: 1.0,
-            beehiveOpacity: 0.15  // Even MORE subtle - 15% opacity (was 30%)
+            beehiveOpacity: 0.2  // Lower opacity for better performance
         };
     }
 
@@ -78,13 +78,14 @@ class BeehiveLogoBlend {
         this.container = document.createElement('div');
         this.container.className = 'beehive-logo-container';
 
-        // Position behind the logo
+        // Position behind the logo - COMPLETELY HIDDEN
         this.container.style.cssText = `
             position: fixed;
             pointer-events: none;
-            z-index: 10;
+            z-index: -1;  // Behind everything
             opacity: 0;
             display: none;
+            visibility: hidden;  // Extra hiding
         `;
 
         // Create circular mask
@@ -106,14 +107,25 @@ class BeehiveLogoBlend {
         this.videoElement.muted = true;
         this.videoElement.playsInline = true;
         this.videoElement.autoplay = false;
-        this.videoElement.playbackRate = 2.0; // Double speed playback
+        this.videoElement.playbackRate = 1.0; // Normal speed to reduce processing
+
+        // Performance optimizations
+        this.videoElement.preload = 'auto';
+        this.videoElement.setAttribute('webkit-playsinline', 'true');
+        this.videoElement.setAttribute('x5-video-player-type', 'h5');
+        this.videoElement.setAttribute('x5-video-player-fullscreen', 'false');
 
         this.videoElement.style.cssText = `
             position: absolute;
             width: 100%;
             height: 100%;
             object-fit: cover;
-            filter: contrast(1.1) brightness(0.9);  // REDUCED contrast and brightness for subtlety
+            filter: none;  // Remove ALL filters for performance
+            will-change: auto;  // Let browser optimize
+            transform: translateZ(0);  // Force GPU layer
+            -webkit-transform: translateZ(0);
+            backface-visibility: hidden;
+            -webkit-backface-visibility: hidden;
         `;
 
         this.maskElement.appendChild(this.videoElement);
@@ -144,20 +156,33 @@ class BeehiveLogoBlend {
         // Update position
         this.updateLogoPosition();
 
-        // Position and size the container
+        // Position and size the container - match logo size
         const pos = this.logoPosition;
-        this.container.style.left = `${pos.x - pos.radius}px`;
-        this.container.style.top = `${pos.y - pos.radius}px`;
-        this.container.style.width = `${pos.radius * 2}px`;
-        this.container.style.height = `${pos.radius * 2}px`;
+        // Use actual logo size, no artificial cap
+        const actualRadius = pos.radius;
 
-        this.maskElement.style.width = `${pos.radius * 2}px`;
-        this.maskElement.style.height = `${pos.radius * 2}px`;
+        this.container.style.left = `${pos.x - actualRadius}px`;
+        this.container.style.top = `${pos.y - actualRadius}px`;
+        this.container.style.width = `${actualRadius * 2}px`;
+        this.container.style.height = `${actualRadius * 2}px`;
+
+        this.maskElement.style.width = `${actualRadius * 2}px`;
+        this.maskElement.style.height = `${actualRadius * 2}px`;
+
+        // Force lower quality rendering for performance
+        this.videoElement.style.imageRendering = 'pixelated';
+        this.videoElement.style.imageRendering = 'crisp-edges';
 
         this.container.style.display = 'block';
+        this.container.style.visibility = 'visible';
+        this.container.style.zIndex = '10';  // Bring to front when active
 
-        // Start video
+        // Start video with performance optimizations
         this.videoElement.currentTime = 0;
+        // Request lower quality if possible
+        if (this.videoElement.requestVideoFrameCallback) {
+            this.videoElement.requestVideoFrameCallback(() => {});
+        }
         this.videoElement.play().catch(err => {
             console.error('🐝 Video playback failed:', err);
         });
@@ -185,14 +210,8 @@ class BeehiveLogoBlend {
             repeat: 3,
             ease: 'sine.inOut'
         })
-        // Apply filter effects to video
-        .to(this.videoElement, {
-            filter: 'hue-rotate(180deg) saturate(2)',
-            duration: 5,
-            yoyo: true,
-            repeat: 1,
-            ease: 'sine.inOut'
-        }, '<');
+        // REMOVED filter animations for performance
+        // Filter effects cause major performance issues
 
         // Schedule hide
         setTimeout(() => this.hide(), this.settings.duration);
@@ -216,6 +235,8 @@ class BeehiveLogoBlend {
             ease: 'power2.inOut',
             onComplete: () => {
                 this.container.style.display = 'none';
+                this.container.style.visibility = 'hidden';
+                this.container.style.zIndex = '-1';  // Send to back when inactive
                 this.videoElement.pause();
                 this.isActive = false;
             }
