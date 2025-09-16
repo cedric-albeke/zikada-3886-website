@@ -7,6 +7,7 @@ import randomAnimations from './random-animations.js';
 import extendedAnimations from './extended-animations.js';
 import timingController from './timing-controller.js';
 import logoAnimator from './logo-animator.js';
+import performanceManager from './performance-manager.js';
 import gsap from 'gsap';
 
 class ChaosInitializer {
@@ -35,6 +36,7 @@ class ChaosInitializer {
 
         // Initialize subsystems
         this.initPerformanceMonitor();
+        this.initPerformanceManager(); // Initialize performance monitoring first
         this.initBackgroundAnimator();
         this.initLogoAnimator();  // Initialize logo animator early
         this.initChaosEngine();
@@ -150,6 +152,15 @@ class ChaosInitializer {
             console.log('✨ Logo Animator initialized');
         } catch (error) {
             console.error('Failed to initialize Logo Animator:', error);
+        }
+    }
+
+    initPerformanceManager() {
+        try {
+            performanceManager.init();
+            console.log('🎮 Performance Manager initialized');
+        } catch (error) {
+            console.error('Failed to initialize Performance Manager:', error);
         }
     }
 

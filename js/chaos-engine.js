@@ -22,6 +22,17 @@ class ChaosEngine {
         this.chromaticAberrationPass = null;
         this.animationPhase = 0;
         this.isInitialized = false;
+
+        // Performance optimizations
+        this.particleCount = 2000;
+        this.frameCounter = 0;
+        this.updateFrequency = 2; // Update particles every N frames
+        this.performanceMode = 'high';
+        this.originalPositions = null;
+
+        // Listen for performance adjustments
+        window.addEventListener('adjustParticles', (e) => this.adjustParticleCount(e.detail.count));
+        window.addEventListener('adjustPostProcessing', (e) => this.adjustPostProcessing(e.detail.quality));
     }
 
     init() {
@@ -141,13 +152,26 @@ class ChaosEngine {
     }
 
     createParticles() {
-        const particleCount = 2000;
         const geometry = new THREE.BufferGeometry();
-        const positions = new Float32Array(particleCount * 3);
-        const colors = new Float32Array(particleCount * 3);
+        const positions = new Float32Array(this.particleCount * 3);
+        const colors = new Float32Array(this.particleCount * 3);
 
-        for (let i = 0; i < particleCount * 3; i += 3) {
-            positions[i] = (Math.random() - 0.5) * 100;
+        // Store original positions for efficient updates
+        this.originalPositions = new Float32Array(this.particleCount * 3);
+
+        for (let i = 0; i < this.particleCount * 3; i += 3) {
+            const x = (Math.random() - 0.5) * 100;
+            const y = (Math.random() - 0.5) * 100;
+            const z = (Math.random() - 0.5) * 100;
+
+            positions[i] = x;
+            positions[i + 1] = y;
+            positions[i + 2] = z;
+
+            // Store original positions
+            this.originalPositions[i] = x;
+            this.originalPositions[i + 1] = y;
+            this.originalPositions[i + 2] = z;
             positions[i + 1] = (Math.random() - 0.5) * 100;
             positions[i + 2] = (Math.random() - 0.5) * 100;
 
@@ -348,33 +372,41 @@ class ChaosEngine {
             mesh.scale.set(scale, scale, scale);
         });
 
-        // Animate particles - ensure continuous motion
+        // Animate particles - optimized with frame skipping
         if (this.particles) {
             // Continuous rotation
             this.particles.rotation.x += 0.001;
             this.particles.rotation.y += 0.0015;
             this.particles.rotation.z += 0.0005;
 
-            // Dynamic particle wave effect
-            const positions = this.particles.geometry.attributes.position.array;
-            const originalPositions = this.particles.geometry.userData.originalPositions;
+            // Update particles only every N frames for performance
+            this.frameCounter++;
+            if (this.frameCounter % this.updateFrequency === 0) {
+                // Dynamic particle wave effect
+                const positions = this.particles.geometry.attributes.position.array;
+                const originalPositions = this.originalPositions;
 
-            // Store original positions if not already stored
-            if (!originalPositions) {
-                this.particles.geometry.userData.originalPositions = new Float32Array(positions);
+                // Optimized loop with caching
+                const timeHalf = time * 0.5;
+                const timeThird = time * 0.3;
+                const phaseFactor = 1 + this.animationPhase;
+
+                for (let i = 0; i < positions.length; i += 3) {
+                    const origX = originalPositions[i];
+                    const origY = originalPositions[i + 1];
+                    const origZ = originalPositions[i + 2];
+
+                    // Cache calculations
+                    const factor1 = origY * 0.1;
+                    const factor2 = origX * 0.1;
+
+                    // Multiple wave effects for continuous motion
+                    positions[i] = origX + Math.sin(timeHalf + factor1) * 2;
+                    positions[i + 1] = origY + Math.cos(timeThird + factor2) * 2;
+                    positions[i + 2] = origZ + Math.sin(time + factor2 + factor1) * 3 * phaseFactor;
+                }
+                this.particles.geometry.attributes.position.needsUpdate = true;
             }
-
-            for (let i = 0; i < positions.length; i += 3) {
-                const origX = originalPositions ? originalPositions[i] : positions[i];
-                const origY = originalPositions ? originalPositions[i + 1] : positions[i + 1];
-                const origZ = originalPositions ? originalPositions[i + 2] : positions[i + 2];
-
-                // Multiple wave effects for continuous motion
-                positions[i] = origX + Math.sin(time * 0.5 + origY * 0.1) * 2;
-                positions[i + 1] = origY + Math.cos(time * 0.3 + origX * 0.1) * 2;
-                positions[i + 2] = origZ + Math.sin(time + origX * 0.1 + origY * 0.1) * 3 * (1 + this.animationPhase);
-            }
-            this.particles.geometry.attributes.position.needsUpdate = true;
 
             // Pulse particle size
             this.particles.material.size = 0.5 + Math.sin(time * 2) * 0.2;
@@ -409,7 +441,46 @@ class ChaosEngine {
         this.composer.setSize(width, height);
     }
 
+    // Performance adjustment methods
+    adjustParticleCount(count) {
+        if (!this.particles || count === this.particleCount) return;
+
+        // Remove old particles
+        this.scene.remove(this.particles);
+        this.particles.geometry.dispose();
+        this.particles.material.dispose();
+
+        // Create new particles with adjusted count
+        this.particleCount = count;
+        this.createParticles();
+        console.log(`⚡ Adjusted particle count to: ${count}`);
+    }
+
+    adjustPostProcessing(quality) {
+        if (!this.composer) return;
+
+        switch (quality) {
+            case 'low':
+                this.glitchPass.enabled = false;
+                this.chromaticAberrationPass.uniforms.amount.value = 0.001;
+                break;
+            case 'medium':
+                this.glitchPass.enabled = true;
+                this.chromaticAberrationPass.uniforms.amount.value = 0.002;
+                break;
+            case 'high':
+                this.glitchPass.enabled = true;
+                this.chromaticAberrationPass.uniforms.amount.value = 0.005;
+                break;
+        }
+        this.performanceMode = quality;
+    }
+
     destroy() {
+        // Remove event listeners
+        window.removeEventListener('adjustParticles', this.adjustParticleCount);
+        window.removeEventListener('adjustPostProcessing', this.adjustPostProcessing);
+
         // Clean up resources
         this.meshes.forEach(mesh => {
             mesh.geometry.dispose();

@@ -11,6 +11,11 @@ class LogoAnimator {
         this.pulseTimeline = null;
         this.minOpacity = 1.0; // Never reduce opacity
         this.isInitialized = false;
+
+        // Store references for cleanup
+        this.eventListeners = [];
+        this.observer = null;
+        this.animationFrameId = null;
     }
 
     init() {
@@ -142,19 +147,20 @@ class LogoAnimator {
 
     startReactiveAnimations() {
         // Make logo react to global animation events
-        window.addEventListener('animationPhase', (e) => {
-            this.reactToPhase(e.detail.phase);
-        });
+        const phaseHandler = (e) => this.reactToPhase(e.detail.phase);
+        const matrixHandler = () => this.matrixReaction();
+        const glitchHandler = () => this.glitchReaction();
 
-        // React to matrix messages
-        window.addEventListener('matrixMessage', () => {
-            this.matrixReaction();
-        });
+        window.addEventListener('animationPhase', phaseHandler);
+        window.addEventListener('matrixMessage', matrixHandler);
+        window.addEventListener('glitchEvent', glitchHandler);
 
-        // React to glitch events
-        window.addEventListener('glitchEvent', () => {
-            this.glitchReaction();
-        });
+        // Store for cleanup
+        this.eventListeners.push(
+            { type: 'animationPhase', handler: phaseHandler },
+            { type: 'matrixMessage', handler: matrixHandler },
+            { type: 'glitchEvent', handler: glitchHandler }
+        );
     }
 
     reactToPhase(phase) {
@@ -335,22 +341,23 @@ class LogoAnimator {
     }
 
     protectOpacity() {
-        // Aggressive opacity protection
+        // Aggressive opacity protection with cleanup support
         const protectLogo = () => {
+            if (!this.isInitialized) return; // Stop if destroyed
+
             if (this.logo) {
                 const currentOpacity = parseFloat(window.getComputedStyle(this.logo).opacity);
                 if (currentOpacity < this.minOpacity || isNaN(currentOpacity)) {
                     gsap.set(this.logo, { opacity: 1, clearProps: 'opacity' });
-                    console.log('🛡️ Logo opacity protected');
                 }
             }
-            requestAnimationFrame(protectLogo);
+            this.animationFrameId = requestAnimationFrame(protectLogo);
         };
 
         protectLogo();
 
         // Also use MutationObserver as backup
-        const observer = new MutationObserver((mutations) => {
+        this.observer = new MutationObserver((mutations) => {
             mutations.forEach((mutation) => {
                 if (mutation.type === 'attributes' && mutation.attributeName === 'style') {
                     const opacity = parseFloat(this.logo.style.opacity);
@@ -361,7 +368,7 @@ class LogoAnimator {
             });
         });
 
-        observer.observe(this.logo, {
+        this.observer.observe(this.logo, {
             attributes: true,
             attributeFilter: ['style']
         });
@@ -475,13 +482,33 @@ class LogoAnimator {
     }
 
     destroy() {
+        this.isInitialized = false;
+
+        // Cancel animation frame
+        if (this.animationFrameId) {
+            cancelAnimationFrame(this.animationFrameId);
+        }
+
+        // Disconnect observer
+        if (this.observer) {
+            this.observer.disconnect();
+        }
+
+        // Remove event listeners
+        this.eventListeners.forEach(({ type, handler }) => {
+            window.removeEventListener(type, handler);
+        });
+        this.eventListeners = [];
+
+        // Kill GSAP animations
         if (this.breathTimeline) this.breathTimeline.kill();
         if (this.pulseTimeline) this.pulseTimeline.kill();
         gsap.killTweensOf([this.logo, this.logoWrapper, this.glowElement, this.textElements.zikada, this.textElements.text3886]);
+
+        // Remove DOM elements
         if (this.glowElement && this.glowElement.parentElement) {
             this.glowElement.remove();
         }
-        this.isInitialized = false;
     }
 }
 
