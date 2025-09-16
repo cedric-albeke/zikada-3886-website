@@ -35,14 +35,20 @@ class LogoAnimator {
             existingGlow.remove();
         }
 
-        // Force initial opacity and ensure no distortion
+        // Force initial opacity and ensure no distortion or filters
         gsap.set(this.logo, {
             opacity: 1,
             scale: 1,
             rotation: 0,
             scaleX: 1,
-            scaleY: 1
+            scaleY: 1,
+            filter: 'none',  // Remove ALL filters
+            clearProps: 'filter'  // Clear any existing filter properties
         });
+
+        // Also set important styles directly
+        this.logo.style.opacity = '1 !important';
+        this.logo.style.filter = 'none !important';
 
         // Create glow element
         this.createGlowEffect();
@@ -122,13 +128,14 @@ class LogoAnimator {
         this.pulseTimeline = gsap.timeline({ repeat: -1 });
 
         this.pulseTimeline
+            // Removed filter animations to prevent white washing
             .to(this.logo, {
-                filter: 'brightness(1.05) contrast(1.02)',  // Further reduced to prevent washing out
+                scale: 1.02,  // Only scale, no filters
                 duration: 0.5,
                 ease: 'power2.in'
             })
             .to(this.logo, {
-                filter: 'brightness(1) contrast(1)',
+                scale: 1,
                 duration: 1.5,
                 ease: 'power2.out'
             })
@@ -207,13 +214,14 @@ class LogoAnimator {
         // Logo reacts to matrix messages
         const tl = gsap.timeline();
 
+        // Removed filter effects - use scale only
         tl.to(this.logo, {
-            filter: 'brightness(1.05) saturate(0.7)',  // Much lower brightness to prevent white
+            scale: 1.03,
             duration: 0.2,
             ease: 'power4.in'
         })
         .to(this.logo, {
-            filter: 'brightness(1) saturate(1)',
+            scale: 1,
             duration: 0.8,
             ease: 'power4.out'
         })
@@ -243,13 +251,13 @@ class LogoAnimator {
         .to(this.logo, {
             x: () => Math.random() * 10 - 5,
             y: () => Math.random() * 10 - 5,
-            filter: 'hue-rotate(180deg)',
+            // Removed filter to prevent color changes
             duration: 0.05
         })
         .to(this.logo, {
             x: 0,
             y: 0,
-            filter: 'hue-rotate(0deg)',
+            // Removed filter reset
             duration: 0.1,
             ease: 'power2.out'
         });
@@ -259,12 +267,13 @@ class LogoAnimator {
         // Techno strobe effect
         const tl = gsap.timeline({ repeat: 3 });
 
+        // Techno strobe without filters
         tl.to(this.logo, {
-            filter: 'brightness(1.05) contrast(1.05)',  // Lower brightness to prevent washing out
+            scale: 1.02,
             duration: 0.1
         })
         .to(this.logo, {
-            filter: 'brightness(0.8) contrast(0.9)',
+            scale: 0.98,
             duration: 0.1
         });
     }
@@ -341,14 +350,28 @@ class LogoAnimator {
     }
 
     protectOpacity() {
-        // Aggressive opacity protection with cleanup support
+        // ULTRA aggressive opacity and filter protection
         const protectLogo = () => {
             if (!this.isInitialized) return; // Stop if destroyed
 
             if (this.logo) {
-                const currentOpacity = parseFloat(window.getComputedStyle(this.logo).opacity);
+                // Check computed styles
+                const computed = window.getComputedStyle(this.logo);
+                const currentOpacity = parseFloat(computed.opacity);
+                const currentFilter = computed.filter;
+
+                // Fix opacity if needed
                 if (currentOpacity < this.minOpacity || isNaN(currentOpacity)) {
-                    gsap.set(this.logo, { opacity: 1, clearProps: 'opacity' });
+                    this.logo.style.opacity = '1';
+                    this.logo.style.setProperty('opacity', '1', 'important');
+                    gsap.set(this.logo, { opacity: 1 });
+                }
+
+                // Remove ANY filters that could cause whitening
+                if (currentFilter && currentFilter !== 'none') {
+                    this.logo.style.filter = 'none';
+                    this.logo.style.setProperty('filter', 'none', 'important');
+                    gsap.set(this.logo, { filter: 'none', clearProps: 'filter' });
                 }
             }
             this.animationFrameId = requestAnimationFrame(protectLogo);
@@ -356,13 +379,20 @@ class LogoAnimator {
 
         protectLogo();
 
-        // Also use MutationObserver as backup
+        // Ultra aggressive MutationObserver
         this.observer = new MutationObserver((mutations) => {
             mutations.forEach((mutation) => {
                 if (mutation.type === 'attributes' && mutation.attributeName === 'style') {
-                    const opacity = parseFloat(this.logo.style.opacity);
-                    if (opacity < this.minOpacity || isNaN(opacity)) {
+                    // Force opacity to 1
+                    if (this.logo.style.opacity !== '1') {
                         this.logo.style.opacity = '1';
+                        this.logo.style.setProperty('opacity', '1', 'important');
+                    }
+
+                    // Force remove all filters
+                    if (this.logo.style.filter && this.logo.style.filter !== 'none') {
+                        this.logo.style.filter = 'none';
+                        this.logo.style.setProperty('filter', 'none', 'important');
                     }
                 }
             });
@@ -370,8 +400,20 @@ class LogoAnimator {
 
         this.observer.observe(this.logo, {
             attributes: true,
-            attributeFilter: ['style']
+            attributeFilter: ['style', 'class']
         });
+
+        // Additional protection: Override any GSAP tweens that try to change opacity or filter
+        const originalTo = gsap.to;
+        gsap.to = function(target, vars) {
+            if (target === this.logo || (Array.isArray(target) && target.includes(this.logo))) {
+                // Remove opacity and filter from vars
+                delete vars.opacity;
+                delete vars.filter;
+                delete vars.autoAlpha;
+            }
+            return originalTo.call(gsap, target, vars);
+        }.bind(this);
     }
 
     triggerSpecialAnimation() {
@@ -412,13 +454,12 @@ class LogoAnimator {
         // Create shard effect
         const tl = gsap.timeline();
 
+        // Shard effect without filters
         tl.to(this.logo, {
-            filter: 'blur(2px) brightness(1.05)',  // Much lower brightness
             scale: 1.02,
             duration: 0.2
         })
         .to(this.logo, {
-            filter: 'blur(0px) brightness(1)',
             scale: 1,
             duration: 0.5,
             ease: 'elastic.out(1, 0.5)'
@@ -428,14 +469,15 @@ class LogoAnimator {
     holographicFlicker() {
         const tl = gsap.timeline({ repeat: 2 });
 
+        // Holographic flicker without filters or opacity changes
         tl.to(this.logo, {
-            opacity: 0.95,  // Increased from 0.9 to maintain visibility
-            filter: 'hue-rotate(180deg) brightness(1.0)',  // No brightness increase at all
+            scaleX: 1.01,
+            scaleY: 0.99,
             duration: 0.1
         })
         .to(this.logo, {
-            opacity: 1,
-            filter: 'hue-rotate(0deg) brightness(1)',
+            scaleX: 1,
+            scaleY: 1,
             duration: 0.1
         });
     }

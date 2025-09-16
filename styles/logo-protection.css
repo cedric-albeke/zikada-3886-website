@@ -1,0 +1,89 @@
+/* ULTRA AGGRESSIVE LOGO PROTECTION */
+/* Ensures the ZIKADA logo SVG never loses opacity or gets washed out */
+
+/* Target the logo image directly */
+.image-wrapper img,
+.image-wrapper svg,
+.logo-container img,
+.logo-container svg,
+img[src*="zikada"],
+img[alt*="logo"],
+img[alt*="Logo"] {
+    opacity: 1 !important;
+    filter: none !important;
+    -webkit-filter: none !important;
+    mix-blend-mode: normal !important;
+    transform: none !important;
+    will-change: transform, scale, rotate !important; /* Don't allow opacity or filter changes */
+}
+
+/* Prevent any parent elements from affecting the logo */
+.image-wrapper,
+.logo-container,
+.logo-wrapper {
+    opacity: 1 !important;
+    filter: none !important;
+    -webkit-filter: none !important;
+    mix-blend-mode: normal !important;
+}
+
+/* Override any animations that try to change opacity or filters */
+@keyframes * {
+    from, to {
+        opacity: 1 !important;
+        filter: none !important;
+    }
+}
+
+/* Prevent hover effects from changing opacity or filters */
+.image-wrapper:hover img,
+.image-wrapper:hover svg,
+.logo-container:hover img,
+.logo-container:hover svg {
+    opacity: 1 !important;
+    filter: none !important;
+    -webkit-filter: none !important;
+}
+
+/* Ensure logo is always visible even during transitions */
+.image-wrapper img,
+.image-wrapper svg {
+    transition-property: transform, scale !important;
+    transition-duration: 0.3s !important;
+    /* Explicitly exclude opacity and filter from transitions */
+}
+
+/* Force remove any backdrop filters that might affect the logo */
+.image-wrapper::before,
+.image-wrapper::after,
+.logo-container::before,
+.logo-container::after {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    filter: none !important;
+    opacity: 1 !important;
+}
+
+/* Protect against CSS variables that might be used */
+:root {
+    --logo-opacity: 1 !important;
+    --logo-filter: none !important;
+}
+
+/* Final override for absolute certainty */
+* {
+    --logo-opacity: 1 !important;
+}
+
+/* Specific protection for the image wrapper */
+.image-wrapper {
+    isolation: isolate !important; /* Prevent blend modes from parent */
+}
+
+.image-wrapper img {
+    image-rendering: -webkit-optimize-contrast !important;
+    image-rendering: crisp-edges !important;
+    backface-visibility: hidden !important; /* Prevent flicker */
+    -webkit-backface-visibility: hidden !important;
+    transform: translateZ(0) !important; /* Force GPU layer */
+}
