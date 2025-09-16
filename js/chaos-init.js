@@ -8,6 +8,7 @@ import extendedAnimations from './extended-animations.js';
 import timingController from './timing-controller.js';
 import logoAnimator from './logo-animator.js';
 import centerpieceLogo from './centerpiece-logo.js';
+import beehiveEffect from './beehive-effect.js';
 import performanceManager from './performance-manager.js';
 import gsap from 'gsap';
 
@@ -196,6 +197,10 @@ class ChaosInitializer {
             extendedAnimations.init();
             console.log('🎲 Random animations initialized');
             console.log('🎬 Extended animations initialized');
+
+            // Initialize beehive video effect
+            beehiveEffect.init();
+            console.log('🐝 Beehive effect initialized');
         } catch (error) {
             console.error('Failed to initialize Random Animations:', error);
         }
