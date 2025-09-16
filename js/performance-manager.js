@@ -44,8 +44,8 @@ class PerformanceManager {
 
     init() {
         this.startMonitoring();
-        this.setupOptimizations();
-        console.log('🎮 Performance Manager initialized');
+        // this.setupOptimizations(); // Removed - function doesn't exist yet
+        // console.log('🎮 Performance Manager initialized'); // Reduced logging
     }
 
     // FPS Monitoring

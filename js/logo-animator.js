@@ -19,13 +19,15 @@ class LogoAnimator {
     }
 
     init() {
-        this.logo = document.querySelector('.image-wrapper img');
+        // Target the correct logo element - image-2 with c01n.svg
+        this.logo = document.querySelector('.image-2') ||
+                    document.querySelector('img[src*="c01n"]') ||
+                    document.querySelector('.image-wrapper img');
         this.logoWrapper = document.querySelector('.logo-text-wrapper');
         this.textElements.zikada = document.querySelector('.zikada-text');
         this.textElements.text3886 = document.querySelector('.text-3886');
 
         if (!this.logo) {
-            console.warn('Logo element not found');
             return;
         }
 
@@ -62,7 +64,6 @@ class LogoAnimator {
         this.protectOpacity();
 
         this.isInitialized = true;
-        console.log('🎯 Logo Animator initialized');
     }
 
     createGlowEffect() {
@@ -320,7 +321,7 @@ class LogoAnimator {
             });
         }
 
-        // Animate 3886 text - more prominent and always visible
+        // Animate 3886 text - SUBTLE animations only
         if (this.textElements.text3886) {
             // Ensure minimum brightness
             gsap.set(this.textElements.text3886, {
@@ -328,20 +329,12 @@ class LogoAnimator {
                 textShadow: '0 0 10px rgba(0, 255, 133, 0.5), 0 0 20px rgba(0, 255, 133, 0.3)'
             });
 
-            // Pulsing size
+            // REMOVED scale pulsing - was too aggressive
+            // Only keep subtle glow animation
             gsap.to(this.textElements.text3886, {
-                scale: 1.08,  // Increased from 1.05
-                duration: 2,
-                yoyo: true,
-                repeat: -1,
-                ease: 'power2.inOut'
-            });
-
-            // Enhanced glow animation
-            gsap.to(this.textElements.text3886, {
-                textShadow: '0 0 20px rgba(0, 255, 133, 0.8), 0 0 40px rgba(0, 255, 133, 0.5)',
-                filter: 'brightness(1.3) contrast(1.1)',
-                duration: 3,
+                textShadow: '0 0 15px rgba(0, 255, 133, 0.6), 0 0 30px rgba(0, 255, 133, 0.3)',
+                filter: 'brightness(1.25) contrast(1.05)',
+                duration: 4,
                 yoyo: true,
                 repeat: -1,
                 ease: 'sine.inOut'

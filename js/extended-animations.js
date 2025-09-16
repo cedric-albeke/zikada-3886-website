@@ -443,13 +443,13 @@ class ExtendedAnimations {
                 position: fixed;
                 left: ${i * 30}px;
                 top: -50px;
-                color: #00ff00;
+                color: #9333ea;
                 font-family: monospace;
                 font-size: 20px;
-                text-shadow: 0 0 10px #00ff00;
+                text-shadow: 0 0 10px rgba(147, 51, 234, 0.4);
                 pointer-events: none;
                 z-index: 40;
-                opacity: ${Math.random() * 0.5 + 0.5};
+                opacity: ${Math.random() * 0.3 + 0.3};
             `;
             document.body.appendChild(drop);
 

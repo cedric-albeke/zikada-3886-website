@@ -141,13 +141,13 @@ class RandomAnimations {
                 position: fixed;
                 left: ${Math.random() * window.innerWidth}px;
                 top: -100px;
-                color: rgba(0,255,133,${Math.random() * 0.5 + 0.2});
+                color: rgba(147, 51, 234, ${Math.random() * 0.3 + 0.1});
                 font-family: monospace;
                 font-size: ${Math.random() * 10 + 8}px;
                 writing-mode: vertical-rl;
                 pointer-events: none;
                 z-index: 4;
-                text-shadow: 0 0 5px currentColor;
+                text-shadow: 0 0 5px rgba(147, 51, 234, 0.3);
             `;
             document.body.appendChild(drop);
 

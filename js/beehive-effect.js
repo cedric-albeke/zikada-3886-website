@@ -19,13 +19,13 @@ class BeehiveEffect {
             interval: 180000 // Appear every 3 minutes
         };
 
-        // Visual modes for the video
+        // Visual modes for the video - adjusted opacity for better background effect
         this.modes = {
-            normal: { opacity: 0.7, blendMode: 'screen', hueRotate: 0 },
-            psychedelic: { opacity: 0.8, blendMode: 'difference', hueRotate: 180 },
-            electric: { opacity: 0.6, blendMode: 'color-dodge', hueRotate: 90 },
-            matrix: { opacity: 0.5, blendMode: 'multiply', hueRotate: 120 },
-            neon: { opacity: 0.9, blendMode: 'hard-light', hueRotate: 270 }
+            normal: { opacity: 0.3, blendMode: 'screen', hueRotate: 0 },
+            psychedelic: { opacity: 0.4, blendMode: 'difference', hueRotate: 180 },
+            electric: { opacity: 0.25, blendMode: 'color-dodge', hueRotate: 90 },
+            matrix: { opacity: 0.25, blendMode: 'multiply', hueRotate: 120 },
+            neon: { opacity: 0.5, blendMode: 'hard-light', hueRotate: 270 }
         };
 
         this.currentMode = 'normal';
@@ -33,27 +33,35 @@ class BeehiveEffect {
     }
 
     init() {
-        if (this.isInitialized) return;
+        if (this.isInitialized) {
+            console.log('🐝 Beehive Effect already initialized');
+            return;
+        }
+
+        console.log('🐝 Starting Beehive Effect initialization...');
 
         // Create video element
         this.createVideoElement();
+        console.log('🐝 Video element created');
 
         // Create container
         this.createContainer();
+        console.log('🐝 Container created and added to DOM');
 
         // Start periodic display
         this.startPeriodicDisplay();
+        console.log('🐝 Periodic display scheduled');
 
         // Listen for phase changes
         window.addEventListener('animationPhase', (e) => this.reactToPhase(e.detail.phase));
 
         this.isInitialized = true;
-        console.log('🐝 Beehive Effect initialized');
+        console.log('🐝 Beehive Effect fully initialized');
     }
 
     createVideoElement() {
         this.videoElement = document.createElement('video');
-        this.videoElement.src = '/videos/beehive-loop.mp4';
+        this.videoElement.src = './videos/beehive-loop.mp4';
         this.videoElement.loop = true;
         this.videoElement.muted = true;
         this.videoElement.playsInline = true;
@@ -65,15 +73,13 @@ class BeehiveEffect {
 
         this.videoElement.style.cssText = `
             position: absolute;
-            top: 50%;
-            left: 50%;
-            min-width: 100%;
-            min-height: 100%;
-            width: auto;
-            height: auto;
-            transform: translate(-50%, -50%) scale(1.2);
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
             object-fit: cover;
             pointer-events: none;
+            z-index: -1;
         `;
 
         // Preload video
@@ -87,10 +93,10 @@ class BeehiveEffect {
             position: fixed;
             top: 0;
             left: 0;
-            width: 100%;
-            height: 100%;
+            width: 100vw;
+            height: 100vh;
             pointer-events: none;
-            z-index: 2;
+            z-index: 1;
             opacity: 0;
             mix-blend-mode: ${this.settings.blendMode};
             overflow: hidden;
@@ -102,22 +108,30 @@ class BeehiveEffect {
     }
 
     startPeriodicDisplay() {
-        // Initial delay before first appearance
+        // Show immediately for debugging
+        console.log('🐝 Showing beehive immediately for debugging');
+
+        // Show right away
         setTimeout(() => {
             this.show();
+        }, 1000); // 1 second delay just to ensure DOM is ready
 
-            // Set up periodic display
-            this.intervalId = setInterval(() => {
-                if (!this.isActive) {
-                    this.show();
-                }
-            }, this.settings.interval);
-        }, 60000); // First appearance after 1 minute
+        // Then set up periodic display
+        this.intervalId = setInterval(() => {
+            if (!this.isActive) {
+                console.log('🐝 Triggering periodic beehive appearance');
+                this.show();
+            }
+        }, this.settings.interval);
     }
 
     show() {
-        if (this.isActive) return;
+        if (this.isActive) {
+            console.log('🐝 Beehive already active, skipping');
+            return;
+        }
 
+        console.log('🐝 Showing beehive effect');
         this.isActive = true;
         this.container.style.display = 'block';
 
@@ -128,8 +142,12 @@ class BeehiveEffect {
 
         // Start video playback
         this.videoElement.currentTime = 0;
-        this.videoElement.play().catch(err => {
-            console.warn('Beehive video playback failed:', err);
+        console.log('🐝 Attempting to play video from:', this.videoElement.src);
+        this.videoElement.play().then(() => {
+            console.log('🐝 Video playing successfully');
+        }).catch(err => {
+            console.error('🐝 Beehive video playback failed:', err);
+            console.log('🐝 Video readyState:', this.videoElement.readyState);
         });
 
         // Fade in with animation
@@ -268,8 +286,10 @@ class BeehiveEffect {
     }
 
     addNeonAnimation() {
+        // Subtle zoom instead of scale to avoid layout issues
         gsap.to(this.videoElement, {
-            scale: 1.3,
+            width: '110%',
+            height: '110%',
             duration: 20,
             yoyo: true,
             repeat: -1,

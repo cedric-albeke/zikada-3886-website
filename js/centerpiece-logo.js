@@ -18,10 +18,10 @@ class CenterpieceLogo {
         this.pulseTimeline = null;
         this.ambientTimeline = null;
 
-        // Animation settings
+        // Animation settings - MUCH MORE VISIBLE
         this.settings = {
-            breathScale: { min: 0.95, max: 1.05 },
-            pulseScale: { min: 0.98, max: 1.02 },
+            breathScale: { min: 0.8, max: 1.3 },  // MUCH BIGGER range
+            pulseScale: { min: 0.9, max: 1.2 },  // MUCH MORE visible pulse
             rotationSpeed: 0.5,
             glowIntensity: 1.0,
             animationSpeed: 1.0
@@ -84,11 +84,23 @@ class CenterpieceLogo {
     }
 
     init() {
-        this.logo = document.querySelector('.image-wrapper img');
-        this.wrapper = document.querySelector('.image-wrapper');
+        if (this.isInitialized) {
+            console.log('🎯 Centerpiece already initialized');
+            return;
+        }
+
+        // Try multiple selectors to find the logo - INCLUDING image-2!
+        this.logo = document.querySelector('.image-2') ||
+                    document.querySelector('img[src*="c01n"]') ||
+                    document.querySelector('.image-wrapper img') ||
+                    document.querySelector('.logo-container img') ||
+                    document.querySelector('img[src*="zikada"]');
+        this.wrapper = document.querySelector('.image-wrapper') ||
+                       document.querySelector('.logo-container') ||
+                       this.logo?.parentElement;
 
         if (!this.logo) {
-            console.warn('Centerpiece logo not found');
+            console.error('🎯 Centerpiece: Logo element not found!');
             return;
         }
 
@@ -104,17 +116,32 @@ class CenterpieceLogo {
         // Start reactive system
         this.startReactiveSystem();
 
+        // Start continuous animation cycle
+        this.startAnimationCycle();
+
         this.isInitialized = true;
-        console.log('🎯 Centerpiece Logo System initialized');
     }
 
     setupInitialState() {
+        // CRITICAL: Remove inline scale: none style that's blocking animations
+        if (this.logo.style.scale === 'none') {
+            this.logo.style.scale = '';
+        }
+
+        // Clear any transform that might have scale in it
+        const currentTransform = this.logo.style.transform;
+        if (currentTransform && !currentTransform.includes('scale')) {
+            // Keep the existing transform but ensure scale can be animated
+            this.logo.style.transform = currentTransform;
+        }
+
         // Set transform origin for proper rotation
         gsap.set(this.logo, {
             transformOrigin: 'center center',
             transformPerspective: 1000,
             force3D: true,
-            z: 0
+            scale: 1,  // Start at scale 1
+            clearProps: 'scale'  // Clear the scale: none
         });
 
         // Ensure wrapper is positioned properly
@@ -157,36 +184,46 @@ class CenterpieceLogo {
 
     // AMBIENT ANIMATIONS (always running)
     startAmbientAnimations() {
-        // Subtle breathing
+
+        // MORE VISIBLE breathing
         this.breathingTimeline = gsap.timeline({ repeat: -1 });
         this.breathingTimeline
             .to(this.logo, {
                 scale: this.settings.breathScale.max,
-                duration: 4,
-                ease: 'sine.inOut'
+                duration: 3,  // Faster for visibility
+                ease: 'power2.inOut'
             })
             .to(this.logo, {
                 scale: this.settings.breathScale.min,
-                duration: 4,
-                ease: 'sine.inOut'
+                duration: 3,
+                ease: 'power2.inOut'
             });
 
-        // Gentle rotation
+        // More visible rotation
         gsap.to(this.logo, {
             rotation: 360,
-            duration: 240,
+            duration: 120,  // Faster rotation
             repeat: -1,
             ease: 'none'
         });
 
-        // Subtle 3D tilt
+        // MORE VISIBLE 3D tilt
         gsap.to(this.logo, {
-            rotationY: 10,
-            rotationX: 5,
-            duration: 8,
+            rotationY: 20,  // Increased tilt
+            rotationX: 10,   // Increased tilt
+            duration: 5,     // Faster
             yoyo: true,
             repeat: -1,
             ease: 'sine.inOut'
+        });
+
+        // Add visible bounce effect
+        gsap.to(this.logo, {
+            y: -10,
+            duration: 2,
+            yoyo: true,
+            repeat: -1,
+            ease: 'power2.inOut'
         });
     }
 
@@ -676,17 +713,51 @@ class CenterpieceLogo {
 
     // REACTIVE SYSTEM
     startReactiveSystem() {
+        // CRITICAL: Monitor for scale: none being reapplied and remove it
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                if (mutation.type === 'attributes' && mutation.attributeName === 'style') {
+                    if (this.logo.style.scale === 'none') {
+                        this.logo.style.scale = '';  // Remove scale: none immediately
+                    }
+                }
+            });
+        });
+
+        observer.observe(this.logo, {
+            attributes: true,
+            attributeFilter: ['style']
+        });
+
         // React to global animation events
         window.addEventListener('animationPhase', (e) => {
             this.reactToPhase(e.detail.phase);
         });
 
-        // Random special animations
-        setInterval(() => {
-            if (Math.random() > 0.7 && !this.isAnimating) {
-                this.triggerRandomAnimation();
+        // Random special animations - removed since we have animation cycle
+    }
+
+    startAnimationCycle() {
+        const runNextAnimation = () => {
+            if (!this.isInitialized) {
+                return;
             }
-        }, 8000);
+
+            // Only trigger new animation if not already animating
+            if (!this.isAnimating) {
+                const animationNames = Object.keys(this.animations);
+                const randomAnimation = animationNames[Math.floor(Math.random() * animationNames.length)];
+                // console.log(`🎯 Running animation: ${randomAnimation}`);
+                this.triggerAnimation(randomAnimation);
+            }
+
+            // Schedule next animation (3-8 seconds randomly)
+            const delay = 3000 + Math.random() * 5000;
+            setTimeout(runNextAnimation, delay);
+        };
+
+        // Start first animation after 2 seconds
+        setTimeout(runNextAnimation, 2000);
     }
 
     reactToPhase(phase) {
@@ -728,14 +799,24 @@ class CenterpieceLogo {
     }
 
     triggerAnimation(animationName) {
-        if (!this.animations[animationName]) return;
+        if (!this.animations[animationName]) {
+            return;
+        }
 
         this.isAnimating = true;
         const animation = this.animations[animationName]();
 
-        animation.eventCallback('onComplete', () => {
-            this.isAnimating = false;
-        });
+        // Some animations might not return a timeline
+        if (animation && animation.eventCallback) {
+            animation.eventCallback('onComplete', () => {
+                this.isAnimating = false;
+            });
+        } else {
+            // If no timeline returned, reset flag after expected duration
+            setTimeout(() => {
+                this.isAnimating = false;
+            }, 2000);
+        }
     }
 
     // Public API

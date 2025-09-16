@@ -8,14 +8,20 @@
 .logo-container svg,
 img[src*="zikada"],
 img[alt*="logo"],
-img[alt*="Logo"] {
+img[alt*="Logo"],
+.image-2 {  /* Added specific class for c01n.svg */
     opacity: 1 !important;
     filter: none !important;
     -webkit-filter: none !important;
     mix-blend-mode: normal !important;
-    /* Allow transforms for animations */
-    will-change: transform !important;
+    /* Allow ALL transforms and animations */
+    will-change: transform, scale, rotate !important;
     transform-style: preserve-3d !important;
+    /* Allow animations but not opacity/filter changes */
+    animation-play-state: running !important;
+    /* Ensure transforms work */
+    transform-box: fill-box !important;
+    transform-origin: center center !important;
 }
 
 /* Prevent any parent elements from affecting the logo */
@@ -46,11 +52,12 @@ img[alt*="Logo"] {
     -webkit-filter: none !important;
 }
 
-/* Ensure logo is always visible even during transitions */
+/* Allow transform animations while protecting opacity/filter */
 .image-wrapper img,
 .image-wrapper svg {
-    transition-property: transform, scale !important;
+    transition-property: transform, scale, rotate !important;
     transition-duration: 0.3s !important;
+    animation-play-state: running !important;
     /* Explicitly exclude opacity and filter from transitions */
 }
 

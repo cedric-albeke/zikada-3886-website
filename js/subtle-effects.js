@@ -334,13 +334,41 @@ class SubtleEffects {
     addSubtleTextAnimations() {
         const logoText = document.querySelector('.logo-text');
         const text3886 = document.querySelector('.text-3886');
+        const zikadaText = document.querySelector('.zikada-text') || logoText;
 
-        if (logoText) {
-            // ZIKADA text animations
+        if (logoText || zikadaText) {
+            const targetText = zikadaText || logoText;
+
+            // INTRO ANIMATION - Similar to 3886
+            gsap.fromTo(targetText, {
+                opacity: 0,
+                scale: 0.5,
+                y: -30,
+                rotationX: 90
+            }, {
+                opacity: 1,
+                scale: 1,
+                y: 0,
+                rotationX: 0,
+                duration: 1.5,
+                delay: 0.3,
+                ease: 'elastic.out(1.2, 0.5)'
+            });
+
+            // ZIKADA text animations after intro
             // Subtle breathing effect
-            gsap.to(logoText, {
+            gsap.to(targetText, {
                 scale: 1.02,
                 duration: 4,
+                yoyo: true,
+                repeat: -1,
+                ease: 'sine.inOut'
+            });
+
+            // REVERSED floating effect - opposite of 3886
+            gsap.to(targetText, {
+                y: 1,  // Opposite direction, very subtle
+                duration: 3,
                 yoyo: true,
                 repeat: -1,
                 ease: 'sine.inOut'
@@ -390,24 +418,34 @@ class SubtleEffects {
         }
 
         if (text3886) {
-            // 3886 text animations
-            // Subtle floating effect - reduced to prevent misalignment
+            // 3886 INTRO ANIMATION (keep existing if works)
+            gsap.fromTo(text3886, {
+                opacity: 0,
+                scale: 0.3,
+                y: 30,
+                rotationY: -90
+            }, {
+                opacity: 1,
+                scale: 1,
+                y: 0,
+                rotationY: 0,
+                duration: 1.8,
+                delay: 0.5,
+                ease: 'elastic.out(1, 0.4)'
+            });
+
+            // 3886 text animations after intro
+            // VERY subtle floating effect
             gsap.to(text3886, {
-                y: -3,  // Reduced movement
+                y: -1,  // MUCH REDUCED movement (was -3)
                 duration: 3,
                 yoyo: true,
                 repeat: -1,
                 ease: 'sine.inOut'
             });
 
-            // Subtle rotation
-            gsap.to(text3886, {
-                rotation: 1,
-                duration: 5,
-                yoyo: true,
-                repeat: -1,
-                ease: 'sine.inOut'
-            });
+            // REMOVED rotation - was causing instability
+            // Keep text stable
 
             // Brightness pulse
             gsap.to(text3886, {
