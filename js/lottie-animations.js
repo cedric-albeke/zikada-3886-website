@@ -19,12 +19,12 @@ class LottieAnimations {
                 renderer: 'svg',
                 size: 'calc(min(80vw, 80vh))',  // Responsive size
                 position: { top: '50%', left: '50%', transform: 'translate(-50%, -50%)' },
-                opacity: 0.3,
+                opacity: 0.25,  // Slightly more subtle
                 triggerOnScroll: false,
                 blendMode: 'screen',
                 zIndex: 3,  // Behind main logo (26)
-                displayDuration: 8000,  // Show for 8 seconds
-                displayInterval: 45000  // Every 45 seconds
+                displayDuration: 6000,  // Show for 6 seconds
+                displayInterval: 75000  // Every 75 seconds (was 45)
             },
             sunReveal: {
                 path: '/animations/lottie/sun-reveal.lottie',
@@ -33,12 +33,12 @@ class LottieAnimations {
                 renderer: 'canvas',
                 size: 'calc(min(90vw, 90vh))',  // Larger for dramatic effect
                 position: { top: '50%', left: '50%', transform: 'translate(-50%, -50%)' },
-                opacity: 0.6,
+                opacity: 0.4,  // Reduced from 0.6
                 triggerOnScroll: true,
                 blendMode: 'add',
                 zIndex: 2,  // Behind main logo (26)
-                displayDuration: 5000,  // Show for 5 seconds
-                displayInterval: 60000  // Every 60 seconds
+                displayDuration: 4000,  // Show for 4 seconds
+                displayInterval: 90000  // Every 90 seconds (was 60)
             },
             planetLogo: {
                 path: '/animations/lottie/Planet-Logo.lottie',
@@ -47,12 +47,12 @@ class LottieAnimations {
                 renderer: 'svg',
                 size: 'calc(min(75vw, 75vh))',  // Bigger - 75% of viewport
                 position: { top: '50%', left: '50%', transform: 'translate(-50%, -50%)' },
-                opacity: 0.5,  // More visible
+                opacity: 0.35,  // Reduced from 0.5 for subtlety
                 triggerOnScroll: false,
                 blendMode: 'screen',  // Better color blending
                 zIndex: 4,  // Behind main logo (26)
-                displayDuration: 12000,  // Show for 12 seconds
-                displayInterval: 25000  // Every 25 seconds - more frequent
+                displayDuration: 8000,  // Show for 8 seconds
+                displayInterval: 60000  // Every 60 seconds (was 25)
             }
         };
 
@@ -106,7 +106,7 @@ class LottieAnimations {
             width: 100%;
             height: 100%;
             pointer-events: none;
-            z-index: 10;  /* Lower than main logo (26) */
+            z-index: 5 !important;  /* Much lower than main logo (26) */
         `;
         document.body.appendChild(mainContainer);
 
@@ -222,21 +222,21 @@ class LottieAnimations {
     startAnimationCycles() {
         console.log('🎬 Starting Lottie animation cycles');
 
-        // Planet Logo - shows more frequently with enhanced visuals
+        // Planet Logo - special highlight animation
         setTimeout(() => {
             this.showAnimation('planetLogo');
             setInterval(() => {
                 this.showAnimation('planetLogo');
             }, this.config.planetLogo.displayInterval);
-        }, 3000); // Start after 3 seconds - sooner
+        }, 10000); // Start after 10 seconds
 
-        // Planet Ring - shows every 45 seconds
+        // Planet Ring - occasional atmosphere
         setTimeout(() => {
             this.showAnimation('planetRing');
             setInterval(() => {
                 this.showAnimation('planetRing');
             }, this.config.planetRing.displayInterval);
-        }, 18000); // Start after 18 seconds
+        }, 30000); // Start after 30 seconds
 
         // Sun Reveal is triggered by events, not cycle
     }
@@ -254,8 +254,8 @@ class LottieAnimations {
 
         // Special enhancement for planet-logo
         if (name === 'planetLogo') {
-            // Use drop-shadow for circular glow that follows the content shape
-            wrapper.style.filter = 'saturate(1.8) brightness(1.3) contrast(1.2) hue-rotate(10deg) drop-shadow(0 0 30px rgba(0, 255, 200, 0.6))';
+            // Subtle enhancement with gentle glow
+            wrapper.style.filter = 'saturate(1.4) brightness(1.1) contrast(1.1) drop-shadow(0 0 20px rgba(0, 255, 200, 0.3))';
         }
 
         animation.play();
