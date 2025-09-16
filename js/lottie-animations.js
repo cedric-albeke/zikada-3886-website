@@ -10,40 +10,43 @@ class LottieAnimations {
         this.containers = {};
         this.isInitialized = false;
 
-        // Animation configurations
+        // Animation configurations - centered and full-width circular animations
         this.config = {
             planetRing: {
                 path: '/animations/lottie/planet-ring.lottie',
                 loop: true,
                 autoplay: false,
                 renderer: 'svg',
-                scale: 1.2,
-                position: { top: '10%', right: '10%' },
-                opacity: 0.8,
+                size: 'calc(min(80vw, 80vh))',  // Responsive size
+                position: { top: '50%', left: '50%', transform: 'translate(-50%, -50%)' },
+                opacity: 0.3,
                 triggerOnScroll: false,
-                blendMode: 'screen'
+                blendMode: 'screen',
+                zIndex: 101
             },
             sunReveal: {
                 path: '/animations/lottie/sun-reveal.lottie',
                 loop: false,
                 autoplay: false,
                 renderer: 'canvas',
-                scale: 2,
+                size: 'calc(min(90vw, 90vh))',  // Larger for dramatic effect
                 position: { top: '50%', left: '50%', transform: 'translate(-50%, -50%)' },
-                opacity: 0.9,
+                opacity: 0.6,
                 triggerOnScroll: true,
-                blendMode: 'add'
+                blendMode: 'add',
+                zIndex: 103
             },
             planetLogo: {
                 path: '/animations/lottie/Planet-Logo.lottie',
                 loop: true,
                 autoplay: true,
                 renderer: 'svg',
-                scale: 0.8,
-                position: { bottom: '10%', left: '10%' },
-                opacity: 0.7,
+                size: 'calc(min(60vw, 60vh))',  // Smaller inner circle
+                position: { top: '50%', left: '50%', transform: 'translate(-50%, -50%)' },
+                opacity: 0.2,
                 triggerOnScroll: false,
-                blendMode: 'multiply'
+                blendMode: 'overlay',
+                zIndex: 102
             }
         };
 
@@ -119,16 +122,17 @@ class LottieAnimations {
 
             const config = this.config[name];
             const wrapperDiv = document.createElement('div');
+            wrapperDiv.className = `lottie-wrapper-${name}`;
             wrapperDiv.style.cssText = `
                 position: absolute;
                 ${Object.entries(config.position).map(([key, value]) => `${key}: ${value}`).join('; ')};
                 opacity: 0;
                 transition: opacity 0.5s ease-in-out;
                 mix-blend-mode: ${config.blendMode};
-                pointer-events: ${name === 'planetLogo' ? 'auto' : 'none'};
-                transform: scale(${config.scale});
-                width: 300px;
-                height: 300px;
+                pointer-events: none;
+                z-index: ${config.zIndex || 100};
+                width: ${config.size};
+                height: ${config.size};
             `;
 
             wrapperDiv.appendChild(container);
@@ -165,12 +169,14 @@ class LottieAnimations {
                 Math.pow(e.clientY - (rect.top + rect.height / 2), 2)
             );
 
-            if (distance < 200) {
+            if (distance < 300) {
                 player.setAttribute('speed', '2');
-                wrapper.style.transform = `scale(${this.config.planetRing.scale * 1.2})`;
+                wrapper.style.opacity = '0.5';  // Brighten on hover
+                wrapper.style.filter = 'brightness(1.3)';
             } else {
                 player.setAttribute('speed', '1');
-                wrapper.style.transform = `scale(${this.config.planetRing.scale})`;
+                wrapper.style.opacity = this.config.planetRing.opacity.toString();
+                wrapper.style.filter = 'brightness(1)';
             }
         });
     }
@@ -215,11 +221,22 @@ class LottieAnimations {
             const currentScrollY = window.scrollY;
             const scrollDelta = currentScrollY - lastScrollY;
 
-            // Parallax effect for planet ring
-            if (this.containers.planetRing) {
-                this.containers.planetRing.style.transform =
-                    `scale(${this.config.planetRing.scale}) translateY(${currentScrollY * 0.2}px)`;
-            }
+            // Rotation effect on scroll for all animations with different speeds
+            const rotationSpeeds = {
+                planetRing: 0.05,
+                sunReveal: 0.02,
+                planetLogo: -0.08  // Negative for opposite direction
+            };
+
+            Object.keys(this.containers).forEach(name => {
+                const wrapper = this.containers[name]?.parentElement;
+                if (wrapper) {
+                    // Different rotation speeds for variety
+                    const rotation = (currentScrollY * (rotationSpeeds[name] || 0.1)) % 360;
+                    wrapper.style.transform =
+                        `${this.config[name].position.transform || ''} rotate(${rotation}deg)`;
+                }
+            });
 
             // Trigger sun reveal at certain scroll point
             if (this.config.sunReveal.triggerOnScroll && currentScrollY > 500 && !this.sunRevealTriggered) {
