@@ -152,6 +152,14 @@ class VJReceiver {
                 this.executeEmergencyCleanup();
                 break;
 
+            case 'safe_cleanup':
+                this.executeSafeCleanup();
+                break;
+
+            case 'emergency_brake':
+                this.executeEmergencyBrake();
+                break;
+
             case 'request_performance':
                 this.sendPerformanceData();
                 break;
@@ -618,6 +626,22 @@ class VJReceiver {
         
         // Also trigger the regular emergency stop
         this.emergencyStop();
+    }
+
+    executeSafeCleanup() {
+        console.log('🧹 VJ Receiver executing safe cleanup...');
+        
+        if (window.safePerformanceMonitor) {
+            window.safePerformanceMonitor.safeCleanup();
+        }
+    }
+
+    executeEmergencyBrake() {
+        console.log('🚨 VJ Receiver executing emergency brake...');
+        
+        if (window.safePerformanceMonitor) {
+            window.safePerformanceMonitor.emergencyBrake();
+        }
     }
 
     handleSequenceEvent(data) {

@@ -34,11 +34,11 @@ class ChaosInitializer {
         this.fpsHistory = [];
         this.lastFrameTime = performance.now();
         
-        // Performance management
-        this.performanceElementManager = performanceElementManager;
-        this.intervalManager = intervalManager;
-        this.gsapRegistry = gsapAnimationRegistry;
-        this.performanceMonitor = performanceMonitor;
+        // Performance management (with fallbacks if not loaded)
+        this.performanceElementManager = window.performanceElementManager || null;
+        this.intervalManager = window.intervalManager || null;
+        this.gsapRegistry = window.gsapAnimationRegistry || null;
+        this.performanceMonitor = window.performanceMonitor || null;
         
         // Track managed intervals and elements for cleanup
         this.managedIntervals = [];
@@ -287,33 +287,74 @@ class ChaosInitializer {
     }
 
     addScanlines() {
-        const scanlines = this.performanceElementManager.createElement('div', 'effect', {
-            position: 'fixed',
-            top: '0',
-            left: '0',
-            width: '100%',
-            height: '100%',
-            pointerEvents: 'none',
-            zIndex: '9997',
-            background: `repeating-linear-gradient(
-                0deg,
-                rgba(0, 0, 0, 0.01) 0px,
-                transparent 1px,
-                transparent 2px,
-                rgba(0, 0, 0, 0.01) 3px
-            )`,
-            opacity: '0.001',
-            mixBlendMode: 'multiply'
-        });
+        let scanlines;
+        
+        // Use performance manager if available, otherwise create normally
+        if (this.performanceElementManager) {
+            scanlines = this.performanceElementManager.createElement('div', 'effect', {
+                position: 'fixed',
+                top: '0',
+                left: '0',
+                width: '100%',
+                height: '100%',
+                pointerEvents: 'none',
+                zIndex: '9997',
+                background: `repeating-linear-gradient(
+                    0deg,
+                    rgba(0, 0, 0, 0.01) 0px,
+                    transparent 1px,
+                    transparent 2px,
+                    rgba(0, 0, 0, 0.01) 3px
+                )`,
+                opacity: '0.001',
+                mixBlendMode: 'multiply'
+            });
+        } else {
+            // Fallback to direct creation
+            scanlines = document.createElement('div');
+            scanlines.className = 'scanlines';
+            scanlines.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                pointer-events: none;
+                z-index: 9997;
+                background: repeating-linear-gradient(
+                    0deg,
+                    rgba(0, 0, 0, 0.01) 0px,
+                    transparent 1px,
+                    transparent 2px,
+                    rgba(0, 0, 0, 0.01) 3px
+                );
+                opacity: 0.001;
+                mix-blend-mode: multiply;
+            `;
+            document.body.appendChild(scanlines);
+        }
+        
         scanlines.className = 'scanlines';
 
-        // Slower, subtler animation with smooth easing using managed GSAP
-        this.gsapRegistry.createAnimation('to', scanlines, {
-            backgroundPosition: '0 4px',
-            duration: 3,
-            repeat: -1,
-            ease: 'sine.inOut'
-        }, 'scanlines-animation', 'background');
+        // Use GSAP registry if available, otherwise direct GSAP
+        if (this.gsapRegistry) {
+            this.gsapRegistry.createAnimation('to', scanlines, {
+                backgroundPosition: '0 4px',
+                duration: 3,
+                repeat: -1,
+                ease: 'sine.inOut'
+            }, 'scanlines-animation', 'background');
+        } else {
+            // Direct GSAP fallback
+            gsap.to(scanlines, {
+                backgroundPosition: '0 4px',
+                duration: 3,
+                repeat: -1,
+                ease: 'sine.inOut'
+            });
+        }
+        
+        console.log('✅ Scanlines animation created (with fallback support)');
     }
 
     addVHSDistortion() {

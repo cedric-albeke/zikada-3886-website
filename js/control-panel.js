@@ -1,7 +1,7 @@
 // VJ Control Panel for 3886 Records
 // Cross-tab communication via BroadcastChannel API
 
-import performanceMonitor from './performance-monitor.js';
+import safePerformanceMonitor from './safe-performance-monitor.js';
 
 class VJControlPanel {
     constructor() {
@@ -877,40 +877,48 @@ class VJControlPanel {
     }
 
     getPerformanceReport() {
-        // Try to get performance data from main window via broadcast channel
-        if (window.performanceMonitor) {
-            return window.performanceMonitor.getPerformanceReport();
+        // Try to get performance data from safe monitor
+        if (window.safePerformanceMonitor) {
+            return window.safePerformanceMonitor.getReport();
         }
         
         // Fallback to basic metrics
         return {
             fps: { current: 0 },
             memory: { formatted: '-- MB' },
-            dom: { totalNodes: 0, managedElements: 0 },
-            animations: { total: 0 },
-            intervals: { total: 0 },
-            alerts: { recent: [] }
+            dom: { totalNodes: 0 },
+            timestamp: new Date()
         };
     }
 
     triggerOptimization() {
-        performanceMonitor.triggerPerformanceOptimization();
-        this.flashButton(document.querySelector('.optimize-btn'));
-    }
-
-    triggerEmergency() {
-        // Send emergency cleanup to main site
+        // Send optimization request to main site
         this.sendMessage({
-            type: 'emergency_cleanup',
+            type: 'safe_cleanup',
             timestamp: Date.now()
         });
         
-        if (window.emergencyCleanup) {
-            window.emergencyCleanup.executeEmergencyCleanup();
+        if (window.safePerformanceMonitor) {
+            window.safePerformanceMonitor.safeCleanup();
+        }
+        
+        this.flashButton(document.querySelector('.optimize-btn'));
+        console.log('🧹 Safe cleanup triggered from control panel');
+    }
+
+    triggerEmergency() {
+        // Send emergency brake to main site
+        this.sendMessage({
+            type: 'emergency_brake',
+            timestamp: Date.now()
+        });
+        
+        if (window.safePerformanceMonitor) {
+            window.safePerformanceMonitor.emergencyBrake();
         }
         
         this.flashButton(document.querySelector('.emergency-btn'));
-        console.log('🚨 Emergency cleanup triggered from control panel');
+        console.log('🚨 Emergency brake triggered from control panel');
     }
 }
 
