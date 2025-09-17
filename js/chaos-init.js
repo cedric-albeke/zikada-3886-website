@@ -52,20 +52,47 @@ class ChaosInitializer {
     }
 
     /**
-     * Safe filter application to prevent grey screens with queue system
+     * Safe filter application to prevent grey screens with atomic replacement
      */
     safeApplyFilter(target, filterValue, duration = 2) {
-        // Kill any existing filter transitions to prevent stacking
         if (target === document.body) {
+            // ATOMIC REPLACEMENT: Kill and immediately apply without gap
             gsap.killTweensOf(document.body, 'filter');
             
-            // Wait a brief moment to ensure previous transition is stopped
-            setTimeout(() => {
-                this.applyFilterNow(target, filterValue, duration);
-            }, 50);
+            // Immediately set a safe intermediate filter to prevent grey flash
+            const safeFilter = this.validateFilter(filterValue);
+            
+            // Set intermediate safe state immediately (prevents gap)
+            const currentFilter = window.getComputedStyle(document.body).filter;
+            if (currentFilter !== 'none' && currentFilter !== safeFilter) {
+                // Create safe intermediate filter (blend current with target)
+                const intermediateFilter = this.createIntermediateFilter(currentFilter, safeFilter);
+                gsap.set(document.body, { filter: intermediateFilter });
+            }
+            
+            // Then apply final filter smoothly
+            this.applyFilterNow(target, filterValue, duration);
         } else {
             this.applyFilterNow(target, filterValue, duration);
         }
+    }
+
+    /**
+     * Create safe intermediate filter to prevent grey gaps
+     */
+    createIntermediateFilter(currentFilter, targetFilter) {
+        // If going to 'none', use a safe neutral filter as intermediate
+        if (targetFilter === 'none') {
+            return 'brightness(1) contrast(1) saturate(1) hue-rotate(0deg)';
+        }
+        
+        // If coming from 'none', start with neutral values
+        if (currentFilter === 'none') {
+            return 'brightness(1) contrast(1) saturate(1) hue-rotate(0deg)';
+        }
+        
+        // For filter-to-filter transitions, ensure safe values
+        return this.validateFilter(targetFilter);
     }
 
     applyFilterNow(target, filterValue, duration) {
@@ -176,9 +203,27 @@ class ChaosInitializer {
                 
                 // Apply immediate fix if needed
                 if (needsFix) {
-                    console.warn(`🚨 Preventing grey flash: ${fixReason} detected in filter: ${currentFilter}`);
-                    const correctedFilter = this.validateFilter(currentFilter);
-                    gsap.set(document.body, { filter: correctedFilter });
+                    console.warn(`🚨 GREY FLASH DETECTED - Immediate correction: ${fixReason} in filter: ${currentFilter}`);
+                    
+                    // FORCE immediate safe filter (no transition to prevent flash)
+                    gsap.set(document.body, { 
+                        filter: 'brightness(1) contrast(1) saturate(1) hue-rotate(0deg)' 
+                    });
+                    
+                    // Kill any problematic ongoing animations on body
+                    gsap.killTweensOf(document.body, 'filter');
+                    
+                    // Brief pause then apply corrected filter
+                    setTimeout(() => {
+                        const correctedFilter = this.validateFilter(currentFilter);
+                        if (correctedFilter !== 'none') {
+                            gsap.to(document.body, { 
+                                filter: correctedFilter, 
+                                duration: 0.5, 
+                                ease: 'power2.inOut' 
+                            });
+                        }
+                    }, 100);
                 }
             }
         }, 100); // Check every 100ms for real-time protection
