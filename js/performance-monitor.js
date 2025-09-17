@@ -275,62 +275,18 @@ class PerformanceMonitor {
     }
 
     /**
-     * Create monitoring UI
+     * Create monitoring UI - disabled for main site
      */
     createUI() {
-        if (this.uiContainer) return;
-        
-        this.uiContainer = document.createElement('div');
-        this.uiContainer.id = 'performance-monitor-ui';
-        this.uiContainer.style.cssText = `
-            position: fixed;
-            top: 10px;
-            right: 10px;
-            width: 300px;
-            background: rgba(0, 0, 0, 0.9);
-            color: #00ff85;
-            font-family: 'Space Mono', monospace;
-            font-size: 11px;
-            padding: 10px;
-            border: 1px solid #00ff85;
-            border-radius: 4px;
-            z-index: 999999;
-            display: none;
-            max-height: 400px;
-            overflow-y: auto;
-        `;
-        
-        document.body.appendChild(this.uiContainer);
-        
-        // Create toggle button
-        this.createToggleButton();
+        // Don't create UI on main site - only on control panel
+        console.log('📊 Performance Monitor UI disabled on main site - use control panel');
     }
 
     /**
-     * Create UI toggle button
+     * Create UI toggle button - disabled for main site
      */
     createToggleButton() {
-        const toggleBtn = document.createElement('button');
-        toggleBtn.textContent = '📊';
-        toggleBtn.style.cssText = `
-            position: fixed;
-            top: 10px;
-            right: 320px;
-            width: 30px;
-            height: 30px;
-            background: rgba(0, 255, 133, 0.2);
-            color: #00ff85;
-            border: 1px solid #00ff85;
-            border-radius: 4px;
-            cursor: pointer;
-            z-index: 999999;
-            font-size: 14px;
-        `;
-        
-        toggleBtn.onclick = () => this.toggleUI();
-        document.body.appendChild(toggleBtn);
-        
-        this.toggleButton = toggleBtn;
+        // Don't create toggle button on main site
     }
 
     /**

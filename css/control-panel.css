@@ -466,6 +466,126 @@ body {
 }
 
 /* Responsive */
+/* Performance Monitor Styles */
+.performance-monitor-section {
+    grid-column: span 2;
+    background: rgba(0, 0, 0, 0.95);
+    border: 1px solid rgba(0, 255, 133, 0.4);
+}
+
+#performance-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.performance-stat {
+    background: rgba(0, 0, 0, 0.6);
+    padding: 8px;
+    border: 1px solid rgba(0, 255, 133, 0.2);
+    border-radius: 2px;
+    text-align: center;
+}
+
+.performance-stat label {
+    display: block;
+    color: rgba(0, 255, 133, 0.7);
+    font-size: 9px;
+    margin-bottom: 4px;
+}
+
+.performance-stat span {
+    color: #00ff85;
+    font-weight: bold;
+    font-size: 12px;
+}
+
+.fps-bar {
+    width: 100%;
+    height: 4px;
+    background: #333;
+    margin-top: 4px;
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+#fps-bar-fill {
+    height: 100%;
+    width: 0%;
+    background: #00ff85;
+    transition: width 0.3s ease, background 0.3s ease;
+}
+
+#performance-alerts {
+    margin-bottom: 15px;
+}
+
+#performance-alerts h3 {
+    color: #00ff85;
+    font-size: 12px;
+    margin-bottom: 8px;
+    border-bottom: 1px solid rgba(0, 255, 133, 0.2);
+    padding-bottom: 4px;
+}
+
+#alerts-list {
+    max-height: 80px;
+    overflow-y: auto;
+    font-size: 10px;
+}
+
+.alert-item {
+    padding: 2px 4px;
+    margin-bottom: 2px;
+    border-radius: 2px;
+}
+
+.alert-item.warning {
+    color: #ffaa00;
+    background: rgba(255, 170, 0, 0.1);
+}
+
+.alert-item.critical {
+    color: #ff4444;
+    background: rgba(255, 68, 68, 0.1);
+}
+
+#performance-controls {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+
+.perf-action-btn {
+    background: rgba(0, 255, 133, 0.1);
+    color: #00ff85;
+    border: 1px solid rgba(0, 255, 133, 0.3);
+    padding: 8px;
+    font-size: 10px;
+    font-family: inherit;
+    cursor: pointer;
+    transition: all 0.2s;
+    border-radius: 2px;
+    text-transform: uppercase;
+}
+
+.perf-action-btn:hover {
+    background: rgba(0, 255, 133, 0.2);
+    border-color: #00ff85;
+}
+
+.emergency-btn {
+    background: rgba(255, 68, 68, 0.1);
+    color: #ff4444;
+    border-color: rgba(255, 68, 68, 0.3);
+}
+
+.emergency-btn:hover {
+    background: rgba(255, 68, 68, 0.2);
+    border-color: #ff4444;
+}
+
 @media (max-width: 768px) {
     .control-grid {
         grid-template-columns: 1fr;
@@ -477,5 +597,13 @@ body {
 
     .scene-auto {
         grid-column: span 3;
+    }
+
+    .performance-monitor-section {
+        grid-column: span 1;
+    }
+
+    #performance-stats {
+        grid-template-columns: repeat(2, 1fr);
     }
 }

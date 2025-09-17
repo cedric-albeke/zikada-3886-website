@@ -287,35 +287,33 @@ class ChaosInitializer {
     }
 
     addScanlines() {
-        const scanlines = document.createElement('div');
-        scanlines.className = 'scanlines';
-        scanlines.style.cssText = `
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            z-index: 9997;
-            background: repeating-linear-gradient(
+        const scanlines = this.performanceElementManager.createElement('div', 'effect', {
+            position: 'fixed',
+            top: '0',
+            left: '0',
+            width: '100%',
+            height: '100%',
+            pointerEvents: 'none',
+            zIndex: '9997',
+            background: `repeating-linear-gradient(
                 0deg,
                 rgba(0, 0, 0, 0.01) 0px,
                 transparent 1px,
                 transparent 2px,
                 rgba(0, 0, 0, 0.01) 3px
-            );
-            opacity: 0.001;  // Practically invisible scanlines
-            mix-blend-mode: multiply;
-        `;
-        document.body.appendChild(scanlines);
+            )`,
+            opacity: '0.001',
+            mixBlendMode: 'multiply'
+        });
+        scanlines.className = 'scanlines';
 
-        // Slower, subtler animation with smooth easing
-        gsap.to(scanlines, {
+        // Slower, subtler animation with smooth easing using managed GSAP
+        this.gsapRegistry.createAnimation('to', scanlines, {
             backgroundPosition: '0 4px',
             duration: 3,
             repeat: -1,
             ease: 'sine.inOut'
-        });
+        }, 'scanlines-animation', 'background');
     }
 
     addVHSDistortion() {
@@ -365,20 +363,17 @@ class ChaosInitializer {
     }
 
     addCyberGrid() {
-        const gridCanvas = document.createElement('canvas');
+        const gridCanvas = this.performanceElementManager.createElement('canvas', 'background', {
+            position: 'fixed',
+            bottom: '0',
+            left: '0',
+            width: '100%',
+            height: '40%',
+            pointerEvents: 'none',
+            zIndex: '-1',
+            opacity: '0.002'
+        });
         gridCanvas.id = 'cyber-grid';
-        gridCanvas.style.cssText = `
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            height: 40%;
-            pointer-events: none;
-            z-index: -1;
-            opacity: 0.002;  // Extremely minimal - almost invisible
-        `;
-
-        document.body.appendChild(gridCanvas);
 
         const ctx = gridCanvas.getContext('2d');
         gridCanvas.width = window.innerWidth;
@@ -580,22 +575,20 @@ class ChaosInitializer {
     }
 
     addStaticNoise() {
-        const canvas = document.createElement('canvas');
+        const canvas = this.performanceElementManager.createElement('canvas', 'effect', {
+            position: 'fixed',
+            top: '0',
+            left: '0',
+            width: '100%',
+            height: '100%',
+            pointerEvents: 'none',
+            zIndex: '1',
+            opacity: '0.015',
+            mixBlendMode: 'screen'
+        });
         canvas.id = 'static-noise';
-        canvas.style.cssText = `
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            z-index: 1;
-            opacity: 0.015;
-            mix-blend-mode: screen;
-        `;
         canvas.width = 256;
         canvas.height = 256;
-        document.body.appendChild(canvas);
 
         const ctx = canvas.getContext('2d');
 
@@ -619,41 +612,38 @@ class ChaosInitializer {
     }
 
     addDataStreams() {
-        const container = document.createElement('div');
+        const container = this.performanceElementManager.createElement('div', 'stream', {
+            position: 'fixed',
+            top: '0',
+            left: '0',
+            width: '100%',
+            height: '100%',
+            pointerEvents: 'none',
+            zIndex: '2',
+            overflow: 'hidden'
+        });
         container.className = 'data-streams';
-        container.style.cssText = `
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            z-index: 2;
-            overflow: hidden;
-        `;
-        document.body.appendChild(container);
 
-        // Create vertical data streams
-        for (let i = 0; i < 5; i++) {
-            const stream = document.createElement('div');
-            stream.style.cssText = `
-                position: absolute;
-                left: ${Math.random() * 100}%;
-                top: -100px;
-                width: 2px;
-                height: ${Math.random() * 200 + 100}px;
-                background: linear-gradient(transparent, #00ff85, transparent);
-                opacity: ${Math.random() * 0.3 + 0.1};
-            `;
+        // Create vertical data streams with managed elements
+        for (let i = 0; i < 3; i++) { // Reduced from 5 to 3
+            const stream = this.performanceElementManager.createElement('div', 'stream', {
+                position: 'absolute',
+                left: `${Math.random() * 100}%`,
+                top: '-100px',
+                width: '2px',
+                height: `${Math.random() * 200 + 100}px`,
+                background: 'linear-gradient(transparent, #00ff85, transparent)',
+                opacity: `${Math.random() * 0.3 + 0.1}`
+            }, { autoAppend: false });
             container.appendChild(stream);
 
-            gsap.to(stream, {
+            this.gsapRegistry.createAnimation('to', stream, {
                 y: window.innerHeight + 200,
                 duration: Math.random() * 10 + 5,
                 repeat: -1,
-                ease: 'linear',  // Smoother than none
+                ease: 'linear',
                 delay: Math.random() * 5
-            });
+            }, `data-stream-${i}`, 'stream');
         }
     }
 
@@ -1078,7 +1068,7 @@ class ChaosInitializer {
         document.body.appendChild(container);
 
         const createGlitchLine = () => {
-            const line = document.createElement('div');
+            const line = this.performanceElementManager.createElement('div', 'effect');
             const height = Math.random() * 3 + 1;
             const y = Math.random() * window.innerHeight;
 
@@ -1205,7 +1195,7 @@ class ChaosInitializer {
 
     addDigitalArtifacts() {
         const createArtifact = () => {
-            const artifact = document.createElement('div');
+            const artifact = this.performanceElementManager.createElement('div', 'artifact');
             const types = ['horizontal', 'vertical', 'diagonal'];
             const type = types[Math.floor(Math.random() * types.length)];
 
@@ -1225,15 +1215,12 @@ class ChaosInitializer {
                     rgba(0,255,133,0.3),
                     transparent)`;
 
-                gsap.fromTo(artifact,
-                    { x: -window.innerWidth },
-                    {
-                        x: window.innerWidth,
-                        duration: Math.random() * 3 + 2,
-                        ease: 'linear',  // Smoother than none
-                        onComplete: () => artifact.remove()
-                    }
-                );
+                this.gsapRegistry.createAnimation('fromTo', artifact, {
+                    x: window.innerWidth,
+                    duration: Math.random() * 3 + 2,
+                    ease: 'linear',
+                    onComplete: () => this.performanceElementManager.removeElement(artifact)
+                }, 'artifact-horizontal', 'artifact', { fromVars: { x: -window.innerWidth } });
             } else if (type === 'vertical') {
                 artifact.style.height = '100%';
                 artifact.style.width = Math.random() * 2 + 0.5 + 'px';
@@ -1364,7 +1351,7 @@ class ChaosInitializer {
 
     addCorruptionWaves() {
         const createWave = () => {
-            const wave = document.createElement('div');
+            const wave = this.performanceElementManager.createElement('div', 'effect');
             wave.style.cssText = `
                 position: fixed;
                 left: 0;
@@ -1439,7 +1426,7 @@ class ChaosInitializer {
         imageWrapper.appendChild(particleContainer);
 
         const createParticle = () => {
-            const particle = document.createElement('div');
+            const particle = this.performanceElementManager.createElement('div', 'particle');
             const angle = Math.random() * Math.PI * 2;
             const distance = Math.random() * 100 + 50;
             const startX = Math.cos(angle) * distance;

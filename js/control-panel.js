@@ -1,6 +1,8 @@
 // VJ Control Panel for 3886 Records
 // Cross-tab communication via BroadcastChannel API
 
+import performanceMonitor from './performance-monitor.js';
+
 class VJControlPanel {
     constructor() {
         this.channel = null;
@@ -37,6 +39,9 @@ class VJControlPanel {
 
         // Start monitoring
         this.startMonitoring();
+
+        // Initialize performance monitor UI on control panel
+        this.initPerformanceMonitor();
 
         console.log('🎛️ VJ Control Panel initialized');
     }
@@ -755,6 +760,147 @@ class VJControlPanel {
         }
 
         this.updateSliderDisplays();
+    }
+
+    // Initialize performance monitor for control panel
+    initPerformanceMonitor() {
+        // Enhance existing performance section
+        const existingSection = document.querySelector('.monitor-section');
+        if (!existingSection) return;
+
+        // Add new stats to existing monitor display
+        const monitorDisplay = existingSection.querySelector('.monitor-display');
+        if (monitorDisplay) {
+            // Add memory and DOM stats
+            const newStats = `
+                <div class="monitor-stat">
+                    <label>Memory</label>
+                    <span id="memory-display">-- MB</span>
+                </div>
+                <div class="monitor-stat">
+                    <label>DOM Nodes</label>
+                    <span id="dom-nodes-display">--</span>
+                </div>
+                <div class="monitor-stat">
+                    <label>Managed Elements</label>
+                    <span id="managed-elements-display">--</span>
+                </div>
+                <div class="monitor-stat">
+                    <label>GSAP Animations</label>
+                    <span id="animations-display">--</span>
+                </div>
+            `;
+            monitorDisplay.insertAdjacentHTML('beforeend', newStats);
+        }
+
+        // Add performance alerts below existing controls
+        const performanceControls = existingSection.querySelector('.performance-controls');
+        if (performanceControls) {
+            const alertsAndActions = `
+                <div id="performance-alerts" style="margin-top: 15px;">
+                    <h3 style="color: #00ff85; font-size: 12px; margin-bottom: 8px; border-bottom: 1px solid rgba(0, 255, 133, 0.2); padding-bottom: 4px;">Recent Alerts</h3>
+                    <div id="alerts-list" style="max-height: 60px; overflow-y: auto; font-size: 10px; margin-bottom: 10px;">No recent alerts</div>
+                </div>
+                <div class="performance-actions" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                    <button class="perf-btn optimize-btn" onclick="window.vjControl.triggerOptimization()">OPTIMIZE</button>
+                    <button class="perf-btn emergency-btn" onclick="window.vjControl.triggerEmergency()">EMERGENCY</button>
+                </div>
+            `;
+            performanceControls.insertAdjacentHTML('afterend', alertsAndActions);
+        }
+
+        // Start performance monitoring updates
+        this.startPerformanceUpdates();
+    }
+
+    startPerformanceUpdates() {
+        setInterval(() => {
+            this.updatePerformanceDisplay();
+        }, 1000); // Update every second
+    }
+
+    updatePerformanceDisplay() {
+        try {
+            // Get performance data from the monitor (handle cross-tab access)
+            const report = this.getPerformanceReport();
+            
+            // Update existing FPS display
+            const existingFpsDisplay = document.getElementById('fpsDisplay');
+            if (existingFpsDisplay && report.fps) {
+                existingFpsDisplay.textContent = Math.round(report.fps.current || 0);
+            }
+
+            // Update memory
+            const memoryDisplay = document.getElementById('memory-display');
+            if (memoryDisplay && report.memory) {
+                memoryDisplay.textContent = report.memory.formatted || '-- MB';
+            }
+
+            // Update DOM nodes
+            const domNodesDisplay = document.getElementById('dom-nodes-display');
+            if (domNodesDisplay && report.dom) {
+                domNodesDisplay.textContent = report.dom.totalNodes || '--';
+            }
+
+            // Update managed elements
+            const managedElementsDisplay = document.getElementById('managed-elements-display');
+            if (managedElementsDisplay && report.dom) {
+                managedElementsDisplay.textContent = report.dom.managedElements || '--';
+            }
+
+            // Update animations
+            const animationsDisplay = document.getElementById('animations-display');
+            if (animationsDisplay && report.animations) {
+                animationsDisplay.textContent = report.animations.total || '--';
+            }
+
+            // Update existing active FX display
+            const existingActiveFx = document.getElementById('activeFxDisplay');
+            if (existingActiveFx && report.animations) {
+                existingActiveFx.textContent = report.animations.total || 0;
+            }
+
+            // Update alerts
+            const alertsList = document.getElementById('alerts-list');
+            if (alertsList && report.alerts && report.alerts.recent.length > 0) {
+                alertsList.innerHTML = report.alerts.recent.slice(-5).reverse().map(alert => `
+                    <div style="color: ${alert.level === 'critical' ? '#ff4444' : '#ffaa00'}; margin-bottom: 2px; font-size: 10px;">
+                        ${alert.category}: ${alert.message} ${alert.count > 1 ? `(x${alert.count})` : ''}
+                    </div>
+                `).join('');
+            } else if (alertsList) {
+                alertsList.innerHTML = '<div style="color: #888; font-size: 10px;">No recent alerts</div>';
+            }
+        } catch (error) {
+            console.warn('Performance display update failed:', error);
+        }
+    }
+
+    getPerformanceReport() {
+        // Try to get performance data from main window via broadcast channel
+        if (window.performanceMonitor) {
+            return window.performanceMonitor.getPerformanceReport();
+        }
+        
+        // Fallback to basic metrics
+        return {
+            fps: { current: 0 },
+            memory: { formatted: '-- MB' },
+            dom: { totalNodes: 0, managedElements: 0 },
+            animations: { total: 0 },
+            intervals: { total: 0 },
+            alerts: { recent: [] }
+        };
+    }
+
+    triggerOptimization() {
+        performanceMonitor.triggerPerformanceOptimization();
+        this.flashButton(document.querySelector('.optimize-btn'));
+    }
+
+    triggerEmergency() {
+        performanceMonitor.triggerEmergencyCleanup();
+        this.flashButton(document.querySelector('.emergency-btn'));
     }
 }
 
