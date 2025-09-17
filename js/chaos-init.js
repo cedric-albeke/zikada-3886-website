@@ -20,6 +20,12 @@ import directLogoAnimation from './direct-logo-animation.js';
 import vjReceiver from './vj-receiver.js';
 import gsap from 'gsap';
 
+// Performance Management Imports
+import performanceElementManager from './performance-element-manager.js';
+import intervalManager from './interval-manager.js';
+import gsapAnimationRegistry from './gsap-animation-registry.js';
+import performanceMonitor from './performance-monitor.js';
+
 class ChaosInitializer {
     constructor() {
         this.isReady = false;
@@ -27,6 +33,18 @@ class ChaosInitializer {
         this.fps = 60;
         this.fpsHistory = [];
         this.lastFrameTime = performance.now();
+        
+        // Performance management
+        this.performanceElementManager = performanceElementManager;
+        this.intervalManager = intervalManager;
+        this.gsapRegistry = gsapAnimationRegistry;
+        this.performanceMonitor = performanceMonitor;
+        
+        // Track managed intervals and elements for cleanup
+        this.managedIntervals = [];
+        this.managedElements = [];
+        
+        console.log('🚀 ChaosInitializer created with performance management');
     }
 
     init() {
@@ -773,24 +791,35 @@ class ChaosInitializer {
     }
 
     startAnimationWatchdog() {
-        // More aggressive watchdog - check every 10 seconds
+        // Performance-aware watchdog - monitors but doesn't force new animations
         let checkCount = 0;
 
-        setInterval(() => {
+        // Use managed interval to prevent memory leaks
+        const watchdogInterval = this.intervalManager.createInterval(() => {
             checkCount++;
-            const verbose = checkCount % 6 === 0; // Log every minute
+            const verbose = checkCount % 18 === 0; // Log every 3 minutes instead of 1 minute
+            
+            // Get current performance metrics
+            const performanceStats = this.performanceMonitor.metrics;
+            const shouldSkipOptimizations = performanceStats.fps < 30 || 
+                                          performanceStats.managedElements > 100;
 
-            // Clean up any stuck grey filters every 30 seconds
-            if (checkCount % 3 === 0) {
+            if (shouldSkipOptimizations) {
+                console.log('⚠️ Skipping watchdog optimizations due to performance concerns');
+                return;
+            }
+
+            // Clean up any stuck grey filters every 3 minutes instead of 30 seconds
+            if (checkCount % 9 === 0) {
                 const bodyFilter = window.getComputedStyle(document.body).filter;
                 // Check for problematic filters (low saturation or high sepia)
                 if (bodyFilter && (bodyFilter.includes('saturate(0') || bodyFilter.includes('sepia'))) {
                     console.log('🔧 Clearing stuck grey/sepia filter...');
-                    gsap.to(document.body, {
+                    this.gsapRegistry.createAnimation('to', document.body, {
                         filter: 'none',
                         duration: 1,
                         ease: 'power2.inOut'
-                    });
+                    }, 'watchdog-filter-reset', 'ui');
                 }
 
                 // Clean up stuck blackout overlays - don't remove, just reset
@@ -807,7 +836,7 @@ class ChaosInitializer {
                     });
                 }
 
-                // Also check for orphaned blackout elements but keep the main one
+                // Clean up duplicate blackout elements
                 const allBlackouts = document.querySelectorAll('.matrix-blackout');
                 if (allBlackouts.length > 1) {
                     console.log('🔧 Removing duplicate blackout elements...');
@@ -820,57 +849,47 @@ class ChaosInitializer {
                 }
             }
 
-            // Check if random animations are running
-            if (randomAnimations) {
-                if (!randomAnimations.isRunning) {
-                    console.log('🔧 Restarting random animations...');
-                    randomAnimations.isRunning = true;
-                    randomAnimations.triggerRandomAnimation();
-                } else if (verbose) {
-                    // Force trigger new animation periodically to keep things fresh
-                    randomAnimations.triggerRandomAnimation();
-                }
+            // REMOVED: Force triggering of random animations - this was causing the performance issues
+            // Only restart if completely stopped (much less aggressive)
+            if (randomAnimations && !randomAnimations.isRunning) {
+                console.log('🔧 Restarting stopped random animations...');
+                randomAnimations.isRunning = true;
+                // Don't force trigger immediately
             }
 
-            // Check if extended animations are running
-            if (extendedAnimations) {
-                if (!extendedAnimations.isRunning) {
-                    console.log('🔧 Restarting extended animations...');
-                    extendedAnimations.isRunning = true;
-                    extendedAnimations.runRandomEffect();
-                } else if (verbose) {
-                    // Force trigger new effect periodically
-                    extendedAnimations.runRandomEffect();
-                }
+            if (extendedAnimations && !extendedAnimations.isRunning) {
+                console.log('🔧 Restarting stopped extended animations...');
+                extendedAnimations.isRunning = true;
+                // Don't force trigger immediately
             }
 
-            // Check if phase animations are running
+            // Check if phase animations are completely stopped
             if (!this.phaseRunning) {
                 console.log('🔧 Restarting phase animations...');
                 this.phaseRunning = true;
                 this.startAnimationPhases();
             }
 
-            // Ensure background animator is running
+            // Only restart if truly not initialized
             if (backgroundAnimator && !backgroundAnimator.initialized) {
                 console.log('🔧 Restarting background animator...');
                 backgroundAnimator.init();
                 backgroundAnimator.startGlitchSequence();
             }
 
-            // Ensure enhanced logo animator is running
             if (enhancedLogoAnimator && !enhancedLogoAnimator.isInitialized) {
                 console.log('🔧 Restarting enhanced logo animator...');
                 enhancedLogoAnimator.init();
             }
 
-            // Trigger random special logo animation occasionally
-            if (enhancedLogoAnimator && enhancedLogoAnimator.isInitialized && Math.random() < 0.1) {
-                enhancedLogoAnimator.triggerRandomSpecial();
-            }
+            // REMOVED: Random special logo animation trigger - was creating too many elements
 
-            // Removed verbose watchdog logging for performance
-        }, 10000); // Check every 10 seconds instead of 30
+            if (verbose) {
+                console.log('🔍 Watchdog check completed - performance preserved');
+            }
+        }, 20000, 'animation-watchdog', { category: 'system', maxAge: 3600000 }); // 20 seconds, 1 hour max age
+
+        this.managedIntervals.push(watchdogInterval);
     }
 
     phaseIntense() {
@@ -1083,15 +1102,26 @@ class ChaosInitializer {
             });
         };
 
-        // Periodic glitch lines
-        setInterval(() => {
-            if (Math.random() > 0.8) {
+        // Periodic glitch lines with performance controls
+        const glitchLineInterval = this.intervalManager.createInterval(() => {
+            // Check performance before creating glitch lines
+            const performanceStats = this.performanceMonitor.metrics;
+            if (performanceStats.fps < 25 || performanceStats.managedElements > 130) {
+                return; // Skip this cycle if performance is poor
+            }
+            
+            if (Math.random() > 0.85) { // Reduced frequency from 0.8 to 0.85
                 createGlitchLine();
-                if (Math.random() > 0.5) {
-                    setTimeout(createGlitchLine, 50);
+                if (Math.random() > 0.7) { // Reduced from 0.5 to 0.7
+                    setTimeout(createGlitchLine, 75); // Increased delay from 50 to 75ms
                 }
             }
-        }, 3000);
+        }, 4500, 'glitch-lines', { // Increased interval from 3000 to 4500ms
+            category: 'effect',
+            maxAge: 200000 // 3.3 minutes max age
+        });
+        
+        this.managedIntervals.push(glitchLineInterval);
     }
 
     // Ensure cicada logo never goes too transparent
@@ -1242,12 +1272,23 @@ class ChaosInitializer {
             document.body.appendChild(artifact);
         };
 
-        // Create artifacts periodically
-        setInterval(() => {
-            if (Math.random() > 0.7) {
+        // Create artifacts periodically with managed interval and limits
+        const artifactInterval = this.intervalManager.createInterval(() => {
+            // Check performance before creating artifacts
+            const performanceStats = this.performanceMonitor.metrics;
+            if (performanceStats.fps < 25 || performanceStats.managedElements > 150) {
+                return; // Skip this cycle if performance is poor
+            }
+            
+            if (Math.random() > 0.8) { // Reduced frequency from 0.7 to 0.8
                 createArtifact();
             }
-        }, 3000);
+        }, 5000, 'digital-artifacts', { // Increased interval from 3000 to 5000ms
+            category: 'effect',
+            maxAge: 300000 // 5 minutes max age
+        });
+        
+        this.managedIntervals.push(artifactInterval);
     }
 
     addEnergyField() {
@@ -1355,17 +1396,28 @@ class ChaosInitializer {
             });
         };
 
-        // Trigger waves periodically
-        setInterval(() => {
-            if (Math.random() > 0.85) {
+        // Trigger waves periodically with performance awareness
+        const corruptionWaveInterval = this.intervalManager.createInterval(() => {
+            // Check performance before creating waves
+            const performanceStats = this.performanceMonitor.metrics;
+            if (performanceStats.fps < 30 || performanceStats.managedElements > 120) {
+                return; // Skip this cycle if performance is poor
+            }
+            
+            if (Math.random() > 0.9) { // Reduced frequency from 0.85 to 0.9
                 createWave();
-                // Sometimes create multiple waves
-                if (Math.random() > 0.7) {
-                    setTimeout(createWave, 100);
-                    setTimeout(createWave, 200);
+                // Reduced multiple wave creation
+                if (Math.random() > 0.8) { // Reduced from 0.7 to 0.8
+                    setTimeout(createWave, 150);
+                    // Removed third wave to reduce element creation
                 }
             }
-        }, 4000);
+        }, 6000, 'corruption-waves', { // Increased interval from 4000 to 6000ms
+            category: 'effect',
+            maxAge: 240000 // 4 minutes max age
+        });
+        
+        this.managedIntervals.push(corruptionWaveInterval);
     }
 
     addQuantumFluctuations() {
@@ -1433,12 +1485,24 @@ class ChaosInitializer {
             );
         };
 
-        // Create particles periodically
-        setInterval(() => {
-            if (Math.random() > 0.5) {
+        // Create particles periodically with strict performance controls
+        const quantumParticleInterval = this.intervalManager.createInterval(() => {
+            // Strict performance checks - quantum particles are expensive
+            const performanceStats = this.performanceMonitor.metrics;
+            if (performanceStats.fps < 35 || performanceStats.managedElements > 100) {
+                return; // Skip this cycle if performance is poor
+            }
+            
+            // Much more conservative particle creation
+            if (Math.random() > 0.75) { // Reduced frequency from 0.5 to 0.75
                 createParticle();
             }
-        }, 500);
+        }, 2000, 'quantum-particles', { // Increased interval from 500ms to 2000ms (4x slower!)
+            category: 'particle',
+            maxAge: 180000 // 3 minutes max age
+        });
+        
+        this.managedIntervals.push(quantumParticleInterval);
     }
 
     phaseMinimal() {
@@ -1743,22 +1807,84 @@ class ChaosInitializer {
     }
 
     destroy() {
+        console.log('💀 Destroying ChaosInitializer and all performance systems...');
+        
         this.phaseRunning = false;
+        
+        // Destroy performance management systems
+        if (this.performanceMonitor) {
+            this.performanceMonitor.destroy();
+        }
+        
+        // Clear all managed intervals
+        this.managedIntervals.forEach(interval => {
+            if (interval && interval.clear) {
+                interval.clear();
+            }
+        });
+        this.managedIntervals = [];
+        
+        // Emergency cleanup of all performance systems
+        if (this.performanceElementManager) {
+            this.performanceElementManager.emergencyCleanup();
+        }
+        
+        if (this.gsapRegistry) {
+            this.gsapRegistry.emergencyStop();
+        }
+        
+        if (this.intervalManager) {
+            this.intervalManager.emergencyStop();
+        }
+        
+        // Destroy original systems
         if (chaosEngine.isInitialized) {
             chaosEngine.destroy();
         }
-        textEffects.destroy();
-        backgroundAnimator.destroy();
-        randomAnimations.destroy();
-        extendedAnimations.destroy();
+        
+        if (textEffects && textEffects.destroy) {
+            textEffects.destroy();
+        }
+        
+        if (backgroundAnimator && backgroundAnimator.destroy) {
+            backgroundAnimator.destroy();
+        }
+        
+        if (randomAnimations && randomAnimations.destroy) {
+            randomAnimations.destroy();
+        }
+        
+        if (extendedAnimations && extendedAnimations.destroy) {
+            extendedAnimations.destroy();
+        }
 
         // Disconnect opacity observer
         if (this.opacityObserver) {
             this.opacityObserver.disconnect();
         }
 
-        // Remove added elements
-        document.querySelectorAll('.scanlines, #cyber-grid, #static-noise, .data-streams, .holographic-shimmer, .glitch-lines, .chromatic-pulse, .energy-field, .quantum-particles').forEach(el => el.remove());
+        // Enhanced element cleanup using performance selectors
+        const elementsToRemove = [
+            '.scanlines', '#cyber-grid', '#static-noise', '.data-streams', 
+            '.holographic-shimmer', '.glitch-lines', '.chromatic-pulse', 
+            '.energy-field', '.quantum-particles', '.perf-managed',
+            '[data-perf-id]', '.matrix-overlay', '.vhs-overlay'
+        ];
+        
+        elementsToRemove.forEach(selector => {
+            document.querySelectorAll(selector).forEach(el => {
+                if (el && el.parentNode) {
+                    el.parentNode.removeChild(el);
+                }
+            });
+        });
+        
+        // Force garbage collection if available
+        if (window.gc) {
+            window.gc();
+        }
+        
+        console.log('✅ ChaosInitializer destruction complete');
     }
     // New color phase implementations
     phaseSunset() {
