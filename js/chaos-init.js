@@ -17,6 +17,7 @@ import lottieAnimations from './lottie-animations.js';
 import introAnimations from './intro-animations.js';
 import beehiveBackground from './beehive-background.js';
 import directLogoAnimation from './direct-logo-animation.js';
+import vjReceiver from './vj-receiver.js';
 import gsap from 'gsap';
 
 class ChaosInitializer {
@@ -71,6 +72,7 @@ class ChaosInitializer {
         // this.runStartupSequence();
         // Start animation phases directly
         setTimeout(() => {
+            console.log('🚀 Starting animation phases...');
             this.startAnimationPhases();
         }, 2000);
 
@@ -1932,6 +1934,9 @@ class ChaosInitializer {
 // Auto-initialize
 console.log('🚀 chaos-init.js module loaded');
 const chaosInit = new ChaosInitializer();
+
+// Make chaosInit globally accessible for VJ control
+window.chaosInit = chaosInit;
 
 // Add immediate console output
 console.log('🎬 Starting chaos initialization...');

@@ -1,0 +1,680 @@
+// VJ Receiver Module - Receives control messages from control panel
+// Integrates with existing chaos engine
+
+import gsap from 'gsap';
+
+class VJReceiver {
+    constructor() {
+        this.channel = null;
+        this.isConnected = false;
+        this.currentSettings = {
+            colors: {
+                hue: 0,
+                saturation: 100,
+                brightness: 100,
+                contrast: 100
+            },
+            speed: 1.0,
+            phaseDuration: 30000,
+            effects: {
+                glitch: 0.5,
+                particles: 0.5,
+                distortion: 0.5,
+                noise: 0.5
+            },
+            scene: 'auto',
+            bpm: 120
+        };
+
+        this.activeFx = 0;
+        this.fpsMonitor = null;
+
+        this.init();
+    }
+
+    init() {
+        console.log('🎮 VJ Receiver initializing...');
+
+        // Initialize broadcast channel
+        this.initBroadcastChannel();
+
+        // Start performance monitoring
+        this.startPerformanceMonitoring();
+
+        // Hook into existing chaos system
+        this.hookIntoChaosEngine();
+    }
+
+    initBroadcastChannel() {
+        try {
+            // Create broadcast channel
+            this.channel = new BroadcastChannel('3886_vj_control');
+
+            // Listen for messages from control panel
+            this.channel.onmessage = (event) => {
+                this.handleMessage(event.data);
+            };
+
+            this.isConnected = true;
+            console.log('📡 VJ Receiver connected via BroadcastChannel');
+
+        } catch (error) {
+            console.error('Failed to initialize BroadcastChannel:', error);
+
+            // Fallback to localStorage events
+            this.initLocalStorageFallback();
+        }
+    }
+
+    initLocalStorageFallback() {
+        console.log('Using localStorage fallback for VJ control');
+
+        // Listen for storage events
+        window.addEventListener('storage', (e) => {
+            if (e.key === '3886_vj_message') {
+                const data = JSON.parse(e.newValue);
+                this.handleMessage(data);
+            }
+        });
+
+        // Override sendMessage for localStorage
+        this.sendMessage = (data) => {
+            localStorage.setItem('3886_vj_response', JSON.stringify({
+                ...data,
+                timestamp: Date.now()
+            }));
+        };
+    }
+
+    sendMessage(data) {
+        if (this.channel) {
+            this.channel.postMessage(data);
+        }
+    }
+
+    handleMessage(data) {
+        // console.log('📨 Received control message:', data);
+
+        switch(data.type) {
+            case 'control_connect':
+                this.handleConnection();
+                break;
+
+            case 'ping':
+                this.sendMessage({ type: 'pong' });
+                break;
+
+            case 'scene_change':
+                this.changeScene(data.scene);
+                break;
+
+            case 'color_update':
+                this.updateColor(data.parameter, data.value);
+                break;
+
+            case 'color_reset':
+                this.resetColors();
+                break;
+
+            case 'speed_update':
+                this.updateSpeed(data.value);
+                break;
+
+            case 'phase_duration_update':
+                this.updatePhaseDuration(data.value);
+                break;
+
+            case 'bpm_update':
+                this.updateBPM(data.bpm);
+                break;
+
+            case 'effect_intensity':
+                this.updateEffectIntensity(data.effect, data.value);
+                break;
+
+            case 'trigger_effect':
+                this.triggerEffect(data.effect);
+                break;
+
+            case 'preset_load':
+                this.loadPreset(data.preset);
+                break;
+
+            case 'performance_mode':
+                this.setPerformanceMode(data.mode);
+                break;
+
+            case 'emergency_stop':
+                this.emergencyStop();
+                break;
+
+            case 'request_performance':
+                this.sendPerformanceData();
+                break;
+
+            case 'sequence_event':
+                this.handleSequenceEvent(data);
+                break;
+        }
+    }
+
+    handleConnection() {
+        console.log('🎛️ Control panel connected');
+
+        // Send current settings
+        this.sendMessage({
+            type: 'settings_sync',
+            settings: this.currentSettings
+        });
+    }
+
+    changeScene(scene) {
+        console.log(`🎬 Changing scene to: ${scene}`);
+
+        const chaosInit = window.chaosInit;
+        if (!chaosInit) return;
+
+        if (scene === 'auto') {
+            // Resume auto phase switching
+            chaosInit.phaseRunning = true;
+            chaosInit.startAnimationPhases();
+        } else {
+            // Stop auto switching
+            chaosInit.phaseRunning = false;
+
+            // Trigger specific phase
+            switch(scene) {
+                case 'intense':
+                    chaosInit.phaseIntense();
+                    break;
+                case 'calm':
+                    chaosInit.phaseCalm();
+                    break;
+                case 'glitch':
+                    chaosInit.phaseGlitch();
+                    break;
+                case 'techno':
+                    chaosInit.phaseTechno();
+                    break;
+                case 'matrix':
+                    chaosInit.phaseMatrix();
+                    break;
+                case 'minimal':
+                    chaosInit.phaseMinimal();
+                    break;
+                case 'chaotic':
+                    chaosInit.phaseChaotic();
+                    break;
+                case 'retro':
+                    chaosInit.phaseRetro();
+                    break;
+                case 'vaporwave':
+                    chaosInit.phaseVaporwave();
+                    break;
+                case 'cyberpunk':
+                    chaosInit.phaseCyberpunk();
+                    break;
+                case 'neon':
+                    chaosInit.phaseNeon();
+                    break;
+                case 'aurora':
+                    chaosInit.phaseAurora();
+                    break;
+                case 'sunset':
+                    chaosInit.phaseSunset();
+                    break;
+                case 'ocean':
+                    chaosInit.phaseOcean();
+                    break;
+                case 'forest':
+                    chaosInit.phaseForest();
+                    break;
+                case 'fire':
+                    chaosInit.phaseFire();
+                    break;
+                case 'ice':
+                    chaosInit.phaseIce();
+                    break;
+                case 'galaxy':
+                    chaosInit.phaseGalaxy();
+                    break;
+            }
+        }
+
+        this.currentSettings.scene = scene;
+
+        // Send confirmation
+        this.sendMessage({
+            type: 'scene_changed',
+            scene: scene
+        });
+    }
+
+    updateColor(parameter, value) {
+        this.currentSettings.colors[parameter] = value;
+        this.applyColorFilter();
+    }
+
+    applyColorFilter() {
+        const { hue, saturation, brightness, contrast } = this.currentSettings.colors;
+
+        const filter = `
+            hue-rotate(${hue}deg)
+            saturate(${saturation}%)
+            brightness(${brightness}%)
+            contrast(${contrast}%)
+        `;
+
+        gsap.to(document.body, {
+            filter: filter,
+            duration: 0.3,
+            ease: 'power2.inOut'
+        });
+    }
+
+    resetColors() {
+        this.currentSettings.colors = {
+            hue: 0,
+            saturation: 100,
+            brightness: 100,
+            contrast: 100
+        };
+
+        gsap.to(document.body, {
+            filter: 'none',
+            duration: 0.5,
+            ease: 'power2.inOut'
+        });
+    }
+
+    updateSpeed(value) {
+        this.currentSettings.speed = value;
+
+        // Update GSAP global timeline scale
+        gsap.globalTimeline.timeScale(value);
+
+        // Update timing controller if available
+        if (window.timingController) {
+            window.timingController.setGlobalSpeed(value);
+        }
+    }
+
+    updatePhaseDuration(value) {
+        this.currentSettings.phaseDuration = value;
+
+        // Update phase switching interval
+        const chaosInit = window.chaosInit;
+        if (chaosInit) {
+            // This would need implementation in chaos-init.js
+            console.log(`Phase duration updated to ${value}ms`);
+        }
+    }
+
+    updateBPM(bpm) {
+        this.currentSettings.bpm = bpm;
+
+        // Calculate beat interval
+        const beatInterval = 60000 / bpm;
+
+        // Pulse effects to BPM
+        if (window.enhancedLogoAnimator) {
+            // Sync logo pulse to BPM
+            gsap.to('.logo-text-wrapper, .image-wrapper', {
+                scale: 1.02,
+                duration: beatInterval / 2000,
+                yoyo: true,
+                repeat: -1,
+                ease: 'sine.inOut'
+            });
+        }
+    }
+
+    updateEffectIntensity(effect, value) {
+        this.currentSettings.effects[effect] = value;
+
+        switch(effect) {
+            case 'glitch':
+                this.updateGlitchIntensity(value);
+                break;
+            case 'particles':
+                this.updateParticleIntensity(value);
+                break;
+            case 'distortion':
+                this.updateDistortionIntensity(value);
+                break;
+            case 'noise':
+                this.updateNoiseIntensity(value);
+                break;
+        }
+    }
+
+    updateGlitchIntensity(value) {
+        // Adjust glitch pass intensity
+        if (window.chaosEngine && window.chaosEngine.glitchPass) {
+            window.chaosEngine.glitchPass.enabled = value > 0.1;
+            // Additional glitch parameters would go here
+        }
+    }
+
+    updateParticleIntensity(value) {
+        // Adjust particle system
+        if (window.chaosEngine && window.chaosEngine.particles) {
+            window.chaosEngine.particles.material.opacity = value;
+            window.chaosEngine.particles.material.size = 0.5 * value;
+        }
+    }
+
+    updateDistortionIntensity(value) {
+        // Adjust distortion effects
+        const distortionElements = document.querySelectorAll('.image-wrapper, .logo-text-wrapper');
+        distortionElements.forEach(el => {
+            el.style.filter = `blur(${value * 2}px)`;
+        });
+    }
+
+    updateNoiseIntensity(value) {
+        // Adjust static noise
+        const noiseCanvas = document.getElementById('static-noise');
+        if (noiseCanvas) {
+            noiseCanvas.style.opacity = value * 0.03; // Scale to appropriate range
+        }
+    }
+
+    triggerEffect(effect) {
+        console.log(`⚡ Triggering effect: ${effect}`);
+        this.activeFx++;
+
+        switch(effect) {
+            case 'strobe':
+                this.triggerStrobe();
+                break;
+            case 'blackout':
+                this.triggerBlackout();
+                break;
+            case 'whiteout':
+                this.triggerWhiteout();
+                break;
+            case 'rgbsplit':
+                this.triggerRGBSplit();
+                break;
+            case 'shake':
+                this.triggerShake();
+                break;
+            case 'pulse':
+                this.triggerPulse();
+                break;
+            case 'matrix-rain':
+                this.triggerMatrixRain();
+                break;
+            case 'cosmic':
+                this.triggerCosmicBurst();
+                break;
+        }
+
+        // Decrement active effects counter after effect duration
+        setTimeout(() => {
+            this.activeFx--;
+        }, 2000);
+    }
+
+    triggerStrobe() {
+        const strobe = document.createElement('div');
+        strobe.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: white;
+            pointer-events: none;
+            z-index: 10000;
+        `;
+        document.body.appendChild(strobe);
+
+        // Strobe animation
+        gsap.to(strobe, {
+            opacity: 0,
+            duration: 0.05,
+            repeat: 10,
+            yoyo: true,
+            ease: 'none',
+            onComplete: () => strobe.remove()
+        });
+    }
+
+    triggerBlackout() {
+        const blackout = document.createElement('div');
+        blackout.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: black;
+            pointer-events: none;
+            z-index: 10000;
+            opacity: 0;
+        `;
+        document.body.appendChild(blackout);
+
+        gsap.timeline()
+            .to(blackout, { opacity: 1, duration: 0.2 })
+            .to(blackout, { opacity: 0, duration: 0.2, delay: 1 })
+            .call(() => blackout.remove());
+    }
+
+    triggerWhiteout() {
+        const whiteout = document.createElement('div');
+        whiteout.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: white;
+            pointer-events: none;
+            z-index: 10000;
+            opacity: 0;
+        `;
+        document.body.appendChild(whiteout);
+
+        gsap.timeline()
+            .to(whiteout, { opacity: 1, duration: 0.1 })
+            .to(whiteout, { opacity: 0, duration: 1.5, ease: 'power2.out' })
+            .call(() => whiteout.remove());
+    }
+
+    triggerRGBSplit() {
+        const originalFilter = document.body.style.filter;
+
+        gsap.timeline()
+            .to(document.body, {
+                filter: 'hue-rotate(120deg) saturate(2)',
+                duration: 0.1
+            })
+            .to(document.body, {
+                filter: 'hue-rotate(-120deg) saturate(2)',
+                duration: 0.1
+            })
+            .to(document.body, {
+                filter: originalFilter || 'none',
+                duration: 0.3,
+                ease: 'power2.out'
+            });
+    }
+
+    triggerShake() {
+        gsap.to(document.body, {
+            x: '+=10',
+            y: '+=10',
+            duration: 0.05,
+            repeat: 20,
+            yoyo: true,
+            ease: 'none',
+            onComplete: () => {
+                gsap.set(document.body, { x: 0, y: 0 });
+            }
+        });
+    }
+
+    triggerPulse() {
+        gsap.to('.logo-text-wrapper, .image-wrapper, .text-3886', {
+            scale: 1.2,
+            duration: 0.3,
+            yoyo: true,
+            repeat: 1,
+            ease: 'power2.inOut'
+        });
+    }
+
+    triggerMatrixRain() {
+        if (window.matrixMessages && window.matrixMessages.triggerIntenseMessage) {
+            window.matrixMessages.triggerIntenseMessage();
+        }
+    }
+
+    triggerCosmicBurst() {
+        if (window.lottieAnimations && window.lottieAnimations.triggerCosmicBurst) {
+            window.lottieAnimations.triggerCosmicBurst();
+        }
+    }
+
+    loadPreset(preset) {
+        console.log('📂 Loading preset:', preset);
+
+        // Apply all preset values
+        if (preset.hue !== undefined) this.updateColor('hue', preset.hue);
+        if (preset.saturation !== undefined) this.updateColor('saturation', preset.saturation);
+        if (preset.brightness !== undefined) this.updateColor('brightness', preset.brightness);
+        if (preset.contrast !== undefined) this.updateColor('contrast', preset.contrast);
+
+        if (preset.speed !== undefined) this.updateSpeed(preset.speed / 100);
+        if (preset.phaseDuration !== undefined) this.updatePhaseDuration(preset.phaseDuration * 1000);
+
+        if (preset.glitch !== undefined) this.updateEffectIntensity('glitch', preset.glitch / 100);
+        if (preset.particles !== undefined) this.updateEffectIntensity('particles', preset.particles / 100);
+        if (preset.distortion !== undefined) this.updateEffectIntensity('distortion', preset.distortion / 100);
+        if (preset.noise !== undefined) this.updateEffectIntensity('noise', preset.noise / 100);
+
+        if (preset.scene !== undefined) this.changeScene(preset.scene);
+    }
+
+    setPerformanceMode(mode) {
+        console.log(`🎮 Setting performance mode: ${mode}`);
+
+        if (window.ChaosControl && window.ChaosControl.setPerformance) {
+            window.ChaosControl.setPerformance(mode);
+        }
+
+        if (window.performanceManager) {
+            window.performanceManager.setMode(mode);
+        }
+    }
+
+    emergencyStop() {
+        console.log('🚨 EMERGENCY STOP!');
+
+        // Stop all animations
+        gsap.killTweensOf('*');
+
+        // Reset everything
+        this.resetColors();
+        this.updateSpeed(1);
+
+        // Disable all effects
+        Object.keys(this.currentSettings.effects).forEach(effect => {
+            this.updateEffectIntensity(effect, 0);
+        });
+
+        // Stop phase animations
+        if (window.chaosInit) {
+            window.chaosInit.phaseRunning = false;
+        }
+
+        // Clear any overlays
+        document.querySelectorAll('div[style*="position: fixed"]').forEach(el => {
+            if (!el.classList.contains('control-panel')) {
+                el.remove();
+            }
+        });
+
+        // Reset to calm state
+        setTimeout(() => {
+            this.changeScene('calm');
+        }, 1000);
+    }
+
+    handleSequenceEvent(data) {
+        // Replay recorded events
+        switch(data.originalType) {
+            case 'trigger':
+                this.triggerEffect(data.data);
+                break;
+            case 'scene':
+                this.changeScene(data.data);
+                break;
+            // Add more as needed
+        }
+    }
+
+    startPerformanceMonitoring() {
+        // Monitor FPS
+        let lastTime = performance.now();
+        let frames = 0;
+        let fps = 60;
+
+        const measureFPS = () => {
+            frames++;
+            const currentTime = performance.now();
+
+            if (currentTime >= lastTime + 1000) {
+                fps = (frames * 1000) / (currentTime - lastTime);
+                frames = 0;
+                lastTime = currentTime;
+            }
+
+            this.currentFPS = fps;
+            requestAnimationFrame(measureFPS);
+        };
+
+        requestAnimationFrame(measureFPS);
+    }
+
+    sendPerformanceData() {
+        const data = {
+            type: 'performance_update',
+            fps: this.currentFPS || 60,
+            activeFx: this.activeFx,
+            cpu: 0 // Would need actual CPU monitoring
+        };
+
+        // Get FPS from ChaosControl if available
+        if (window.ChaosControl && window.ChaosControl.getFPS) {
+            data.fps = window.ChaosControl.getFPS();
+        }
+
+        this.sendMessage(data);
+    }
+
+    hookIntoChaosEngine() {
+        // Wait for chaos engine to be ready
+        const checkChaosEngine = setInterval(() => {
+            if (window.chaosInit || window.ChaosControl) {
+                clearInterval(checkChaosEngine);
+                console.log('✅ VJ Receiver hooked into Chaos Engine');
+
+                // Store reference to chaos init
+                window.chaosInit = window.chaosInit || {};
+
+                // Add VJ control to window for debugging
+                window.vjReceiver = this;
+            }
+        }, 100);
+    }
+}
+
+// Auto-initialize
+const vjReceiver = new VJReceiver();
+
+// Export for module usage
+export default vjReceiver;

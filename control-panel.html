@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3886 VJ Control Panel</title>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <link href="css/control-panel.css" rel="stylesheet">
+</head>
+<body>
+    <div class="control-panel">
+        <!-- Header -->
+        <header class="panel-header">
+            <h1>3886 VJ CONTROL</h1>
+            <div class="connection-status" id="connectionStatus">
+                <span class="status-dot"></span>
+                <span class="status-text">DISCONNECTED</span>
+            </div>
+            <button class="emergency-stop" id="emergencyStop">KILL ALL</button>
+        </header>
+
+        <!-- Main Control Grid -->
+        <div class="control-grid">
+
+            <!-- Scene Selection -->
+            <section class="control-section scene-control">
+                <h2>SCENE SELECT</h2>
+                <div class="scene-grid">
+                    <button class="scene-btn" data-scene="intense">INTENSE</button>
+                    <button class="scene-btn" data-scene="calm">CALM</button>
+                    <button class="scene-btn" data-scene="glitch">GLITCH</button>
+                    <button class="scene-btn" data-scene="techno">TECHNO</button>
+                    <button class="scene-btn" data-scene="matrix">MATRIX</button>
+                    <button class="scene-btn" data-scene="minimal">MINIMAL</button>
+                    <button class="scene-btn" data-scene="chaotic">CHAOTIC</button>
+                    <button class="scene-btn" data-scene="retro">RETRO</button>
+                    <button class="scene-btn" data-scene="vaporwave">VAPORWAVE</button>
+                    <button class="scene-btn" data-scene="cyberpunk">CYBERPUNK</button>
+                    <button class="scene-btn" data-scene="neon">NEON</button>
+                    <button class="scene-btn" data-scene="aurora">AURORA</button>
+                    <button class="scene-btn" data-scene="sunset">SUNSET</button>
+                    <button class="scene-btn" data-scene="ocean">OCEAN</button>
+                    <button class="scene-btn" data-scene="forest">FOREST</button>
+                    <button class="scene-btn" data-scene="fire">FIRE</button>
+                    <button class="scene-btn" data-scene="ice">ICE</button>
+                    <button class="scene-btn" data-scene="galaxy">GALAXY</button>
+                    <button class="scene-btn scene-auto" data-scene="auto">AUTO</button>
+                </div>
+            </section>
+
+            <!-- Color Controls -->
+            <section class="control-section color-control">
+                <h2>COLOR MATRIX</h2>
+                <div class="slider-group">
+                    <div class="slider-container">
+                        <label>HUE</label>
+                        <input type="range" class="control-slider" id="hueSlider" min="-180" max="180" value="0">
+                        <span class="slider-value">0°</span>
+                    </div>
+                    <div class="slider-container">
+                        <label>SATURATION</label>
+                        <input type="range" class="control-slider" id="saturationSlider" min="0" max="200" value="100">
+                        <span class="slider-value">100%</span>
+                    </div>
+                    <div class="slider-container">
+                        <label>BRIGHTNESS</label>
+                        <input type="range" class="control-slider" id="brightnessSlider" min="50" max="150" value="100">
+                        <span class="slider-value">100%</span>
+                    </div>
+                    <div class="slider-container">
+                        <label>CONTRAST</label>
+                        <input type="range" class="control-slider" id="contrastSlider" min="50" max="150" value="100">
+                        <span class="slider-value">100%</span>
+                    </div>
+                </div>
+                <button class="reset-btn" id="resetColors">RESET</button>
+            </section>
+
+            <!-- Animation Speed -->
+            <section class="control-section speed-control">
+                <h2>TEMPO</h2>
+                <div class="slider-group">
+                    <div class="slider-container">
+                        <label>GLOBAL SPEED</label>
+                        <input type="range" class="control-slider" id="speedSlider" min="10" max="200" value="100">
+                        <span class="slider-value">100%</span>
+                    </div>
+                    <div class="slider-container">
+                        <label>PHASE DURATION</label>
+                        <input type="range" class="control-slider" id="phaseDurationSlider" min="5" max="60" value="30">
+                        <span class="slider-value">30s</span>
+                    </div>
+                </div>
+                <div class="bpm-display">
+                    <label>BPM TAP</label>
+                    <button class="tap-btn" id="tapBPM">TAP</button>
+                    <span class="bpm-value">120</span>
+                </div>
+            </section>
+
+            <!-- Effects Intensity -->
+            <section class="control-section effects-control">
+                <h2>FX INTENSITY</h2>
+                <div class="slider-group">
+                    <div class="slider-container">
+                        <label>GLITCH</label>
+                        <input type="range" class="control-slider" id="glitchSlider" min="0" max="100" value="50">
+                        <span class="slider-value">50%</span>
+                    </div>
+                    <div class="slider-container">
+                        <label>PARTICLES</label>
+                        <input type="range" class="control-slider" id="particlesSlider" min="0" max="100" value="50">
+                        <span class="slider-value">50%</span>
+                    </div>
+                    <div class="slider-container">
+                        <label>DISTORTION</label>
+                        <input type="range" class="control-slider" id="distortionSlider" min="0" max="100" value="50">
+                        <span class="slider-value">50%</span>
+                    </div>
+                    <div class="slider-container">
+                        <label>NOISE</label>
+                        <input type="range" class="control-slider" id="noiseSlider" min="0" max="100" value="50">
+                        <span class="slider-value">50%</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Special Effects Triggers -->
+            <section class="control-section trigger-control">
+                <h2>TRIGGER FX</h2>
+                <div class="trigger-grid">
+                    <button class="trigger-btn" data-effect="strobe">STROBE</button>
+                    <button class="trigger-btn" data-effect="blackout">BLACKOUT</button>
+                    <button class="trigger-btn" data-effect="whiteout">WHITEOUT</button>
+                    <button class="trigger-btn" data-effect="rgbsplit">RGB SPLIT</button>
+                    <button class="trigger-btn" data-effect="shake">SHAKE</button>
+                    <button class="trigger-btn" data-effect="pulse">PULSE</button>
+                    <button class="trigger-btn" data-effect="matrix-rain">MATRIX</button>
+                    <button class="trigger-btn" data-effect="cosmic">COSMIC</button>
+                </div>
+            </section>
+
+            <!-- Preset Manager -->
+            <section class="control-section preset-control">
+                <h2>PRESETS</h2>
+                <div class="preset-grid">
+                    <button class="preset-btn" data-preset="1">PRESET 1</button>
+                    <button class="preset-btn" data-preset="2">PRESET 2</button>
+                    <button class="preset-btn" data-preset="3">PRESET 3</button>
+                    <button class="preset-btn" data-preset="4">PRESET 4</button>
+                </div>
+                <div class="preset-actions">
+                    <button class="save-preset-btn">SAVE</button>
+                    <button class="load-preset-btn">LOAD</button>
+                </div>
+            </section>
+
+            <!-- Performance Monitor -->
+            <section class="control-section monitor-section">
+                <h2>PERFORMANCE</h2>
+                <div class="monitor-display">
+                    <div class="monitor-stat">
+                        <label>FPS</label>
+                        <span id="fpsDisplay">60</span>
+                    </div>
+                    <div class="monitor-stat">
+                        <label>CPU</label>
+                        <span id="cpuDisplay">--</span>
+                    </div>
+                    <div class="monitor-stat">
+                        <label>ACTIVE FX</label>
+                        <span id="activeFxDisplay">0</span>
+                    </div>
+                    <div class="monitor-stat">
+                        <label>MODE</label>
+                        <span id="modeDisplay">AUTO</span>
+                    </div>
+                </div>
+                <div class="performance-controls">
+                    <button class="perf-btn" data-mode="low">LOW</button>
+                    <button class="perf-btn" data-mode="auto">AUTO</button>
+                    <button class="perf-btn" data-mode="high">HIGH</button>
+                </div>
+            </section>
+        </div>
+
+        <!-- Timeline/Sequencer (optional future enhancement) -->
+        <div class="timeline-section">
+            <h2>SEQUENCE</h2>
+            <div class="timeline-container">
+                <canvas id="timeline" width="1200" height="100"></canvas>
+            </div>
+            <div class="timeline-controls">
+                <button class="timeline-btn" id="playSequence">▶</button>
+                <button class="timeline-btn" id="stopSequence">■</button>
+                <button class="timeline-btn" id="recordSequence">●</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/control-panel.js" type="module"></script>
+</body>
+</html>

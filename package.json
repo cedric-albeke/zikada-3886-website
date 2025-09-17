@@ -21,7 +21,7 @@
   "license": "UNLICENSED",
   "devDependencies": {
     "http-server": "^14.1.1",
-    "vite": "^5.4.11"
+    "vite": "^5.4.20"
   },
   "dependencies": {
     "@lottiefiles/lottie-player": "^2.0.12",
