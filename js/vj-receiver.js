@@ -264,24 +264,42 @@ class VJReceiver {
 
     updateColor(parameter, value) {
         this.currentSettings.colors[parameter] = value;
-        this.applyColorFilter();
+        
+        // Debounce color filter application to prevent rapid changes that cause grey flashes
+        if (this.colorFilterTimeout) {
+            clearTimeout(this.colorFilterTimeout);
+        }
+        
+        this.colorFilterTimeout = setTimeout(() => {
+            this.applyColorFilter();
+        }, 50); // 50ms debounce
     }
 
     applyColorFilter() {
         const { hue, saturation, brightness, contrast } = this.currentSettings.colors;
 
-        const filter = `
-            hue-rotate(${hue}deg)
-            saturate(${saturation}%)
-            brightness(${brightness}%)
-            contrast(${contrast}%)
-        `;
+        // Construct filter with safe minimum values to prevent grey flashes
+        const safeHue = Math.max(-180, Math.min(180, hue || 0));
+        const safeSaturation = Math.max(80, Math.min(200, saturation || 100)); // Minimum 80% to prevent grey
+        const safeBrightness = Math.max(95, Math.min(150, brightness || 100)); // Minimum 95% to prevent grey
+        const safeContrast = Math.max(80, Math.min(150, contrast || 100)); // Minimum 80% to prevent washout
 
-        gsap.to(document.body, {
-            filter: filter,
-            duration: 0.3,
-            ease: 'power2.inOut'
-        });
+        const safeFilter = `hue-rotate(${safeHue}deg) saturate(${safeSaturation}%) brightness(${safeBrightness}%) contrast(${safeContrast}%)`;
+
+        // Use safe filter application if chaos engine is available
+        if (window.chaosInit && window.chaosInit.safeApplyFilter) {
+            window.chaosInit.safeApplyFilter(document.body, safeFilter, 0.2);
+        } else {
+            // Fallback with immediate kill of existing transitions
+            gsap.killTweensOf(document.body, 'filter');
+            gsap.to(document.body, {
+                filter: safeFilter,
+                duration: 0.2, // Faster transition for responsiveness
+                ease: 'power2.inOut'
+            });
+        }
+        
+        console.log(`🎨 Applied safe color filter: ${safeFilter}`);
     }
 
     resetColors() {
