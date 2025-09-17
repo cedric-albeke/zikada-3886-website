@@ -21,10 +21,21 @@ class EmergencyCleanup {
         this.isRunning = true;
         console.log('🚨 EXECUTING EMERGENCY CLEANUP...');
 
-        // 1. Kill ALL GSAP animations immediately
-        console.log('🗑️ Killing all GSAP animations...');
-        gsap.killTweensOf('*');
-        gsap.globalTimeline.clear();
+        // 1. Kill only non-essential GSAP animations
+        console.log('🗑️ Killing non-essential GSAP animations...');
+        if (window.earlyGSAPRegistry) {
+            window.earlyGSAPRegistry.emergencyStop(); // This now preserves essential animations
+        } else {
+            // Fallback: kill animations on temporary elements only
+            const temporarySelectors = [
+                '.matrix-overlay', '.vhs-overlay', '.flash-overlay', 
+                '.phase-overlay', '.glitch-overlay', '[data-perf-id]'
+            ];
+            temporarySelectors.forEach(selector => {
+                const elements = document.querySelectorAll(selector);
+                elements.forEach(el => gsap.killTweensOf(el));
+            });
+        }
 
         // 2. Remove problematic DOM elements
         console.log('🗑️ Removing problematic DOM elements...');
@@ -146,36 +157,44 @@ class EmergencyCleanup {
     }
 
     /**
-     * Disable heavy effects temporarily
+     * Disable heavy effects temporarily (but preserve essential animations)
      */
     disableHeavyEffects() {
-        // Add performance-limiting CSS
+        // Remove existing emergency limits first
+        const existingStyle = document.getElementById('emergency-performance-limits');
+        if (existingStyle) existingStyle.remove();
+        
+        // Add targeted performance-limiting CSS
         const perfStyle = document.createElement('style');
         perfStyle.id = 'emergency-performance-limits';
         perfStyle.textContent = `
-            /* Emergency performance limits */
+            /* Emergency performance limits - target only heavy effects */
             .quantum-particles { display: none !important; }
-            .data-streams { display: none !important; }
             .holographic-shimmer { display: none !important; }
             .chromatic-pulse { opacity: 0.001 !important; }
             .energy-field { display: none !important; }
-            #static-noise { opacity: 0.001 !important; }
             
-            /* Reduce animation complexity */
-            * {
-                animation-duration: 2s !important;
-                transition-duration: 0.3s !important;
-            }
+            /* Reduce static noise but keep some */
+            #static-noise { opacity: 0.005 !important; }
             
-            /* Disable expensive filters temporarily */
-            .image-wrapper {
-                filter: none !important;
+            /* Keep data streams but reduce opacity */
+            .data-streams { opacity: 0.3 !important; }
+            
+            /* PRESERVE essential animations */
+            .scanlines { display: block !important; opacity: 0.001 !important; }
+            .logo-text, .image-wrapper, .bg { animation-play-state: running !important; }
+            #cyber-grid { display: block !important; opacity: 0.002 !important; }
+            
+            /* Reduce complexity of temporary effects only */
+            .matrix-overlay, .vhs-overlay, .flash-overlay {
+                animation-duration: 1s !important;
+                transition-duration: 0.2s !important;
             }
         `;
         
         document.head.appendChild(perfStyle);
         
-        console.log('🔧 Heavy effects disabled for performance');
+        console.log('🔧 Heavy effects reduced while preserving essential animations');
     }
 
     /**
