@@ -52,21 +52,31 @@ class ChaosInitializer {
     }
 
     /**
-     * Safe filter application to prevent grey screens
+     * Safe filter application to prevent grey screens with queue system
      */
     safeApplyFilter(target, filterValue, duration = 2) {
-        // Prevent filter stacking during transitions
-        if (target === document.body && this.filterTransitionInProgress) {
-            console.log('⚠️ Skipping filter application - transition in progress');
-            return;
+        // Kill any existing filter transitions to prevent stacking
+        if (target === document.body) {
+            gsap.killTweensOf(document.body, 'filter');
+            
+            // Wait a brief moment to ensure previous transition is stopped
+            setTimeout(() => {
+                this.applyFilterNow(target, filterValue, duration);
+            }, 50);
+        } else {
+            this.applyFilterNow(target, filterValue, duration);
         }
+    }
 
+    applyFilterNow(target, filterValue, duration) {
         // Validate filter to prevent problematic values
         const safeFilter = this.validateFilter(filterValue);
         
         if (target === document.body) {
             this.filterTransitionInProgress = true;
             this.currentBodyFilter = safeFilter;
+            
+            console.log(`🎨 Applying safe filter: ${safeFilter}`);
         }
 
         gsap.to(target, {
@@ -76,6 +86,16 @@ class ChaosInitializer {
             onComplete: () => {
                 if (target === document.body) {
                     this.filterTransitionInProgress = false;
+                }
+            },
+            onUpdate: () => {
+                // Check for grey flash during transition
+                if (target === document.body) {
+                    const currentStyle = window.getComputedStyle(document.body);
+                    if (currentStyle.filter && (currentStyle.filter.includes('saturate(0') || currentStyle.filter.includes('brightness(0.'))) {
+                        console.warn('⚠️ Detected potential grey flash, correcting...');
+                        gsap.set(document.body, { filter: safeFilter });
+                    }
                 }
             }
         });
@@ -87,22 +107,86 @@ class ChaosInitializer {
     validateFilter(filterValue) {
         if (!filterValue || filterValue === 'none') return 'none';
         
-        // Fix problematic filter values
+        // Fix problematic filter values aggressively
         let safeFilter = filterValue;
         
-        // Ensure brightness never goes below 0.9 (prevents grey wash)
-        safeFilter = safeFilter.replace(/brightness\(0\.[0-8]\d*\)/g, 'brightness(0.9)');
+        // Ensure brightness NEVER goes below 0.95 (very conservative to prevent any grey)
+        safeFilter = safeFilter.replace(/brightness\(0\.[0-9][0-4]?\)/g, 'brightness(0.95)');
+        safeFilter = safeFilter.replace(/brightness\(0\.8\d*\)/g, 'brightness(0.95)');
+        safeFilter = safeFilter.replace(/brightness\(0\.9[0-4]\)/g, 'brightness(0.95)');
         
-        // Ensure saturation never goes to 0 (prevents grey wash)
-        safeFilter = safeFilter.replace(/saturate\(0(\.\d+)?\)/g, 'saturate(0.8)');
+        // Ensure saturation NEVER goes below 0.9 (prevents any desaturation grey)
+        safeFilter = safeFilter.replace(/saturate\(0(\.\d+)?\)/g, 'saturate(0.9)');
+        safeFilter = safeFilter.replace(/saturate\(0\.[0-8]\d*\)/g, 'saturate(0.9)');
         
-        // Remove sepia which can cause grey tints
+        // Remove ALL sepia and grayscale filters (major grey causers)
         safeFilter = safeFilter.replace(/sepia\([^)]*\)/g, '');
+        safeFilter = safeFilter.replace(/grayscale\([^)]*\)/g, '');
         
-        // Clean up multiple spaces
-        safeFilter = safeFilter.replace(/\s+/g, ' ').trim();
+        // Ensure contrast doesn't go too low (can cause washed out grey look)
+        safeFilter = safeFilter.replace(/contrast\(0\.[0-7]\d*\)/g, 'contrast(0.8)');
+        
+        // Clean up multiple spaces and empty parentheses
+        safeFilter = safeFilter.replace(/\s+/g, ' ').replace(/\(\s*\)/g, '').trim();
+        
+        // Final safety check - if filter looks problematic, return 'none'
+        if (safeFilter.includes('brightness(0.') && !safeFilter.includes('brightness(0.9')) {
+            console.warn('⚠️ Rejecting potentially problematic filter, using none instead:', filterValue);
+            return 'none';
+        }
         
         return safeFilter;
+    }
+
+    /**
+     * Start grey flash prevention system - real-time monitoring
+     */
+    startGreyFlashPrevention() {
+        // Monitor document.body filter changes in real-time
+        const greyFlashPreventionId = setInterval(() => {
+            const bodyStyle = window.getComputedStyle(document.body);
+            const currentFilter = bodyStyle.filter;
+            
+            // Check for problematic filter values that cause grey
+            if (currentFilter && currentFilter !== 'none') {
+                let needsFix = false;
+                let fixReason = '';
+                
+                // Check for grey-causing conditions
+                if (currentFilter.includes('saturate(0') || currentFilter.includes('saturate(0.')) {
+                    const satMatch = currentFilter.match(/saturate\((0\.?\d*)\)/);
+                    if (satMatch && parseFloat(satMatch[1]) < 0.9) {
+                        needsFix = true;
+                        fixReason = 'low saturation';
+                    }
+                }
+                
+                if (currentFilter.includes('brightness(0.')) {
+                    const brightMatch = currentFilter.match(/brightness\((0\.\d+)\)/);
+                    if (brightMatch && parseFloat(brightMatch[1]) < 0.95) {
+                        needsFix = true;
+                        fixReason = 'low brightness';
+                    }
+                }
+                
+                if (currentFilter.includes('sepia') || currentFilter.includes('grayscale')) {
+                    needsFix = true;
+                    fixReason = 'sepia/grayscale';
+                }
+                
+                // Apply immediate fix if needed
+                if (needsFix) {
+                    console.warn(`🚨 Preventing grey flash: ${fixReason} detected in filter: ${currentFilter}`);
+                    const correctedFilter = this.validateFilter(currentFilter);
+                    gsap.set(document.body, { filter: correctedFilter });
+                }
+            }
+        }, 100); // Check every 100ms for real-time protection
+        
+        // Store interval ID for cleanup
+        this.greyFlashPreventionId = greyFlashPreventionId;
+        
+        console.log('🛡️ Grey flash prevention system started');
     }
 
     init() {
@@ -154,6 +238,9 @@ class ChaosInitializer {
 
         // Start animation watchdog to ensure animations never stop
         this.startAnimationWatchdog();
+
+        // Start grey flash prevention system
+        this.startGreyFlashPrevention();
     }
 
     handlePhaseChange(phase) {
@@ -1724,12 +1811,8 @@ class ChaosInitializer {
         // Phase: Vaporwave
         window.dispatchEvent(new CustomEvent('animationPhase', { detail: { phase: 'vaporwave' } }));
 
-        // Apply vaporwave color filter
-        gsap.to(document.body, {
-            filter: 'hue-rotate(45deg) saturate(1.2) contrast(0.95)',
-            duration: 2,
-            ease: 'power2.inOut'
-        });
+        // Apply vaporwave color filter safely
+        this.safeApplyFilter(document.body, 'hue-rotate(45deg) saturate(1.2) contrast(0.95)', 2);
 
         // Subtle pink/purple overlay
         const overlay = document.createElement('div');
@@ -1760,10 +1843,7 @@ class ChaosInitializer {
                 duration: 1,
                 onComplete: () => overlay.remove()
             });
-            gsap.to(document.body, {
-                filter: 'none',
-                duration: 2
-            });
+            this.safeApplyFilter(document.body, 'none', 2);
         }, 10000);
     }
 
@@ -1771,12 +1851,8 @@ class ChaosInitializer {
         // Phase: Cyberpunk
         window.dispatchEvent(new CustomEvent('animationPhase', { detail: { phase: 'cyberpunk' } }));
 
-        // Yellow/cyan color scheme
-        gsap.to(document.body, {
-            filter: 'contrast(1.1) saturate(1.1)',  // Increased saturation to prevent greying
-            duration: 2,
-            ease: 'power2.inOut'
-        });
+        // Yellow/cyan color scheme safely
+        this.safeApplyFilter(document.body, 'contrast(1.1) saturate(1.1)', 2);
 
         // Add cyberpunk grid overlay
         const grid = document.createElement('div');
@@ -1807,10 +1883,7 @@ class ChaosInitializer {
                 duration: 1,
                 onComplete: () => grid.remove()
             });
-            gsap.to(document.body, {
-                filter: 'none',
-                duration: 2
-            });
+            this.safeApplyFilter(document.body, 'none', 2);
         }, 10000);
     }
 
@@ -1818,12 +1891,8 @@ class ChaosInitializer {
         // Phase: Neon
         window.dispatchEvent(new CustomEvent('animationPhase', { detail: { phase: 'neon' } }));
 
-        // Bright neon colors
-        gsap.to(document.body, {
-            filter: 'brightness(1.1) saturate(1.5) contrast(1.1)',
-            duration: 2,
-            ease: 'power2.inOut'
-        });
+        // Bright neon colors safely
+        this.safeApplyFilter(document.body, 'brightness(1.1) saturate(1.5) contrast(1.1)', 2);
 
         // Neon glow pulses
         const neonPulse = document.createElement('div');
@@ -1852,10 +1921,7 @@ class ChaosInitializer {
 
         setTimeout(() => {
             neonPulse.remove();
-            gsap.to(document.body, {
-                filter: 'none',
-                duration: 2
-            });
+            this.safeApplyFilter(document.body, 'none', 2);
         }, 10000);
     }
 
@@ -1920,6 +1986,12 @@ class ChaosInitializer {
         if (this.watchdogIntervalId) {
             clearInterval(this.watchdogIntervalId);
             console.log('🗑️ Watchdog interval cleared');
+        }
+        
+        // Clear grey flash prevention interval
+        if (this.greyFlashPreventionId) {
+            clearInterval(this.greyFlashPreventionId);
+            console.log('🗑️ Grey flash prevention cleared');
         }
         
         // Clear all managed intervals if they exist
@@ -1999,12 +2071,8 @@ class ChaosInitializer {
         // Phase: Sunset
         window.dispatchEvent(new CustomEvent('animationPhase', { detail: { phase: 'sunset' } }));
 
-        // Warm orange/pink gradient
-        gsap.to(document.body, {
-            filter: 'hue-rotate(15deg) saturate(1.4) brightness(1.1) contrast(1.05)',
-            duration: 2.5,
-            ease: 'power2.inOut'
-        });
+        // Warm orange/pink gradient safely
+        this.safeApplyFilter(document.body, 'hue-rotate(15deg) saturate(1.4) brightness(1.1) contrast(1.05)', 2.5);
 
         // Reset after duration
         setTimeout(() => {
@@ -2020,12 +2088,8 @@ class ChaosInitializer {
         // Phase: Ocean
         window.dispatchEvent(new CustomEvent('animationPhase', { detail: { phase: 'ocean' } }));
 
-        // Deep blue/teal theme
-        gsap.to(document.body, {
-            filter: 'hue-rotate(-45deg) saturate(1.2) brightness(0.95)',
-            duration: 2.5,
-            ease: 'power2.inOut'
-        });
+        // Deep blue/teal theme safely
+        this.safeApplyFilter(document.body, 'hue-rotate(-45deg) saturate(1.2) brightness(0.95)', 2.5);
 
         setTimeout(() => {
             gsap.to(document.body, {
@@ -2040,12 +2104,8 @@ class ChaosInitializer {
         // Phase: Forest
         window.dispatchEvent(new CustomEvent('animationPhase', { detail: { phase: 'forest' } }));
 
-        // Deep green nature theme
-        gsap.to(document.body, {
-            filter: 'hue-rotate(60deg) saturate(1.1) brightness(0.98)',
-            duration: 2.5,
-            ease: 'power2.inOut'
-        });
+        // Deep green nature theme safely
+        this.safeApplyFilter(document.body, 'hue-rotate(60deg) saturate(1.1) brightness(0.98)', 2.5);
 
         setTimeout(() => {
             gsap.to(document.body, {
@@ -2060,12 +2120,8 @@ class ChaosInitializer {
         // Phase: Fire
         window.dispatchEvent(new CustomEvent('animationPhase', { detail: { phase: 'fire' } }));
 
-        // Intense red/orange
-        gsap.to(document.body, {
-            filter: 'hue-rotate(25deg) saturate(1.5) brightness(1.05) contrast(1.1)',
-            duration: 2.5,
-            ease: 'power2.inOut'
-        });
+        // Intense red/orange safely
+        this.safeApplyFilter(document.body, 'hue-rotate(25deg) saturate(1.5) brightness(1.05) contrast(1.1)', 2.5);
 
         setTimeout(() => {
             gsap.to(document.body, {
@@ -2080,12 +2136,8 @@ class ChaosInitializer {
         // Phase: Ice
         window.dispatchEvent(new CustomEvent('animationPhase', { detail: { phase: 'ice' } }));
 
-        // Cool blue/white
-        gsap.to(document.body, {
-            filter: 'hue-rotate(-30deg) saturate(1.2) brightness(1.05) contrast(1.02)',  // Increased saturation
-            duration: 2.5,
-            ease: 'power2.inOut'
-        });
+        // Cool blue/white safely
+        this.safeApplyFilter(document.body, 'hue-rotate(-30deg) saturate(1.2) brightness(1.05) contrast(1.02)', 2.5);
 
         setTimeout(() => {
             gsap.to(document.body, {
@@ -2100,12 +2152,8 @@ class ChaosInitializer {
         // Phase: Galaxy
         window.dispatchEvent(new CustomEvent('animationPhase', { detail: { phase: 'galaxy' } }));
 
-        // Deep purple/violet cosmic theme
-        gsap.to(document.body, {
-            filter: 'hue-rotate(90deg) saturate(1.3) brightness(0.95) contrast(1.1)',
-            duration: 2.5,
-            ease: 'power2.inOut'
-        });
+        // Deep purple/violet cosmic theme safely
+        this.safeApplyFilter(document.body, 'hue-rotate(90deg) saturate(1.3) brightness(0.95) contrast(1.1)', 2.5);
 
         setTimeout(() => {
             gsap.to(document.body, {
