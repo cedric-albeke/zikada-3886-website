@@ -44,7 +44,65 @@ class ChaosInitializer {
         this.managedIntervals = [];
         this.managedElements = [];
         
+        // Filter management to prevent grey screens
+        this.currentBodyFilter = 'none';
+        this.filterTransitionInProgress = false;
+        
         console.log('🚀 ChaosInitializer created with performance management');
+    }
+
+    /**
+     * Safe filter application to prevent grey screens
+     */
+    safeApplyFilter(target, filterValue, duration = 2) {
+        // Prevent filter stacking during transitions
+        if (target === document.body && this.filterTransitionInProgress) {
+            console.log('⚠️ Skipping filter application - transition in progress');
+            return;
+        }
+
+        // Validate filter to prevent problematic values
+        const safeFilter = this.validateFilter(filterValue);
+        
+        if (target === document.body) {
+            this.filterTransitionInProgress = true;
+            this.currentBodyFilter = safeFilter;
+        }
+
+        gsap.to(target, {
+            filter: safeFilter,
+            duration: duration,
+            ease: 'power2.inOut',
+            onComplete: () => {
+                if (target === document.body) {
+                    this.filterTransitionInProgress = false;
+                }
+            }
+        });
+    }
+
+    /**
+     * Validate and sanitize filter values to prevent grey screens
+     */
+    validateFilter(filterValue) {
+        if (!filterValue || filterValue === 'none') return 'none';
+        
+        // Fix problematic filter values
+        let safeFilter = filterValue;
+        
+        // Ensure brightness never goes below 0.9 (prevents grey wash)
+        safeFilter = safeFilter.replace(/brightness\(0\.[0-8]\d*\)/g, 'brightness(0.9)');
+        
+        // Ensure saturation never goes to 0 (prevents grey wash)
+        safeFilter = safeFilter.replace(/saturate\(0(\.\d+)?\)/g, 'saturate(0.8)');
+        
+        // Remove sepia which can cause grey tints
+        safeFilter = safeFilter.replace(/sepia\([^)]*\)/g, '');
+        
+        // Clean up multiple spaces
+        safeFilter = safeFilter.replace(/\s+/g, ' ').trim();
+        
+        return safeFilter;
     }
 
     init() {
@@ -782,15 +840,16 @@ class ChaosInitializer {
     }
 
     transitionOut() {
-        // REMOVED FLASH - Just smooth color transition, no overlay flash
-        // Simply reset any filters smoothly
-        gsap.to(document.body, {
-            filter: 'none',
-            duration: 2,  // Much slower transition for smoothness
-            ease: 'sine.inOut'  // Smoother easing
-        });
+        // FIXED: Use safe filter transition to prevent grey flash
+        const currentFilter = window.getComputedStyle(document.body).filter;
+        
+        // Only reset if there's actually a filter applied
+        if (currentFilter && currentFilter !== 'none') {
+            // Use safe filter reset (prevents grey flashes)
+            this.safeApplyFilter(document.body, 'none', 1.0); // Faster reset
+        }
 
-        // Also ensure no grey overlays are stuck
+        // Clean up overlays FIRST to prevent grey accumulation
         this.cleanupPhaseElements();
     }
 
@@ -822,21 +881,23 @@ class ChaosInitializer {
     }
 
     startAnimationWatchdog() {
-        // Performance-aware watchdog - monitors but doesn't force new animations
+        // Simple watchdog without performance system dependencies
         let checkCount = 0;
 
-        // Use managed interval to prevent memory leaks
-        const watchdogInterval = this.intervalManager.createInterval(() => {
+        // Use regular setInterval with proper cleanup tracking
+        const watchdogIntervalId = setInterval(() => {
             checkCount++;
-            const verbose = checkCount % 18 === 0; // Log every 3 minutes instead of 1 minute
+            const verbose = checkCount % 30 === 0; // Log every 5 minutes
             
-            // Get current performance metrics
-            const performanceStats = this.performanceMonitor.metrics;
-            const shouldSkipOptimizations = performanceStats.fps < 30 || 
-                                          performanceStats.managedElements > 100;
+            // Get basic performance check from safe monitor if available
+            let shouldSkipOptimizations = false;
+            if (window.safePerformanceMonitor) {
+                const report = window.safePerformanceMonitor.getReport();
+                shouldSkipOptimizations = report.fps.current < 25;
+            }
 
             if (shouldSkipOptimizations) {
-                console.log('⚠️ Skipping watchdog optimizations due to performance concerns');
+                console.log('⚠️ Skipping watchdog optimizations due to low FPS');
                 return;
             }
 
@@ -846,11 +907,12 @@ class ChaosInitializer {
                 // Check for problematic filters (low saturation or high sepia)
                 if (bodyFilter && (bodyFilter.includes('saturate(0') || bodyFilter.includes('sepia'))) {
                     console.log('🔧 Clearing stuck grey/sepia filter...');
-                    this.gsapRegistry.createAnimation('to', document.body, {
+                    // Use direct GSAP instead of registry (since registry might be null)
+                    gsap.to(document.body, {
                         filter: 'none',
                         duration: 1,
                         ease: 'power2.inOut'
-                    }, 'watchdog-filter-reset', 'ui');
+                    });
                 }
 
                 // Clean up stuck blackout overlays - don't remove, just reset
@@ -918,9 +980,10 @@ class ChaosInitializer {
             if (verbose) {
                 console.log('🔍 Watchdog check completed - performance preserved');
             }
-        }, 20000, 'animation-watchdog', { category: 'system', maxAge: 3600000 }); // 20 seconds, 1 hour max age
+        }, 30000); // Simple 30-second interval
 
-        this.managedIntervals.push(watchdogInterval);
+        // Store interval ID for cleanup
+        this.watchdogIntervalId = watchdogIntervalId;
     }
 
     phaseIntense() {
@@ -1017,12 +1080,8 @@ class ChaosInitializer {
 
         // REMOVED STROBE FLASH - No more flashing before color switch
 
-        // Apply techno blue color theme smoothly
-        gsap.to(document.body, {
-            filter: 'hue-rotate(-30deg) saturate(1.3) brightness(1.05)',
-            duration: 3,  // Slower for better flow
-            ease: 'sine.inOut'  // Smoother easing
-        });
+        // Apply techno blue color theme safely
+        this.safeApplyFilter(document.body, 'hue-rotate(-30deg) saturate(1.3) brightness(1.05)', 3);
 
         // Very subtle pulsing
         gsap.to('.logo-text-wrapper, .image-wrapper, .text-3886', {
@@ -1544,9 +1603,9 @@ class ChaosInitializer {
             ease: 'power2.inOut'
         });
 
-        // Subtle breathing
+        // Subtle breathing WITHOUT brightness reduction (prevents grey wash)
         gsap.to('.logo-text-wrapper, .image-wrapper, .text-3886', {
-            filter: 'brightness(0.8) contrast(0.9)',
+            opacity: 0.9, // Use opacity instead of brightness to avoid grey
             duration: 3,
             yoyo: true,
             repeat: 3,
@@ -1597,26 +1656,47 @@ class ChaosInitializer {
     phaseRetro() {
         // Phase: Retro
 
-        // Add CRT TV effect
-        const crt = document.createElement('div');
-        crt.style.cssText = `
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            z-index: 9996;
-            background: repeating-linear-gradient(
-                0deg,
-                rgba(0,0,0,0.1) 0px,
-                transparent 2px,
-                transparent 4px,
-                rgba(0,0,0,0.1) 6px
-            );
-            animation: crtFlicker 4s infinite ease-in-out;  /* Even smoother flicker */
-        `;
-        document.body.appendChild(crt);
+        // Add CRT TV effect using managed element system
+        let crt;
+        if (this.performanceElementManager) {
+            crt = this.performanceElementManager.createElement('div', 'effect', {
+                position: 'fixed',
+                top: '0',
+                left: '0',
+                width: '100%',
+                height: '100%',
+                pointerEvents: 'none',
+                zIndex: '9996',
+                background: `repeating-linear-gradient(
+                    0deg,
+                    rgba(0,0,0,0.1) 0px,
+                    transparent 2px,
+                    transparent 4px,
+                    rgba(0,0,0,0.1) 6px
+                )`,
+                animation: 'crtFlicker 4s infinite ease-in-out'
+            });
+        } else {
+            crt = document.createElement('div');
+            crt.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                pointer-events: none;
+                z-index: 9996;
+                background: repeating-linear-gradient(
+                    0deg,
+                    rgba(0,0,0,0.1) 0px,
+                    transparent 2px,
+                    transparent 4px,
+                    rgba(0,0,0,0.1) 6px
+                );
+                animation: crtFlicker 4s infinite ease-in-out;
+            `;
+            document.body.appendChild(crt);
+        }
 
         // Add style for CRT flicker
         const style = document.createElement('style');
@@ -1628,22 +1708,14 @@ class ChaosInitializer {
         `;
         document.head.appendChild(style);
 
-        // Color distortion with smooth transition
-        gsap.to(document.body, {
-            filter: 'contrast(1.1) saturate(1.1)',  // Removed sepia and increased saturation
-            duration: 1.5,
-            ease: 'power2.inOut'
-        });
+        // Color distortion with safe transition
+        this.safeApplyFilter(document.body, 'contrast(1.1) saturate(1.1)', 1.5);
 
         // Remove after phase
         setTimeout(() => {
             crt.remove();
             style.remove();
-            gsap.to(document.body, {
-                filter: 'none',
-                duration: 1.5,
-                ease: 'power2.inOut'
-            });
+            this.safeApplyFilter(document.body, 'none', 1.5);
         }, 8000);
     }
 
@@ -1844,13 +1916,21 @@ class ChaosInitializer {
             this.performanceMonitor.destroy();
         }
         
-        // Clear all managed intervals
-        this.managedIntervals.forEach(interval => {
-            if (interval && interval.clear) {
-                interval.clear();
-            }
-        });
-        this.managedIntervals = [];
+        // Clear watchdog interval
+        if (this.watchdogIntervalId) {
+            clearInterval(this.watchdogIntervalId);
+            console.log('🗑️ Watchdog interval cleared');
+        }
+        
+        // Clear all managed intervals if they exist
+        if (this.managedIntervals && this.managedIntervals.length > 0) {
+            this.managedIntervals.forEach(interval => {
+                if (interval && interval.clear) {
+                    interval.clear();
+                }
+            });
+            this.managedIntervals = [];
+        }
         
         // Emergency cleanup of all performance systems
         if (this.performanceElementManager) {
