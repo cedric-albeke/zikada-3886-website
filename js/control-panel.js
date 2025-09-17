@@ -899,8 +899,18 @@ class VJControlPanel {
     }
 
     triggerEmergency() {
-        performanceMonitor.triggerEmergencyCleanup();
+        // Send emergency cleanup to main site
+        this.sendMessage({
+            type: 'emergency_cleanup',
+            timestamp: Date.now()
+        });
+        
+        if (window.emergencyCleanup) {
+            window.emergencyCleanup.executeEmergencyCleanup();
+        }
+        
         this.flashButton(document.querySelector('.emergency-btn'));
+        console.log('🚨 Emergency cleanup triggered from control panel');
     }
 }
 

@@ -25,38 +25,71 @@ class GSAPAnimationRegistry {
      * Patch GSAP methods to automatically register animations
      */
     patchGSAPMethods() {
+        // Check if already patched
+        if (gsap._3886_patched) {
+            console.log('⚠️ GSAP already patched, skipping...');
+            return;
+        }
+
         // Store original methods
         const originalTo = gsap.to;
         const originalFrom = gsap.from;
         const originalFromTo = gsap.fromTo;
         const originalTimeline = gsap.timeline;
+        const originalSet = gsap.set;
+
+        // Store registry reference for closures
+        const registry = this;
 
         // Patch gsap.to
-        gsap.to = (targets, vars) => {
-            const tween = originalTo.call(gsap, targets, vars);
-            this.registerAnimation(tween, 'auto-to', 'effect');
+        gsap.to = function(targets, vars = {}) {
+            const tween = originalTo.call(this, targets, vars);
+            if (tween && registry) {
+                registry.registerAnimation(tween, 'auto-to', 'effect');
+            }
             return tween;
         };
 
         // Patch gsap.from
-        gsap.from = (targets, vars) => {
-            const tween = originalFrom.call(gsap, targets, vars);
-            this.registerAnimation(tween, 'auto-from', 'effect');
+        gsap.from = function(targets, vars = {}) {
+            const tween = originalFrom.call(this, targets, vars);
+            if (tween && registry) {
+                registry.registerAnimation(tween, 'auto-from', 'effect');
+            }
             return tween;
         };
 
         // Patch gsap.fromTo
-        gsap.fromTo = (targets, fromVars, toVars) => {
-            const tween = originalFromTo.call(gsap, targets, fromVars, toVars);
-            this.registerAnimation(tween, 'auto-fromTo', 'effect');
+        gsap.fromTo = function(targets, fromVars = {}, toVars = {}) {
+            const tween = originalFromTo.call(this, targets, fromVars, toVars);
+            if (tween && registry) {
+                registry.registerAnimation(tween, 'auto-fromTo', 'effect');
+            }
             return tween;
         };
 
         // Patch gsap.timeline
-        gsap.timeline = (vars = {}) => {
-            const timeline = originalTimeline.call(gsap, vars);
-            this.registerAnimation(timeline, 'auto-timeline', 'effect');
+        gsap.timeline = function(vars = {}) {
+            const timeline = originalTimeline.call(this, vars);
+            if (timeline && registry) {
+                registry.registerAnimation(timeline, 'auto-timeline', 'effect');
+            }
             return timeline;
+        };
+
+        // Patch gsap.set (static positioning, doesn't need tracking but good to know)
+        gsap.set = function(targets, vars = {}) {
+            return originalSet.call(this, targets, vars);
+        };
+
+        // Mark as patched
+        gsap._3886_patched = true;
+        gsap._3886_originalMethods = {
+            to: originalTo,
+            from: originalFrom,
+            fromTo: originalFromTo,
+            timeline: originalTimeline,
+            set: originalSet
         };
 
         console.log('🔧 GSAP methods patched for auto-registration');

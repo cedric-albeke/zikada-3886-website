@@ -148,6 +148,10 @@ class VJReceiver {
                 this.emergencyStop();
                 break;
 
+            case 'emergency_cleanup':
+                this.executeEmergencyCleanup();
+                break;
+
             case 'request_performance':
                 this.sendPerformanceData();
                 break;
@@ -602,6 +606,18 @@ class VJReceiver {
         setTimeout(() => {
             this.changeScene('calm');
         }, 1000);
+    }
+
+    executeEmergencyCleanup() {
+        console.log('🚨 VJ Receiver executing emergency cleanup...');
+        
+        // Trigger emergency cleanup if available
+        if (window.emergencyCleanup) {
+            window.emergencyCleanup.executeEmergencyCleanup();
+        }
+        
+        // Also trigger the regular emergency stop
+        this.emergencyStop();
     }
 
     handleSequenceEvent(data) {
