@@ -186,11 +186,9 @@ function disableLogoAnimation() {
   }
 }
 
-// Initialize if already enabled via URL parameter
-if (isEnabled()) {
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => enableLogoAnimation(), { once: true });
-  } else {
-    enableLogoAnimation();
-  }
+// Always initialize logo animation - part of core experience
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => enableLogoAnimation(), { once: true });
+} else {
+  enableLogoAnimation();
 }

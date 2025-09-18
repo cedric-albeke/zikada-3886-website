@@ -6,7 +6,7 @@ class FXController {
       glitch: 0.5,
       particles: 0.5,
       distortion: 0, // REMOVED from controls - only applies blur to logo elements
-      noise: 0.5,
+      noise: 0.25, // Fixed: Default to 25% to match control panel
     };
     this.globalMult = 1.0;
   }

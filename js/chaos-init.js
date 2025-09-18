@@ -66,6 +66,7 @@ class ChaosInitializer {
     setupAnimeIntegration() {
         if (typeof window === 'undefined') return;
 
+        // Always load anime.js stack - no parameter needed
         const enableFn = () => this.loadAnimeStack();
         const runAndReport = () => {
             try {
@@ -82,19 +83,9 @@ class ChaosInitializer {
             }
         };
 
-        if (this.animeEnableListener) {
-            window.removeEventListener('3886:enable-anime', this.animeEnableListener);
-        }
-
-        this.animeEnableListener = runAndReport;
-        window.__loadAnimeStack__ = runAndReport;
-
-        if (this.isAnimeFeatureEnabled()) {
-            runAndReport();
-            return;
-        }
-
-        window.addEventListener('3886:enable-anime', runAndReport, { once: true });
+        // Always load anime.js automatically
+        console.log('🎬 Auto-loading anime.js effects...');
+        runAndReport();
     }
 
     isAnimeFeatureEnabled() {

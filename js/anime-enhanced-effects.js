@@ -17,21 +17,11 @@ class AnimeEnhancedEffects {
     }
 
     init() {
-        if (!this.checkAnimeEnabled()) {
-            console.log('⚠️ Anime.js not enabled, skipping enhanced effects');
-            return;
-        }
-
+        // Always enable anime effects - part of the core experience
         this.enabled = true;
         this.setupEventListeners();
         this.initEffects();
-    }
-
-    checkAnimeEnabled() {
-        const qp = new URLSearchParams(window.location.search);
-        return qp.get('anime') === '1' ||
-               window.__ANIME_POC_ENABLED === true ||
-               localStorage.getItem('3886_anime_enabled') === '1';
+        console.log('🎨 Anime Enhanced Effects enabled automatically');
     }
 
     setupEventListeners() {
@@ -52,19 +42,30 @@ class AnimeEnhancedEffects {
     }
 
     initEffects() {
-        // Initialize various effects
-        this.createFloatingParticles();
-        this.createTextMorphing();
-        this.createHolographicEffect();
-        this.createDataStreamEffect();
-        this.createEnergyPulse();
-        this.createGlitchTimeline();
-        this.createCyberGrid();
+        // Initialize ONLY lightweight, well-positioned effects
+        // Reduced for performance - commenting out heavy effects
 
-        console.log('✨ All enhanced anime effects initialized');
+        this.createFloatingParticles();  // Keep - lightweight
+        // this.createTextMorphing();     // Keep text glow but lightweight
+        this.createHolographicEffect();  // Keep - adds depth
+        this.createDataStreamEffect();   // Keep - signature effect
+        // this.createEnergyPulse();      // Skip - too many rings
+        this.createGlitchTimeline();     // Keep - triggered only
+        // this.createCyberGrid();        // Skip - heavy on GPU
+
+        // Reduced VJ effects - only essentials
+        // this.createPsychedelicWaves(); // Skip - too heavy
+        this.createStrobeCircles();      // Keep but reduce count
+        // this.createDNAHelix();         // Skip - unnecessary
+        this.createPlasmaField();        // Keep but optimize
+        // this.createGeometricMandala(); // Skip - redundant
+        // this.createElectricArcs();     // Skip - too random
+        // this.createWarpTunnel();       // Skip - overlaps with main effects
+
+        console.log('✨ Optimized anime effects initialized');
     }
 
-    // Effect 1: Floating Particles
+    // Effect 1: Floating Particles (OPTIMIZED)
     createFloatingParticles() {
         const particleContainer = document.createElement('div');
         particleContainer.className = 'anime-particles';
@@ -76,10 +77,11 @@ class AnimeEnhancedEffects {
             height: 100%;
             pointer-events: none;
             z-index: 5;
+            opacity: 0.6;
         `;
         document.body.appendChild(particleContainer);
 
-        const particleCount = 30;
+        const particleCount = 10; // Reduced from 30
         const particles = [];
 
         for (let i = 0; i < particleCount; i++) {
@@ -124,55 +126,57 @@ class AnimeEnhancedEffects {
         });
     }
 
-    // Effect 2: Text Morphing
+    // Effect 2: Text Glow Pulse (no text modification, just glow effect)
     createTextMorphing() {
+        // Create glow effect without modifying text content
         const textElements = document.querySelectorAll('.logo-text, .text-3886');
         if (textElements.length === 0) return;
 
         textElements.forEach((element, index) => {
-            const originalText = element.textContent;
-            const chars = originalText.split('');
+            // Create a glow element behind the text
+            const glowElement = document.createElement('div');
+            glowElement.className = 'anime-text-glow';
+            glowElement.style.cssText = `
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                pointer-events: none;
+                z-index: -1;
+                filter: blur(10px);
+                opacity: 0;
+                background: linear-gradient(90deg, #00ff85, #00ffff, #ff00ff);
+                -webkit-background-clip: text;
+                background-clip: text;
+            `;
 
-            // Wrap each character in a span
-            element.innerHTML = chars.map(char =>
-                `<span style="display: inline-block; transition: none;">${char}</span>`
-            ).join('');
+            // Position glow behind text
+            element.style.position = 'relative';
+            element.appendChild(glowElement);
 
-            const charSpans = element.querySelectorAll('span');
-
-            // Create morphing animation
-            const morphAnim = anime({
-                targets: charSpans,
-                rotateY: [0, 360],
-                scale: [
-                    { value: 1, duration: 0 },
-                    { value: [0.8, 1.2], duration: 500 },
-                    { value: 1, duration: 500 }
+            // Create glow pulse animation (automatic, no hover)
+            const glowAnim = anime({
+                targets: glowElement,
+                opacity: [
+                    { value: 0, duration: 2000 },
+                    { value: 0.6, duration: 1000 },
+                    { value: 0, duration: 2000 }
                 ],
-                color: [
-                    { value: '#00ff85', duration: 200 },
-                    { value: '#00ffff', duration: 200 },
-                    { value: '#ff00ff', duration: 200 },
-                    { value: '#00ff85', duration: 200 }
+                filter: [
+                    { value: 'blur(10px) hue-rotate(0deg)', duration: 0 },
+                    { value: 'blur(20px) hue-rotate(180deg)', duration: 2500 },
+                    { value: 'blur(10px) hue-rotate(360deg)', duration: 2500 }
                 ],
-                delay: anime.stagger(50, { from: 'center' }),
-                duration: 2000,
+                duration: 5000,
                 loop: true,
-                autoplay: false,
-                direction: 'alternate',
-                easing: 'easeInOutElastic(1, .5)'
+                autoplay: true,
+                easing: 'easeInOutSine'
             });
 
-            animeManager.register(morphAnim, {
+            animeManager.register(glowAnim, {
                 critical: false,
-                label: `text-morph-${index}`
-            });
-
-            // Start animation on hover
-            element.addEventListener('mouseenter', () => morphAnim.play());
-            element.addEventListener('mouseleave', () => {
-                morphAnim.pause();
-                morphAnim.seek(0);
+                label: `text-glow-${index}`
             });
         });
     }
@@ -218,7 +222,7 @@ class AnimeEnhancedEffects {
         });
     }
 
-    // Effect 4: Data Stream Effect
+    // Effect 4: Data Stream Effect (OPTIMIZED)
     createDataStreamEffect() {
         const streamContainer = document.createElement('div');
         streamContainer.className = 'anime-data-streams';
@@ -231,11 +235,12 @@ class AnimeEnhancedEffects {
             pointer-events: none;
             z-index: 3;
             overflow: hidden;
+            opacity: 0.5;
         `;
         document.body.appendChild(streamContainer);
 
-        // Create vertical data streams
-        for (let i = 0; i < 5; i++) {
+        // Create vertical data streams - reduced count
+        for (let i = 0; i < 3; i++) { // Reduced from 5
             const stream = document.createElement('div');
             stream.style.cssText = `
                 position: absolute;
@@ -601,6 +606,387 @@ class AnimeEnhancedEffects {
         });
     }
 
+    // Create Psychedelic Waves
+    createPsychedelicWaves() {
+        const waveContainer = document.createElement('div');
+        waveContainer.className = 'anime-psychedelic-waves';
+        waveContainer.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 3;
+            overflow: hidden;
+            mix-blend-mode: screen;
+        `;
+        document.body.appendChild(waveContainer);
+
+        for (let i = 0; i < 5; i++) {
+            const wave = document.createElement('div');
+            wave.style.cssText = `
+                position: absolute;
+                width: 200%;
+                height: 200%;
+                top: -50%;
+                left: -50%;
+                background: radial-gradient(ellipse at center,
+                    rgba(${255 * Math.random()}, ${255 * Math.random()}, 255, 0.2) 0%,
+                    transparent 50%);
+                border-radius: 50%;
+            `;
+            waveContainer.appendChild(wave);
+
+            const waveAnim = anime({
+                targets: wave,
+                rotate: [0, 360],
+                scale: [0.5, 2, 0.5],
+                opacity: [0.3, 0.8, 0.3],
+                translateX: () => anime.random(-200, 200),
+                translateY: () => anime.random(-200, 200),
+                duration: 10000 + i * 2000,
+                loop: true,
+                easing: 'easeInOutSine'
+            });
+
+            animeManager.register(waveAnim, { critical: false, label: `psychedelic-wave-${i}` });
+        }
+    }
+
+    // Create Strobe Circles (OPTIMIZED)
+    createStrobeCircles() {
+        const strobeContainer = document.createElement('div');
+        strobeContainer.className = 'anime-strobe-circles';
+        strobeContainer.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 4;
+            mix-blend-mode: screen;
+            opacity: 0.4;
+        `;
+        document.body.appendChild(strobeContainer);
+
+        for (let i = 0; i < 3; i++) { // Reduced from 8 to 3
+            const circle = document.createElement('div');
+            const size = Math.random() * 100 + 50;
+            circle.style.cssText = `
+                position: absolute;
+                width: ${size}px;
+                height: ${size}px;
+                border: 3px solid rgba(0, 255, 255, 0.8);
+                border-radius: 50%;
+                left: ${Math.random() * 100}%;
+                top: ${Math.random() * 100}%;
+                transform: translate(-50%, -50%);
+                box-shadow: 0 0 20px rgba(0, 255, 255, 0.5);
+            `;
+            strobeContainer.appendChild(circle);
+
+            const strobeAnim = anime({
+                targets: circle,
+                scale: [0, 1.5, 0],
+                opacity: [0, 1, 0],
+                borderColor: [
+                    { value: 'rgba(0, 255, 255, 0.8)' },
+                    { value: 'rgba(255, 0, 255, 0.8)' },
+                    { value: 'rgba(0, 255, 0, 0.8)' }
+                ],
+                duration: 2000,
+                delay: i * 250,
+                loop: true,
+                easing: 'easeInOutExpo'
+            });
+
+            animeManager.register(strobeAnim, { critical: false, label: `strobe-circle-${i}` });
+        }
+    }
+
+    // Create DNA Helix
+    createDNAHelix() {
+        const helixContainer = document.createElement('div');
+        helixContainer.className = 'anime-dna-helix';
+        helixContainer.style.cssText = `
+            position: fixed;
+            top: 50%;
+            left: 10%;
+            width: 80px;
+            height: 400px;
+            transform: translateY(-50%);
+            pointer-events: none;
+            z-index: 3;
+        `;
+        document.body.appendChild(helixContainer);
+
+        for (let i = 0; i < 20; i++) {
+            const strand = document.createElement('div');
+            strand.style.cssText = `
+                position: absolute;
+                width: 4px;
+                height: 4px;
+                background: rgba(0, 255, 133, 0.8);
+                border-radius: 50%;
+                top: ${i * 20}px;
+                left: 50%;
+                transform: translateX(-50%);
+                box-shadow: 0 0 10px rgba(0, 255, 133, 0.5);
+            `;
+            helixContainer.appendChild(strand);
+
+            const helixAnim = anime({
+                targets: strand,
+                translateX: [
+                    { value: -30, duration: 2000 },
+                    { value: 30, duration: 2000 }
+                ],
+                translateZ: [
+                    { value: -30, duration: 2000 },
+                    { value: 30, duration: 2000 }
+                ],
+                scale: [0.5, 1.5, 0.5],
+                delay: i * 100,
+                loop: true,
+                direction: 'alternate',
+                easing: 'easeInOutSine'
+            });
+
+            animeManager.register(helixAnim, { critical: false, label: `dna-strand-${i}` });
+        }
+
+        // Rotate the entire helix
+        const helixRotate = anime({
+            targets: helixContainer,
+            rotateY: [0, 360],
+            duration: 15000,
+            loop: true,
+            easing: 'linear'
+        });
+
+        animeManager.register(helixRotate, { critical: false, label: 'dna-helix-rotate' });
+    }
+
+    // Create Plasma Field (OPTIMIZED & REPOSITIONED)
+    createPlasmaField() {
+        const plasmaCanvas = document.createElement('canvas');
+        plasmaCanvas.className = 'anime-plasma-field';
+        plasmaCanvas.width = 150; // Reduced from 200
+        plasmaCanvas.height = 150; // Reduced from 200
+        plasmaCanvas.style.cssText = `
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            width: 200px;
+            height: 200px;
+            pointer-events: none;
+            z-index: 2;
+            opacity: 0.15;
+            mix-blend-mode: screen;
+            filter: blur(3px);
+            border-radius: 10px;
+        `;
+        document.body.appendChild(plasmaCanvas);
+
+        const ctx = plasmaCanvas.getContext('2d');
+        let time = 0;
+
+        const drawPlasma = () => {
+            const imageData = ctx.createImageData(150, 150);
+            const data = imageData.data;
+
+            // Simplified plasma calculation for performance
+            for (let x = 0; x < 150; x += 2) { // Skip every other pixel
+                for (let y = 0; y < 150; y += 2) {
+                    const value = Math.sin(x / 20.0) + Math.sin(y / 10.0) +
+                                 Math.sin((x + y) / 20.0) + 4 + time;
+
+                    const index = (y * 150 + x) * 4;
+                    const color = Math.sin(value * Math.PI) * 127 + 128;
+
+                    // Neon green/cyan theme
+                    data[index] = 0;
+                    data[index + 1] = color;
+                    data[index + 2] = color * 0.8;
+                    data[index + 3] = 255;
+                }
+            }
+
+            ctx.putImageData(imageData, 0, 0);
+            time += 0.02; // Slower animation
+        };
+
+        const plasmaAnim = anime({
+            targets: { time },
+            time: [0, Math.PI * 2],
+            duration: 10000,
+            loop: true,
+            update: drawPlasma,
+            easing: 'linear'
+        });
+
+        animeManager.register(plasmaAnim, { critical: false, label: 'plasma-field' });
+    }
+
+    // Create Geometric Mandala
+    createGeometricMandala() {
+        const mandalaContainer = document.createElement('div');
+        mandalaContainer.className = 'anime-mandala';
+        mandalaContainer.style.cssText = `
+            position: fixed;
+            top: 50%;
+            right: 10%;
+            width: 200px;
+            height: 200px;
+            transform: translate(50%, -50%);
+            pointer-events: none;
+            z-index: 3;
+        `;
+        document.body.appendChild(mandalaContainer);
+
+        const shapes = 12;
+        for (let i = 0; i < shapes; i++) {
+            const shape = document.createElement('div');
+            const angle = (360 / shapes) * i;
+            shape.style.cssText = `
+                position: absolute;
+                width: 100%;
+                height: 2px;
+                background: linear-gradient(90deg,
+                    transparent 0%,
+                    rgba(255, 0, 255, 0.8) 50%,
+                    transparent 100%);
+                top: 50%;
+                left: 0;
+                transform-origin: center;
+                transform: rotate(${angle}deg);
+            `;
+            mandalaContainer.appendChild(shape);
+        }
+
+        const mandalaAnim = anime({
+            targets: mandalaContainer,
+            rotate: [0, 360],
+            scale: [0.5, 1.5, 0.5],
+            opacity: [0.3, 1, 0.3],
+            duration: 8000,
+            loop: true,
+            easing: 'easeInOutQuad'
+        });
+
+        animeManager.register(mandalaAnim, { critical: false, label: 'geometric-mandala' });
+    }
+
+    // Create Electric Arcs
+    createElectricArcs() {
+        const arcContainer = document.createElement('div');
+        arcContainer.className = 'anime-electric-arcs';
+        arcContainer.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 5;
+            overflow: hidden;
+        `;
+        document.body.appendChild(arcContainer);
+
+        const createArc = () => {
+            const arc = document.createElement('div');
+            const startX = Math.random() * window.innerWidth;
+            const startY = Math.random() * window.innerHeight;
+            const endX = Math.random() * window.innerWidth;
+            const endY = Math.random() * window.innerHeight;
+
+            const distance = Math.sqrt(Math.pow(endX - startX, 2) + Math.pow(endY - startY, 2));
+            const angle = Math.atan2(endY - startY, endX - startX) * 180 / Math.PI;
+
+            arc.style.cssText = `
+                position: absolute;
+                width: ${distance}px;
+                height: 2px;
+                background: linear-gradient(90deg,
+                    rgba(255, 255, 0, 0) 0%,
+                    rgba(255, 255, 0, 1) 50%,
+                    rgba(255, 255, 0, 0) 100%);
+                box-shadow: 0 0 10px rgba(255, 255, 0, 0.8);
+                left: ${startX}px;
+                top: ${startY}px;
+                transform-origin: left center;
+                transform: rotate(${angle}deg) scaleX(0);
+            `;
+            arcContainer.appendChild(arc);
+
+            const arcAnim = anime({
+                targets: arc,
+                scaleX: [0, 1, 0],
+                opacity: [0, 1, 0],
+                duration: 300,
+                easing: 'easeOutExpo',
+                complete: () => arc.remove()
+            });
+
+            animeManager.register(arcAnim, { critical: false, label: 'electric-arc' });
+        };
+
+        // Create arcs periodically
+        setInterval(() => {
+            if (Math.random() > 0.7) {
+                createArc();
+            }
+        }, 500);
+    }
+
+    // Create Warp Tunnel
+    createWarpTunnel() {
+        const tunnelContainer = document.createElement('div');
+        tunnelContainer.className = 'anime-warp-tunnel';
+        tunnelContainer.style.cssText = `
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            width: 600px;
+            height: 600px;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            z-index: 1;
+            opacity: 0.2;
+        `;
+        document.body.appendChild(tunnelContainer);
+
+        for (let i = 0; i < 10; i++) {
+            const ring = document.createElement('div');
+            ring.style.cssText = `
+                position: absolute;
+                width: ${100 + i * 50}px;
+                height: ${100 + i * 50}px;
+                border: 2px solid rgba(0, 255, 255, ${1 - i * 0.1});
+                border-radius: 50%;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+            `;
+            tunnelContainer.appendChild(ring);
+
+            const tunnelAnim = anime({
+                targets: ring,
+                scale: [0, 3],
+                opacity: [1, 0],
+                rotateZ: [0, 180],
+                duration: 3000,
+                delay: i * 300,
+                loop: true,
+                easing: 'linear'
+            });
+
+            animeManager.register(tunnelAnim, { critical: false, label: `warp-ring-${i}` });
+        }
+    }
+
     // Destroy all animations
     destroy() {
         this.pauseAll();
@@ -608,7 +994,9 @@ class AnimeEnhancedEffects {
         // Remove created elements
         const elements = document.querySelectorAll(
             '.anime-particles, .anime-holographic, .anime-data-streams, ' +
-            '.anime-energy-pulse, .anime-cyber-grid, .anime-matrix-enhance'
+            '.anime-energy-pulse, .anime-cyber-grid, .anime-matrix-enhance, ' +
+            '.anime-psychedelic-waves, .anime-strobe-circles, .anime-dna-helix, ' +
+            '.anime-plasma-field, .anime-mandala, .anime-electric-arcs, .anime-warp-tunnel'
         );
         elements.forEach(el => el.remove());
 
