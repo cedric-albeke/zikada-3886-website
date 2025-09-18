@@ -58,7 +58,7 @@ class MatrixMessages {
         this.messageElement = null;
         this.isActive = false;
         this.scrambleInterval = null;
-        this.diceCountdown = 5;
+        this.diceCountdown = 15;
         this.lastRoll = null;
     }
 
@@ -935,7 +935,7 @@ class MatrixMessages {
         // Start countdown timer (updates every second)
         this.startCountdownTimer();
 
-        // Dice roll system: every 5 seconds, roll 1-1000
+        // Dice roll system: every 15 seconds, roll 1-1000
         // If 850-1000 (15% chance), trigger matrix message
         const diceRollInterval = () => {
             const roll = Math.floor(Math.random() * 1000) + 1; // 1-1000
@@ -950,13 +950,13 @@ class MatrixMessages {
                 this.showMessage();
             }
 
-            // Reset countdown and schedule next dice roll in 5 seconds
-            this.diceCountdown = 5;
-            setTimeout(diceRollInterval, 5000);
+            // Reset countdown and schedule next dice roll in 15 seconds
+            this.diceCountdown = 15;
+            setTimeout(diceRollInterval, 15000);
         };
 
         // Start after initial delay
-        setTimeout(diceRollInterval, 5000);
+        setTimeout(diceRollInterval, 15000);
     }
 
     startCountdownTimer() {
