@@ -333,14 +333,6 @@ class GSAPAnimationRegistry {
             then: tl.then
         };
     }
-        if (animation.targets) {
-            return animation.targets();
-        }
-        if (animation._targets) {
-            return animation._targets;
-        }
-        return [];
-    }
 
     /**
      * Kill a specific animation
