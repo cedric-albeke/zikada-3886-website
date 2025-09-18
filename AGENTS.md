@@ -21,6 +21,7 @@
 ## Testing Guidelines
 - No automated runner is configured; rely on manual QA via `control-panel.html` toggles and the dashboards in `js/performance-*`.
 - Before opening a PR, run `npm run build`, scan the console for warnings, and capture FPS/memory observations when touching animation loops.
+- Toggle the anime.js stack with `?anime=1` or dispatch `3886:enable-anime`, then exercise the control panel Anime Tests buttons to confirm GSAP/anime timelines stay in sync.
 
 ## Commit & Pull Request Guidelines
 - Follow the repo's Conventional Commit pattern (`feat:`, `fix:`, `docs:`) with concise subjects (~72 chars).

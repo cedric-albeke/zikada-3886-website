@@ -24,6 +24,8 @@ Introduce anime.js as a complementary DOM/SVG microinteraction engine (e.g., SVG
 - js/anime-init.js: Manager that imports anime.js, tracks instances, pause/play/kill, global speed.
 - js/anime-performance-adapter.js: Maps existing performance modes (normal/reduced/emergency) to anime.js behavior via a `performanceMode` custom event.
 - js/anime-svg-logo.js: PoC module – inline SVG for `images/c01n.svg` (next to `.image-2`) and apply a stroke-draw/idle loop (no GSAP conflicts). Reacts to `animationPhase` and `matrixMessage`.
+- js/anime-examples.js: Provides reusable DOM/SVG micro-interactions for manual QA and regression triggers.
+- control-panel.html / js/control-panel.js: Adds an Anime Tests panel with stack toggles and trigger buttons.
 - js/chaos-init-optimized.js: Minimal changes
   - Emit `performanceMode` events when mode changes (normal/reduced/emergency).
   - Dynamically import anime stack only when feature flag is enabled.
@@ -51,6 +53,7 @@ Fixes applied before proceeding (blocking issues discovered from logs):
 - [x] Emit performanceMode events from applyEmergency/Reduced/Normal
 - [x] Lazy-load anime.js stack from chaos-init when the feature flag is active
 - [x] Route performance mode + speed signals from VJ Receiver/control panel into animeManager
+- [x] Wire Anime Tests control-panel section and js/anime-examples.js triggers
 - [ ] Local test: `npm run dev`, baseline (no flag) => no changes
 - [ ] Local test: `?anime=1`, logo stroke draw + idle loop works
 - [ ] Performance test: switch modes via control panel, anime follows
@@ -61,6 +64,7 @@ Fixes applied before proceeding (blocking issues discovered from logs):
 - Flagged: run with `?anime=1`; verify stroke-draw then idle opacity loop.
 - Events: trigger `animationPhase` and `matrixMessage`; anime reacts without interfering with GSAP.
 - Performance: switch modes; anime pauses/speeds per mode; observe FPS.
+- Control panel Anime Tests: enable stack, fire each trigger, verify DOM responds and acknowledgements return.
 - Control panel should update its performance mode display after acknowledgements from VJ Receiver.
 - HMR: editing anime files should dispose/re-init cleanly.
 - Cross-browser: Chromium + Firefox; Safari optional.
