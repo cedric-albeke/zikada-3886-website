@@ -186,9 +186,20 @@ function disableLogoAnimation() {
   }
 }
 
-// Always initialize logo animation - part of core experience
+// DO NOT auto-enable logo animation - let it start in normal mode
+// Logo animation will be enabled/disabled via control panel only
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', () => enableLogoAnimation(), { once: true });
+  document.addEventListener('DOMContentLoaded', () => {
+    // Check if anime should be enabled via URL parameter only
+    const qp = new URLSearchParams(window.location.search);
+    if (qp.get('anime') === '1') {
+      enableLogoAnimation();
+    }
+  }, { once: true });
 } else {
-  enableLogoAnimation();
+  // Check if anime should be enabled via URL parameter only
+  const qp = new URLSearchParams(window.location.search);
+  if (qp.get('anime') === '1') {
+    enableLogoAnimation();
+  }
 }

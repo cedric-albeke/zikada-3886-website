@@ -12,6 +12,10 @@ class AnimeEnhancedEffects {
         this.particleSystem = null;
         this.glitchTimeline = null;
         this.morphingTextActive = false;
+        this.activeStrobeCircles = false;
+        this.isAutoMode = true;  // Default to auto mode
+        this.autoModeTimer = null;
+        this.lastMessageId = null;
 
         console.log('🎨 Anime Enhanced Effects initialized');
     }
@@ -39,6 +43,63 @@ class AnimeEnhancedEffects {
         window.addEventListener('diceRoll', () => {
             this.triggerDiceAnimation();
         });
+
+        // Listen for control panel messages
+        window.addEventListener('storage', (e) => {
+            if (e.key === '3886_vj_message') {
+                try {
+                    const message = JSON.parse(e.newValue);
+                    this.handleControlPanelMessage(message);
+                } catch (err) {
+                    // Ignore JSON parse errors
+                }
+            }
+        });
+
+        // Also poll localStorage for same-tab communication
+        setInterval(() => {
+            const messageData = localStorage.getItem('3886_vj_message');
+            if (messageData) {
+                try {
+                    const parsed = JSON.parse(messageData);
+                    if (parsed._id && parsed._id !== this.lastMessageId) {
+                        this.lastMessageId = parsed._id;
+                        this.handleControlPanelMessage(parsed);
+                    }
+                } catch (e) {
+                    // Ignore JSON parse errors
+                }
+            }
+        }, 100);
+    }
+
+    handleControlPanelMessage(message) {
+        switch (message.type) {
+            case 'trigger_effect':
+                if (message.effect === 'strobe') {
+                    // Toggle strobe circles
+                    if (this.activeStrobeCircles) {
+                        this.removeStrobeCircles();
+                        console.log('🔴 Manual strobe disable');
+                    } else {
+                        this.createStrobeCircles();
+                        console.log('🟢 Manual strobe enable');
+                    }
+                }
+                break;
+
+            case 'mode_change':
+                this.isAutoMode = message.mode === 'auto';
+                console.log(`🎮 Mode changed to: ${message.mode}`);
+                break;
+
+            case 'strobe_intensity':
+                // Adjust strobe intensity if circles are active
+                if (this.activeStrobeCircles) {
+                    // Could adjust opacity/speed based on message.value
+                }
+                break;
+        }
     }
 
     initEffects() {
@@ -55,12 +116,16 @@ class AnimeEnhancedEffects {
 
         // Reduced VJ effects - only essentials
         // this.createPsychedelicWaves(); // Skip - too heavy
-        this.createStrobeCircles();      // Keep but reduce count
+        // DON'T auto-create strobe circles - controlled via panel
+        // this.createStrobeCircles();
         // this.createDNAHelix();         // Skip - unnecessary
         this.createPlasmaField();        // Keep but optimize
         // this.createGeometricMandala(); // Skip - redundant
         // this.createElectricArcs();     // Skip - too random
         // this.createWarpTunnel();       // Skip - overlaps with main effects
+
+        // Setup auto mode timer for strobe circles
+        this.setupAutoModeEffects();
 
         console.log('✨ Optimized anime effects initialized');
     }
@@ -181,7 +246,7 @@ class AnimeEnhancedEffects {
         });
     }
 
-    // Effect 3: Holographic Effect
+    // Effect 3: Holographic Effect (DRASTICALLY REDUCED OCCURRENCE)
     createHolographicEffect() {
         const imageWrapper = document.querySelector('.image-wrapper');
         if (!imageWrapper) return;
@@ -196,30 +261,38 @@ class AnimeEnhancedEffects {
             width: 120%;
             height: 120%;
             background: linear-gradient(45deg,
-                transparent 30%,
-                rgba(0,255,255,0.1) 50%,
-                transparent 70%);
+                transparent 40%,
+                rgba(0,255,255,0.03) 50%,
+                transparent 60%);
             pointer-events: none;
             opacity: 0;
         `;
         imageWrapper.appendChild(holoOverlay);
 
-        // Animate holographic scan
-        this.animations.holographic = anime({
-            targets: holoOverlay,
-            opacity: [0, 0.6, 0],
-            backgroundPosition: ['0% 0%', '200% 200%'],
-            rotate: [0, 360],
-            scale: [0.8, 1.2],
-            duration: 4000,
-            loop: true,
-            easing: 'linear'
-        });
+        // Trigger holographic scan only occasionally - every 45-60 seconds
+        const triggerHolographicScan = () => {
+            const scanAnim = anime({
+                targets: holoOverlay,
+                opacity: [0, 0.15, 0],  // Much lower opacity
+                backgroundPosition: ['0% 0%', '200% 200%'],
+                rotate: [0, 180],  // Less rotation
+                scale: [0.9, 1.1],  // Less scaling
+                duration: 2000,  // Shorter duration
+                easing: 'easeInOutQuad',
+                complete: () => {
+                    // Schedule next scan in 45-60 seconds
+                    setTimeout(triggerHolographicScan, 45000 + Math.random() * 15000);
+                }
+            });
 
-        animeManager.register(this.animations.holographic, {
-            critical: false,
-            label: 'holographic-scan'
-        });
+            animeManager.register(scanAnim, {
+                critical: false,
+                label: 'holographic-scan-periodic'
+            });
+        };
+
+        // Start the first scan after 30-45 seconds
+        setTimeout(triggerHolographicScan, 30000 + Math.random() * 15000);
     }
 
     // Effect 4: Data Stream Effect (OPTIMIZED)
@@ -654,7 +727,7 @@ class AnimeEnhancedEffects {
         }
     }
 
-    // Create Strobe Circles (OPTIMIZED)
+    // Create Strobe Circles (MUCH SLOWER & SUBTLE)
     createStrobeCircles() {
         const strobeContainer = document.createElement('div');
         strobeContainer.className = 'anime-strobe-circles';
@@ -667,43 +740,74 @@ class AnimeEnhancedEffects {
             pointer-events: none;
             z-index: 4;
             mix-blend-mode: screen;
-            opacity: 0.4;
+            opacity: 0.2;  // Much more subtle
         `;
         document.body.appendChild(strobeContainer);
 
-        for (let i = 0; i < 3; i++) { // Reduced from 8 to 3
+        for (let i = 0; i < 2; i++) { // Only 2 circles
             const circle = document.createElement('div');
-            const size = Math.random() * 100 + 50;
+            const size = 150 + i * 50;  // Fixed sizes instead of random
+            const positions = [
+                { left: '25%', top: '75%' },
+                { left: '75%', top: '25%' }
+            ];
+
             circle.style.cssText = `
                 position: absolute;
                 width: ${size}px;
                 height: ${size}px;
-                border: 3px solid rgba(0, 255, 255, 0.8);
+                border: 2px solid rgba(0, 255, 133, 0.3);
                 border-radius: 50%;
-                left: ${Math.random() * 100}%;
-                top: ${Math.random() * 100}%;
+                left: ${positions[i].left};
+                top: ${positions[i].top};
                 transform: translate(-50%, -50%);
-                box-shadow: 0 0 20px rgba(0, 255, 255, 0.5);
+                box-shadow: 0 0 10px rgba(0, 255, 133, 0.2);
             `;
             strobeContainer.appendChild(circle);
 
             const strobeAnim = anime({
                 targets: circle,
-                scale: [0, 1.5, 0],
-                opacity: [0, 1, 0],
-                borderColor: [
-                    { value: 'rgba(0, 255, 255, 0.8)' },
-                    { value: 'rgba(255, 0, 255, 0.8)' },
-                    { value: 'rgba(0, 255, 0, 0.8)' }
-                ],
-                duration: 2000,
-                delay: i * 250,
+                scale: [0.8, 1.2, 0.8],  // Smaller scale change
+                opacity: [0.1, 0.3, 0.1],  // Very subtle opacity
+                duration: 8000 + i * 2000,  // Much slower: 8-10 seconds
+                delay: i * 4000,  // Much longer delay between
                 loop: true,
-                easing: 'easeInOutExpo'
+                easing: 'easeInOutSine'  // Smoother easing
             });
 
             animeManager.register(strobeAnim, { critical: false, label: `strobe-circle-${i}` });
         }
+        this.activeStrobeCircles = true;
+    }
+
+    // Remove strobe circles
+    removeStrobeCircles() {
+        const existingCircles = document.querySelectorAll('.anime-strobe-circles');
+        existingCircles.forEach(container => {
+            container.remove();
+        });
+        this.activeStrobeCircles = false;
+    }
+
+    // Setup auto mode effects
+    setupAutoModeEffects() {
+        // Clear any existing timer
+        if (this.autoModeTimer) {
+            clearInterval(this.autoModeTimer);
+        }
+
+        // Periodic strobe circle appearances in auto mode
+        this.autoModeTimer = setInterval(() => {
+            // Only create strobe circles if in auto mode and not already active
+            if (this.isAutoMode && !this.activeStrobeCircles) {
+                this.createStrobeCircles();
+
+                // Auto-remove strobe circles after 15-20 seconds
+                setTimeout(() => {
+                    this.removeStrobeCircles();
+                }, 15000 + Math.random() * 5000);
+            }
+        }, 30000 + Math.random() * 15000); // Every 30-45 seconds
     }
 
     // Create DNA Helix

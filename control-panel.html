@@ -267,6 +267,9 @@
         <!-- REMOVED: Timeline/Sequencer component (not needed for now) -->
     </div>
 
-    <script src="js/control-panel.js" type="module"></script>
+    <!-- Use original control panel for stability -->
+    <script type="module">
+        import('./js/control-panel.js');
+    </script>
 </body>
 </html>

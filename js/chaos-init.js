@@ -2530,3 +2530,54 @@ window.ChaosControl = {
 };
 
 console.log('✅ ChaosControl attached to window');
+
+// Listen for control panel messages (strobe triggers)
+window.addEventListener('storage', (e) => {
+    if (e.key === '3886_vj_message') {
+        try {
+            const message = JSON.parse(e.newValue);
+            if (message.type === 'trigger_effect' && message.effect === 'strobe') {
+                console.log('🔴 Strobe trigger received from control panel');
+                if (window.animeEnhancedEffects && typeof window.animeEnhancedEffects.createStrobeCircles === 'function') {
+                    if (window.animeEnhancedEffects.activeStrobeCircles) {
+                        window.animeEnhancedEffects.removeStrobeCircles();
+                        console.log('🔴 Strobe circles disabled');
+                    } else {
+                        window.animeEnhancedEffects.createStrobeCircles();
+                        console.log('🟢 Strobe circles enabled');
+                    }
+                }
+            }
+        } catch (err) {
+            // Ignore JSON parse errors
+        }
+    }
+});
+
+// Also poll localStorage for same-tab communication
+let lastStrobeMessageId = null;
+setInterval(() => {
+    const messageData = localStorage.getItem('3886_vj_message');
+    if (messageData) {
+        try {
+            const parsed = JSON.parse(messageData);
+            if (parsed._id && parsed._id !== lastStrobeMessageId) {
+                lastStrobeMessageId = parsed._id;
+                if (parsed.type === 'trigger_effect' && parsed.effect === 'strobe') {
+                    console.log('🔴 Strobe trigger received from control panel (polling)');
+                    if (window.animeEnhancedEffects && typeof window.animeEnhancedEffects.createStrobeCircles === 'function') {
+                        if (window.animeEnhancedEffects.activeStrobeCircles) {
+                            window.animeEnhancedEffects.removeStrobeCircles();
+                            console.log('🔴 Strobe circles disabled');
+                        } else {
+                            window.animeEnhancedEffects.createStrobeCircles();
+                            console.log('🟢 Strobe circles enabled');
+                        }
+                    }
+                }
+            }
+        } catch (e) {
+            // Ignore JSON parse errors
+        }
+    }
+}, 200);
