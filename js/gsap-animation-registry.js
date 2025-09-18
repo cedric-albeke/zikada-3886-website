@@ -54,38 +54,67 @@ class GSAPAnimationRegistry {
         // Store registry reference for closures
         const registry = this;
 
+        const resolveCategory = (vars) => (vars && vars._regCategory) || 'effect';
+        
+        // Soft-cap helper
+        const canCreateInCategory = (category) => {
+            const cfg = registry.categories[category] || { maxAnimations: 30 };
+            const count = registry.getCategoryActiveCount(category);
+            return count < cfg.maxAnimations;
+        };
+
         // Patch gsap.to
         gsap.to = function(targets, vars = {}) {
+            const category = resolveCategory(vars);
+            if (!canCreateInCategory(category)) {
+                if (registry.verbose) console.log(`⏳ Skipping creation in category '${category}' (soft cap reached)`);
+                return registry.createNoopTween();
+            }
             const tween = originalTo.call(this, targets, vars);
             if (tween && registry) {
-                registry.registerAnimation(tween, 'auto-to', 'effect');
+                registry.registerAnimation(tween, 'auto-to', category);
             }
             return tween;
         };
 
         // Patch gsap.from
         gsap.from = function(targets, vars = {}) {
+            const category = resolveCategory(vars);
+            if (!canCreateInCategory(category)) {
+                if (registry.verbose) console.log(`⏳ Skipping creation in category '${category}' (soft cap reached)`);
+                return registry.createNoopTween();
+            }
             const tween = originalFrom.call(this, targets, vars);
             if (tween && registry) {
-                registry.registerAnimation(tween, 'auto-from', 'effect');
+                registry.registerAnimation(tween, 'auto-from', category);
             }
             return tween;
         };
 
         // Patch gsap.fromTo
         gsap.fromTo = function(targets, fromVars = {}, toVars = {}) {
+            const category = resolveCategory(toVars);
+            if (!canCreateInCategory(category)) {
+                if (registry.verbose) console.log(`⏳ Skipping creation in category '${category}' (soft cap reached)`);
+                return registry.createNoopTween();
+            }
             const tween = originalFromTo.call(this, targets, fromVars, toVars);
             if (tween && registry) {
-                registry.registerAnimation(tween, 'auto-fromTo', 'effect');
+                registry.registerAnimation(tween, 'auto-fromTo', category);
             }
             return tween;
         };
 
         // Patch gsap.timeline
         gsap.timeline = function(vars = {}) {
+            const category = resolveCategory(vars);
+            if (!canCreateInCategory(category)) {
+                if (registry.verbose) console.log(`⏳ Skipping creation in category '${category}' (soft cap reached)`);
+                return registry.createNoopTimeline();
+            }
             const timeline = originalTimeline.call(this, vars);
             if (timeline && registry) {
-                registry.registerAnimation(timeline, 'auto-timeline', 'effect');
+                registry.registerAnimation(timeline, 'auto-timeline', category);
             }
             return timeline;
         };
@@ -240,6 +269,70 @@ class GSAPAnimationRegistry {
      * Get animation targets
      */
     getAnimationTargets(animation) {
+        if (!animation) return [];
+        if (animation.targets) {
+            try { return animation.targets(); } catch (_) {}
+        }
+        if (animation._targets) {
+            return animation._targets;
+        }
+        return [];
+    }
+
+    /**
+     * Count active animations in a category
+     */
+    getCategoryActiveCount(category) {
+        let count = 0;
+        this.animations.forEach(data => {
+            if (data.category === category && data.isActive !== false) count++;
+        });
+        return count;
+    }
+
+    /**
+     * Create a no-op tween for safe skipping
+     */
+    createNoopTween() {
+        return {
+            kill: () => {},
+            pause: () => {},
+            resume: () => {},
+            play: () => {},
+            eventCallback: () => {},
+            timeScale: () => {},
+            progress: () => 0,
+            duration: () => 0,
+            then: (cb) => Promise.resolve().then(cb)
+        };
+    }
+
+    /**
+     * Create a no-op timeline for safe skipping
+     */
+    createNoopTimeline() {
+        const self = this;
+        const tl = self.createNoopTween();
+        return {
+            to: () => self.createNoopTimeline(),
+            from: () => self.createNoopTimeline(),
+            fromTo: () => self.createNoopTimeline(),
+            set: () => self.createNoopTimeline(),
+            add: () => self.createNoopTimeline(),
+            call: () => self.createNoopTimeline(),
+            addLabel: () => self.createNoopTimeline(),
+            clear: () => self.createNoopTimeline(),
+            kill: tl.kill,
+            pause: tl.pause,
+            play: tl.play,
+            resume: tl.resume,
+            eventCallback: tl.eventCallback,
+            timeScale: tl.timeScale,
+            progress: tl.progress,
+            duration: tl.duration,
+            then: tl.then
+        };
+    }
         if (animation.targets) {
             return animation.targets();
         }
