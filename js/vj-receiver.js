@@ -272,7 +272,7 @@ class VJReceiver {
         
         this.colorFilterTimeout = setTimeout(() => {
             this.applyColorFilter();
-        }, 150); // Increased to 150ms for smoother transitions
+        }, 300); // Increased to 300ms for even smoother slider movement
     }
 
     applyColorFilter() {
@@ -286,18 +286,13 @@ class VJReceiver {
 
         const safeFilter = `hue-rotate(${safeHue}deg) saturate(${safeSaturation}%) brightness(${safeBrightness}%) contrast(${safeContrast}%)`;
 
-        // Use safe filter application with longer duration for smooth slider movement
-        if (window.chaosInit && window.chaosInit.safeApplyFilter) {
-            window.chaosInit.safeApplyFilter(document.body, safeFilter, 0.8); // Increased from 0.2s to 0.8s
-        } else {
-            // Fallback with smoother transition
-            gsap.killTweensOf(document.body, 'filter');
-            gsap.to(document.body, {
-                filter: safeFilter,
-                duration: 0.8, // Slower transition for smooth slider movement
-                ease: 'power2.inOut'
-            });
-        }
+        // Always use direct GSAP for immediate responsiveness with smooth transition
+        gsap.killTweensOf(document.body, 'filter');
+        gsap.to(document.body, {
+            filter: safeFilter,
+            duration: 1.2, // Even longer for very smooth slider movement
+            ease: 'power1.inOut' // Gentler easing for smoother feel
+        });
         
         console.log(`🎨 Applied safe color filter: ${safeFilter}`);
     }

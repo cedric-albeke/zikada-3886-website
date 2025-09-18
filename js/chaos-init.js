@@ -263,7 +263,8 @@ class ChaosInitializer {
         this.initChaosEngine();
         this.initTextEffects();
         this.initAdditionalEffects();
-        this.initRandomAnimations();
+        // DISABLED: Random animations create ugly rectangular elements
+        // this.initRandomAnimations();
         this.handleResize();
 
         // Listen for animation phase changes
@@ -463,14 +464,14 @@ class ChaosInitializer {
         // Add holographic shimmer
         this.addHolographicShimmer();
 
-        // Add glitch lines
-        this.addGlitchLines();
+        // DISABLED: Glitch lines create ugly rectangular elements
+        // this.addGlitchLines();
 
         // Protect cicada logo opacity
         this.protectLogoOpacity();
 
-        // Add more interesting effects
-        this.addPersistentEffects();
+        // DISABLED: Persistent effects include digital artifacts with rectangular elements
+        // this.addPersistentEffects();
 
         // Add subtle color variations
         this.addSubtleColorVariations();
