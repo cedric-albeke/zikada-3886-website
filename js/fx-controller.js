@@ -5,7 +5,7 @@ class FXController {
     this.intensities = {
       glitch: 0.5,
       particles: 0.5,
-      distortion: 0.5,
+      distortion: 0, // REMOVED from controls - only applies blur to logo elements
       noise: 0.5,
     };
     this.globalMult = 1.0;

@@ -343,7 +343,7 @@ class VJControlPanel {
         const effectSliders = {
             glitch: document.getElementById('glitchSlider'),
             particles: document.getElementById('particlesSlider'),
-            distortion: document.getElementById('distortionSlider'),
+            // REMOVED: distortion slider - now handled automatically at 0
             noise: document.getElementById('noiseSlider')
         };
 
@@ -438,7 +438,7 @@ class VJControlPanel {
             phaseDuration: document.getElementById('phaseDurationSlider').value,
             glitch: document.getElementById('glitchSlider').value,
             particles: document.getElementById('particlesSlider').value,
-            distortion: document.getElementById('distortionSlider').value,
+            // REMOVED: distortion preset handling
             noise: document.getElementById('noiseSlider').value,
             scene: this.currentScene
         };
@@ -464,7 +464,7 @@ class VJControlPanel {
         document.getElementById('phaseDurationSlider').value = preset.phaseDuration;
         document.getElementById('glitchSlider').value = preset.glitch;
         document.getElementById('particlesSlider').value = preset.particles;
-        document.getElementById('distortionSlider').value = preset.distortion;
+        // REMOVED: distortion preset loading
         document.getElementById('noiseSlider').value = preset.noise;
 
         // Update displays

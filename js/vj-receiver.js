@@ -455,11 +455,11 @@ class VJReceiver {
         `;
         document.body.appendChild(strobe);
 
-        // Slower strobe animation
+        // REDUCED: Faster, shorter strobe animation
         gsap.to(strobe, {
             opacity: 0,
-            duration: 0.1 + (0.2 * (1 - glitchI)),
-            repeat: Math.max(2, Math.round(2 + 6 * glitchI * mult)),
+            duration: 0.05 + (0.1 * (1 - glitchI)), // Reduced from 0.1 + 0.2
+            repeat: Math.max(1, Math.round(1 + 3 * glitchI * mult)), // Reduced from 2 + 6
             yoyo: true,
             ease: 'none',
             onComplete: () => strobe.remove()
@@ -520,18 +520,19 @@ class VJReceiver {
         
         const originalFilter = document.body.style.filter;
 
+        // INCREASED: Longer RGB Split effect duration for more impact
         gsap.timeline()
             .to(document.body, {
                 filter: 'hue-rotate(120deg) saturate(2)',
-                duration: 0.15 + 0.25 * glitchI
+                duration: 0.3 + 0.5 * glitchI // Increased from 0.15 + 0.25
             })
             .to(document.body, {
                 filter: 'hue-rotate(-120deg) saturate(2)',
-                duration: 0.15 + 0.25 * glitchI
+                duration: 0.3 + 0.5 * glitchI // Increased from 0.15 + 0.25
             })
             .to(document.body, {
                 filter: originalFilter || 'none',
-                duration: 0.4 + 0.3 * (1 - glitchI),
+                duration: 0.8 + 0.6 * (1 - glitchI), // Increased from 0.4 + 0.3
                 ease: 'power2.out'
             });
     }
@@ -703,9 +704,9 @@ class VJReceiver {
     }
 
     emergencyStop() {
-        console.log('🚨 EMERGENCY STOP!');
+        console.log('🚨 ENHANCED EMERGENCY STOP - Full System Reset!');
 
-        // Selective FX stop: preserve core loops
+        // 1. COMPLETE ANIMATION CLEANUP
         if (window.gsapAnimationRegistry && typeof window.gsapAnimationRegistry.killByFilter === 'function') {
             window.gsapAnimationRegistry.killByFilter({ category: 'effect', excludeEssential: true });
             window.gsapAnimationRegistry.killByFilter({ category: 'particle', excludeEssential: true });
@@ -713,51 +714,83 @@ class VJReceiver {
         if (window.intervalManager && typeof window.intervalManager.clearCategory === 'function') {
             window.intervalManager.clearCategory('effect');
             window.intervalManager.clearCategory('particle');
+            window.intervalManager.clearCategory('artifact');
         }
         if (window.performanceElementManager && typeof window.performanceElementManager.removeAllByCategory === 'function') {
             window.performanceElementManager.removeAllByCategory('effect');
             window.performanceElementManager.removeAllByCategory('particle');
             window.performanceElementManager.removeAllByCategory('artifact');
+            window.performanceElementManager.removeAllByCategory('stream');
         }
 
-        // Reset everything
+        // 2. RESET ALL VISUAL STATES
         this.resetColors();
         this.updateSpeed(1);
+        
+        // Reset body filters and styles completely
+        document.body.style.filter = 'none';
+        document.body.style.transform = 'none';
+        document.body.style.removeProperty('background-image'); // Clear noise fallback
+        document.body.style.removeProperty('opacity');
 
-        // Disable all effects via FX controller
+        // 3. RESET ALL FX CONTROLLERS
         if (window.fxController) {
             window.fxController.setIntensity({ glitch: 0, particles: 0, distortion: 0, noise: 0 });
+            window.fxController.setGlobalIntensityMultiplier(1.0);
         } else {
             Object.keys(this.currentSettings.effects).forEach(effect => {
                 this.updateEffectIntensity(effect, 0);
             });
         }
 
-        // Stop phase animations
+        // 4. STOP ALL PHASE SYSTEMS
         if (window.chaosInit) {
             window.chaosInit.phaseRunning = false;
         }
 
-        // Optional: brief blackout to mask cleanup
-        if (window.chaosInit && typeof window.chaosInit.showBlackout === 'function') {
-            window.chaosInit.showBlackout(0.9);
-            setTimeout(() => window.chaosInit.hideBlackout(), 800);
-        }
-
-        // Clear any overlays
+        // 5. COMPLETE OVERLAY CLEANUP
         document.querySelectorAll('div[style*="position: fixed"]').forEach(el => {
-            if (!el.classList.contains('control-panel')) {
+            if (!el.classList.contains('control-panel') && 
+                !el.id.includes('chaos-canvas') && 
+                !el.id.includes('matrix-rain') &&
+                !el.id.includes('static-noise')) {
                 el.remove();
             }
         });
+        
+        // Clear temporary canvases (preserve essential ones)
+        document.querySelectorAll('canvas').forEach(canvas => {
+            if (canvas.id !== 'chaos-canvas' && 
+                canvas.id !== 'matrix-rain' && 
+                canvas.id !== 'static-noise' &&
+                canvas.id !== 'cyber-grid') {
+                canvas.remove();
+            }
+        });
 
-        // Reset to calm state and restart animations
+        // 6. RESET MATRIX MESSAGE SYSTEM
+        if (window.matrixMessages && typeof window.matrixMessages.forceCleanup === 'function') {
+            window.matrixMessages.forceCleanup();
+        }
+
+        // 7. FORCE GARBAGE COLLECTION
+        if (window.gc) {
+            window.gc();
+        }
+
+        // 8. RESTART SYSTEM CLEANLY
         setTimeout(() => {
-            this.changeScene('calm');
+            // Reset to minimal state first
+            this.changeScene('minimal');
             
-            // Restart essential animations after emergency cleanup
-            this.restartEssentialAnimations();
-        }, 2000); // Longer delay for cleanup to complete
+            // Wait then switch to calm for smooth transition
+            setTimeout(() => {
+                this.changeScene('calm');
+                this.restartEssentialAnimations();
+                console.log('✅ Enhanced emergency reset completed - System restored');
+            }, 1000);
+            
+        }, 1200); // Faster recovery
     }
 
     executeEmergencyCleanup() {
@@ -869,10 +902,13 @@ class VJReceiver {
     }
 
     startPerformanceMonitoring() {
-        // Monitor FPS
+        // Monitor FPS with automatic emergency stop
         let lastTime = performance.now();
         let frames = 0;
         let fps = 60;
+        let lowFpsCount = 0;
+        const LOW_FPS_THRESHOLD = 10;
+        const LOW_FPS_DURATION = 5; // seconds
 
         const measureFPS = () => {
             frames++;
@@ -882,6 +918,24 @@ class VJReceiver {
                 fps = (frames * 1000) / (currentTime - lastTime);
                 frames = 0;
                 lastTime = currentTime;
+                
+                // AUTO EMERGENCY STOP: Check for critically low FPS
+                if (fps < LOW_FPS_THRESHOLD) {
+                    lowFpsCount++;
+                    console.warn(`⚠️ Low FPS detected: ${fps.toFixed(1)} (${lowFpsCount}/${LOW_FPS_DURATION}s)`);
+                    
+                    if (lowFpsCount >= LOW_FPS_DURATION) {
+                        console.log('🚨 AUTO EMERGENCY STOP: FPS below 10 for 5+ seconds!');
+                        this.emergencyStop();
+                        lowFpsCount = 0; // Reset counter after emergency stop
+                    }
+                } else {
+                    // Reset low FPS counter when performance recovers
+                    if (lowFpsCount > 0) {
+                        console.log('✅ FPS recovered, resetting low FPS counter');
+                        lowFpsCount = 0;
+                    }
+                }
             }
 
             this.currentFPS = fps;
@@ -889,6 +943,8 @@ class VJReceiver {
         };
 
         requestAnimationFrame(measureFPS);
+        
+        console.log('📈 Performance monitoring started with auto-emergency stop (FPS < 10 for 5s)');
     }
 
     sendPerformanceData() {
