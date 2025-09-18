@@ -263,8 +263,8 @@ class ChaosInitializer {
         this.initChaosEngine();
         this.initTextEffects();
         this.initAdditionalEffects();
-        // DISABLED: Random animations create ugly rectangular elements
-        // this.initRandomAnimations();
+        // RE-ENABLED: Random animations (CSS blur will fix rectangular elements)
+        this.initRandomAnimations();
         this.handleResize();
 
         // Listen for animation phase changes
@@ -419,10 +419,11 @@ class ChaosInitializer {
 
     initRandomAnimations() {
         try {
+            // RE-ENABLED: Rectangular elements will be blurred by CSS
             randomAnimations.init();
             extendedAnimations.init();
-            console.log('🎲 Random animations initialized');
-            console.log('🎬 Extended animations initialized');
+            console.log('🎲 Random animations initialized (rectangular elements blurred via CSS)');
+            console.log('🎬 Extended animations initialized (rectangular elements blurred via CSS)');
 
             // Initialize beehive logo blend effect
             beehiveLogoBlend.init();

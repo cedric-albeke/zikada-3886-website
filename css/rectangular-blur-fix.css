@@ -1,0 +1,88 @@
+/* Rectangular Element Blur Fix - Soften harsh rectangular floating elements */
+
+/* Target all fixed position divs that are likely rectangular floating elements */
+div[style*="position: fixed"][style*="background"] {
+    filter: blur(3px) !important;
+    border-radius: 8px !important;
+    opacity: 0.3 !important;
+}
+
+/* Target elements with repeating gradients (these create rectangular patterns) */
+div[style*="repeating-linear-gradient"] {
+    filter: blur(4px) !important;
+    border-radius: 12px !important;
+    opacity: 0.2 !important;
+}
+
+/* Target elements with 45deg gradients (diagonal rectangles from screenshot) */
+div[style*="45deg"] {
+    filter: blur(5px) !important;
+    border-radius: 15px !important;
+    opacity: 0.15 !important;
+}
+
+/* Target magenta/purple floating elements specifically */
+div[style*="rgba(255,0,255"], 
+div[style*="rgba(255, 0, 255"] {
+    filter: blur(4px) !important;
+    border-radius: 10px !important;
+    opacity: 0.25 !important;
+}
+
+/* Target full-width elements that create horizontal bars */
+div[style*="width: 100%"][style*="height"][style*="position: fixed"] {
+    filter: blur(6px) !important;
+    border-radius: 20px !important;
+    opacity: 0.1 !important;
+    transform: scale(0.8) !important;
+}
+
+/* Target high z-index temporary effects */
+div[style*="z-index: 9"][style*="position: fixed"] {
+    filter: blur(3px) !important;
+    border-radius: 8px !important;
+}
+
+/* Preserve essential elements from blur */
+.pre-loader,
+.pre-loader *,
+.logo-text,
+.logo-text *,
+.image-wrapper,
+.image-wrapper *,
+.image-2,
+.text-3886,
+.scramble-text,
+#chaos-canvas,
+.control-panel,
+.control-panel * {
+    filter: none !important;
+    border-radius: unset !important;
+    opacity: unset !important;
+}
+
+/* Preserve cicada logo specifically */
+img[src*="c01n.svg"] {
+    filter: none !important;
+    border-radius: unset !important;
+    opacity: 1 !important;
+}
+
+/* Soft blur for scanlines to make them less harsh */
+.scanlines {
+    filter: blur(0.5px) !important;
+    opacity: 0.001 !important;
+}
+
+/* Soft blur for cyber grid */
+#cyber-grid {
+    filter: blur(1px) !important;
+    opacity: 0.001 !important;
+}
+
+/* Make data streams softer */
+.data-streams,
+.data-streams * {
+    filter: blur(1px) !important;
+    opacity: 0.5 !important;
+}
