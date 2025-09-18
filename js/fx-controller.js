@@ -61,8 +61,16 @@ class FXController {
       const noiseCanvas = document.getElementById('static-noise');
       if (noiseCanvas) {
         // Primary method: Use the static-noise canvas
-        noiseCanvas.style.opacity = (value * 0.05).toFixed(3);
-        
+        if (value === 0) {
+          // Completely hide noise when set to 0%
+          noiseCanvas.style.display = 'none';
+          noiseCanvas.style.opacity = '0';
+        } else {
+          // Show and set opacity for non-zero values
+          noiseCanvas.style.display = 'block';
+          noiseCanvas.style.opacity = (value * 0.05).toFixed(3);
+        }
+
         // Clear any body background noise fallback when canvas is available
         if (document.body.style.backgroundImage && document.body.style.backgroundImage.includes('noise')) {
           document.body.style.removeProperty('background-image');
@@ -75,18 +83,27 @@ class FXController {
           // Try again after recreation
           const recreatedCanvas = document.getElementById('static-noise');
           if (recreatedCanvas) {
-            recreatedCanvas.style.opacity = (value * 0.05).toFixed(3);
+            if (value === 0) {
+              // Completely hide noise when set to 0%
+              recreatedCanvas.style.display = 'none';
+              recreatedCanvas.style.opacity = '0';
+            } else {
+              // Show and set opacity for non-zero values
+              recreatedCanvas.style.display = 'block';
+              recreatedCanvas.style.opacity = (value * 0.05).toFixed(3);
+            }
             return; // Success, don't use body fallback
           }
         }
-        
+
         // FALLBACK: Use body background SVG noise if canvas recreation failed
         if (value > 0) {
-          document.body.style.setProperty('background-image', 
+          document.body.style.setProperty('background-image',
             `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Cfilter id='noise'%3E%3CfeTurbulence baseFrequency='0.9' /%3E%3C/filter%3E%3Crect width='100' height='100' filter='url(%23noise)' opacity='${(value * 0.03).toFixed(3)}'/%3E%3C/svg%3E")`,
             'important'
           );
         } else {
+          // Completely remove background noise when set to 0%
           document.body.style.removeProperty('background-image');
         }
       }

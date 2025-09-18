@@ -199,8 +199,8 @@ class VJReceiver {
 
             case 'anime_disable':
                 console.log('🛑 Processing anime_disable');
-                if (window.animeController) {
-                    window.animeController.disable();
+                if (window.animeManager) {
+                    window.animeManager.pauseAll();
                 }
                 this.setAnimeFlag(false);
                 this.sendAnimeStatus('disabled', false, { success: true });
@@ -208,8 +208,8 @@ class VJReceiver {
 
             case 'anime_kill':
                 console.log('💀 Processing anime_kill');
-                if (window.animeController) {
-                    window.animeController.killAll();
+                if (window.animeManager) {
+                    window.animeManager.killAll();
                 }
                 this.sendAnimeStatus('killed', this.animeEnabled, { success: true });
                 break;
@@ -760,21 +760,26 @@ class VJReceiver {
         } catch (_) {}
     }
 
-    loadAnimeController() {
+    loadAnimeStack() {
         return new Promise((resolve) => {
-            // Dynamically import the anime controller
-            import('./anime-controller.js').then(() => {
-                if (window.animeController) {
-                    console.log('✅ AnimeController loaded');
-                    resolve(true);
-                } else {
-                    console.error('❌ AnimeController not found after import');
+            // Load the proper anime stack through chaos init
+            if (window.chaosInit && window.chaosInit.loadAnimeStack) {
+                window.chaosInit.loadAnimeStack().then(() => {
+                    if (window.animeManager) {
+                        console.log('✅ Anime stack loaded');
+                        resolve(true);
+                    } else {
+                        console.error('❌ AnimeManager not found after import');
+                        resolve(false);
+                    }
+                }).catch(err => {
+                    console.error('❌ Failed to load anime stack:', err);
                     resolve(false);
-                }
-            }).catch(err => {
-                console.error('❌ Failed to load AnimeController:', err);
+                });
+            } else {
+                console.error('❌ ChaosInit not available');
                 resolve(false);
-            });
+            }
         });
     }
 
@@ -782,20 +787,20 @@ class VJReceiver {
         console.log('🎯 Enabling anime.js...');
 
         try {
-            // Load anime controller if not already loaded
-            if (!window.animeController) {
-                const loaded = await this.loadAnimeController();
+            // Load anime stack if not already loaded
+            if (!window.animeManager) {
+                const loaded = await this.loadAnimeStack();
                 if (!loaded) {
-                    this.sendAnimeStatus('error', false, { error: 'Failed to load anime controller', success: false });
+                    this.sendAnimeStatus('error', false, { error: 'Failed to load anime stack', success: false });
                     return;
                 }
             }
 
-            // Enable the controller
-            const success = window.animeController.enable();
+            // Set the anime enabled flag
+            this.setAnimeFlag(true);
+            window.__ANIME_POC_ENABLED = true;
 
-            if (success) {
-                this.setAnimeFlag(true);
+            if (window.animeManager) {
                 this.sendAnimeStatus('enabled', true, { success: true });
                 console.log('✅ Anime enabled successfully');
             } else {
@@ -809,9 +814,9 @@ class VJReceiver {
     }
 
     handleAnimeTrigger(animationId) {
-        if (!window.animeController) {
+        if (!window.animeManager) {
             this.sendAnimeStatus('error', false, {
-                error: 'anime controller not loaded',
+                error: 'anime manager not loaded',
                 actionId: animationId,
                 success: false
             });
@@ -828,7 +833,37 @@ class VJReceiver {
         }
 
         try {
-            const success = window.animeController.runAnimation(animationId);
+            // Trigger animations via events (like the original implementation)
+            let success = false;
+
+            switch(animationId) {
+                case 'logo-outline':
+                case 'logo-pulse':
+                    // Trigger matrix message event which causes logo pulse in anime-svg-logo.js
+                    window.dispatchEvent(new CustomEvent('matrixMessage'));
+                    success = true;
+                    break;
+
+                case 'matrix-flash':
+                    // Trigger another matrix message for flash effect
+                    window.dispatchEvent(new CustomEvent('matrixMessage'));
+                    success = true;
+                    break;
+
+                case 'bg-warp':
+                    // Trigger animation phase change for background effects
+                    window.dispatchEvent(new CustomEvent('animationPhase', { detail: { phase: 'intense' } }));
+                    setTimeout(() => {
+                        window.dispatchEvent(new CustomEvent('animationPhase', { detail: { phase: 'auto' } }));
+                    }, 2000);
+                    success = true;
+                    break;
+
+                default:
+                    console.warn('Unknown animation ID:', animationId);
+                    success = false;
+            }
+
             this.sendAnimeStatus('trigger', this.animeEnabled, {
                 actionId: animationId,
                 success: success

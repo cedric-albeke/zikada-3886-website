@@ -18,6 +18,10 @@ class VJControlPanel {
         this.isPlaying = false;
         this.animeStatus = { enabled: false, lastAction: 'status' };
 
+        // Header functionality tracking
+        this.startTime = Date.now();
+        this.activeEffectsCount = 0;
+
         this.init();
     }
 
@@ -38,6 +42,9 @@ class VJControlPanel {
 
         // Initialize system reset
         this.initSystemReset();
+
+        // Initialize header functionality
+        this.initHeaderFunctionality();
 
         // Start monitoring
         this.startMonitoring();
@@ -1217,6 +1224,126 @@ class VJControlPanel {
         const activeFxDisplay = document.getElementById('activeFxDisplay');
         if (activeFxDisplay) {
             activeFxDisplay.textContent = data.activeFx || 0;
+        }
+    }
+
+    // Initialize header functionality
+    initHeaderFunctionality() {
+        // Initialize Emergency Button
+        const emergencyBtn = document.getElementById('emergencyStop');
+        if (emergencyBtn) {
+            emergencyBtn.addEventListener('click', () => {
+                console.log('🚨 EMERGENCY STOP triggered from header');
+
+                // Send emergency stop message
+                this.sendMessage({
+                    type: 'emergency_stop',
+                    timestamp: Date.now()
+                });
+
+                // Visual feedback
+                this.flashButton(emergencyBtn);
+                emergencyBtn.textContent = 'STOPPING...';
+                emergencyBtn.disabled = true;
+
+                setTimeout(() => {
+                    emergencyBtn.innerHTML = '<span class="btn-icon">⏹</span><span class="btn-text">EMERGENCY</span>';
+                    emergencyBtn.disabled = false;
+                }, 3000);
+            });
+        }
+
+        // Start uptime counter
+        this.startUptimeCounter();
+
+        // Initialize effects counter
+        this.initEffectsCounter();
+
+        // Initialize status indicators
+        this.initStatusIndicators();
+    }
+
+    startUptimeCounter() {
+        const uptimeDisplay = document.getElementById('systemUptime');
+        if (!uptimeDisplay) return;
+
+        setInterval(() => {
+            const elapsed = Date.now() - this.startTime;
+            const hours = Math.floor(elapsed / (1000 * 60 * 60));
+            const minutes = Math.floor((elapsed % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((elapsed % (1000 * 60)) / 1000);
+
+            const formatted = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            uptimeDisplay.textContent = formatted;
+        }, 1000);
+    }
+
+    initEffectsCounter() {
+        // Track effects from various sources
+        const headerActiveFx = document.getElementById('headerActiveFx');
+        if (!headerActiveFx) return;
+
+        // Update counter periodically
+        setInterval(() => {
+            // Get effects count from different sources
+            let totalEffects = 0;
+
+            // Count from existing activeFxDisplay if available
+            const activeFxDisplay = document.getElementById('activeFxDisplay');
+            if (activeFxDisplay && activeFxDisplay.textContent !== '--') {
+                totalEffects += parseInt(activeFxDisplay.textContent) || 0;
+            }
+
+            // Count from performance data if available
+            if (this.lastPerformanceData && this.lastPerformanceData.activeFx) {
+                totalEffects = Math.max(totalEffects, parseInt(this.lastPerformanceData.activeFx) || 0);
+            }
+
+            // Update header display
+            headerActiveFx.textContent = totalEffects.toString();
+
+            // Store for other uses
+            this.activeEffectsCount = totalEffects;
+        }, 500);
+    }
+
+    initStatusIndicators() {
+        const systemHealth = document.getElementById('systemHealth');
+        const performanceStatus = document.getElementById('performanceStatus');
+
+        if (systemHealth || performanceStatus) {
+            setInterval(() => {
+                // System Health Logic
+                if (systemHealth) {
+                    let healthStatus = 'healthy';
+
+                    // Check connection status
+                    if (!this.isConnected) {
+                        healthStatus = 'warning';
+                    }
+
+                    // Check effects overload
+                    if (this.activeEffectsCount > 10) {
+                        healthStatus = 'critical';
+                    }
+
+                    systemHealth.className = `indicator ${healthStatus}`;
+                }
+
+                // Performance Status Logic
+                if (performanceStatus) {
+                    let perfStatus = 'healthy';
+
+                    // Check performance mode
+                    if (this.performanceMode === 'low') {
+                        perfStatus = 'warning';
+                    } else if (this.performanceMode === 'high') {
+                        perfStatus = 'critical';
+                    }
+
+                    performanceStatus.className = `indicator ${perfStatus}`;
+                }
+            }, 2000);
         }
     }
 

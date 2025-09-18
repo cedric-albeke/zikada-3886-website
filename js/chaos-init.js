@@ -97,25 +97,21 @@ class ChaosInitializer {
     }
 
     isAnimeFeatureEnabled() {
-        // DISABLED: anime.js causing reset issues and visual artifacts
-        return false;
-
-        // Original code commented out for reference:
-        // try {
-        //     if (typeof window === 'undefined') return false;
-        //     const qp = new URLSearchParams(window.location?.search || '');
-        //     if (qp.get('anime') === '1') {
-        //         try {
-        //             window.localStorage?.setItem('3886_anime_enabled', '1');
-        //         } catch (_) {}
-        //         return true;
-        //     }
-        //     if (window.__ANIME_POC_ENABLED === true) return true;
-        //     const stored = window.localStorage?.getItem('3886_anime_enabled');
-        //     return stored === '1';
-        // } catch (_) {
-        //     return false;
-        // }
+        try {
+            if (typeof window === 'undefined') return false;
+            const qp = new URLSearchParams(window.location?.search || '');
+            if (qp.get('anime') === '1') {
+                try {
+                    window.localStorage?.setItem('3886_anime_enabled', '1');
+                } catch (_) {}
+                return true;
+            }
+            if (window.__ANIME_POC_ENABLED === true) return true;
+            const stored = window.localStorage?.getItem('3886_anime_enabled');
+            return stored === '1';
+        } catch (_) {
+            return false;
+        }
     }
 
     async loadAnimeStack() {
@@ -124,9 +120,10 @@ class ChaosInitializer {
         this.animeStackLoaded = true;
         const load = async () => {
             try {
-                // Import the new anime controller
-                await import('./anime-controller.js');
-                console.log('🎬 Anime.js controller loaded');
+                // Import the proper anime.js stack
+                await import('./anime-init.js');
+                await import('./anime-svg-logo.js');
+                console.log('🎬 Anime.js stack loaded successfully');
             } catch (error) {
                 this.animeStackLoaded = false;
                 console.error('Failed to load anime.js stack', error);
@@ -896,6 +893,21 @@ class ChaosInitializer {
         // to prevent auto-cleanup that was causing noise effect to disappear
         const canvas = document.createElement('canvas');
         canvas.id = 'static-noise';
+
+        // Check current noise intensity from FX controller to set initial opacity
+        let initialOpacity = 0.015; // Default
+        let initialDisplay = 'block';
+
+        if (window.fxController) {
+            const noiseIntensity = window.fxController.getIntensity('noise');
+            if (noiseIntensity === 0) {
+                initialOpacity = 0;
+                initialDisplay = 'none';
+            } else {
+                initialOpacity = (noiseIntensity * 0.05).toFixed(3);
+            }
+        }
+
         canvas.style.cssText = `
             position: fixed;
             top: 0;
@@ -904,12 +916,13 @@ class ChaosInitializer {
             height: 100%;
             pointer-events: none;
             z-index: 1;
-            opacity: 0.015;
+            opacity: ${initialOpacity};
             mix-blend-mode: screen;
+            display: ${initialDisplay};
         `;
         canvas.width = 256;
         canvas.height = 256;
-        
+
         // Add to DOM directly (not through performance manager)
         document.body.appendChild(canvas);
 
