@@ -66,23 +66,45 @@ class FilterManager {
       const safeFilter = this._sanitize(filter);
       gsap.killTweensOf(document.body, 'filter');
       
-      // Atomic transition: set an intermediate safe filter if transitioning from or to 'none'
+      // Atomic transition: neutralize edges when transitioning to/from 'none'
       const current = window.getComputedStyle(document.body).filter;
+
       if (current === 'none' && safeFilter !== 'none') {
-        // Start from neutral base to avoid grey flash
+        // Start from neutral base to avoid grey flash when applying new filter from none
         gsap.set(document.body, { filter: 'brightness(1) contrast(1) saturate(1) hue-rotate(0deg)' });
+        gsap.to(document.body, {
+          filter: safeFilter,
+          duration,
+          ease: 'power1.inOut',
+          overwrite: 'auto'
+        });
+      } else if (safeFilter === 'none' && current && current !== 'none') {
+        // Fade to neutral first, then remove filter entirely
+        gsap.to(document.body, {
+          filter: 'brightness(1) contrast(1) saturate(1) hue-rotate(0deg)',
+          duration: Math.max(0.1, duration * 0.5),
+          ease: 'power1.inOut',
+          overwrite: 'auto',
+          onComplete: () => {
+            document.body.style.removeProperty('filter');
+          }
+        });
+      } else {
+        // Normal transition between filters
+        gsap.to(document.body, {
+          filter: safeFilter,
+          duration,
+          ease: 'power1.inOut',
+          overwrite: 'auto'
+        });
       }
-      
-      // Apply filter smoothly with overwrite auto
-      gsap.to(document.body, {
-        filter: safeFilter,
-        duration,
-        ease: 'power1.inOut',
-        overwrite: 'auto'
-      });
     } catch (e) {
       // Fallback - use regular style setting
-      document.body.style.filter = filter;
+      if (filter === 'none') {
+        document.body.style.removeProperty('filter');
+      } else {
+        document.body.style.filter = filter;
+      }
     }
   }
 
