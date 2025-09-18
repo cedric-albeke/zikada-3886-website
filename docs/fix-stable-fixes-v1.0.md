@@ -39,15 +39,16 @@ Changes
 - Intent: Prevent repeated optimization spam and excessive cleanup churn.
 
 Results
-- Flashes: Significantly reduced; one rare flash still observed during hue slider interaction.
+- Flashes: Significantly reduced; rare flash removed by adding filter→none neutralization path.
 - Logging: Substantially quieter. Registry shows periodic status; inspector outputs compact line.
 
+Additional Implementations
+- Diagnostics (non-intrusive) added: js/diagnostics.js providing window.__3886_DIAG.getStats()/print()
+- Registry soft-cap adjusted to opt-in only via vars._regSoftCap to prevent unintended animation skipping
+
 Next Steps
-1) Diagnostics (non-intrusive):
-   - Add window.__3886_DIAG.getStats() to read counts of DOM nodes, registry animations, intervals, FPS; no hooks, no timers.
-2) Optional extra hardening for filter transitions:
-   - When transitioning from any filter to 'none', optionally tween to a neutral base, then remove filter—only if we continue to observe flashes.
-3) Only after confirming stability: evaluate a small, opt-in queue for non-critical effect animations to avoid bursts (strictly bypassed for critical targets).
+1) Optional: introduce an opt-in effect queue (vars._regQueue) for non-critical effects to smooth bursts on scene switches.
+2) Evaluate global debug flags (window.__3886_DEBUG.silent) to further minimize logs.
 
 Notes
 - Avoided global GSAP wrappers or supervisor overrides to prevent regressions.
