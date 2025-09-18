@@ -936,7 +936,7 @@ class MatrixMessages {
         this.startCountdownTimer();
 
         // Dice roll system: every 5 seconds, roll 1-1000
-        // If 900-1000 (10% chance), trigger matrix message
+        // If 850-1000 (15% chance), trigger matrix message
         const diceRollInterval = () => {
             const roll = Math.floor(Math.random() * 1000) + 1; // 1-1000
             this.lastRoll = roll;
@@ -945,7 +945,7 @@ class MatrixMessages {
             // Broadcast dice roll result to control panel
             this.broadcastDiceUpdate(roll);
 
-            if (roll >= 900 && roll <= 1000) {
+            if (roll >= 850 && roll <= 1000) {
                 console.log('🎯 Dice roll hit! Triggering matrix message...');
                 this.showMessage();
             }

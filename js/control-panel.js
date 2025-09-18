@@ -513,6 +513,16 @@ class VJControlPanel {
 
             const valueDisplay = slider.parentElement.querySelector('.slider-value');
 
+            // Send initial value based on slider position
+            const initialValue = slider.value;
+            this.sendMessage({
+                type: 'effect_intensity',
+                effect: key,
+                value: initialValue / 100,
+                timestamp: Date.now()
+            });
+            console.log(`🎛️ Initialized ${key} effect to ${initialValue}%`);
+
             slider.addEventListener('input', () => {
                 const value = slider.value;
                 valueDisplay.textContent = `${value}%`;
@@ -1300,8 +1310,8 @@ class VJControlPanel {
                     this.lastDiceRoll = data.lastRoll;
                     lastDiceRollEl.textContent = data.lastRoll.toString();
 
-                    // Add visual feedback for successful rolls (900-1000)
-                    if (data.lastRoll >= 900) {
+                    // Add visual feedback for successful rolls (850-1000)
+                    if (data.lastRoll >= 850) {
                         lastDiceRollEl.style.color = '#00ff85';
                         lastDiceRollEl.style.textShadow = '0 0 10px #00ff85';
                         setTimeout(() => {
@@ -1349,7 +1359,7 @@ class VJControlPanel {
                     }
 
                     // Check for dice roll activity
-                    if (this.lastDiceRoll && this.lastDiceRoll >= 900) {
+                    if (this.lastDiceRoll && this.lastDiceRoll >= 850) {
                         healthStatus = 'healthy'; // Show green when successful roll
                     }
 
