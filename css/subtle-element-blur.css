@@ -1,0 +1,60 @@
+/* Subtle Element Blur - VERY targeted fix for specific floating rectangular elements */
+
+/* ONLY target elements with specific problematic patterns */
+
+/* Target ONLY diagonal repeating gradients (the purple diagonal rectangles from screenshot) */
+div[style*="repeating-linear-gradient"][style*="45deg"][style*="rgba(255,0,255"] {
+    filter: blur(2px) !important;
+    opacity: 0.3 !important;
+    border-radius: 4px !important;
+}
+
+/* Target ONLY horizontal full-width bars with specific colors */
+div[style*="width: 100%"][style*="rgba(255,0,255"][style*="position: fixed"] {
+    filter: blur(3px) !important;
+    opacity: 0.2 !important;
+    border-radius: 6px !important;
+}
+
+/* Target ONLY temporary overlay elements with high z-index */
+div[style*="z-index: 9"][style*="position: fixed"][style*="background"] {
+    filter: blur(1px) !important;
+    border-radius: 3px !important;
+}
+
+/* DO NOT affect any essential elements - explicit exclusions */
+.pre-loader,
+.pre-loader *,
+.logo-text,
+.logo-text-wrapper,
+.image-wrapper,
+.image-2,
+.text-3886,
+.scramble-text,
+#chaos-canvas,
+#cyber-grid,
+.scanlines,
+.control-panel,
+.control-panel *,
+.bg,
+.glow,
+.welcome-wrapper {
+    filter: none !important;
+    border-radius: unset !important;
+    opacity: unset !important;
+}
+
+/* Specifically preserve cicada logo */
+img[src*="c01n.svg"],
+svg[src*="c01n.svg"] {
+    filter: none !important;
+    border-radius: unset !important;
+    opacity: 1 !important;
+}
+
+/* Preserve all text elements */
+span, div[class*="text"], div[class*="logo"] {
+    filter: none !important;
+    border-radius: unset !important;
+    opacity: unset !important;
+}
