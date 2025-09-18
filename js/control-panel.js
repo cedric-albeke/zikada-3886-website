@@ -877,9 +877,32 @@ class VJControlPanel {
     }
 
     getPerformanceReport() {
+        // Try to get performance data via cross-tab communication
+        this.sendMessage({
+            type: 'request_performance_detailed',
+            timestamp: Date.now()
+        });
+        
         // Try to get performance data from safe monitor
         if (window.safePerformanceMonitor) {
-            return window.safePerformanceMonitor.getReport();
+            const basicReport = window.safePerformanceMonitor.getReport();
+            
+            // Add additional metrics if available
+            const enhancedReport = {
+                ...basicReport,
+                animations: {
+                    total: window.earlyGSAPRegistry ? window.earlyGSAPRegistry.animations.size : '--'
+                },
+                dom: {
+                    ...basicReport.dom,
+                    managedElements: window.performanceElementManager ? window.performanceElementManager.elements.size : '--'
+                },
+                intervals: {
+                    total: window.intervalManager ? window.intervalManager.intervals.size : '--'
+                }
+            };
+            
+            return enhancedReport;
         }
         
         // Fallback to basic metrics
@@ -887,6 +910,8 @@ class VJControlPanel {
             fps: { current: 0 },
             memory: { formatted: '-- MB' },
             dom: { totalNodes: 0 },
+            animations: { total: '--' },
+            intervals: { total: '--' },
             timestamp: new Date()
         };
     }
