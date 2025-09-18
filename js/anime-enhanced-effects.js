@@ -354,9 +354,9 @@ class AnimeEnhancedEffects {
             .add({
                 targets: '.logo-text, .text-3886',
                 color: [
-                    { value: '#ff0000', duration: 100 },
-                    { value: '#00ff00', duration: 100 },
-                    { value: '#0000ff', duration: 100 },
+                    { value: '#00ff85', duration: 100 },
+                    { value: '#00ffff', duration: 100 },
+                    { value: '#00ff85', duration: 100 },
                     { value: '#00ff85', duration: 100 }
                 ],
                 easing: 'steps(3)'
@@ -769,53 +769,69 @@ class AnimeEnhancedEffects {
         animeManager.register(helixRotate, { critical: false, label: 'dna-helix-rotate' });
     }
 
-    // Create Plasma Field (OPTIMIZED & REPOSITIONED)
+    // Create Plasma Field (FULL BACKGROUND ATMOSPHERIC EFFECT)
     createPlasmaField() {
         const plasmaCanvas = document.createElement('canvas');
         plasmaCanvas.className = 'anime-plasma-field';
-        plasmaCanvas.width = 150; // Reduced from 200
-        plasmaCanvas.height = 150; // Reduced from 200
+        plasmaCanvas.width = 400;  // Higher res for quality
+        plasmaCanvas.height = 400;
         plasmaCanvas.style.cssText = `
             position: fixed;
-            top: 10px;
-            right: 10px;
-            width: 200px;
-            height: 200px;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
             pointer-events: none;
-            z-index: 2;
-            opacity: 0.15;
+            z-index: -1;  // Behind everything as true background
+            opacity: 0.15;  // Slightly more visible since it's in background
             mix-blend-mode: screen;
-            filter: blur(3px);
-            border-radius: 10px;
+            filter: blur(20px);  // Heavy blur for atmospheric effect
+            transform: scale(1.2);  // Slightly larger to avoid edge artifacts
+            transform-origin: center center;
         `;
-        document.body.appendChild(plasmaCanvas);
+
+        // Insert as first child of body to ensure it's behind everything
+        if (document.body.firstChild) {
+            document.body.insertBefore(plasmaCanvas, document.body.firstChild);
+        } else {
+            document.body.appendChild(plasmaCanvas);
+        }
 
         const ctx = plasmaCanvas.getContext('2d');
         let time = 0;
 
         const drawPlasma = () => {
-            const imageData = ctx.createImageData(150, 150);
+            const imageData = ctx.createImageData(400, 400);
             const data = imageData.data;
 
-            // Simplified plasma calculation for performance
-            for (let x = 0; x < 150; x += 2) { // Skip every other pixel
-                for (let y = 0; y < 150; y += 2) {
-                    const value = Math.sin(x / 20.0) + Math.sin(y / 10.0) +
-                                 Math.sin((x + y) / 20.0) + 4 + time;
+            // Optimized plasma with larger patterns for background
+            for (let x = 0; x < 400; x += 2) {  // Skip pixels for performance
+                for (let y = 0; y < 400; y += 2) {
+                    const value = Math.sin(x / 32.0) + Math.sin(y / 24.0) +
+                                 Math.sin((x + y) / 48.0) + Math.sin(Math.sqrt(x * x + y * y) / 32.0) +
+                                 4 + time;
 
-                    const index = (y * 150 + x) * 4;
-                    const color = Math.sin(value * Math.PI) * 127 + 128;
+                    const index = (y * 400 + x) * 4;
+                    // Cyan/green/blue atmospheric colors
+                    const r = Math.sin(value * Math.PI) * 30;
+                    const g = Math.sin(value * Math.PI + 2) * 127 + 128;
+                    const b = Math.sin(value * Math.PI + 4) * 127 + 128;
 
-                    // Neon green/cyan theme
-                    data[index] = 0;
-                    data[index + 1] = color;
-                    data[index + 2] = color * 0.8;
-                    data[index + 3] = 255;
+                    // Fill 2x2 block for performance
+                    for (let dx = 0; dx < 2 && x + dx < 400; dx++) {
+                        for (let dy = 0; dy < 2 && y + dy < 400; dy++) {
+                            const idx = ((y + dy) * 400 + (x + dx)) * 4;
+                            data[idx] = r;
+                            data[idx + 1] = g;
+                            data[idx + 2] = b;
+                            data[idx + 3] = 255;
+                        }
+                    }
                 }
             }
 
             ctx.putImageData(imageData, 0, 0);
-            time += 0.02; // Slower animation
+            time += 0.02;  // Slower for subtle movement
         };
 
         const plasmaAnim = anime({
