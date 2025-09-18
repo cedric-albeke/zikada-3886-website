@@ -66,7 +66,14 @@ class FilterManager {
       const safeFilter = this._sanitize(filter);
       gsap.killTweensOf(document.body, 'filter');
       
-      // Apply filter smoothly without !important to avoid reset issues
+      // Atomic transition: set an intermediate safe filter if transitioning from or to 'none'
+      const current = window.getComputedStyle(document.body).filter;
+      if (current === 'none' && safeFilter !== 'none') {
+        // Start from neutral base to avoid grey flash
+        gsap.set(document.body, { filter: 'brightness(1) contrast(1) saturate(1) hue-rotate(0deg)' });
+      }
+      
+      // Apply filter smoothly with overwrite auto
       gsap.to(document.body, {
         filter: safeFilter,
         duration,
@@ -74,7 +81,7 @@ class FilterManager {
         overwrite: 'auto'
       });
     } catch (e) {
-      // Fallback - use regular style setting without !important
+      // Fallback - use regular style setting
       document.body.style.filter = filter;
     }
   }

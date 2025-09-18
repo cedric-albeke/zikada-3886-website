@@ -20,10 +20,18 @@ class GSAPAnimationRegistry {
             'particle': { maxAnimations: 50, priority: 5 }
         };
         
+        // Logging controls
+        this.verbose = !!(window.__3886_DEBUG && window.__3886_DEBUG.gsapRegistryVerbose);
+        this.logEvery = 20; // Only log every N registrations when not verbose
+        
         // Override GSAP methods to auto-register
         this.patchGSAPMethods();
         
-        console.log('🎬 GSAP Animation Registry initialized');
+        if (this.verbose) {
+            console.log('🎬 GSAP Animation Registry initialized (verbose)');
+        } else {
+            console.log('🎬 GSAP Animation Registry initialized');
+        }
     }
 
     /**
@@ -32,7 +40,7 @@ class GSAPAnimationRegistry {
     patchGSAPMethods() {
         // Check if already patched
         if (gsap._3886_patched) {
-            console.log('⚠️ GSAP already patched, skipping...');
+            if (this.verbose) console.log('⚠️ GSAP already patched, skipping...');
             return;
         }
 
@@ -97,7 +105,7 @@ class GSAPAnimationRegistry {
             set: originalSet
         };
 
-        console.log('🔧 GSAP methods patched for auto-registration');
+        if (this.verbose) console.log('🔧 GSAP methods patched for auto-registration');
     }
 
     /**
@@ -194,7 +202,12 @@ class GSAPAnimationRegistry {
 
         this.animations.set(animationId, animationData);
 
-        console.log(`🎬 Registered animation: ${name} (${category}) - Total: ${this.animations.size}`);
+        // Reduce logging noise: only log occasionally unless verbose enabled
+        if (this.verbose) {
+            console.log(`🎬 Registered animation: ${name} (${category}) - Total: ${this.animations.size}`);
+        } else if (this.animationCounter % this.logEvery === 0) {
+            console.log(`🎬 Animation registry status - Total: ${this.animations.size}`);
+        }
 
         return animationId;
     }

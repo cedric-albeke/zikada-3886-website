@@ -23,24 +23,28 @@ class PerformanceInspector {
         // Log initial state
         this.logPerformanceState();
         
-        // Check every 10 seconds
+        // Check less frequently to reduce console spam
         this.intervalId = setInterval(() => {
             this.logPerformanceState();
-        }, 10000);
+        }, 30000); // every 30s instead of 10s
     }
 
     logPerformanceState() {
         const report = this.gatherPerformanceData();
         
-        console.log('📊 PERFORMANCE INSPECTION REPORT:');
-        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-        console.log(`🖥️  DOM Elements: ${report.domElements}`);
-        console.log(`🎬 GSAP Animations: ${report.gsapAnimations}`);
-        console.log(`📱 Memory Usage: ${report.memoryFormatted}`);
-        console.log(`⚡ Current FPS: ${report.fps}`);
-        console.log(`🔗 Loaded Modules: ${report.loadedModules.join(', ')}`);
-        console.log(`⚠️  Performance Issues: ${report.issues.join(', ') || 'None detected'}`);
-        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        if (window.__3886_DEBUG && window.__3886_DEBUG.performanceInspectorVerbose) {
+            console.log('📊 PERFORMANCE INSPECTION REPORT:');
+            console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+            console.log(`🖥️  DOM Elements: ${report.domElements}`);
+            console.log(`🎬 GSAP Animations: ${report.gsapAnimations}`);
+            console.log(`📱 Memory Usage: ${report.memoryFormatted}`);
+            console.log(`⚡ Current FPS: ${report.fps}`);
+            console.log(`🔗 Loaded Modules: ${report.loadedModules.join(', ')}`);
+            console.log(`⚠️  Performance Issues: ${report.issues.join(', ') || 'None detected'}`);
+            console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        } else {
+            console.log(`📊 Perf: DOM ${report.domElements}, Anim ${report.gsapAnimations}, Mem ${report.memoryFormatted}, FPS ${report.fps}`);
+        }
     }
 
     gatherPerformanceData() {
