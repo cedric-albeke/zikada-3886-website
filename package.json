@@ -4,9 +4,10 @@
   "description": "ZIKADA 3886 Records - Psy & Techno Website",
   "main": "index.html",
   "scripts": {
-    "dev": "npm run kill-servers && vite --port 3886",
-    "dev-clean": "npm run kill-servers && vite --port 3886",
+    "dev": "npm run kill-servers && npm run clear-cache && vite --port 3886 --force",
+    "dev-clean": "npm run kill-servers && npm run clear-cache && vite --port 3886 --force",
     "kill-servers": "npx kill-port 3886 || echo Port 3886 clean",
+    "clear-cache": "rimraf node_modules/.vite && rimraf dist && echo Cache cleared",
     "build": "vite build",
     "serve": "npx http-server . -p 3886",
     "preview": "vite preview --port 3886"
@@ -24,6 +25,7 @@
   "devDependencies": {
     "http-server": "^14.1.1",
     "kill-port": "^2.0.1",
+    "rimraf": "^6.0.1",
     "vite": "^5.4.20"
   },
   "dependencies": {
