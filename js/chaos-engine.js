@@ -35,8 +35,15 @@ class ChaosEngine {
         window.addEventListener('adjustPostProcessing', (e) => this.adjustPostProcessing(e.detail.quality));
     }
 
-    init() {
-        if (this.isInitialized) return;
+    init(forceRestart = false) {
+        // Allow reinitialization for emergency restart (simulates F5)
+        if (this.isInitialized && !forceRestart) return;
+        
+        // If forcing restart, destroy first
+        if (this.isInitialized && forceRestart) {
+            console.log('🔄 Force restarting Chaos Engine...');
+            this.destroy();
+        }
 
         this.setupRenderer();
         this.setupScene();
@@ -49,6 +56,10 @@ class ChaosEngine {
         this.animate();
 
         this.isInitialized = true;
+        
+        if (forceRestart) {
+            console.log('✅ Chaos Engine force restart completed');
+        }
     }
 
     setupRenderer() {

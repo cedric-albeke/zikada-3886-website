@@ -318,6 +318,11 @@ class VJReceiver {
         // Update GSAP global timeline scale
         gsap.globalTimeline.timeScale(value);
 
+        // Keep anime.js timelines in sync when available
+        if (window.animeManager && typeof window.animeManager.setSpeed === 'function') {
+            window.animeManager.setSpeed(value);
+        }
+
         // Update timing controller if available
         if (window.timingController) {
             window.timingController.setGlobalSpeed(value);
@@ -650,6 +655,17 @@ class VJReceiver {
 
         // Map external mode to internal manager mode
         const mappedMode = (mode === 'auto') ? 'medium' : mode;
+        const perfDetail = { mode: mappedMode, source: 'vj-receiver', raw: mode };
+
+        if (window.animePerfAdapter && typeof window.animePerfAdapter.applyMode === 'function') {
+            window.animePerfAdapter.applyMode(mappedMode);
+        }
+
+        window.dispatchEvent(new CustomEvent('performanceMode', { detail: perfDetail }));
+        if (!window.performanceManager) {
+            window.dispatchEvent(new CustomEvent('performanceModeChange', { detail: perfDetail }));
+        }
+
 
         // Apply performance mode to all available systems
         if (window.ChaosControl && window.ChaosControl.setPerformance) {
@@ -705,6 +721,9 @@ class VJReceiver {
 
     emergencyStop() {
         console.log('🚨 ENHANCED EMERGENCY STOP - Full System Reset!');
+        if (window.animeManager && typeof window.animeManager.killAll === 'function') {
+            window.animeManager.killAll();
+        }
 
         // 1. COMPLETE ANIMATION CLEANUP
         if (window.gsapAnimationRegistry && typeof window.gsapAnimationRegistry.killByFilter === 'function') {
@@ -778,19 +797,19 @@ class VJReceiver {
             window.gc();
         }
 
-        // 8. RESTART SYSTEM CLEANLY
+        // 8. RESTART SYSTEM CLEANLY WITH FULL RECREATION
         setTimeout(() => {
             // Reset to minimal state first
             this.changeScene('minimal');
             
-            // Wait then switch to calm for smooth transition
+            // Then trigger FULL system restart (simulates F5)
             setTimeout(() => {
                 this.changeScene('calm');
-                this.restartEssentialAnimations();
-                console.log('✅ Enhanced emergency reset completed - System restored');
-            }, 1000);
+                this.restartEssentialAnimations(); // Now this is a FULL restart
+                console.log('✅ Enhanced emergency reset completed - Full system recreated!');
+            }, 800);
             
-        }, 1200); // Faster recovery
+        }, 800); // Even faster recovery since we're doing full restart
     }
 
     executeEmergencyCleanup() {
@@ -856,36 +875,144 @@ class VJReceiver {
         console.log('✅ Performance optimization completed');
     }
 
+    /**
+     * FULL SYSTEM RESTART - Simulates F5 refresh without actually refreshing
+     * This recreates everything exactly as it would be on fresh page load
+     */
     restartEssentialAnimations() {
-        console.log('🔄 Restarting essential animations after emergency cleanup...');
+        console.log('🔄 FULL SYSTEM RESTART - Simulating F5 refresh...');
         
-        // Restart chaos engine animations
+        // 1. FORCE RECREATE CHAOS ENGINE (like fresh page load)
+        if (window.chaosEngine && window.chaosEngine.init) {
+            console.log('🎆 Force reinitializing Chaos Engine...');
+            window.chaosEngine.init(true); // Force restart = true
+        }
+        
+        // 2. RECREATE ALL ANIMATION SYSTEMS
         if (window.chaosInit) {
-            // Restart phase animations
-            window.chaosInit.phaseRunning = true;
-            window.chaosInit.startAnimationPhases();
+            console.log('🎨 Recreating all animation systems...');
             
-            // Restart background effects
-            if (window.chaosInit.addScanlines) {
+            // Recreate performance monitoring
+            if (typeof window.chaosInit.initPerformanceMonitor === 'function') {
+                window.chaosInit.initPerformanceMonitor();
+            }
+            
+            // Recreate background animator
+            if (window.backgroundAnimator && window.backgroundAnimator.init) {
+                window.backgroundAnimator.init();
+                if (window.backgroundAnimator.startGlitchSequence) {
+                    window.backgroundAnimator.startGlitchSequence();
+                }
+            }
+            
+            // Recreate logo animator
+            if (window.enhancedLogoAnimator && window.enhancedLogoAnimator.init) {
+                window.enhancedLogoAnimator.init();
+            }
+            
+            // Recreate centerpiece logo system
+            if (window.centerpieceLogo && window.centerpieceLogo.init) {
+                window.centerpieceLogo.init();
+            }
+            
+            // Recreate text effects
+            if (window.textEffects && window.textEffects.init) {
+                window.textEffects.init();
+                if (window.textEffects.addDataCorruption) {
+                    window.textEffects.addDataCorruption();
+                }
+            }
+            
+            // Recreate matrix messages
+            if (window.matrixMessages && window.matrixMessages.init) {
+                window.matrixMessages.init();
+            }
+            
+            // Recreate subtle effects
+            if (window.subtleEffects && window.subtleEffects.init) {
+                window.subtleEffects.init();
+            }
+            
+            // 3. RECREATE ALL ADDITIONAL EFFECTS (like addScanlines, etc)
+            console.log('✨ Recreating additional effects...');
+            if (typeof window.chaosInit.addScanlines === 'function') {
                 window.chaosInit.addScanlines();
             }
-            
-            if (window.chaosInit.addDataStreams) {
+            if (typeof window.chaosInit.addVHSDistortion === 'function') {
+                window.chaosInit.addVHSDistortion();
+            }
+            if (typeof window.chaosInit.addCyberGrid === 'function') {
+                window.chaosInit.addCyberGrid();
+            }
+            if (typeof window.chaosInit.addGlowEffects === 'function') {
+                window.chaosInit.addGlowEffects();
+            }
+            if (typeof window.chaosInit.addStaticNoise === 'function') {
+                window.chaosInit.addStaticNoise();
+            }
+            if (typeof window.chaosInit.addDataStreams === 'function') {
                 window.chaosInit.addDataStreams();
+            }
+            if (typeof window.chaosInit.addHolographicShimmer === 'function') {
+                window.chaosInit.addHolographicShimmer();
+            }
+            if (typeof window.chaosInit.addSubtleColorVariations === 'function') {
+                window.chaosInit.addSubtleColorVariations();
             }
         }
         
-        // Restart logo animations
-        if (window.enhancedLogoAnimator && window.enhancedLogoAnimator.init) {
-            window.enhancedLogoAnimator.init();
+        // 4. RECREATE RANDOM & EXTENDED ANIMATIONS
+        if (window.randomAnimations && window.randomAnimations.init) {
+            console.log('🎲 Recreating random animations...');
+            window.randomAnimations.init();
         }
         
-        // Restart background animator
-        if (window.backgroundAnimator && window.backgroundAnimator.init) {
-            window.backgroundAnimator.init();
+        if (window.extendedAnimations && window.extendedAnimations.init) {
+            console.log('🎆 Recreating extended animations...');
+            window.extendedAnimations.init();
         }
         
-        console.log('✅ Essential animations restarted');
+        // 5. RECREATE SPECIALIZED EFFECTS
+        if (window.beehiveLogoBlend && window.beehiveLogoBlend.init) {
+            window.beehiveLogoBlend.init();
+        }
+        
+        if (window.sonarEffect && window.sonarEffect.init) {
+            window.sonarEffect.init();
+        }
+        
+        if (window.lottieAnimations && window.lottieAnimations.init) {
+            window.lottieAnimations.init();
+        }
+        
+        if (window.beehiveBackground && window.beehiveBackground.init) {
+            window.beehiveBackground.init();
+        }
+        
+        // 6. RESTART PHASE ANIMATIONS (like fresh page load)
+        if (window.chaosInit) {
+            window.chaosInit.phaseRunning = true;
+            
+            // Start animation phases with same timing as fresh load
+            setTimeout(() => {
+                console.log('🚀 Starting animation phases (like fresh page load)...');
+                if (typeof window.chaosInit.startAnimationPhases === 'function') {
+                    window.chaosInit.startAnimationPhases();
+                }
+            }, 2000); // Same 2-second delay as original init
+            
+            // Restart animation watchdog
+            if (typeof window.chaosInit.startAnimationWatchdog === 'function') {
+                window.chaosInit.startAnimationWatchdog();
+            }
+        }
+        
+        // 7. ENSURE BLACKOUT OVERLAY EXISTS (like original init)
+        if (window.chaosInit && typeof window.chaosInit.ensureBlackoutOverlay === 'function') {
+            window.chaosInit.ensureBlackoutOverlay();
+        }
+        
+        console.log('✅ FULL SYSTEM RESTART COMPLETED - All systems recreated like F5 refresh!');
     }
 
     handleSequenceEvent(data) {

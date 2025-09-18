@@ -1,14 +1,32 @@
 import animeManager from './anime-init.js';
 
-function applyMode(mode) {
+const NORMALIZED_MAP = {
+  emergency: 'emergency',
+  reduced: 'reduced',
+  normal: 'normal',
+  low: 'emergency',
+  medium: 'reduced',
+  high: 'normal',
+  auto: 'normal'
+};
+
+function normalizeMode(raw) {
+  if (!raw) return 'normal';
+  const key = String(raw).toLowerCase();
+  return NORMALIZED_MAP[key] || 'normal';
+}
+
+function applyMode(rawMode) {
+  const mode = normalizeMode(rawMode);
   const a = animeManager.anime;
+
   switch (mode) {
     case 'normal':
       a.speed = 1.0;
       animeManager.playAll();
       break;
     case 'reduced':
-      a.speed = 0.7;
+      a.speed = 0.75;
       animeManager.pauseAll(inst => !inst.__meta?.critical);
       animeManager.playAll(inst => inst.__meta?.critical);
       break;
@@ -26,7 +44,8 @@ function onModeEvent(e) {
   if (mode) applyMode(mode);
 }
 
-window.addEventListener('performanceMode', onModeEvent);
+const EVENT_NAMES = ['performanceMode', 'performanceModeChange'];
+EVENT_NAMES.forEach(eventName => window.addEventListener(eventName, onModeEvent));
 
 // Optional hooks if your optimizer exposes them
 try {
@@ -37,10 +56,10 @@ try {
   }
 } catch (_) {}
 
-window.animePerfAdapter = { applyMode };
+window.animePerfAdapter = { applyMode, normalizeMode };
 
 if (import.meta.hot) {
   import.meta.hot.dispose(() => {
-    window.removeEventListener('performanceMode', onModeEvent);
+    EVENT_NAMES.forEach(eventName => window.removeEventListener(eventName, onModeEvent));
   });
 }

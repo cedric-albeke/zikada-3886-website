@@ -132,6 +132,10 @@ class VJControlPanel {
                 this.syncSettings(data.settings);
                 break;
 
+            case 'performance_mode_updated':
+                this.applyPerformanceMode(data.mode);
+                break;
+
             case 'detailed_performance_update':
                 this.updateDetailedPerformanceData(data);
                 break;
@@ -504,16 +508,30 @@ class VJControlPanel {
                     timestamp: Date.now()
                 });
 
-                // Update active state
-                perfButtons.forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-
-                this.performanceMode = mode;
-                document.getElementById('modeDisplay').textContent = mode.toUpperCase();
-
+                this.applyPerformanceMode(mode);
                 this.flashButton(btn);
             });
         });
+    }
+
+    applyPerformanceMode(mode) {
+        if (!mode) return;
+
+        this.performanceMode = mode;
+
+        const perfButtons = document.querySelectorAll('.perf-btn');
+        perfButtons.forEach(b => {
+            if (b.dataset.mode === mode) {
+                b.classList.add('active');
+            } else {
+                b.classList.remove('active');
+            }
+        });
+
+        const modeDisplay = document.getElementById('modeDisplay');
+        if (modeDisplay) {
+            modeDisplay.textContent = (mode || '').toUpperCase();
+        }
     }
 
     // Timeline Controls
@@ -763,6 +781,10 @@ class VJControlPanel {
             document.getElementById('saturationSlider').value = settings.colors.saturation || 100;
             document.getElementById('brightnessSlider').value = settings.colors.brightness || 100;
             document.getElementById('contrastSlider').value = settings.colors.contrast || 100;
+        }
+
+        if (settings.performanceMode) {
+            this.applyPerformanceMode(settings.performanceMode);
         }
 
         this.updateSliderDisplays();

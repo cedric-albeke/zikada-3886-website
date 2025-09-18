@@ -49,6 +49,8 @@ Fixes applied before proceeding (blocking issues discovered from logs):
 - [x] Add js/anime-svg-logo.js (feature-flagged PoC)
 - [x] Wire dynamic import + flag in js/chaos-init-optimized.js
 - [x] Emit performanceMode events from applyEmergency/Reduced/Normal
+- [x] Lazy-load anime.js stack from chaos-init when the feature flag is active
+- [x] Route performance mode + speed signals from VJ Receiver/control panel into animeManager
 - [ ] Local test: `npm run dev`, baseline (no flag) => no changes
 - [ ] Local test: `?anime=1`, logo stroke draw + idle loop works
 - [ ] Performance test: switch modes via control panel, anime follows
@@ -59,6 +61,7 @@ Fixes applied before proceeding (blocking issues discovered from logs):
 - Flagged: run with `?anime=1`; verify stroke-draw then idle opacity loop.
 - Events: trigger `animationPhase` and `matrixMessage`; anime reacts without interfering with GSAP.
 - Performance: switch modes; anime pauses/speeds per mode; observe FPS.
+- Control panel should update its performance mode display after acknowledgements from VJ Receiver.
 - HMR: editing anime files should dispose/re-init cleanly.
 - Cross-browser: Chromium + Firefox; Safari optional.
 

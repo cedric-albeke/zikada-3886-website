@@ -39,6 +39,8 @@ class ChaosInitializer {
         this.fps = 60;
         this.fpsHistory = [];
         this.lastFrameTime = performance.now();
+        this.animeStackLoaded = false;
+        this.animeStackPromise = null;
         
         // Performance management (with fallbacks if not loaded)
         this.performanceElementManager = window.performanceElementManager || null;
@@ -55,6 +57,56 @@ class ChaosInitializer {
         this.filterTransitionInProgress = false;
         
         console.log('🚀 ChaosInitializer created with performance management');
+
+        this.setupAnimeIntegration();
+    }
+
+    setupAnimeIntegration() {
+        if (typeof window === 'undefined') return;
+
+        const enableFn = () => this.loadAnimeStack();
+        window.__loadAnimeStack__ = enableFn;
+
+        if (this.isAnimeFeatureEnabled()) {
+            enableFn();
+            return;
+        }
+
+        window.addEventListener('3886:enable-anime', enableFn, { once: true });
+    }
+
+    isAnimeFeatureEnabled() {
+        try {
+            if (typeof window === 'undefined') return false;
+            const qp = new URLSearchParams(window.location?.search || '');
+            if (qp.get('anime') === '1') return true;
+            if (window.__ANIME_POC_ENABLED === true) return true;
+            const stored = window.localStorage?.getItem('3886_anime_enabled');
+            return stored === '1';
+        } catch (_) {
+            return false;
+        }
+    }
+
+    async loadAnimeStack() {
+        if (this.animeStackLoaded) return this.animeStackPromise;
+
+        this.animeStackLoaded = true;
+        const load = async () => {
+            try {
+                await import('./anime-init.js');
+                await import('./anime-performance-adapter.js');
+                await import('./anime-svg-logo.js');
+                console.log('? Anime.js stack loaded');
+            } catch (error) {
+                this.animeStackLoaded = false;
+                console.error('Failed to load anime.js stack', error);
+                throw error;
+            }
+        };
+
+        this.animeStackPromise = load();
+        return this.animeStackPromise;
     }
 
     /**
