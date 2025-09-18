@@ -36,11 +36,12 @@ class ChaosInitializer {
     constructor() {
         this.isReady = false;
         this.performanceMode = 'auto';
-        this.fps = 60;
+        this.fps = 120;
         this.fpsHistory = [];
         this.lastFrameTime = performance.now();
         this.animeStackLoaded = false;
         this.animeStackPromise = null;
+        this.animeEnableListener = null;
         
         // Performance management (with fallbacks if not loaded)
         this.performanceElementManager = window.performanceElementManager || null;
@@ -65,27 +66,56 @@ class ChaosInitializer {
         if (typeof window === 'undefined') return;
 
         const enableFn = () => this.loadAnimeStack();
-        window.__loadAnimeStack__ = enableFn;
+        const runAndReport = () => {
+            try {
+                const maybePromise = enableFn();
+                if (maybePromise && typeof maybePromise.catch === 'function') {
+                    maybePromise.catch(error => console.error('Anime.js stack failed to load', error));
+                }
+                this.animeEnableListener = null;
+                return maybePromise;
+            } catch (error) {
+                console.error('Anime.js stack failed to load', error);
+                this.animeEnableListener = null;
+                return undefined;
+            }
+        };
+
+        if (this.animeEnableListener) {
+            window.removeEventListener('3886:enable-anime', this.animeEnableListener);
+        }
+
+        this.animeEnableListener = runAndReport;
+        window.__loadAnimeStack__ = runAndReport;
 
         if (this.isAnimeFeatureEnabled()) {
-            enableFn();
+            runAndReport();
             return;
         }
 
-        window.addEventListener('3886:enable-anime', enableFn, { once: true });
+        window.addEventListener('3886:enable-anime', runAndReport, { once: true });
     }
 
     isAnimeFeatureEnabled() {
-        try {
-            if (typeof window === 'undefined') return false;
-            const qp = new URLSearchParams(window.location?.search || '');
-            if (qp.get('anime') === '1') return true;
-            if (window.__ANIME_POC_ENABLED === true) return true;
-            const stored = window.localStorage?.getItem('3886_anime_enabled');
-            return stored === '1';
-        } catch (_) {
-            return false;
-        }
+        // DISABLED: anime.js causing reset issues and visual artifacts
+        return false;
+
+        // Original code commented out for reference:
+        // try {
+        //     if (typeof window === 'undefined') return false;
+        //     const qp = new URLSearchParams(window.location?.search || '');
+        //     if (qp.get('anime') === '1') {
+        //         try {
+        //             window.localStorage?.setItem('3886_anime_enabled', '1');
+        //         } catch (_) {}
+        //         return true;
+        //     }
+        //     if (window.__ANIME_POC_ENABLED === true) return true;
+        //     const stored = window.localStorage?.getItem('3886_anime_enabled');
+        //     return stored === '1';
+        // } catch (_) {
+        //     return false;
+        // }
     }
 
     async loadAnimeStack() {
@@ -94,10 +124,9 @@ class ChaosInitializer {
         this.animeStackLoaded = true;
         const load = async () => {
             try {
-                await import('./anime-init.js');
-                await import('./anime-performance-adapter.js');
-                await import('./anime-svg-logo.js');
-                console.log('? Anime.js stack loaded');
+                // Import the new anime controller
+                await import('./anime-controller.js');
+                console.log('🎬 Anime.js controller loaded');
             } catch (error) {
                 this.animeStackLoaded = false;
                 console.error('Failed to load anime.js stack', error);
@@ -280,7 +309,13 @@ class ChaosInitializer {
         console.log('🛡️ Grey flash prevention system started');
     }
 
-    init() {
+    init(forceRestart = false) {
+        // If this is a forced restart, clean up first
+        if (forceRestart) {
+            console.log('🔄 FORCE RESTART: Cleaning up before reinitializing...');
+            this.cleanup();
+        }
+
         // Wait for DOM to be ready
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', () => this.initialize());
@@ -2132,9 +2167,51 @@ class ChaosInitializer {
         if (this.blackoutEl) this.blackoutEl.style.opacity = '0';
     }
 
+    /**
+     * Comprehensive cleanup method for force restart
+     */
+    cleanup() {
+        console.log('🧹 CHAOS INIT: Comprehensive cleanup starting...');
+
+        // Stop all phase animations immediately
+        this.phaseRunning = false;
+
+        // Clear all watchdog and monitoring intervals
+        if (this.watchdogIntervalId) {
+            clearInterval(this.watchdogIntervalId);
+            this.watchdogIntervalId = null;
+        }
+
+        if (this.greyFlashPreventionId) {
+            clearInterval(this.greyFlashPreventionId);
+            this.greyFlashPreventionId = null;
+        }
+
+        // Kill all GSAP animations and clear all properties
+        gsap.killTweensOf('*');
+        gsap.globalTimeline.clear();
+
+        // Reset all elements to their default state
+        gsap.set('.logo-text, .text-3886, .logo-text-wrapper, .image-wrapper, .glow', {
+            clearProps: 'all'
+        });
+
+        // Reset all flags and states
+        this.isReady = false;
+        this.animeStackLoaded = false;
+        this.filterTransitionInProgress = false;
+
+        // Clear performance history
+        this.fpsHistory = [];
+        this.fps = 120;
+        this.lastFrameTime = performance.now();
+
+        console.log('✅ CHAOS INIT: Comprehensive cleanup completed');
+    }
+
     destroy() {
         console.log('💀 Destroying ChaosInitializer and all performance systems...');
-        
+
         this.phaseRunning = false;
         
         // Destroy performance management systems
@@ -2325,6 +2402,17 @@ class ChaosInitializer {
     }
 
     addSubtleColorVariations() {
+        // Kill any existing color variation animations first to prevent stacking
+        gsap.killTweensOf('.logo-text, .text-3886', 'filter');
+        gsap.killTweensOf('.glow', 'filter');
+        gsap.killTweensOf('#cyber-grid', 'filter');
+
+        // Reset filter to base state before starting animations
+        gsap.set('.logo-text, .text-3886', {
+            filter: 'none',
+            clearProps: 'filter'
+        });
+
         // Subtle color shifts for text elements
         const textColorTimeline = gsap.timeline({ repeat: -1 });
         textColorTimeline

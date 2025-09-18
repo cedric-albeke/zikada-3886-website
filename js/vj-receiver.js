@@ -30,9 +30,11 @@ class VJReceiver {
                 noise: 0.5
             },
             scene: 'auto',
-            bpm: 120
+            bpm: 120,
+            animeEnabled: false
         };
 
+        this.animeEnabled = false;
         this.activeFx = 0;
         this.fpsMonitor = null;
 
@@ -57,10 +59,11 @@ class VJReceiver {
             // Create broadcast channel
             this.channel = new BroadcastChannel('3886_vj_control');
 
-            // Listen for messages from control panel
-            this.channel.onmessage = (event) => {
+            // Use addEventListener for better reliability
+            this.channel.addEventListener('message', (event) => {
+                console.log('📨 VJ Receiver received:', event.data.type);
                 this.handleMessage(event.data);
-            };
+            });
 
             this.isConnected = true;
             console.log('📡 VJ Receiver connected via BroadcastChannel');
@@ -94,8 +97,23 @@ class VJReceiver {
     }
 
     sendMessage(data) {
+        const messageData = {
+            ...data,
+            timestamp: Date.now(),
+            _id: Math.random().toString(36).substr(2, 9)
+        };
+
+        // Always use localStorage for reliability
+        console.log('📤 VJ Receiver sending via LS:', messageData.type, messageData);
+        localStorage.setItem('3886_vj_response', JSON.stringify(messageData));
+
+        // Also try BroadcastChannel if available
         if (this.channel) {
-            this.channel.postMessage(data);
+            try {
+                this.channel.postMessage(messageData);
+            } catch (err) {
+                // Ignore BC errors, localStorage is primary
+            }
         }
     }
 
@@ -151,6 +169,35 @@ class VJReceiver {
                 this.setPerformanceMode(data.mode);
                 break;
 
+            case 'anime_enable': {
+                console.log('🎯 Processing anime_enable request');
+                this.handleAnimeEnable();
+                break;
+            }
+
+            case 'anime_disable':
+                console.log('🛑 Processing anime_disable');
+                if (window.animeController) {
+                    window.animeController.disable();
+                }
+                this.setAnimeFlag(false);
+                this.sendAnimeStatus('disabled', false, { success: true });
+                break;
+
+            case 'anime_kill':
+                console.log('💀 Processing anime_kill');
+                if (window.animeController) {
+                    window.animeController.killAll();
+                }
+                this.sendAnimeStatus('killed', this.animeEnabled, { success: true });
+                break;
+
+            case 'anime_trigger': {
+                console.log('🎬 Processing anime_trigger:', data.id);
+                this.handleAnimeTrigger(data.id);
+                break;
+            }
+
             case 'emergency_stop':
                 this.emergencyStop();
                 break;
@@ -182,6 +229,13 @@ class VJReceiver {
             case 'sequence_event':
                 this.handleSequenceEvent(data);
                 break;
+
+            case 'apply_settings':
+                console.log('🔄 VJ Receiver: Applying settings from control panel');
+                this.applyControlPanelSettings(data.data);
+                break;
+
+            // REMOVED: Complex reset handlers - now using minimal reset approach
         }
     }
 
@@ -193,6 +247,7 @@ class VJReceiver {
             type: 'settings_sync',
             settings: this.currentSettings
         });
+        this.sendAnimeStatus('status', this.animeEnabled);
     }
 
     changeScene(scene) {
@@ -305,11 +360,13 @@ class VJReceiver {
             contrast: 100
         };
 
-        gsap.to(document.body, {
-            filter: 'none',
-            duration: 0.5,
-            ease: 'power2.inOut'
-        });
+        // Use safe filter application to prevent grey flashes
+        if (window.chaosInit && typeof window.chaosInit.safeApplyFilter === 'function') {
+            window.chaosInit.safeApplyFilter(document.body, 'none', 0.5);
+        } else {
+            // Fallback: use filter manager
+            filterManager.applyImmediate('none', 0.5);
+        }
     }
 
     updateSpeed(value) {
@@ -650,6 +707,119 @@ class VJReceiver {
         if (preset.scene !== undefined) this.changeScene(preset.scene);
     }
 
+    setAnimeFlag(enabled) {
+        const flag = Boolean(enabled);
+        this.animeEnabled = flag;
+        this.currentSettings.animeEnabled = flag;
+        window.__ANIME_POC_ENABLED = flag;
+        try {
+            if (flag) {
+                window.localStorage?.setItem('3886_anime_enabled', '1');
+            } else {
+                window.localStorage?.removeItem('3886_anime_enabled');
+            }
+        } catch (_) {}
+    }
+
+    loadAnimeController() {
+        return new Promise((resolve) => {
+            // Dynamically import the anime controller
+            import('./anime-controller.js').then(() => {
+                if (window.animeController) {
+                    console.log('✅ AnimeController loaded');
+                    resolve(true);
+                } else {
+                    console.error('❌ AnimeController not found after import');
+                    resolve(false);
+                }
+            }).catch(err => {
+                console.error('❌ Failed to load AnimeController:', err);
+                resolve(false);
+            });
+        });
+    }
+
+    async handleAnimeEnable() {
+        console.log('🎯 Enabling anime.js...');
+
+        try {
+            // Load anime controller if not already loaded
+            if (!window.animeController) {
+                const loaded = await this.loadAnimeController();
+                if (!loaded) {
+                    this.sendAnimeStatus('error', false, { error: 'Failed to load anime controller', success: false });
+                    return;
+                }
+            }
+
+            // Enable the controller
+            const success = window.animeController.enable();
+
+            if (success) {
+                this.setAnimeFlag(true);
+                this.sendAnimeStatus('enabled', true, { success: true });
+                console.log('✅ Anime enabled successfully');
+            } else {
+                this.sendAnimeStatus('error', false, { error: 'anime.js not available', success: false });
+            }
+
+        } catch (error) {
+            console.error('❌ Error in handleAnimeEnable:', error);
+            this.sendAnimeStatus('error', false, { error: error.message || 'Failed to enable anime', success: false });
+        }
+    }
+
+    handleAnimeTrigger(animationId) {
+        if (!window.animeController) {
+            this.sendAnimeStatus('error', false, {
+                error: 'anime controller not loaded',
+                actionId: animationId,
+                success: false
+            });
+            return;
+        }
+
+        if (!this.animeEnabled) {
+            this.sendAnimeStatus('error', false, {
+                error: 'anime not enabled',
+                actionId: animationId,
+                success: false
+            });
+            return;
+        }
+
+        try {
+            const success = window.animeController.runAnimation(animationId);
+            this.sendAnimeStatus('trigger', this.animeEnabled, {
+                actionId: animationId,
+                success: success
+            });
+        } catch (error) {
+            console.error('❌ Animation trigger failed:', error);
+            this.sendAnimeStatus('error', this.animeEnabled, {
+                error: error.message || 'trigger failed',
+                actionId: animationId,
+                success: false
+            });
+        }
+    }
+
+    sendAnimeStatus(action, enabled, extra = {}) {
+        if (typeof enabled === 'boolean') {
+            this.setAnimeFlag(enabled);
+        }
+
+        console.log('📤 Sending anime_status:', { action, enabled: this.animeEnabled });
+
+        this.sendMessage({
+            type: 'anime_status',
+            action: action || 'status',
+            enabled: this.animeEnabled,
+            ...extra,
+            timestamp: Date.now()
+        });
+    }
+
     setPerformanceMode(mode) {
         console.log(`🎮 Setting performance mode: ${mode}`);
 
@@ -745,12 +915,17 @@ class VJReceiver {
         // 2. RESET ALL VISUAL STATES
         this.resetColors();
         this.updateSpeed(1);
-        
-        // Reset body filters and styles completely
-        document.body.style.filter = 'none';
+
+        // Reset body filters and styles completely - use removeProperty for clean reset
+        document.body.style.removeProperty('filter');
         document.body.style.transform = 'none';
         document.body.style.removeProperty('background-image'); // Clear noise fallback
         document.body.style.removeProperty('opacity');
+
+        // Also reset filter manager to ensure consistency
+        if (window.filterManager) {
+            window.filterManager.reset();
+        }
 
         // 3. RESET ALL FX CONTROLLERS
         if (window.fxController) {
@@ -799,16 +974,15 @@ class VJReceiver {
 
         // 8. RESTART SYSTEM CLEANLY WITH FULL RECREATION
         setTimeout(() => {
-            // Reset to minimal state first
-            this.changeScene('minimal');
-            
-            // Then trigger FULL system restart (simulates F5)
+            // Trigger FULL system restart (simulates F5)
+            this.restartEssentialAnimations(); // Now this is a FULL restart
+
+            // Start with auto scene after restart
             setTimeout(() => {
-                this.changeScene('calm');
-                this.restartEssentialAnimations(); // Now this is a FULL restart
+                this.changeScene('auto');
                 console.log('✅ Enhanced emergency reset completed - Full system recreated!');
-            }, 800);
-            
+            }, 2000);
+
         }, 800); // Even faster recovery since we're doing full restart
     }
 
@@ -876,6 +1050,328 @@ class VJReceiver {
     }
 
     /**
+     * COMPREHENSIVE SYSTEM RESET - Handles all system reset actions from control panel
+     * This is the main entry point for the system reset functionality
+     */
+    executeSystemReset(actions = []) {
+        console.log('🔄 EXECUTING COMPREHENSIVE SYSTEM RESET...');
+        console.log('📋 Reset actions requested:', actions);
+
+        // Step 1: Kill all animations and clear memory
+        this.killAllAnimations();
+
+        // Step 2: Reset DOM nodes and clear intervals
+        this.resetDOMNodes();
+
+        // Step 3: Clear all intervals and timeouts
+        this.clearAllIntervals();
+
+        // Step 4: Reset scenes to auto mode
+        this.resetScenes();
+
+        // Step 5: Reset all FX and filters
+        this.resetAllEffects();
+
+        // Step 6: Reset performance systems
+        this.resetPerformanceSystems();
+
+        // Step 7: Restart the entire system (like F5 refresh)
+        setTimeout(() => {
+            console.log('🚀 RESTARTING ENTIRE SYSTEM...');
+            this.restartEssentialAnimations();
+        }, 1000);
+
+        console.log('✅ COMPREHENSIVE SYSTEM RESET COMPLETED');
+    }
+
+    /**
+     * Kill all animations across all systems
+     */
+    killAllAnimations() {
+        console.log('🚫 Killing all animations...');
+
+        // Kill GSAP animations
+        gsap.killTweensOf('*');
+        gsap.globalTimeline.clear();
+
+        // Kill anime.js animations
+        if (window.animeManager && typeof window.animeManager.killAll === 'function') {
+            window.animeManager.killAll();
+        }
+
+        // Kill GSAP animation registry
+        if (window.gsapAnimationRegistry && typeof window.gsapAnimationRegistry.emergencyStop === 'function') {
+            window.gsapAnimationRegistry.emergencyStop();
+        }
+
+        console.log('✅ All animations killed');
+    }
+
+    /**
+     * Reset all DOM nodes to initial state
+     */
+    resetDOMNodes() {
+        console.log('🔄 Resetting DOM nodes...');
+
+        // Remove all temporary elements
+        const temporarySelectors = [
+            'div[style*="position: fixed"]',
+            'canvas:not(#chaos-canvas):not(#matrix-rain):not(#static-noise):not(#cyber-grid)',
+            '.phase-overlay',
+            '.glitch-overlay',
+            '.vhs-overlay',
+            '.flash-overlay',
+            '.warp-effect',
+            '.matrix-overlay',
+            '.scanlines',
+            '.data-streams',
+            '.holographic-shimmer',
+            '.glitch-lines',
+            '.chromatic-pulse',
+            '.energy-field',
+            '.quantum-particles',
+            '.perf-managed',
+            '[data-perf-id]'
+        ];
+
+        temporarySelectors.forEach(selector => {
+            document.querySelectorAll(selector).forEach(el => {
+                // Skip essential elements like control panel
+                if (!el.classList.contains('control-panel') &&
+                    !el.id.includes('chaos-canvas') &&
+                    !el.id.includes('matrix-rain') &&
+                    !el.id.includes('static-noise') &&
+                    !el.id.includes('cyber-grid')) {
+                    el.remove();
+                }
+            });
+        });
+
+        // Reset body styles - IMPORTANT: Remove filter with removeProperty to clear !important
+        document.body.style.removeProperty('filter');
+        document.body.style.transform = 'none';
+        document.body.style.removeProperty('background-image');
+        document.body.style.removeProperty('opacity');
+
+        // Reset main logo elements to default state
+        const mainElements = document.querySelectorAll('.logo-text-wrapper, .image-wrapper, .text-3886, .image-2, .logo-text, .glow');
+        mainElements.forEach(el => {
+            // Kill any GSAP animations on this element
+            gsap.killTweensOf(el);
+            // Clear all inline styles
+            el.style.cssText = '';
+            // Use GSAP to clear all properties it may have set
+            gsap.set(el, {
+                clearProps: 'all'
+            });
+        });
+
+        // CRITICAL: Clean up anime.js artifacts
+        // Remove any anime.js logo containers that may have been created
+        const animeContainers = document.querySelectorAll('.anime-logo-container');
+        animeContainers.forEach(container => {
+            container.remove();
+        });
+
+        // Restore original image visibility if it was hidden by anime.js
+        const originalImage = document.querySelector('.image-2');
+        if (originalImage) {
+            originalImage.style.display = '';
+            originalImage.style.opacity = '';
+        }
+
+        // Kill all anime.js animations if anime manager exists
+        if (window.animeManager && typeof window.animeManager.killAll === 'function') {
+            window.animeManager.killAll();
+        }
+
+        // Disable anime.js flag to prevent re-initialization
+        window.__ANIME_POC_ENABLED = false;
+
+        console.log('✅ DOM nodes reset to initial state');
+    }
+
+    /**
+     * Clear all intervals and timeouts
+     */
+    clearAllIntervals() {
+        console.log('⏰ Clearing all intervals and timeouts...');
+
+        // Clear interval manager intervals
+        if (window.intervalManager && typeof window.intervalManager.emergencyStop === 'function') {
+            window.intervalManager.emergencyStop();
+        }
+
+        // Clear performance element manager
+        if (window.performanceElementManager && typeof window.performanceElementManager.emergencyCleanup === 'function') {
+            window.performanceElementManager.emergencyCleanup();
+        }
+
+        console.log('✅ All intervals and timeouts cleared');
+    }
+
+    /**
+     * Reset scenes to auto mode
+     */
+    resetScenes() {
+        console.log('🎬 Resetting scenes to auto mode...');
+
+        // Stop current phase system
+        if (window.chaosInit) {
+            window.chaosInit.phaseRunning = false;
+        }
+
+        // Reset to auto scene
+        this.currentSettings.scene = 'auto';
+
+        // Send scene change to control panel
+        this.sendMessage({
+            type: 'scene_changed',
+            scene: 'auto'
+        });
+
+        console.log('✅ Scenes reset to auto mode');
+    }
+
+    /**
+     * Reset all effects and filters
+     */
+    resetAllEffects() {
+        console.log('🎨 Resetting all effects and filters...');
+
+        // Reset color settings
+        this.currentSettings.colors = {
+            hue: 0,
+            saturation: 100,
+            brightness: 100,
+            contrast: 100
+        };
+
+        // CRITICAL: Reset filter manager state to prevent brightness issues
+        if (window.filterManager) {
+            window.filterManager.reset();
+        }
+
+        // Reset effect intensities
+        this.currentSettings.effects = {
+            glitch: 0.5,
+            particles: 0.5,
+            distortion: 0.5,
+            noise: 0.5
+        };
+
+        // Reset FX controller
+        if (window.fxController) {
+            window.fxController.setIntensity({ glitch: 0.5, particles: 0.5, distortion: 0.5, noise: 0.5 });
+            window.fxController.setGlobalIntensityMultiplier(1.0);
+        }
+
+        // Reset speed
+        this.currentSettings.speed = 1.0;
+        gsap.globalTimeline.timeScale(1.0);
+
+        // Reset BPM
+        this.currentSettings.bpm = 120;
+
+        console.log('✅ All effects and filters reset');
+    }
+
+    /**
+     * Reset performance monitoring systems
+     */
+    resetPerformanceSystems() {
+        console.log('📊 Resetting performance systems...');
+
+        // Reset performance mode to auto
+        this.setPerformanceMode('auto');
+
+        // Reset and cleanup performance manager
+        if (window.performanceManager) {
+            if (typeof window.performanceManager.cleanup === 'function') {
+                window.performanceManager.cleanup();
+            }
+            if (typeof window.performanceManager.cleanupElements === 'function') {
+                window.performanceManager.cleanupElements();
+            }
+            if (typeof window.performanceManager.cleanupAnimations === 'function') {
+                window.performanceManager.cleanupAnimations();
+            }
+        }
+
+        // Reset safe performance monitor
+        if (window.safePerformanceMonitor && typeof window.safePerformanceMonitor.reset === 'function') {
+            window.safePerformanceMonitor.reset();
+        }
+
+        // Reset anime.js status
+        this.animeEnabled = false;
+        this.currentSettings.animeEnabled = false;
+        window.__ANIME_POC_ENABLED = false;
+        this.sendAnimeStatus('reset', false, { success: true });
+
+        // Reset FPS counter and restart monitoring
+        this.activeFx = 0;
+        this.currentFPS = 60; // Reset to default FPS
+
+        // Stop and restart FPS monitoring to prevent Infinity
+        if (this.fpsMonitorRAF) {
+            cancelAnimationFrame(this.fpsMonitorRAF);
+            this.fpsMonitorRAF = null;
+        }
+
+        // Restart FPS monitoring after a short delay
+        setTimeout(() => {
+            this.startPerformanceMonitoring();
+        }, 500);
+
+        // Force garbage collection if available
+        if (window.gc) {
+            window.gc();
+        }
+
+        console.log('✅ Performance systems reset');
+    }
+
+    /**
+     * MINIMAL RESET: Apply control panel settings gracefully without breaking animations
+     */
+    applyControlPanelSettings(settings) {
+        console.log('🎛️ Applying control panel settings:', settings);
+
+        try {
+            // Update colors
+            if (settings.colors) {
+                this.updateColors(settings.colors.hue, settings.colors.saturation, settings.colors.brightness, settings.colors.contrast);
+            }
+
+            // Update effects
+            if (settings.effects) {
+                this.setEffectIntensities(settings.effects.glitch, settings.effects.particles, settings.effects.distortion, settings.effects.noise);
+            }
+
+            // Update speed
+            if (settings.speed !== undefined) {
+                this.updateSpeed(settings.speed);
+            }
+
+            // Update BPM
+            if (settings.bpm !== undefined) {
+                this.updateBPM(settings.bpm);
+            }
+
+            // Update scene
+            if (settings.scene) {
+                this.changeScene(settings.scene);
+            }
+
+            console.log('✅ Control panel settings applied successfully');
+
+        } catch (error) {
+            console.error('❌ Error applying control panel settings:', error);
+        }
+    }
+
+    /**
      * FULL SYSTEM RESTART - Simulates F5 refresh without actually refreshing
      * This recreates everything exactly as it would be on fresh page load
      */
@@ -883,8 +1379,11 @@ class VJReceiver {
         console.log('🔄 FULL SYSTEM RESTART - Simulating F5 refresh...');
         
         // 1. FORCE RECREATE CHAOS ENGINE (like fresh page load)
-        if (window.chaosEngine && window.chaosEngine.init) {
+        if (window.chaosInit && window.chaosInit.init) {
             console.log('🎆 Force reinitializing Chaos Engine...');
+            window.chaosInit.init(true); // Force restart = true
+        } else if (window.chaosEngine && window.chaosEngine.init) {
+            console.log('🎆 Force reinitializing Chaos Engine (fallback)...');
             window.chaosEngine.init(true); // Force restart = true
         }
         
@@ -1029,6 +1528,12 @@ class VJReceiver {
     }
 
     startPerformanceMonitoring() {
+        // Stop existing monitoring if any
+        if (this.fpsMonitorRAF) {
+            cancelAnimationFrame(this.fpsMonitorRAF);
+            this.fpsMonitorRAF = null;
+        }
+
         // Monitor FPS with automatic emergency stop
         let lastTime = performance.now();
         let frames = 0;
@@ -1042,7 +1547,13 @@ class VJReceiver {
             const currentTime = performance.now();
 
             if (currentTime >= lastTime + 1000) {
-                fps = (frames * 1000) / (currentTime - lastTime);
+                const delta = currentTime - lastTime;
+                // Prevent division by zero or very small numbers that cause Infinity
+                if (delta > 0) {
+                    fps = Math.min(999, (frames * 1000) / delta); // Cap at 999 to prevent Infinity display
+                } else {
+                    fps = 60; // Default fallback
+                }
                 frames = 0;
                 lastTime = currentTime;
                 
@@ -1066,10 +1577,10 @@ class VJReceiver {
             }
 
             this.currentFPS = fps;
-            requestAnimationFrame(measureFPS);
+            this.fpsMonitorRAF = requestAnimationFrame(measureFPS);
         };
 
-        requestAnimationFrame(measureFPS);
+        this.fpsMonitorRAF = requestAnimationFrame(measureFPS);
         
         console.log('📈 Performance monitoring started with auto-emergency stop (FPS < 10 for 5s)');
     }

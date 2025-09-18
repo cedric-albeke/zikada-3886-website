@@ -36,8 +36,20 @@ class FilterManager {
   }
 
   reset() {
+    // Clear any pending filter applications
+    clearTimeout(this.applyTimeout);
+    this.applyTimeout = null;
+
+    // Reset state to defaults
     this.state = { hue: 0, saturation: 100, brightness: 100, contrast: 100 };
-    this.applyImmediate('none', 0.5);
+
+    // Kill any existing GSAP animations on body filter
+    gsap.killTweensOf(document.body, 'filter');
+
+    // Remove filter completely to ensure clean reset
+    document.body.style.removeProperty('filter');
+
+    console.log('✅ Filter Manager reset to defaults');
   }
 
   scheduleApply(debounceMs = 300) {
@@ -54,23 +66,16 @@ class FilterManager {
       const safeFilter = this._sanitize(filter);
       gsap.killTweensOf(document.body, 'filter');
       
-      // Use onUpdate to force the filter with setProperty for stronger application
-      gsap.to({ dummy: 0 }, {
-        dummy: 1,
+      // Apply filter smoothly without !important to avoid reset issues
+      gsap.to(document.body, {
+        filter: safeFilter,
         duration,
         ease: 'power1.inOut',
-        onUpdate: function() {
-          const progress = this.progress();
-          // Interpolate from current to target
-          document.body.style.setProperty('filter', safeFilter, 'important');
-        },
-        onComplete: () => {
-          document.body.style.setProperty('filter', safeFilter, 'important');
-        }
+        overwrite: 'auto'
       });
     } catch (e) {
-      // Fallback
-      document.body.style.setProperty('filter', filter, 'important');
+      // Fallback - use regular style setting without !important
+      document.body.style.filter = filter;
     }
   }
 

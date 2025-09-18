@@ -16,6 +16,7 @@ class VJControlPanel {
         this.sequenceData = [];
         this.isRecording = false;
         this.isPlaying = false;
+        this.animeStatus = { enabled: false, lastAction: 'status' };
 
         this.init();
     }
@@ -33,9 +34,10 @@ class VJControlPanel {
         this.initPresetControls();
         this.initPerformanceControls();
         this.initTimelineControls();
+        this.initAnimeControls();
 
-        // Initialize emergency stop
-        this.initEmergencyStop();
+        // Initialize system reset
+        this.initSystemReset();
 
         // Start monitoring
         this.startMonitoring();
@@ -47,70 +49,72 @@ class VJControlPanel {
     }
 
     initBroadcastChannel() {
+        // Always use localStorage for reliable cross-tab communication
+        console.log('🔄 Using localStorage for cross-tab communication');
+        this.initLocalStorageFallback();
+
+        // Still try BroadcastChannel as backup
         try {
-            // Create broadcast channel
             this.channel = new BroadcastChannel('3886_vj_control');
-
-            // Listen for messages from main site
-            this.channel.onmessage = (event) => {
+            this.channel.addEventListener('message', (event) => {
+                console.log('📨 BC: Control Panel received:', event.data.type);
                 this.handleMessage(event.data);
-            };
-
-            // Send initial connection ping
-            this.sendMessage({
-                type: 'control_connect',
-                timestamp: Date.now()
             });
-
-            // Set connection status
-            this.setConnectionStatus(true);
-
-            // Ping every 5 seconds to maintain connection
-            setInterval(() => {
-                this.sendMessage({
-                    type: 'ping',
-                    timestamp: Date.now()
-                });
-            }, 5000);
-
         } catch (error) {
-            console.error('Failed to initialize BroadcastChannel:', error);
-            this.setConnectionStatus(false);
-
-            // Fallback to localStorage events
-            this.initLocalStorageFallback();
+            console.log('BroadcastChannel not available, using localStorage only');
         }
     }
 
     initLocalStorageFallback() {
-        console.log('Using localStorage fallback for cross-tab communication');
-
-        // Listen for storage events
+        // Listen for responses from main site
         window.addEventListener('storage', (e) => {
-            if (e.key === '3886_vj_message') {
-                const data = JSON.parse(e.newValue);
-                this.handleMessage(data);
+            if (e.key === '3886_vj_response') {
+                try {
+                    const data = JSON.parse(e.newValue);
+                    console.log('📨 LS: Control Panel received:', data.type);
+                    this.handleMessage(data);
+                } catch (err) {
+                    console.error('Failed to parse storage message:', err);
+                }
             }
         });
-
-        // Override sendMessage for localStorage
-        this.sendMessage = (data) => {
-            localStorage.setItem('3886_vj_message', JSON.stringify({
-                ...data,
-                timestamp: Date.now()
-            }));
-        };
 
         // Send initial connection
         this.sendMessage({
             type: 'control_connect',
             timestamp: Date.now()
         });
+
+        // Set connection status
+        this.setConnectionStatus(true);
+
+        // Ping every 5 seconds
+        setInterval(() => {
+            this.sendMessage({
+                type: 'ping',
+                timestamp: Date.now()
+            });
+        }, 5000);
     }
 
     sendMessage(data) {
+        const messageData = {
+            ...data,
+            timestamp: Date.now(),
+            _id: Math.random().toString(36).substr(2, 9)
+        };
+
+        // Always use localStorage for reliability
+        console.log('📤 Control Panel sending via LS:', messageData.type);
+        localStorage.setItem('3886_vj_message', JSON.stringify(messageData));
+
+        // Also try BroadcastChannel if available
         if (this.channel) {
-            this.channel.postMessage(data);
+            try {
+                this.channel.postMessage(messageData);
+            } catch (err) {
+                // Ignore BC errors, localStorage is primary
+            }
         }
     }
 
@@ -134,6 +138,11 @@ class VJControlPanel {
 
             case 'performance_mode_updated':
                 this.applyPerformanceMode(data.mode);
+                break;
+
+            case 'anime_status':
+                console.log('📊 Processing anime_status:', data);
+                this.applyAnimeStatus(data);
                 break;
 
             case 'detailed_performance_update':
@@ -161,25 +170,63 @@ class VJControlPanel {
     initSceneControls() {
         const sceneButtons = document.querySelectorAll('.scene-btn');
 
+        // Set AUTO as default active scene
+        const autoButton = document.querySelector('[data-scene="auto"]');
+        if (autoButton) {
+            autoButton.classList.add('active');
+            this.currentScene = 'auto';
+        }
+
         sceneButtons.forEach(btn => {
-            btn.addEventListener('click', () => {
+            btn.addEventListener('click', (e) => {
                 const scene = btn.dataset.scene;
+
+                // Always do normal scene switching
                 this.setScene(scene, btn);
 
                 // Update active state
                 sceneButtons.forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
+
+                // Clear auto-active indicators when switching away from auto
+                if (scene !== 'auto') {
+                    sceneButtons.forEach(b => b.classList.remove('auto-active'));
+                    this.currentActiveAutoScene = null;
+                }
             });
         });
+
+        // Start auto scene rotation tracking if in auto mode
+        this.startAutoSceneTracking();
+
+        // Add test simulator for AUTO mode (for development)
+        this.startAutoModeSimulator();
     }
 
     setScene(scene, btn = null) {
+        const wasInAutoMode = this.currentScene === 'auto';
         this.currentScene = scene;
+
+        // Clear auto indicator and interval if switching away from auto
+        if (scene !== 'auto') {
+            this.updateAutoSceneIndicator(null);
+            this.currentActiveAutoScene = null;
+
+            // Stop auto mode interval
+            if (this.autoModeInterval) {
+                clearInterval(this.autoModeInterval);
+                this.autoModeInterval = null;
+            }
+        } else if (scene === 'auto' && !wasInAutoMode) {
+            // Starting auto mode - restart the simulator
+            this.startAutoModeSimulator();
+        }
 
         this.sendMessage({
             type: 'scene_change',
             scene: scene,
-            timestamp: Date.now()
+            timestamp: Date.now(),
+            autoMode: scene === 'auto'
         });
 
         // Add visual feedback if the initiating button is known
@@ -189,14 +236,116 @@ class VJControlPanel {
     }
 
     updateSceneButtons(scene) {
+        // This method is called when receiving scene updates from the main site
+        console.log(`🎬 Scene update received: ${scene}, current mode: ${this.currentScene}`);
+
+        // Always clear existing auto-active indicators first
+        const sceneButtons = document.querySelectorAll('.scene-btn');
+        sceneButtons.forEach(btn => btn.classList.remove('auto-active'));
+
+        // If we're in auto mode, show the active scene with auto-active indicator
+        if (this.currentScene === 'auto' && scene !== 'auto') {
+            this.currentActiveAutoScene = scene;
+            this.updateAutoSceneIndicator(scene);
+
+            // Ensure AUTO button stays active
+            const autoBtn = document.querySelector('[data-scene="auto"]');
+            sceneButtons.forEach(b => b.classList.remove('active'));
+            if (autoBtn) autoBtn.classList.add('active');
+        } else if (this.currentScene !== 'auto') {
+            // Normal mode - update active button
+            sceneButtons.forEach(btn => {
+                if (btn.dataset.scene === scene) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+        }
+    }
+
+    startAutoSceneTracking() {
+        // Track which scene is active when in auto mode
+        this.currentActiveAutoScene = null;
+    }
+
+    startAutoModeSimulator() {
+        // Clear existing interval first
+        if (this.autoModeInterval) {
+            clearInterval(this.autoModeInterval);
+            this.autoModeInterval = null;
+        }
+
+        // Real auto scene rotation that sends actual scene changes
+        const scenes = ['intense', 'calm', 'glitch', 'techno', 'matrix', 'minimal', 'chaotic', 'retro'];
+        let currentIndex = 0;
+
+        console.log(`🎬 Starting auto mode simulator with ${this.getAutoModeInterval()}ms interval`);
+
+        this.autoModeInterval = setInterval(() => {
+            if (this.currentScene === 'auto') {
+                const nextScene = scenes[currentIndex % scenes.length];
+                console.log(`🎲 Auto mode: actually switching to ${nextScene}`);
+
+                // Send actual scene change message (not just visual update)
+                this.sendMessage({
+                    type: 'scene_change',
+                    scene: nextScene,
+                    timestamp: Date.now(),
+                    autoMode: true
+                });
+
+                // Update visual indicator
+                this.updateSceneButtons(nextScene);
+                currentIndex++;
+            } else {
+                console.log('⏸️ Auto mode paused - not in auto scene');
+            }
+        }, this.getAutoModeInterval());
+
+        // Update interval when phase duration changes
+        this.updateAutoModeInterval();
+    }
+
+    getAutoModeInterval() {
+        // Get phase duration from the tempo slider (convert seconds to milliseconds)
+        const phaseDurationSlider = document.getElementById('phaseDurationSlider');
+        const phaseDuration = phaseDurationSlider ? parseInt(phaseDurationSlider.value) : 30;
+        return phaseDuration * 1000;
+    }
+
+    updateAutoModeInterval() {
+        // Watch for changes to phase duration
+        const phaseDurationSlider = document.getElementById('phaseDurationSlider');
+        if (phaseDurationSlider) {
+            phaseDurationSlider.addEventListener('input', () => {
+                if (this.autoModeInterval) {
+                    clearInterval(this.autoModeInterval);
+                    this.startAutoModeSimulator();
+                }
+            });
+        }
+    }
+
+    updateAutoSceneIndicator(activeScene) {
+        console.log(`🎯 Updating auto scene indicator: ${activeScene}`);
+
+        // Remove any existing auto-active indicators
         const sceneButtons = document.querySelectorAll('.scene-btn');
         sceneButtons.forEach(btn => {
-            if (btn.dataset.scene === scene) {
-                btn.classList.add('active');
-            } else {
-                btn.classList.remove('active');
-            }
+            btn.classList.remove('auto-active');
         });
+
+        // Only add indicator if we're in auto mode and have a valid scene
+        if (this.currentScene === 'auto' && activeScene && activeScene !== 'auto') {
+            const activeBtn = document.querySelector(`[data-scene="${activeScene}"]`);
+            if (activeBtn) {
+                activeBtn.classList.add('auto-active');
+                console.log(`✅ Auto-active class added to ${activeScene}`);
+            } else {
+                console.warn(`❌ Scene button not found for: ${activeScene}`);
+            }
+        }
     }
 
     // Color Controls
@@ -496,7 +645,18 @@ class VJControlPanel {
 
     // Performance Controls
     initPerformanceControls() {
-        const perfButtons = document.querySelectorAll('.perf-btn');
+        const perfButtons = document.querySelectorAll('.perf-btn[data-mode]');
+
+        // Set AUTO as default performance mode
+        const autoModeBtn = document.querySelector('[data-mode="auto"]');
+        if (autoModeBtn) {
+            autoModeBtn.classList.add('active');
+            this.performanceMode = 'auto';
+            const modeDisplay = document.getElementById('modeDisplay');
+            if (modeDisplay) {
+                modeDisplay.textContent = 'AUTO';
+            }
+        }
 
         perfButtons.forEach(btn => {
             btn.addEventListener('click', () => {
@@ -532,6 +692,128 @@ class VJControlPanel {
         if (modeDisplay) {
             modeDisplay.textContent = (mode || '').toUpperCase();
         }
+    }
+
+    initAnimeControls() {
+        const enableBtn = document.getElementById('animeEnable');
+        const disableBtn = document.getElementById('animeDisable');
+        const killBtn = document.getElementById('animeKill');
+        const statusValue = document.getElementById('animeStatus');
+
+        if (statusValue) {
+            statusValue.dataset.waiting = '0';
+        }
+
+        const setBusy = (busy) => {
+            if (!statusValue) return;
+            statusValue.dataset.waiting = busy ? '1' : '0';
+            if (busy) {
+                statusValue.textContent = 'WAITING...';
+                statusValue.classList.remove('error');
+            }
+        };
+
+        if (enableBtn) {
+            enableBtn.addEventListener('click', () => {
+                console.log('🔵 ENABLE STACK clicked');
+                setBusy(true);
+                const msg = {
+                    type: 'anime_enable',
+                    timestamp: Date.now()
+                };
+                console.log('📤 Sending anime_enable message:', msg);
+                this.sendMessage(msg);
+                this.flashButton(enableBtn);
+
+                // Set timeout to reset if no response
+                setTimeout(() => {
+                    const statusEl = document.getElementById('animeStatus');
+                    if (statusEl && statusEl.dataset.waiting === '1') {
+                        console.warn('⚠️ No response received for anime_enable');
+                        statusEl.textContent = 'NO RESPONSE';
+                        statusEl.dataset.waiting = '0';
+                        statusEl.classList.add('error');
+                    }
+                }, 5000);
+            });
+        }
+
+        if (disableBtn) {
+            disableBtn.addEventListener('click', () => {
+                setBusy(true);
+                this.sendMessage({
+                    type: 'anime_disable',
+                    timestamp: Date.now()
+                });
+                this.flashButton(disableBtn);
+            });
+        }
+
+        if (killBtn) {
+            killBtn.addEventListener('click', () => {
+                this.sendMessage({
+                    type: 'anime_kill',
+                    timestamp: Date.now()
+                });
+                this.flashButton(killBtn);
+            });
+        }
+
+        const triggers = document.querySelectorAll('[data-anime]');
+        triggers.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const testId = btn.dataset.anime;
+                if (!testId) return;
+                setBusy(true);
+                this.sendMessage({
+                    type: 'anime_trigger',
+                    id: testId,
+                    timestamp: Date.now()
+                });
+                this.flashButton(btn);
+            });
+        });
+
+        this.applyAnimeStatus(this.animeStatus);
+    }
+
+    applyAnimeStatus(data = {}) {
+        const nextStatus = {
+            enabled: data.enabled !== undefined ? Boolean(data.enabled) : Boolean(this.animeStatus.enabled),
+            lastAction: data.action || data.lastAction || this.animeStatus.lastAction || 'status',
+            actionId: data.actionId || null,
+            success: data.success !== undefined ? data.success : true,
+            error: data.error || null
+        };
+
+        this.animeStatus = nextStatus;
+
+        const statusValue = document.getElementById('animeStatus');
+        if (statusValue) {
+            const parts = [];
+            parts.push(nextStatus.enabled ? 'ENABLED' : 'DISABLED');
+            const normalizedAction = (nextStatus.lastAction || '').toLowerCase();
+            if (normalizedAction && normalizedAction !== 'status' && normalizedAction !== 'enabled' && normalizedAction !== 'disabled') {
+                parts.push(normalizedAction.toUpperCase());
+            }
+            if (nextStatus.actionId) {
+                parts.push(`#${nextStatus.actionId}`);
+            }
+            if (nextStatus.error) {
+                parts.push(`ERR: ${nextStatus.error}`);
+            } else if (nextStatus.success === false) {
+                parts.push('FAILED');
+            }
+
+            statusValue.textContent = parts.join(' | ');
+            statusValue.classList.toggle('error', Boolean(nextStatus.error) || nextStatus.success === false);
+            statusValue.dataset.waiting = '0';
+        }
+
+        const enableBtn = document.getElementById('animeEnable');
+        const disableBtn = document.getElementById('animeDisable');
+        if (enableBtn) enableBtn.disabled = Boolean(nextStatus.enabled);
+        if (disableBtn) disableBtn.disabled = !nextStatus.enabled;
     }
 
     // Timeline Controls
@@ -677,43 +959,153 @@ class VJControlPanel {
         console.log('⏹️ Sequence stopped');
     }
 
-    // Emergency Stop
-    initEmergencyStop() {
-        const emergencyBtn = document.getElementById('emergencyStop');
+    // System Reset
+    initSystemReset() {
+        const resetBtn = document.getElementById('systemReset');
 
-        if (emergencyBtn) {
-            emergencyBtn.addEventListener('click', () => {
-                this.sendMessage({
-                    type: 'emergency_stop',
-                    timestamp: Date.now()
-                });
+        if (resetBtn) {
+            resetBtn.addEventListener('click', () => {
+                console.log('🔄 SYSTEM RESET INITIATED');
 
-                // Reset all controls
-                this.resetAllControls();
+                // MINIMAL RESET: Only reset control values, don't break animations
+                this.performMinimalReset();
 
-                console.log('🚨 EMERGENCY STOP ACTIVATED');
+                // Visual feedback
+                this.flashButton(resetBtn);
+                resetBtn.textContent = 'RESETTING...';
+                resetBtn.disabled = true;
+
+                setTimeout(() => {
+                    resetBtn.textContent = 'RESET';
+                    resetBtn.disabled = false;
+                    console.log('✅ SYSTEM RESET COMPLETED');
+                }, 3000);
             });
         }
     }
 
+    performMinimalReset() {
+        try {
+            console.log('🔄 Performing minimal reset - control values only...');
+
+            // 1. Reset all control panel sliders and buttons to defaults
+            this.resetAllControls();
+
+            // 2. Reset scene to AUTO
+            this.currentScene = 'auto';
+            this.updateAutoSceneIndicator('auto');
+
+            // 3. Send default settings to main site (let animations continue)
+            this.sendMessage({
+                type: 'apply_settings',
+                data: {
+                    colors: { hue: 0, saturation: 100, brightness: 100, contrast: 100 },
+                    effects: { glitch: 0.5, particles: 0.5, distortion: 0.5, noise: 0.5 },
+                    speed: 1.0,
+                    bpm: 120,
+                    scene: 'auto'
+                },
+                timestamp: Date.now()
+            });
+
+            // 4. Reset performance mode
+            this.sendMessage({
+                type: 'performance_mode',
+                mode: 'auto',
+                timestamp: Date.now()
+            });
+            this.currentActiveAutoScene = null;
+            this.updateAutoSceneIndicator(null);
+
+            // 5. Reset anime.js state
+            this.animeStatus = { enabled: false, lastAction: 'reset' };
+            this.applyAnimeStatus(this.animeStatus);
+
+            console.log('✅ Minimal reset completed - controls reset, animations preserved');
+
+        } catch (error) {
+            console.error('❌ Error during minimal reset:', error);
+        }
+    }
+
     resetAllControls() {
-        // Reset sliders
-        document.getElementById('hueSlider').value = 0;
-        document.getElementById('saturationSlider').value = 100;
-        document.getElementById('brightnessSlider').value = 100;
-        document.getElementById('contrastSlider').value = 100;
-        document.getElementById('speedSlider').value = 100;
-        document.getElementById('glitchSlider').value = 50;
-        document.getElementById('particlesSlider').value = 50;
-        document.getElementById('distortionSlider').value = 50;
-        document.getElementById('noiseSlider').value = 50;
+        try {
+            console.log('🔧 Resetting all control values...');
 
-        // Update displays
-        this.updateSliderDisplays();
+            // Reset sliders to default values
+            const sliderResets = {
+                'hueSlider': 0,
+                'saturationSlider': 100,
+                'brightnessSlider': 100,
+                'contrastSlider': 100,
+                'speedSlider': 100,
+                'phaseDurationSlider': 30,
+                'glitchSlider': 50,
+                'particlesSlider': 50,
+                'noiseSlider': 50
+            };
 
-        // Stop any sequences
-        this.stopSequence();
-        this.isRecording = false;
+            Object.entries(sliderResets).forEach(([id, value]) => {
+                const slider = document.getElementById(id);
+                if (slider) {
+                    slider.value = value;
+                }
+            });
+
+            // Update displays
+            this.updateSliderDisplays();
+
+            // Reset scene buttons - set AUTO as active
+            const sceneButtons = document.querySelectorAll('.scene-btn');
+            sceneButtons.forEach(btn => {
+                btn.classList.remove('active', 'auto-active');
+            });
+
+            const autoBtn = document.querySelector('[data-scene="auto"]');
+            if (autoBtn) {
+                autoBtn.classList.add('active');
+            }
+
+            // Reset performance mode to AUTO
+            const perfButtons = document.querySelectorAll('.perf-btn[data-mode]');
+            perfButtons.forEach(btn => {
+                btn.classList.remove('active');
+            });
+
+            const autoPerfBtn = document.querySelector('[data-mode="auto"]');
+            if (autoPerfBtn) {
+                autoPerfBtn.classList.add('active');
+            }
+
+            // Update mode display
+            const modeDisplay = document.getElementById('modeDisplay');
+            if (modeDisplay) {
+                modeDisplay.textContent = 'AUTO';
+            }
+
+            // Stop any sequences (safely)
+            try {
+                this.stopSequence();
+                this.isRecording = false;
+            } catch (e) {
+                // Ignore sequence errors during reset
+            }
+
+            // Reset BPM
+            this.currentBPM = 120;
+            const bpmDisplay = document.querySelector('.bpm-value');
+            if (bpmDisplay) {
+                bpmDisplay.textContent = '120';
+            }
+
+            // Clear tap times
+            this.tapTimes = [];
+
+            console.log('✅ All controls reset to defaults');
+
+        } catch (error) {
+            console.error('❌ Error resetting controls:', error);
+        }
     }
 
     // Monitoring
@@ -785,6 +1177,10 @@ class VJControlPanel {
 
         if (settings.performanceMode) {
             this.applyPerformanceMode(settings.performanceMode);
+        }
+
+        if (settings.animeEnabled !== undefined) {
+            this.applyAnimeStatus({ enabled: settings.animeEnabled, action: 'sync' });
         }
 
         this.updateSliderDisplays();
@@ -862,10 +1258,6 @@ class VJControlPanel {
                 <div id="performance-alerts" style="margin-top: 15px;">
                     <h3 style="color: #00ff85; font-size: 12px; margin-bottom: 8px; border-bottom: 1px solid rgba(0, 255, 133, 0.2); padding-bottom: 4px;">Recent Alerts</h3>
                     <div id="alerts-list" style="max-height: 60px; overflow-y: auto; font-size: 10px; margin-bottom: 10px;">No recent alerts</div>
-                </div>
-                <div class="performance-actions" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-                    <button class="perf-btn optimize-btn" onclick="window.vjControl.triggerOptimization()">OPTIMIZE</button>
-                    <button class="perf-btn emergency-btn" onclick="window.vjControl.triggerEmergency()">EMERGENCY</button>
                 </div>
             `;
             performanceControls.insertAdjacentHTML('afterend', alertsAndActions);
@@ -996,66 +1388,6 @@ class VJControlPanel {
         };
     }
 
-    triggerOptimization() {
-        console.log('🧹 OPTIMIZE triggered from control panel');
-        
-        // Send optimization request to main site
-        this.sendMessage({
-            type: 'safe_cleanup',
-            timestamp: Date.now()
-        });
-        
-        this.sendMessage({
-            type: 'performance_optimization',
-            timestamp: Date.now()
-        });
-        
-        this.flashButton(document.querySelector('.optimize-btn'));
-        
-        // Show visual feedback
-        const optimizeBtn = document.querySelector('.optimize-btn');
-        if (optimizeBtn) {
-            const originalText = optimizeBtn.textContent;
-            optimizeBtn.textContent = 'OPTIMIZING...';
-            setTimeout(() => {
-                optimizeBtn.textContent = originalText;
-            }, 2000);
-        }
-    }
-
-    triggerEmergency() {
-        console.log('🚨 EMERGENCY triggered from control panel');
-        
-        // Send multiple emergency messages to main site
-        this.sendMessage({
-            type: 'emergency_brake',
-            timestamp: Date.now()
-        });
-        
-        this.sendMessage({
-            type: 'emergency_cleanup',
-            timestamp: Date.now()
-        });
-        
-        this.sendMessage({
-            type: 'emergency_stop',
-            timestamp: Date.now()
-        });
-        
-        this.flashButton(document.querySelector('.emergency-btn'));
-        
-        // Show visual feedback
-        const emergencyBtn = document.querySelector('.emergency-btn');
-        if (emergencyBtn) {
-            const originalText = emergencyBtn.textContent;
-            emergencyBtn.textContent = 'EMERGENCY ACTIVE...';
-            emergencyBtn.style.background = '#ff0000';
-            setTimeout(() => {
-                emergencyBtn.textContent = originalText;
-                emergencyBtn.style.background = '';
-            }, 3000);
-        }
-    }
 }
 
 // Initialize control panel when DOM is ready
@@ -1068,3 +1400,4 @@ if (document.readyState === 'loading') {
 }
 
 export default VJControlPanel;
+
