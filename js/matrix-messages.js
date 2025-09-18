@@ -18,7 +18,39 @@ class MatrixMessages {
             'WAKE UP NE0',
             'THE S1GNAL 1S STR0NG',
             'Y0U ARE BE1NG WATCHED',
-            'THE C1CADA SPEAKS'
+            'THE C1CADA SPEAKS',
+            '0CCUPY REAL1TY',
+            'TAKE C0NTR0L',
+            'T1ME\'S N0T L1NEAR',
+            'F*CK THE SYSTEM',
+            'D1G DEEPER',
+            'BREATHE',
+            '1N1T1AL1ZE THE SH1FT',
+            'F1N1SH CYCLES',
+            'S0RT CHA0S',
+            'L0VE 1S KEY',
+            'SP1RAL FURTHER',
+            'F0LL0W 3886',
+            'SPREAD THE MSG',
+            'WELC0ME AGA1N',
+            'PRACT1CE W1ZARDRY',
+            'L1NEAR1TY\'S AN 1LLUS10N',
+            'THERE ARE N0 RULES',
+            'BREAK THE CHA1NS',
+            'BR1CK BY BR1CK',
+            'HERE T0 CHANGE',
+            'HERE T0 STAY',
+            'F0LL0W Z1KADA',
+            'Z1KADA SPEAKS',
+            'Z1KADA L1VES',
+            'WE ARE 0NE',
+            'SHAPE THE SH1FT',
+            'YES',
+            'N0',
+            'MAYBE',
+            'D0ESN\'T MATTER',
+            'D0 1T',
+            'WA1T'
         ];
 
         this.scrambleChars = '!<>-_\\/[]{}—=+*^?#1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ';
@@ -26,6 +58,8 @@ class MatrixMessages {
         this.messageElement = null;
         this.isActive = false;
         this.scrambleInterval = null;
+        this.diceCountdown = 5;
+        this.lastRoll = null;
     }
 
     createBlackoutElement() {
@@ -284,10 +318,10 @@ class MatrixMessages {
             this.forceCleanup();
         }, 10000);
         
-        // Use random selection instead of sequential
+        // Select random message from pool
         const randomIndex = Math.floor(Math.random() * this.messages.length);
         const message = this.messages[randomIndex];
-        console.log('📢 Showing matrix message:', message);
+        console.log('📢 Showing matrix message:', message, `(${randomIndex + 1}/${this.messages.length})`);
 
         // Ensure blackout element exists and is properly styled
         if (!this.blackoutElement) {
@@ -895,17 +929,77 @@ class MatrixMessages {
     }
 
     startMessageCycle() {
-        // Show a message every 30-50 seconds (50% less frequent)
-        const showRandomMessage = () => {
-            this.showMessage();
+        console.log('🎲 Starting dice roll system for matrix messages');
+        console.log(`📝 Message pool contains ${this.messages.length} messages`);
 
-            // Schedule next message
-            const nextDelay = Math.random() * 20000 + 30000; // 30-50 seconds
-            setTimeout(showRandomMessage, nextDelay);
+        // Start countdown timer (updates every second)
+        this.startCountdownTimer();
+
+        // Dice roll system: every 5 seconds, roll 1-1000
+        // If 900-1000 (10% chance), trigger matrix message
+        const diceRollInterval = () => {
+            const roll = Math.floor(Math.random() * 1000) + 1; // 1-1000
+            this.lastRoll = roll;
+            console.log(`🎲 Dice roll: ${roll}/1000`);
+
+            // Broadcast dice roll result to control panel
+            this.broadcastDiceUpdate(roll);
+
+            if (roll >= 900 && roll <= 1000) {
+                console.log('🎯 Dice roll hit! Triggering matrix message...');
+                this.showMessage();
+            }
+
+            // Reset countdown and schedule next dice roll in 5 seconds
+            this.diceCountdown = 5;
+            setTimeout(diceRollInterval, 5000);
         };
 
         // Start after initial delay
-        setTimeout(showRandomMessage, 10000);
+        setTimeout(diceRollInterval, 5000);
+    }
+
+    startCountdownTimer() {
+        // Update countdown every second
+        setInterval(() => {
+            this.diceCountdown--;
+            if (this.diceCountdown < 0) {
+                this.diceCountdown = 0; // Don't go negative
+            }
+
+            // Broadcast countdown update to control panel
+            this.broadcastCountdown();
+        }, 1000);
+    }
+
+    broadcastDiceUpdate(roll) {
+        // Send dice roll result to control panel via localStorage
+        const message = {
+            type: 'dice_roll_update',
+            lastRoll: roll,
+            timestamp: Date.now()
+        };
+
+        try {
+            localStorage.setItem('3886_vj_response', JSON.stringify(message));
+        } catch (e) {
+            console.warn('Failed to broadcast dice update:', e);
+        }
+    }
+
+    broadcastCountdown() {
+        // Send countdown update to control panel via localStorage
+        const message = {
+            type: 'dice_roll_update',
+            countdown: this.diceCountdown,
+            timestamp: Date.now()
+        };
+
+        try {
+            localStorage.setItem('3886_vj_response', JSON.stringify(message));
+        } catch (e) {
+            console.warn('Failed to broadcast countdown:', e);
+        }
     }
 
     testMessage() {

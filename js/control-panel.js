@@ -20,7 +20,8 @@ class VJControlPanel {
 
         // Header functionality tracking
         this.startTime = Date.now();
-        this.activeEffectsCount = 0;
+        this.diceCountdown = 5;
+        this.lastDiceRoll = null;
 
         this.init();
     }
@@ -1256,8 +1257,8 @@ class VJControlPanel {
         // Start uptime counter
         this.startUptimeCounter();
 
-        // Initialize effects counter
-        this.initEffectsCounter();
+        // Initialize dice roll tracking
+        this.initDiceRollTracking();
 
         // Initialize status indicators
         this.initStatusIndicators();
@@ -1278,33 +1279,58 @@ class VJControlPanel {
         }, 1000);
     }
 
-    initEffectsCounter() {
-        // Track effects from various sources
-        const headerActiveFx = document.getElementById('headerActiveFx');
-        if (!headerActiveFx) return;
+    initDiceRollTracking() {
+        const diceCountdownEl = document.getElementById('diceCountdown');
+        const lastDiceRollEl = document.getElementById('lastDiceRoll');
 
-        // Update counter periodically
+        if (!diceCountdownEl || !lastDiceRollEl) return;
+
+        // Store original handleMessage method
+        const originalHandleMessage = this.handleMessage.bind(this);
+
+        // Override handleMessage to include dice roll handling
+        this.handleMessage = (data) => {
+            // Handle dice roll updates
+            if (data.type === 'dice_roll_update') {
+                if (data.countdown !== undefined) {
+                    this.diceCountdown = data.countdown;
+                    diceCountdownEl.textContent = `${data.countdown}s`;
+                }
+                if (data.lastRoll !== undefined) {
+                    this.lastDiceRoll = data.lastRoll;
+                    lastDiceRollEl.textContent = data.lastRoll.toString();
+
+                    // Add visual feedback for successful rolls (900-1000)
+                    if (data.lastRoll >= 900) {
+                        lastDiceRollEl.style.color = '#00ff85';
+                        lastDiceRollEl.style.textShadow = '0 0 10px #00ff85';
+                        setTimeout(() => {
+                            lastDiceRollEl.style.color = '';
+                            lastDiceRollEl.style.textShadow = '';
+                        }, 2000);
+                    }
+                }
+            }
+
+            // Call original handler for other message types
+            originalHandleMessage(data);
+        };
+
+        // Start local countdown simulation (as backup)
+        this.startDiceCountdownSimulation();
+    }
+
+    startDiceCountdownSimulation() {
+        const diceCountdownEl = document.getElementById('diceCountdown');
+        if (!diceCountdownEl) return;
+
         setInterval(() => {
-            // Get effects count from different sources
-            let totalEffects = 0;
-
-            // Count from existing activeFxDisplay if available
-            const activeFxDisplay = document.getElementById('activeFxDisplay');
-            if (activeFxDisplay && activeFxDisplay.textContent !== '--') {
-                totalEffects += parseInt(activeFxDisplay.textContent) || 0;
+            this.diceCountdown--;
+            if (this.diceCountdown <= 0) {
+                this.diceCountdown = 5; // Reset to 5 seconds
             }
-
-            // Count from performance data if available
-            if (this.lastPerformanceData && this.lastPerformanceData.activeFx) {
-                totalEffects = Math.max(totalEffects, parseInt(this.lastPerformanceData.activeFx) || 0);
-            }
-
-            // Update header display
-            headerActiveFx.textContent = totalEffects.toString();
-
-            // Store for other uses
-            this.activeEffectsCount = totalEffects;
-        }, 500);
+            diceCountdownEl.textContent = `${this.diceCountdown}s`;
+        }, 1000);
     }
 
     initStatusIndicators() {
@@ -1322,9 +1348,9 @@ class VJControlPanel {
                         healthStatus = 'warning';
                     }
 
-                    // Check effects overload
-                    if (this.activeEffectsCount > 10) {
-                        healthStatus = 'critical';
+                    // Check for dice roll activity
+                    if (this.lastDiceRoll && this.lastDiceRoll >= 900) {
+                        healthStatus = 'healthy'; // Show green when successful roll
                     }
 
                     systemHealth.className = `indicator ${healthStatus}`;
