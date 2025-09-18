@@ -131,6 +131,10 @@ class VJControlPanel {
             case 'settings_sync':
                 this.syncSettings(data.settings);
                 break;
+
+            case 'detailed_performance_update':
+                this.updateDetailedPerformanceData(data);
+                break;
         }
     }
 
@@ -762,6 +766,33 @@ class VJControlPanel {
         this.updateSliderDisplays();
     }
 
+    updateDetailedPerformanceData(data) {
+        console.log('📊 Received detailed performance data:', data);
+        
+        // Cache the data for display
+        this.lastPerformanceData = {
+            animations: data.animations,
+            managedElements: data.managedElements,
+            intervals: data.intervals
+        };
+        
+        // Update displays immediately
+        const animationsDisplay = document.getElementById('animations-display');
+        if (animationsDisplay) {
+            animationsDisplay.textContent = data.animations || '--';
+        }
+        
+        const managedElementsDisplay = document.getElementById('managed-elements-display');
+        if (managedElementsDisplay) {
+            managedElementsDisplay.textContent = data.managedElements || '--';
+        }
+        
+        const intervalsDisplay = document.getElementById('intervals-display');
+        if (intervalsDisplay) {
+            intervalsDisplay.textContent = data.intervals || '--';
+        }
+    }
+
     // Initialize performance monitor for control panel
     initPerformanceMonitor() {
         // Enhance existing performance section
@@ -935,33 +966,64 @@ class VJControlPanel {
     }
 
     triggerOptimization() {
+        console.log('🧹 OPTIMIZE triggered from control panel');
+        
         // Send optimization request to main site
         this.sendMessage({
             type: 'safe_cleanup',
             timestamp: Date.now()
         });
         
-        if (window.safePerformanceMonitor) {
-            window.safePerformanceMonitor.safeCleanup();
-        }
+        this.sendMessage({
+            type: 'performance_optimization',
+            timestamp: Date.now()
+        });
         
         this.flashButton(document.querySelector('.optimize-btn'));
-        console.log('🧹 Safe cleanup triggered from control panel');
+        
+        // Show visual feedback
+        const optimizeBtn = document.querySelector('.optimize-btn');
+        if (optimizeBtn) {
+            const originalText = optimizeBtn.textContent;
+            optimizeBtn.textContent = 'OPTIMIZING...';
+            setTimeout(() => {
+                optimizeBtn.textContent = originalText;
+            }, 2000);
+        }
     }
 
     triggerEmergency() {
-        // Send emergency brake to main site
+        console.log('🚨 EMERGENCY triggered from control panel');
+        
+        // Send multiple emergency messages to main site
         this.sendMessage({
             type: 'emergency_brake',
             timestamp: Date.now()
         });
         
-        if (window.safePerformanceMonitor) {
-            window.safePerformanceMonitor.emergencyBrake();
-        }
+        this.sendMessage({
+            type: 'emergency_cleanup',
+            timestamp: Date.now()
+        });
+        
+        this.sendMessage({
+            type: 'emergency_stop',
+            timestamp: Date.now()
+        });
         
         this.flashButton(document.querySelector('.emergency-btn'));
-        console.log('🚨 Emergency brake triggered from control panel');
+        
+        // Show visual feedback
+        const emergencyBtn = document.querySelector('.emergency-btn');
+        if (emergencyBtn) {
+            const originalText = emergencyBtn.textContent;
+            emergencyBtn.textContent = 'EMERGENCY ACTIVE...';
+            emergencyBtn.style.background = '#ff0000';
+            setTimeout(() => {
+                emergencyBtn.textContent = originalText;
+                emergencyBtn.style.background = '';
+            }, 3000);
+        }
     }
 }
 

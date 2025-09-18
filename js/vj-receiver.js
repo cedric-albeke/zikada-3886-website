@@ -160,8 +160,16 @@ class VJReceiver {
                 this.executeEmergencyBrake();
                 break;
 
+            case 'performance_optimization':
+                this.executePerformanceOptimization();
+                break;
+
             case 'request_performance':
                 this.sendPerformanceData();
+                break;
+
+            case 'get_performance_stats':
+                this.sendDetailedPerformanceData();
                 break;
 
             case 'sequence_event':
@@ -661,6 +669,7 @@ class VJReceiver {
     setPerformanceMode(mode) {
         console.log(`🎮 Setting performance mode: ${mode}`);
 
+        // Apply performance mode to all available systems
         if (window.ChaosControl && window.ChaosControl.setPerformance) {
             window.ChaosControl.setPerformance(mode);
         }
@@ -668,6 +677,33 @@ class VJReceiver {
         if (window.performanceManager) {
             window.performanceManager.setMode(mode);
         }
+
+        if (window.performanceElementManager) {
+            window.performanceElementManager.setPerformanceMode(mode);
+        }
+
+        if (window.gsapAnimationRegistry) {
+            // Adjust animation limits based on performance mode
+            switch(mode) {
+                case 'low':
+                    window.gsapAnimationRegistry.maxAnimations = 50;
+                    break;
+                case 'auto':
+                    window.gsapAnimationRegistry.maxAnimations = 100;
+                    break;
+                case 'high':
+                    window.gsapAnimationRegistry.maxAnimations = 200;
+                    break;
+            }
+            console.log(`🎬 GSAP animation limit set to ${window.gsapAnimationRegistry.maxAnimations} for ${mode} mode`);
+        }
+
+        // Send confirmation back to control panel
+        this.sendMessage({
+            type: 'performance_mode_updated',
+            mode: mode,
+            timestamp: Date.now()
+        });
     }
 
     emergencyStop() {
@@ -731,6 +767,34 @@ class VJReceiver {
         }
     }
 
+    executePerformanceOptimization() {
+        console.log('🧹 VJ Receiver executing performance optimization...');
+        
+        // Trigger cleanup on all performance systems
+        if (window.performanceElementManager) {
+            window.performanceElementManager.performPeriodicCleanup();
+        }
+        
+        if (window.gsapAnimationRegistry) {
+            window.gsapAnimationRegistry.performPeriodicCleanup();
+        }
+        
+        if (window.intervalManager) {
+            window.intervalManager.performAutoCleanup();
+        }
+        
+        if (window.safePerformanceMonitor) {
+            window.safePerformanceMonitor.safeCleanup();
+        }
+        
+        // Force garbage collection if available
+        if (window.gc) {
+            window.gc();
+        }
+        
+        console.log('✅ Performance optimization completed');
+    }
+
     handleSequenceEvent(data) {
         // Replay recorded events
         switch(data.originalType) {
@@ -781,6 +845,22 @@ class VJReceiver {
         }
 
         this.sendMessage(data);
+    }
+
+    sendDetailedPerformanceData() {
+        // Gather detailed performance data from all systems
+        const detailedData = {
+            type: 'detailed_performance_update',
+            animations: window.gsapAnimationRegistry ? window.gsapAnimationRegistry.animations.size : 0,
+            managedElements: window.performanceElementManager ? window.performanceElementManager.elements.size : 0,
+            intervals: window.intervalManager ? window.intervalManager.intervals.size : 0,
+            fps: window.safePerformanceMonitor ? window.safePerformanceMonitor.metrics.fps : 0,
+            memory: performance.memory ? performance.memory.usedJSHeapSize : 0,
+            timestamp: Date.now()
+        };
+
+        console.log('📊 Sending detailed performance data:', detailedData);
+        this.sendMessage(detailedData);
     }
 
     hookIntoChaosEngine() {
