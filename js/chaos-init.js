@@ -216,7 +216,7 @@ class ChaosInitializer {
         safeFilter = safeFilter.replace(/grayscale\([^)]*\)/g, '');
         
         // Ensure contrast doesn't go too low (can cause washed out grey look)
-        safeFilter = safeFilter.replace(/contrast\(0\.[0-7]\d*\)/g, 'contrast(0.8)');
+        safeFilter = safeFilter.replace(/contrast\(0\.[0-7]\d*\)/g, 'contrast(1.0)');
         
         // Clean up multiple spaces and empty parentheses
         safeFilter = safeFilter.replace(/\s+/g, ' ').replace(/\(\s*\)/g, '').trim();
@@ -675,16 +675,16 @@ class ChaosInitializer {
             bottom: '0',
             left: '0',
             width: '100%',
-            height: '40%',
+            height: '80%',
             pointerEvents: 'none',
             zIndex: '-1',
-            opacity: '0.002'
+            opacity: '0.008'
         });
         gridCanvas.id = 'cyber-grid';
 
         const ctx = gridCanvas.getContext('2d');
         gridCanvas.width = window.innerWidth;
-        gridCanvas.height = window.innerHeight * 0.4;
+        gridCanvas.height = window.innerHeight * 0.8;
 
         let offset = 0;
 
@@ -876,7 +876,7 @@ class ChaosInitializer {
             const gridCanvas = document.getElementById('cyber-grid');
             if (gridCanvas) {
                 gridCanvas.width = window.innerWidth;
-                gridCanvas.height = window.innerHeight * 0.3;
+                gridCanvas.height = window.innerHeight * 0.8;
             }
         });
     }
@@ -2419,30 +2419,30 @@ class ChaosInitializer {
             clearProps: 'filter'
         });
 
-        // Subtle color shifts for text elements
+        // Preserve ZIKADA text original green colors - NO hue rotation
         const textColorTimeline = gsap.timeline({ repeat: -1 });
         textColorTimeline
             .to('.logo-text, .text-3886', {
-                filter: 'hue-rotate(0deg) brightness(100%)',
+                filter: 'brightness(100%) saturate(100%) contrast(100%)',
                 duration: 0
             })
             .to('.logo-text, .text-3886', {
-                filter: 'hue-rotate(5deg) brightness(103%)',  // Slight warm shift
+                filter: 'brightness(105%) saturate(110%) contrast(105%)',  // Slight enhancement only
                 duration: 18,
                 ease: 'sine.inOut'
             })
             .to('.logo-text, .text-3886', {
-                filter: 'hue-rotate(-6deg) brightness(101%)',  // Cool shift
+                filter: 'brightness(98%) saturate(105%) contrast(102%)',   // Subtle dimming
                 duration: 15,
                 ease: 'sine.inOut'
             })
             .to('.logo-text, .text-3886', {
-                filter: 'hue-rotate(3deg) brightness(102%)',   // Back to warm
+                filter: 'brightness(102%) saturate(108%) contrast(103%)',  // Back to enhanced
                 duration: 12,
                 ease: 'sine.inOut'
             })
             .to('.logo-text, .text-3886', {
-                filter: 'hue-rotate(0deg) brightness(100%)',
+                filter: 'brightness(100%) saturate(100%) contrast(100%)',
                 duration: 10,
                 ease: 'sine.inOut'
             });

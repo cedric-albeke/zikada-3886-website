@@ -53,59 +53,198 @@ async function initLogoAnimation() {
 
   const paths = primeStrokeStyles(svg);
 
-  const draw = anime({
+  // Enhanced draw animation with multiple stages
+  const drawIn = anime({
     targets: paths,
     strokeDashoffset: [anime.setDashoffset, 0],
-    duration: 1400,
-    delay: anime.stagger(40, { from: 'center' }),
-    easing: 'easeInOutSine',
+    opacity: [0, 1],
+    scale: [0.8, 1],
+    duration: 2000,
+    delay: anime.stagger(60, { from: 'center' }),
+    easing: 'easeInOutCubic',
     autoplay: false
   });
-  animeManager.register(draw, { critical: false, label: 'logo-draw' });
+  animeManager.register(drawIn, { critical: false, label: 'logo-draw-in' });
 
+  // Reverse draw animation for smooth transitions
+  const drawOut = anime({
+    targets: paths,
+    strokeDashoffset: [0, anime.setDashoffset],
+    opacity: [1, 0],
+    scale: [1, 0.8],
+    duration: 1500,
+    delay: anime.stagger(40, { from: 'last' }),
+    easing: 'easeInOutCubic',
+    autoplay: false,
+    complete: () => {
+      // Show original image after draw out
+      if (img) {
+        img.style.display = '';
+      }
+      if (container && container.parentNode) {
+        container.parentNode.removeChild(container);
+      }
+      logoAnimationActive = false;
+      logoAnimationElements = null;
+    }
+  });
+  animeManager.register(drawOut, { critical: false, label: 'logo-draw-out' });
+
+  // Enhanced idle animation with multiple effects
   const idle = anime({
     targets: svg,
-    opacity: [{ value: 0.85, duration: 1200 }, { value: 1, duration: 1200 }],
-    easing: 'linear',
+    opacity: [
+      { value: 0.8, duration: 1500 },
+      { value: 1, duration: 1500 },
+      { value: 0.9, duration: 1000 },
+      { value: 1, duration: 1000 }
+    ],
+    rotate: [0, 1, 0],
+    easing: 'easeInOutSine',
     loop: true,
-    direction: 'alternate',
     autoplay: false
   });
   animeManager.register(idle, { critical: false, label: 'logo-idle' });
 
+  // Glow pulse animation
+  const glowPulse = anime({
+    targets: paths,
+    filter: [
+      'drop-shadow(0 0 5px #00ff41)',
+      'drop-shadow(0 0 15px #00ff41)',
+      'drop-shadow(0 0 25px #00ff41)',
+      'drop-shadow(0 0 15px #00ff41)',
+      'drop-shadow(0 0 5px #00ff41)'
+    ],
+    duration: 3000,
+    easing: 'easeInOutSine',
+    loop: true,
+    autoplay: false
+  });
+  animeManager.register(glowPulse, { critical: false, label: 'logo-glow-pulse' });
+
+  // Enhanced morphing animation
+  const morph = anime({
+    targets: paths,
+    strokeWidth: [2, 4, 3, 2],
+    opacity: [1, 0.7, 0.9, 1],
+    duration: 4000,
+    easing: 'easeInOutQuad',
+    loop: true,
+    autoplay: false
+  });
+  animeManager.register(morph, { critical: false, label: 'logo-morph' });
+
+  // Store animations for external access
+  window.logoAnimations = {
+    drawIn,
+    drawOut,
+    idle,
+    glowPulse,
+    morph,
+    isActive: true
+  };
+
+  // Start with draw-in animation
   requestAnimationFrame(() => {
-    draw.play();
-    (draw.finished?.then?.(() => idle.play())) || idle.play();
+    drawIn.play();
+    drawIn.finished?.then?.(() => {
+      idle.play();
+      glowPulse.play();
+    });
   });
 
   function onPhase(e) {
     const phase = e?.detail?.phase ?? e?.detail;
     if (phase === 'intense') {
-      anime.speed = 1.2;
+      idle.timeScale = 1.3;
+      glowPulse.timeScale = 1.2;
+      if (!morph.began || morph.paused) morph.play();
     } else if (phase === 'calm') {
-      anime.speed = 0.9;
+      idle.timeScale = 0.7;
+      glowPulse.timeScale = 0.8;
+      morph.pause();
     } else {
-      anime.speed = 1.0;
+      idle.timeScale = 1.0;
+      glowPulse.timeScale = 1.0;
+      morph.pause();
     }
   }
+
   function onMatrixMessage() {
-    idle.pause();
-    const pulse = anime({
+    // Enhanced matrix pulse with multiple effects
+    const matrixPulse = anime({
       targets: svg,
-      scale: [{ value: 1.02, duration: 90 }, { value: 1, duration: 260 }],
+      scale: [
+        { value: 1.05, duration: 120 },
+        { value: 0.98, duration: 180 },
+        { value: 1.02, duration: 150 },
+        { value: 1, duration: 200 }
+      ],
+      rotate: [0, 5, -3, 0],
+      easing: 'easeOutElastic(1, .8)'
+    });
+    animeManager.register(matrixPulse, { critical: false, label: 'logo-matrix-pulse' });
+
+    // Add flash effect to paths
+    const flashPaths = anime({
+      targets: paths,
+      opacity: [1, 0.3, 1],
+      strokeWidth: [undefined, 6, undefined],
+      duration: 400,
       easing: 'easeOutQuad'
     });
-    animeManager.register(pulse, { critical: false, label: 'logo-pulse' });
-    (pulse.finished?.then?.(() => idle.play())) || idle.play();
+    animeManager.register(flashPaths, { critical: false, label: 'logo-flash-paths' });
   }
 
+  function onLogoPulse() {
+    // Manual pulse trigger
+    const manualPulse = anime({
+      targets: svg,
+      scale: [1, 1.15, 1],
+      opacity: [undefined, 0.8, undefined],
+      duration: 800,
+      easing: 'easeOutBounce'
+    });
+    animeManager.register(manualPulse, { critical: false, label: 'logo-manual-pulse' });
+  }
+
+  function onLogoGlowToggle() {
+    if (glowPulse.paused) {
+      glowPulse.play();
+    } else {
+      glowPulse.pause();
+      // Reset to base glow
+      anime({
+        targets: paths,
+        filter: 'drop-shadow(0 0 5px #00ff41)',
+        duration: 300
+      });
+    }
+  }
+
+  // Enhanced event listeners
   window.addEventListener('animationPhase', onPhase);
   window.addEventListener('matrixMessage', onMatrixMessage);
+  window.addEventListener('logoPulse', onLogoPulse);
+  window.addEventListener('logoGlowToggle', onLogoGlowToggle);
+
+  // Global functions for control panel integration
+  window.triggerLogoPulse = onLogoPulse;
+  window.toggleLogoGlow = onLogoGlowToggle;
+  window.reverseLogoAnimation = () => {
+    idle.pause();
+    glowPulse.pause();
+    morph.pause();
+    drawOut.play();
+  };
 
   if (import.meta.hot) {
     import.meta.hot.dispose(() => {
       window.removeEventListener('animationPhase', onPhase);
       window.removeEventListener('matrixMessage', onMatrixMessage);
+      window.removeEventListener('logoPulse', onLogoPulse);
+      window.removeEventListener('logoGlowToggle', onLogoGlowToggle);
       animeManager.killAll();
       try { container.parentNode?.removeChild(container); } catch {}
       try { img.style.display = ''; } catch {}
