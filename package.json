@@ -4,7 +4,9 @@
   "description": "ZIKADA 3886 Records - Psy & Techno Website",
   "main": "index.html",
   "scripts": {
-    "dev": "vite --port 3886",
+    "dev": "npm run kill-servers && vite --port 3886",
+    "dev-clean": "npm run kill-servers && vite --port 3886",
+    "kill-servers": "taskkill //f //im node.exe 2>nul || echo No Node processes to kill",
     "build": "vite build",
     "serve": "npx http-server . -p 3886",
     "preview": "vite preview --port 3886"
