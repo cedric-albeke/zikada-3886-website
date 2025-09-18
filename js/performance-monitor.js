@@ -158,8 +158,12 @@ class PerformanceMonitor {
             this.createAlert('critical', 'FPS', `Critical FPS: ${fps} (threshold: ${this.thresholds.fps.critical})`);
             this.triggerEmergencyCleanup();
         } else if (fps <= this.thresholds.fps.warning) {
-            this.createAlert('warning', 'FPS', `Low FPS: ${fps} (threshold: ${this.thresholds.fps.warning})`);
-            this.triggerPerformanceOptimization();
+                this.createAlert('warning', 'FPS', `Low FPS: ${fps} (threshold: ${this.thresholds.fps.warning})`);
+                // Less aggressive: do not auto-trigger optimization on every low FPS tick
+                if (!this.lastOptimization || (Date.now() - this.lastOptimization) > 15000) {
+                    this.triggerPerformanceOptimization();
+                    this.lastOptimization = Date.now();
+                }
         }
     }
 

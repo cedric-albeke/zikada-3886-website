@@ -20,10 +20,18 @@ class GSAPAnimationRegistry {
             'particle': { maxAnimations: 50, priority: 5 }
         };
         
+        // Logging controls
+        this.verbose = !!(window.__3886_DEBUG && window.__3886_DEBUG.gsapRegistryVerbose);
+        this.logEvery = 20; // Only log every N registrations when not verbose
+        
         // Override GSAP methods to auto-register
         this.patchGSAPMethods();
         
-        console.log('🎬 GSAP Animation Registry initialized');
+        if (this.verbose) {
+            console.log('🎬 GSAP Animation Registry initialized (verbose)');
+        } else {
+            console.log('🎬 GSAP Animation Registry initialized');
+        }
     }
 
     /**
@@ -32,7 +40,7 @@ class GSAPAnimationRegistry {
     patchGSAPMethods() {
         // Check if already patched
         if (gsap._3886_patched) {
-            console.log('⚠️ GSAP already patched, skipping...');
+            if (this.verbose) console.log('⚠️ GSAP already patched, skipping...');
             return;
         }
 
@@ -46,38 +54,69 @@ class GSAPAnimationRegistry {
         // Store registry reference for closures
         const registry = this;
 
+        const resolveCategory = (vars) => (vars && vars._regCategory) || 'effect';
+        const wantsSoftCap = (vars) => !!(vars && vars._regSoftCap === true);
+        
+        // Soft-cap helper (only enforced when explicitly requested)
+        const canCreateInCategory = (category, vars) => {
+            if (!wantsSoftCap(vars)) return true; // default: do not soft-cap unless opted-in
+            const cfg = registry.categories[category] || { maxAnimations: 30 };
+            const count = registry.getCategoryActiveCount(category);
+            return count < cfg.maxAnimations;
+        };
+
         // Patch gsap.to
         gsap.to = function(targets, vars = {}) {
+            const category = resolveCategory(vars);
+            if (!canCreateInCategory(category, vars)) {
+                if (registry.verbose) console.log(`⏳ Skipping creation in category '${category}' (soft cap reached)`);
+                return registry.createNoopTween();
+            }
             const tween = originalTo.call(this, targets, vars);
             if (tween && registry) {
-                registry.registerAnimation(tween, 'auto-to', 'effect');
+                registry.registerAnimation(tween, 'auto-to', category);
             }
             return tween;
         };
 
         // Patch gsap.from
         gsap.from = function(targets, vars = {}) {
+            const category = resolveCategory(vars);
+            if (!canCreateInCategory(category, vars)) {
+                if (registry.verbose) console.log(`⏳ Skipping creation in category '${category}' (soft cap reached)`);
+                return registry.createNoopTween();
+            }
             const tween = originalFrom.call(this, targets, vars);
             if (tween && registry) {
-                registry.registerAnimation(tween, 'auto-from', 'effect');
+                registry.registerAnimation(tween, 'auto-from', category);
             }
             return tween;
         };
 
         // Patch gsap.fromTo
         gsap.fromTo = function(targets, fromVars = {}, toVars = {}) {
+            const category = resolveCategory(toVars);
+            if (!canCreateInCategory(category, toVars)) {
+                if (registry.verbose) console.log(`⏳ Skipping creation in category '${category}' (soft cap reached)`);
+                return registry.createNoopTween();
+            }
             const tween = originalFromTo.call(this, targets, fromVars, toVars);
             if (tween && registry) {
-                registry.registerAnimation(tween, 'auto-fromTo', 'effect');
+                registry.registerAnimation(tween, 'auto-fromTo', category);
             }
             return tween;
         };
 
         // Patch gsap.timeline
         gsap.timeline = function(vars = {}) {
+            const category = resolveCategory(vars);
+            if (!canCreateInCategory(category, vars)) {
+                if (registry.verbose) console.log(`⏳ Skipping creation in category '${category}' (soft cap reached)`);
+                return registry.createNoopTimeline();
+            }
             const timeline = originalTimeline.call(this, vars);
             if (timeline && registry) {
-                registry.registerAnimation(timeline, 'auto-timeline', 'effect');
+                registry.registerAnimation(timeline, 'auto-timeline', category);
             }
             return timeline;
         };
@@ -97,7 +136,7 @@ class GSAPAnimationRegistry {
             set: originalSet
         };
 
-        console.log('🔧 GSAP methods patched for auto-registration');
+        if (this.verbose) console.log('🔧 GSAP methods patched for auto-registration');
     }
 
     /**
@@ -194,7 +233,12 @@ class GSAPAnimationRegistry {
 
         this.animations.set(animationId, animationData);
 
-        console.log(`🎬 Registered animation: ${name} (${category}) - Total: ${this.animations.size}`);
+        // Reduce logging noise: only log occasionally unless verbose enabled
+        if (this.verbose) {
+            console.log(`🎬 Registered animation: ${name} (${category}) - Total: ${this.animations.size}`);
+        } else if (this.animationCounter % this.logEvery === 0) {
+            console.log(`🎬 Animation registry status - Total: ${this.animations.size}`);
+        }
 
         return animationId;
     }
@@ -227,13 +271,69 @@ class GSAPAnimationRegistry {
      * Get animation targets
      */
     getAnimationTargets(animation) {
+        if (!animation) return [];
         if (animation.targets) {
-            return animation.targets();
+            try { return animation.targets(); } catch (_) {}
         }
         if (animation._targets) {
             return animation._targets;
         }
         return [];
+    }
+
+    /**
+     * Count active animations in a category
+     */
+    getCategoryActiveCount(category) {
+        let count = 0;
+        this.animations.forEach(data => {
+            if (data.category === category && data.isActive !== false) count++;
+        });
+        return count;
+    }
+
+    /**
+     * Create a no-op tween for safe skipping
+     */
+    createNoopTween() {
+        return {
+            kill: () => {},
+            pause: () => {},
+            resume: () => {},
+            play: () => {},
+            eventCallback: () => {},
+            timeScale: () => {},
+            progress: () => 0,
+            duration: () => 0,
+            then: (cb) => Promise.resolve().then(cb)
+        };
+    }
+
+    /**
+     * Create a no-op timeline for safe skipping
+     */
+    createNoopTimeline() {
+        const self = this;
+        const tl = self.createNoopTween();
+        return {
+            to: () => self.createNoopTimeline(),
+            from: () => self.createNoopTimeline(),
+            fromTo: () => self.createNoopTimeline(),
+            set: () => self.createNoopTimeline(),
+            add: () => self.createNoopTimeline(),
+            call: () => self.createNoopTimeline(),
+            addLabel: () => self.createNoopTimeline(),
+            clear: () => self.createNoopTimeline(),
+            kill: tl.kill,
+            pause: tl.pause,
+            play: tl.play,
+            resume: tl.resume,
+            eventCallback: tl.eventCallback,
+            timeScale: tl.timeScale,
+            progress: tl.progress,
+            duration: tl.duration,
+            then: tl.then
+        };
     }
 
     /**

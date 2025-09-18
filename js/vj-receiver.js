@@ -248,6 +248,11 @@ class VJReceiver {
                 this.sendDetailedPerformanceData();
                 break;
 
+            // Some control panels send this alias
+            case 'request_performance_detailed':
+                this.sendDetailedPerformanceData();
+                break;
+
             case 'sequence_event':
                 this.handleSequenceEvent(data);
                 break;
@@ -365,6 +370,16 @@ class VJReceiver {
         filterManager.setPartial({ [parameter]: value }, 300);
     }
 
+    // Convenience: update multiple colors at once (wrapper)
+    updateColors(hue, saturation, brightness, contrast) {
+        if (hue !== undefined) this.updateColor('hue', hue);
+        if (saturation !== undefined) this.updateColor('saturation', saturation);
+        if (brightness !== undefined) this.updateColor('brightness', brightness);
+        if (contrast !== undefined) this.updateColor('contrast', contrast);
+        // Apply current combined color state
+        this.applyColorFilter();
+    }
+
     applyColorFilter() {
         console.log('🎨 applyColorFilter called with settings:', this.currentSettings.colors);
         
@@ -475,6 +490,14 @@ class VJReceiver {
     updateNoiseIntensity(value) {
         // Adjust static noise
         fxController.setIntensity({ noise: value });
+    }
+
+    // Convenience: set all effect intensities in one call (wrapper)
+    setEffectIntensities(glitch, particles, distortion, noise) {
+        if (glitch !== undefined) this.updateEffectIntensity('glitch', glitch);
+        if (particles !== undefined) this.updateEffectIntensity('particles', particles);
+        if (distortion !== undefined) this.updateEffectIntensity('distortion', distortion);
+        if (noise !== undefined) this.updateEffectIntensity('noise', noise);
     }
 
     triggerEffect(effect) {
