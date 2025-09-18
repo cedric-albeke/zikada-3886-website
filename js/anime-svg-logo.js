@@ -32,7 +32,7 @@ function primeStrokeStyles(svg) {
   paths.forEach(p => {
     const cs = window.getComputedStyle(p);
     if (cs.fill !== 'none') p.setAttribute('fill', 'none');
-    p.setAttribute('stroke', 'currentColor');
+    p.setAttribute('stroke', '#00ff41'); // Neon green for cyberpunk aesthetic
     if (!p.getAttribute('stroke-width')) p.setAttribute('stroke-width', '2');
     p.setAttribute('stroke-linecap', 'round');
     p.setAttribute('stroke-linejoin', 'round');
@@ -47,6 +47,9 @@ async function initLogoAnimation() {
   const result = await inlineSvgFromImg(img);
   if (!result) return;
   const { svg, container } = result;
+
+  // Store elements for cleanup
+  logoAnimationElements = { container, img, svg };
 
   const paths = primeStrokeStyles(svg);
 
@@ -110,10 +113,84 @@ async function initLogoAnimation() {
   }
 }
 
+// Global state for animation system
+let logoAnimationActive = false;
+let logoAnimationElements = null;
+
+// Listen for anime enable/disable messages
+window.addEventListener('storage', (e) => {
+  if (e.key === '3886_vj_message') {
+    try {
+      const message = JSON.parse(e.newValue);
+      if (message.type === 'anime_enable' && !logoAnimationActive) {
+        enableLogoAnimation();
+      } else if (message.type === 'anime_disable' && logoAnimationActive) {
+        disableLogoAnimation();
+      }
+    } catch (err) {
+      // Ignore JSON parse errors
+    }
+  }
+});
+
+// Listen for localStorage polling (same-tab communication)
+let lastMessageId = null;
+setInterval(() => {
+  const messageData = localStorage.getItem('3886_vj_message');
+  if (messageData) {
+    try {
+      const parsed = JSON.parse(messageData);
+      if (parsed._id && parsed._id !== lastMessageId) {
+        lastMessageId = parsed._id;
+        if (parsed.type === 'anime_enable' && !logoAnimationActive) {
+          enableLogoAnimation();
+        } else if (parsed.type === 'anime_disable' && logoAnimationActive) {
+          disableLogoAnimation();
+        }
+      }
+    } catch (e) {
+      // Ignore JSON parse errors
+    }
+  }
+}, 100);
+
+function enableLogoAnimation() {
+  if (logoAnimationActive) return;
+  window.__ANIME_POC_ENABLED = true;
+  logoAnimationActive = true;
+  console.log('🎬 Enabling logo animations...');
+  initLogoAnimation();
+}
+
+function disableLogoAnimation() {
+  if (!logoAnimationActive) return;
+  window.__ANIME_POC_ENABLED = false;
+  logoAnimationActive = false;
+  console.log('🛑 Disabling logo animations...');
+
+  // Clean up animations and restore original logo
+  if (logoAnimationElements) {
+    const { container, img } = logoAnimationElements;
+    animeManager.killAll();
+    try {
+      if (container && container.parentNode) {
+        container.parentNode.removeChild(container);
+      }
+    } catch {}
+    try {
+      if (img) {
+        img.style.display = '';
+      }
+    } catch {}
+    logoAnimationElements = null;
+  }
+}
+
+// Initialize if already enabled via URL parameter
 if (isEnabled()) {
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initLogoAnimation, { once: true });
+    document.addEventListener('DOMContentLoaded', () => enableLogoAnimation(), { once: true });
   } else {
-    initLogoAnimation();
+    enableLogoAnimation();
   }
 }
