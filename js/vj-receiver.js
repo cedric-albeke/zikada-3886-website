@@ -733,10 +733,13 @@ class VJReceiver {
             }
         });
 
-        // Reset to calm state
+        // Reset to calm state and restart animations
         setTimeout(() => {
             this.changeScene('calm');
-        }, 1000);
+            
+            // Restart essential animations after emergency cleanup
+            this.restartEssentialAnimations();
+        }, 2000); // Longer delay for cleanup to complete
     }
 
     executeEmergencyCleanup() {
@@ -776,7 +779,13 @@ class VJReceiver {
         }
         
         if (window.gsapAnimationRegistry) {
+            console.log(`🎬 GSAP cleanup: ${window.gsapAnimationRegistry.animations.size} animations before cleanup`);
             window.gsapAnimationRegistry.performPeriodicCleanup();
+            // Force emergency cleanup if still too many
+            if (window.gsapAnimationRegistry.animations.size > 150) {
+                window.gsapAnimationRegistry.performEmergencyCleanup();
+            }
+            console.log(`🎬 GSAP cleanup: ${window.gsapAnimationRegistry.animations.size} animations after cleanup`);
         }
         
         if (window.intervalManager) {
@@ -793,6 +802,38 @@ class VJReceiver {
         }
         
         console.log('✅ Performance optimization completed');
+    }
+
+    restartEssentialAnimations() {
+        console.log('🔄 Restarting essential animations after emergency cleanup...');
+        
+        // Restart chaos engine animations
+        if (window.chaosInit) {
+            // Restart phase animations
+            window.chaosInit.phaseRunning = true;
+            window.chaosInit.startAnimationPhases();
+            
+            // Restart background effects
+            if (window.chaosInit.addScanlines) {
+                window.chaosInit.addScanlines();
+            }
+            
+            if (window.chaosInit.addDataStreams) {
+                window.chaosInit.addDataStreams();
+            }
+        }
+        
+        // Restart logo animations
+        if (window.enhancedLogoAnimator && window.enhancedLogoAnimator.init) {
+            window.enhancedLogoAnimator.init();
+        }
+        
+        // Restart background animator
+        if (window.backgroundAnimator && window.backgroundAnimator.init) {
+            window.backgroundAnimator.init();
+        }
+        
+        console.log('✅ Essential animations restarted');
     }
 
     handleSequenceEvent(data) {
@@ -854,6 +895,7 @@ class VJReceiver {
             animations: window.gsapAnimationRegistry ? window.gsapAnimationRegistry.animations.size : 0,
             managedElements: window.performanceElementManager ? window.performanceElementManager.elements.size : 0,
             intervals: window.intervalManager ? window.intervalManager.intervals.size : 0,
+            activeFx: this.activeFx, // Include activeFx counter
             fps: window.safePerformanceMonitor ? window.safePerformanceMonitor.metrics.fps : 0,
             memory: performance.memory ? performance.memory.usedJSHeapSize : 0,
             timestamp: Date.now()

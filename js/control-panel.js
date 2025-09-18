@@ -773,7 +773,8 @@ class VJControlPanel {
         this.lastPerformanceData = {
             animations: data.animations,
             managedElements: data.managedElements,
-            intervals: data.intervals
+            intervals: data.intervals,
+            activeFx: data.activeFx
         };
         
         // Update displays immediately
@@ -790,6 +791,12 @@ class VJControlPanel {
         const intervalsDisplay = document.getElementById('intervals-display');
         if (intervalsDisplay) {
             intervalsDisplay.textContent = data.intervals || '--';
+        }
+        
+        // Update Active FX display
+        const activeFxDisplay = document.getElementById('activeFxDisplay');
+        if (activeFxDisplay) {
+            activeFxDisplay.textContent = data.activeFx || 0;
         }
     }
 
