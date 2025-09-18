@@ -3,9 +3,9 @@ import gsap from 'gsap';
 
 class PerformanceManager {
     constructor() {
-        this.fps = 60;
-        this.targetFPS = 60;
-        this.frameTime = 1000 / 60;
+        this.fps = 120;
+        this.targetFPS = 120;
+        this.frameTime = 1000 / 120;
         this.lastFrameTime = 0;
         this.deltaTime = 0;
         this.frameCount = 0;

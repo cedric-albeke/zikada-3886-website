@@ -16,7 +16,7 @@
                 <span class="status-dot"></span>
                 <span class="status-text">DISCONNECTED</span>
             </div>
-            <button class="emergency-stop" id="emergencyStop">KILL ALL</button>
+            <button class="reset-btn" id="systemReset">RESET</button>
         </header>
 
         <!-- Main Control Grid -->
@@ -136,6 +136,48 @@
                 </div>
             </section>
 
+            <!-- Anime.js Controls -->
+            <section class="control-section">
+                <h2>ANIMATION SYSTEM</h2>
+
+                <!-- System Status -->
+                <div class="anime-status-panel">
+                    <div class="monitor-stat">
+                        <label>SYSTEM STATUS</label>
+                        <span id="animeStatus" class="status-display">DISABLED</span>
+                    </div>
+                </div>
+
+                <!-- System Controls -->
+                <div class="anime-system-controls">
+                    <h3>System Control</h3>
+                    <div class="system-control-grid">
+                        <button class="system-btn enable" id="animeEnable">ENABLE</button>
+                        <button class="system-btn disable" id="animeDisable">DISABLE</button>
+                        <button class="system-btn kill" id="animeKill">EMERGENCY STOP</button>
+                    </div>
+                </div>
+
+                <!-- Animation Triggers -->
+                <div class="anime-triggers">
+                    <h3>Animation Triggers</h3>
+                    <div class="trigger-control-grid">
+                        <button class="anim-trigger-btn" data-anime="logo-outline">
+                            <span class="trigger-label">LOGO</span>
+                            <span class="trigger-desc">Pulse Effect</span>
+                        </button>
+                        <button class="anim-trigger-btn" data-anime="matrix-flash">
+                            <span class="trigger-label">MATRIX</span>
+                            <span class="trigger-desc">Flash Effect</span>
+                        </button>
+                        <button class="anim-trigger-btn" data-anime="bg-warp">
+                            <span class="trigger-label">BACKGROUND</span>
+                            <span class="trigger-desc">Warp Effect</span>
+                        </button>
+                    </div>
+                </div>
+            </section>
+
             <!-- REMOVED: Presets component (not needed) -->
 
             <!-- Performance Monitor -->
@@ -170,6 +212,10 @@
         <!-- REMOVED: Timeline/Sequencer component (not needed for now) -->
     </div>
 
+    <!-- Anime.js Library -->
+    <script src="https://cdn.jsdelivr.net/npm/animejs@3.2.1/lib/anime.min.js"></script>
+    <!-- Anime Controller -->
+    <script type="module" src="js/anime-controller.js"></script>
     <script src="js/control-panel.js" type="module"></script>
 </body>
 </html>
