@@ -486,11 +486,11 @@ class VJReceiver {
         `;
         document.body.appendChild(strobe);
 
-        // Strobe animation
+        // Slower strobe animation
         gsap.to(strobe, {
             opacity: 0,
-            duration: 0.05,
-            repeat: 10,
+            duration: 0.15,  // Increased from 0.05 - slower strobe
+            repeat: 6,       // Reduced from 10 - fewer flashes
             yoyo: true,
             ease: 'none',
             onComplete: () => strobe.remove()
@@ -545,37 +545,54 @@ class VJReceiver {
         gsap.timeline()
             .to(document.body, {
                 filter: 'hue-rotate(120deg) saturate(2)',
-                duration: 0.1
+                duration: 0.2  // Increased from 0.1 - slower RGB split
             })
             .to(document.body, {
                 filter: 'hue-rotate(-120deg) saturate(2)',
-                duration: 0.1
+                duration: 0.2  // Increased from 0.1 - slower RGB split
             })
             .to(document.body, {
                 filter: originalFilter || 'none',
-                duration: 0.3,
+                duration: 0.5,  // Increased from 0.3 - slower recovery
                 ease: 'power2.out'
             });
     }
 
     triggerShake() {
-        gsap.to(document.body, {
-            x: '+=10',
-            y: '+=10',
-            duration: 0.05,
-            repeat: 20,
-            yoyo: true,
-            ease: 'none',
-            onComplete: () => {
-                gsap.set(document.body, { x: 0, y: 0 });
-            }
+        // REPLACED: Ripple effect instead of shake
+        this.triggerRipple();
+    }
+
+    triggerRipple() {
+        const ripple = document.createElement('div');
+        ripple.style.cssText = `
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            width: 50px;
+            height: 50px;
+            border: 3px solid rgba(0, 255, 255, 0.8);
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 10000;
+            transform: translate(-50%, -50%) scale(0);
+        `;
+        document.body.appendChild(ripple);
+
+        gsap.to(ripple, {
+            scale: 20,
+            opacity: 0,
+            duration: 1.5,
+            ease: 'power2.out',
+            onComplete: () => ripple.remove()
         });
     }
 
     triggerPulse() {
-        gsap.to('.logo-text-wrapper, .image-wrapper, .text-3886', {
-            scale: 1.2,
-            duration: 0.3,
+        // Include main logo in pulse animation
+        gsap.to('.logo-text-wrapper, .image-wrapper, .text-3886, .image-2', {
+            scale: 1.25,  // Slightly bigger pulse
+            duration: 0.4,  // Slightly slower
             yoyo: true,
             repeat: 1,
             ease: 'power2.inOut'
@@ -583,8 +600,35 @@ class VJReceiver {
     }
 
     triggerMatrixRain() {
-        if (window.matrixMessages && window.matrixMessages.triggerIntenseMessage) {
-            window.matrixMessages.triggerIntenseMessage();
+        // REPLACED: Digital wave effect instead of matrix rain
+        this.triggerDigitalWave();
+    }
+
+    triggerDigitalWave() {
+        for (let i = 0; i < 8; i++) {
+            const wave = document.createElement('div');
+            wave.style.cssText = `
+                position: fixed;
+                left: ${Math.random() * 100}%;
+                top: ${Math.random() * 100}%;
+                width: 3px;
+                height: 3px;
+                background: rgba(0, 255, 133, 0.9);
+                border-radius: 50%;
+                pointer-events: none;
+                z-index: 10000;
+                box-shadow: 0 0 10px rgba(0, 255, 133, 0.6);
+            `;
+            document.body.appendChild(wave);
+
+            gsap.to(wave, {
+                scale: 15,
+                opacity: 0,
+                duration: Math.random() * 1 + 0.5,
+                delay: i * 0.1,
+                ease: 'power2.out',
+                onComplete: () => wave.remove()
+            });
         }
     }
 

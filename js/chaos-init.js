@@ -965,17 +965,13 @@ class ChaosInitializer {
     }
 
     transitionOut() {
-        // FIXED: Use safe filter transition to prevent grey flash
-        const currentFilter = window.getComputedStyle(document.body).filter;
+        // SIMPLIFIED: No filter reset during transitions to prevent grey flashes
+        // Let new phase handle its own filter without resetting first
         
-        // Only reset if there's actually a filter applied
-        if (currentFilter && currentFilter !== 'none') {
-            // Use safe filter reset (prevents grey flashes)
-            this.safeApplyFilter(document.body, 'none', 1.0); // Faster reset
-        }
-
-        // Clean up overlays FIRST to prevent grey accumulation
+        // Only clean up overlays (no filter manipulation)
         this.cleanupPhaseElements();
+        
+        console.log('🔄 Phase transition - overlay cleanup only (no filter reset)');
     }
 
     cleanupPhaseElements() {

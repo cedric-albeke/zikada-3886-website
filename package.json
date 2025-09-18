@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "npm run kill-servers && vite --port 3886",
     "dev-clean": "npm run kill-servers && vite --port 3886",
-    "kill-servers": "taskkill //f //im node.exe 2>nul || echo No Node processes to kill",
+    "kill-servers": "for /f \"tokens=5\" %i in ('netstat -ano ^| findstr :3886') do taskkill //f //pid %i 2>nul || echo Port 3886 clean",
     "build": "vite build",
     "serve": "npx http-server . -p 3886",
     "preview": "vite preview --port 3886"

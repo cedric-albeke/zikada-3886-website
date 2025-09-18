@@ -133,27 +133,14 @@
                     <button class="trigger-btn" data-effect="blackout">BLACKOUT</button>
                     <button class="trigger-btn" data-effect="whiteout">WHITEOUT</button>
                     <button class="trigger-btn" data-effect="rgbsplit">RGB SPLIT</button>
-                    <button class="trigger-btn" data-effect="shake">SHAKE</button>
-                    <button class="trigger-btn" data-effect="pulse">PULSE</button>
-                    <button class="trigger-btn" data-effect="matrix-rain">MATRIX</button>
-                    <button class="trigger-btn" data-effect="cosmic">COSMIC</button>
+                    <button class="trigger-btn" data-effect="shake">RIPPLE</button>
+                    <button class="trigger-btn" data-effect="pulse">LOGO PULSE</button>
+                    <button class="trigger-btn" data-effect="matrix-rain">DIGITAL WAVE</button>
+                    <button class="trigger-btn" data-effect="cosmic">COSMIC (SOFT)</button>
                 </div>
             </section>
 
-            <!-- Preset Manager -->
-            <section class="control-section preset-control">
-                <h2>PRESETS</h2>
-                <div class="preset-grid">
-                    <button class="preset-btn" data-preset="1">PRESET 1</button>
-                    <button class="preset-btn" data-preset="2">PRESET 2</button>
-                    <button class="preset-btn" data-preset="3">PRESET 3</button>
-                    <button class="preset-btn" data-preset="4">PRESET 4</button>
-                </div>
-                <div class="preset-actions">
-                    <button class="save-preset-btn">SAVE</button>
-                    <button class="load-preset-btn">LOAD</button>
-                </div>
-            </section>
+            <!-- REMOVED: Presets component (not needed) -->
 
             <!-- Performance Monitor -->
             <section class="control-section monitor-section">
@@ -184,18 +171,7 @@
             </section>
         </div>
 
-        <!-- Timeline/Sequencer (optional future enhancement) -->
-        <div class="timeline-section">
-            <h2>SEQUENCE</h2>
-            <div class="timeline-container">
-                <canvas id="timeline" width="1200" height="100"></canvas>
-            </div>
-            <div class="timeline-controls">
-                <button class="timeline-btn" id="playSequence">▶</button>
-                <button class="timeline-btn" id="stopSequence">■</button>
-                <button class="timeline-btn" id="recordSequence">●</button>
-            </div>
-        </div>
+        <!-- REMOVED: Timeline/Sequencer component (not needed for now) -->
     </div>
 
     <script src="js/control-panel.js" type="module"></script>

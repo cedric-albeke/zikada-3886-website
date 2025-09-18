@@ -781,9 +781,9 @@ class LottieAnimations {
             width: 100px;
             height: 100px;
             background: radial-gradient(circle,
-                rgba(255, 255, 255, 0.8) 0%,
-                rgba(255, 200, 0, 0.6) 30%,
-                rgba(255, 100, 0, 0.4) 60%,
+                rgba(255, 255, 255, 0.4) 0%,  /* Reduced from 0.8 */
+                rgba(255, 200, 0, 0.3) 30%,   /* Reduced from 0.6 */
+                rgba(255, 100, 0, 0.2) 60%,   /* Reduced from 0.4 */
                 transparent 100%);
             border-radius: 50%;
             transform: translate(-50%, -50%);
