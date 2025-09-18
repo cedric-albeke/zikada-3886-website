@@ -265,14 +265,14 @@ class VJReceiver {
     updateColor(parameter, value) {
         this.currentSettings.colors[parameter] = value;
         
-        // Debounce color filter application to prevent rapid changes that cause grey flashes
+        // Debounce color filter application for smooth slider movement
         if (this.colorFilterTimeout) {
             clearTimeout(this.colorFilterTimeout);
         }
         
         this.colorFilterTimeout = setTimeout(() => {
             this.applyColorFilter();
-        }, 50); // 50ms debounce
+        }, 150); // Increased to 150ms for smoother transitions
     }
 
     applyColorFilter() {
@@ -286,15 +286,15 @@ class VJReceiver {
 
         const safeFilter = `hue-rotate(${safeHue}deg) saturate(${safeSaturation}%) brightness(${safeBrightness}%) contrast(${safeContrast}%)`;
 
-        // Use safe filter application if chaos engine is available
+        // Use safe filter application with longer duration for smooth slider movement
         if (window.chaosInit && window.chaosInit.safeApplyFilter) {
-            window.chaosInit.safeApplyFilter(document.body, safeFilter, 0.2);
+            window.chaosInit.safeApplyFilter(document.body, safeFilter, 0.8); // Increased from 0.2s to 0.8s
         } else {
-            // Fallback with immediate kill of existing transitions
+            // Fallback with smoother transition
             gsap.killTweensOf(document.body, 'filter');
             gsap.to(document.body, {
                 filter: safeFilter,
-                duration: 0.2, // Faster transition for responsiveness
+                duration: 0.8, // Slower transition for smooth slider movement
                 ease: 'power2.inOut'
             });
         }

@@ -1300,28 +1300,37 @@ class ChaosInitializer {
         document.body.appendChild(container);
 
         const createGlitchLine = () => {
-            const line = this.performanceElementManager.createElement('div', 'effect');
-            const height = Math.random() * 3 + 1;
+            // REPLACED: Circular glitch burst instead of ugly full-width line
+            const glitchBurst = this.performanceElementManager.createElement('div', 'effect');
+            const size = Math.random() * 80 + 20;
+            const x = Math.random() * window.innerWidth;
             const y = Math.random() * window.innerHeight;
 
-            line.style.cssText = `
+            glitchBurst.style.cssText = `
                 position: absolute;
-                left: 0;
+                left: ${x}px;
                 top: ${y}px;
-                width: 100%;
-                height: ${height}px;
-                background: rgba(255, 0, 255, 0.8);
+                width: ${size}px;
+                height: ${size}px;
+                border-radius: 50%;
+                background: radial-gradient(circle,
+                    rgba(255, 0, 255, 0.8) 0%,
+                    rgba(255, 0, 255, 0.4) 40%,
+                    transparent 100%);
+                border: 2px solid rgba(255, 0, 255, 0.6);
                 mix-blend-mode: screen;
+                transform: scale(0);
             `;
-            container.appendChild(line);
+            container.appendChild(glitchBurst);
 
-            gsap.to(line, {
+            this.gsapRegistry.createAnimation('to', glitchBurst, {
+                scale: 2,
                 opacity: 0,
-                scaleX: 0,
-                duration: 0.5,  // Slower fade out
+                rotation: 180,
+                duration: 0.8,
                 ease: 'power4.out',
-                onComplete: () => line.remove()
-            });
+                onComplete: () => this.performanceElementManager.removeElement(glitchBurst)
+            }, 'glitch-burst', 'effect');
         };
 
         // Periodic glitch lines with performance controls
@@ -1439,53 +1448,64 @@ class ChaosInitializer {
             `;
 
             if (type === 'horizontal') {
-                artifact.style.width = '100%';
-                artifact.style.height = Math.random() * 2 + 0.5 + 'px';
+                // REPLACED: Circular glitch burst instead of ugly full-width line
+                artifact.style.width = Math.random() * 60 + 20 + 'px'; // Small circular size
+                artifact.style.height = artifact.style.width; // Make it circular
+                artifact.style.borderRadius = '50%'; // Perfect circle
+                artifact.style.left = Math.random() * window.innerWidth + 'px';
                 artifact.style.top = Math.random() * window.innerHeight + 'px';
-                artifact.style.background = `linear-gradient(90deg,
-                    transparent,
-                    rgba(0,255,133,0.3),
-                    transparent)`;
+                artifact.style.background = `radial-gradient(circle,
+                    rgba(0,255,133,0.6) 0%,
+                    rgba(0,255,133,0.3) 50%,
+                    transparent 100%)`;
 
                 this.gsapRegistry.createAnimation('fromTo', artifact, {
-                    x: window.innerWidth,
-                    duration: Math.random() * 3 + 2,
-                    ease: 'linear',
+                    scale: 3,
+                    opacity: 0,
+                    duration: Math.random() * 2 + 1,
+                    ease: 'power2.out',
                     onComplete: () => this.performanceElementManager.removeElement(artifact)
-                }, 'artifact-horizontal', 'artifact', { fromVars: { x: -window.innerWidth } });
+                }, 'artifact-circular', 'artifact', { fromVars: { scale: 0, opacity: 1 } });
             } else if (type === 'vertical') {
-                artifact.style.height = '100%';
-                artifact.style.width = Math.random() * 2 + 0.5 + 'px';
+                // REPLACED: Circular pulse instead of ugly full-height line
+                artifact.style.width = Math.random() * 40 + 15 + 'px'; // Small circular size
+                artifact.style.height = artifact.style.width; // Make it circular
+                artifact.style.borderRadius = '50%'; // Perfect circle
                 artifact.style.left = Math.random() * window.innerWidth + 'px';
-                artifact.style.background = `linear-gradient(180deg,
-                    transparent,
-                    rgba(255,0,255,0.3),
-                    transparent)`;
+                artifact.style.top = Math.random() * window.innerHeight + 'px';
+                artifact.style.background = `radial-gradient(circle,
+                    rgba(255,0,255,0.6) 0%,
+                    rgba(255,0,255,0.2) 70%,
+                    transparent 100%)`;
 
-                gsap.fromTo(artifact,
-                    { y: -window.innerHeight },
-                    {
-                        y: window.innerHeight,
-                        duration: Math.random() * 3 + 2,
-                        ease: 'linear',  // Smoother than none
-                        onComplete: () => artifact.remove()
-                    }
-                );
+                this.gsapRegistry.createAnimation('fromTo', artifact, {
+                    scale: 2.5,
+                    opacity: 0,
+                    rotation: 180,
+                    duration: Math.random() * 2 + 1,
+                    ease: 'power2.out',
+                    onComplete: () => this.performanceElementManager.removeElement(artifact)
+                }, 'artifact-pulse', 'artifact', { fromVars: { scale: 0, opacity: 0.8, rotation: 0 } });
             } else {
-                artifact.style.width = Math.random() * 150 + 50 + 'px';
-                artifact.style.height = '1px';
-                artifact.style.background = 'rgba(0,255,255,0.5)';
-                artifact.style.transform = 'rotate(' + (Math.random() * 360) + 'deg)';
+                // REPLACED: Small rotating circle instead of line
+                artifact.style.width = Math.random() * 30 + 10 + 'px';
+                artifact.style.height = artifact.style.width; // Make it circular
+                artifact.style.borderRadius = '50%'; // Perfect circle
+                artifact.style.background = `radial-gradient(circle,
+                    rgba(0,255,255,0.8) 0%,
+                    rgba(0,255,255,0.4) 60%,
+                    transparent 100%)`;
                 artifact.style.left = Math.random() * window.innerWidth + 'px';
                 artifact.style.top = Math.random() * window.innerHeight + 'px';
 
-                gsap.to(artifact, {
+                this.gsapRegistry.createAnimation('to', artifact, {
                     rotation: '+=720',
                     scale: 0,
-                    duration: Math.random() * 4 + 2,
+                    opacity: 0,
+                    duration: Math.random() * 3 + 1.5,
                     ease: 'power2.in',
-                    onComplete: () => artifact.remove()
-                });
+                    onComplete: () => this.performanceElementManager.removeElement(artifact)
+                }, 'artifact-rotating', 'artifact');
             }
 
             document.body.appendChild(artifact);
@@ -1583,36 +1603,36 @@ class ChaosInitializer {
 
     addCorruptionWaves() {
         const createWave = () => {
+            // REPLACED: Circular ripple effect instead of ugly horizontal bars
             const wave = this.performanceElementManager.createElement('div', 'effect');
+            const size = Math.random() * 100 + 50;
             wave.style.cssText = `
                 position: fixed;
-                left: 0;
-                width: 100%;
-                height: ${Math.random() * 30 + 5}px;
+                left: ${Math.random() * window.innerWidth}px;
                 top: ${Math.random() * window.innerHeight}px;
+                width: ${size}px;
+                height: ${size}px;
+                border-radius: 50%;
                 pointer-events: none;
                 z-index: 4;
-                background: repeating-linear-gradient(
-                    90deg,
-                    transparent,
-                    transparent 10px,
-                    rgba(255,0,255,0.05) 10px,
-                    rgba(255,0,255,0.05) 20px
-                );
-                transform: scaleY(0.1);
-                transform-origin: left center;
+                background: radial-gradient(circle,
+                    transparent 30%,
+                    rgba(255,0,255,0.1) 50%,
+                    rgba(255,0,255,0.05) 70%,
+                    transparent 100%);
+                border: 1px solid rgba(255,0,255,0.3);
+                transform: scale(0.1);
                 mix-blend-mode: screen;
             `;
-            document.body.appendChild(wave);
 
-            // Expand and fade
-            gsap.to(wave, {
-                scaleY: 1,
+            // Ripple expansion effect
+            this.gsapRegistry.createAnimation('to', wave, {
+                scale: 4,
                 opacity: 0,
-                duration: 0.8,
+                duration: 1.2,
                 ease: 'power2.out',
-                onComplete: () => wave.remove()
-            });
+                onComplete: () => this.performanceElementManager.removeElement(wave)
+            }, 'corruption-ripple', 'effect');
         };
 
         // Trigger waves periodically with performance awareness
