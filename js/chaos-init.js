@@ -115,16 +115,7 @@ class ChaosInitializer {
                     this.filterTransitionInProgress = false;
                 }
             },
-            onUpdate: () => {
-                // Check for grey flash during transition
-                if (target === document.body) {
-                    const currentStyle = window.getComputedStyle(document.body);
-                    if (currentStyle.filter && (currentStyle.filter.includes('saturate(0') || currentStyle.filter.includes('brightness(0.'))) {
-                        console.warn('⚠️ Detected potential grey flash, correcting...');
-                        gsap.set(document.body, { filter: safeFilter });
-                    }
-                }
-            }
+            // REMOVED: onUpdate was causing thousands of console messages and performance issues
         });
     }
 
@@ -285,8 +276,8 @@ class ChaosInitializer {
         // Start animation watchdog to ensure animations never stop
         this.startAnimationWatchdog();
 
-        // Start grey flash prevention system
-        this.startGreyFlashPrevention();
+        // DISABLED: Grey flash prevention was causing performance catastrophe
+        // this.startGreyFlashPrevention();
     }
 
     handlePhaseChange(phase) {
