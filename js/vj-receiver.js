@@ -263,7 +263,11 @@ class VJReceiver {
     }
 
     updateColor(parameter, value) {
+        console.log(`🎛️ VJ Receiver: updateColor called - ${parameter}: ${value}`);
+        
         this.currentSettings.colors[parameter] = value;
+        
+        console.log('🎛️ Updated color settings:', this.currentSettings.colors);
         
         // Debounce color filter application for smooth slider movement
         if (this.colorFilterTimeout) {
@@ -271,11 +275,14 @@ class VJReceiver {
         }
         
         this.colorFilterTimeout = setTimeout(() => {
+            console.log('🎛️ Debounce timeout reached, applying color filter...');
             this.applyColorFilter();
         }, 300); // Increased to 300ms for even smoother slider movement
     }
 
     applyColorFilter() {
+        console.log('🎨 applyColorFilter called with settings:', this.currentSettings.colors);
+        
         const { hue, saturation, brightness, contrast } = this.currentSettings.colors;
 
         // Construct filter with safe minimum values to prevent grey flashes
@@ -286,15 +293,38 @@ class VJReceiver {
 
         const safeFilter = `hue-rotate(${safeHue}deg) saturate(${safeSaturation}%) brightness(${safeBrightness}%) contrast(${safeContrast}%)`;
 
-        // Always use direct GSAP for immediate responsiveness with smooth transition
-        gsap.killTweensOf(document.body, 'filter');
-        gsap.to(document.body, {
-            filter: safeFilter,
-            duration: 1.2, // Even longer for very smooth slider movement
-            ease: 'power1.inOut' // Gentler easing for smoother feel
-        });
-        
-        console.log(`🎨 Applied safe color filter: ${safeFilter}`);
+        console.log(`🎨 Applying safe filter: ${safeFilter}`);
+
+        try {
+            // Check if GSAP is available
+            if (typeof gsap === 'undefined') {
+                console.error('❌ GSAP not available in VJ receiver');
+                // Fallback to direct CSS
+                document.body.style.filter = safeFilter;
+                return;
+            }
+
+            // Always use direct GSAP for immediate responsiveness with smooth transition
+            gsap.killTweensOf(document.body, 'filter');
+            gsap.to(document.body, {
+                filter: safeFilter,
+                duration: 1.2, // Even longer for very smooth slider movement
+                ease: 'power1.inOut', // Gentler easing for smoother feel
+                onComplete: () => {
+                    console.log('✅ Color filter transition completed');
+                },
+                onUpdate: () => {
+                    // Minimal logging to avoid console spam
+                    // const progress = gsap.getProperty(document.body, 'filter');
+                }
+            });
+            
+            console.log(`✅ Color filter animation started`);
+        } catch (error) {
+            console.error('❌ Error applying color filter:', error);
+            // Emergency fallback
+            document.body.style.filter = safeFilter;
+        }
     }
 
     resetColors() {
