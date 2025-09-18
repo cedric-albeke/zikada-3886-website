@@ -160,7 +160,7 @@ class VJControlPanel {
         sceneButtons.forEach(btn => {
             btn.addEventListener('click', () => {
                 const scene = btn.dataset.scene;
-                this.setScene(scene);
+                this.setScene(scene, btn);
 
                 // Update active state
                 sceneButtons.forEach(b => b.classList.remove('active'));
@@ -169,7 +169,7 @@ class VJControlPanel {
         });
     }
 
-    setScene(scene) {
+    setScene(scene, btn = null) {
         this.currentScene = scene;
 
         this.sendMessage({
@@ -178,8 +178,10 @@ class VJControlPanel {
             timestamp: Date.now()
         });
 
-        // Add visual feedback
-        this.flashButton(event.target);
+        // Add visual feedback if the initiating button is known
+        if (btn) {
+            this.flashButton(btn);
+        }
     }
 
     updateSceneButtons(scene) {

@@ -499,4 +499,10 @@ class ChaosEngine {
 
 // Initialize and export
 const chaosEngine = new ChaosEngine();
+
+// Expose globally so other modules (e.g. vj-receiver, control panel) can access
+if (typeof window !== 'undefined') {
+    window.chaosEngine = chaosEngine;
+}
+
 export default chaosEngine;

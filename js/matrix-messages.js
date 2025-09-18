@@ -89,7 +89,7 @@ class MatrixMessages {
             }
 
             .matrix-blackout.active {
-                opacity: 1 !important;  /* Full blackout - no see-through */
+                opacity: 0.85 !important;  /* Semi-transparent blackout - allows some see-through */
                 display: block !important;
             }
 
@@ -236,19 +236,34 @@ class MatrixMessages {
                 onComplete: () => {
                     this.messageElement.classList.remove('active');
                     this.messageElement.style.opacity = '0';
-                    // Smooth blackout removal
+                    // Force immediate blackout removal
                     if (this.blackoutElement) {
+                        // Kill any existing animations on blackout
+                        gsap.killTweensOf(this.blackoutElement);
+                        // Animate fade out
                         gsap.to(this.blackoutElement, {
                             opacity: 0,
                             duration: 0.4,
                             ease: 'power2.inOut',
                             onComplete: () => {
+                                // Force complete removal
                                 this.blackoutElement.classList.remove('active');
                                 this.blackoutElement.style.display = 'none';
+                                this.blackoutElement.style.opacity = '0';
+                                // Remove from DOM to ensure it's gone
+                                if (this.blackoutElement.parentNode) {
+                                    this.blackoutElement.remove();
+                                    this.blackoutElement = null;
+                                }
                             }
                         });
                     }
                     this.isActive = false;
+                    // Clear failsafe since we completed normally
+                    if (this.failsafeTimeout) {
+                        clearTimeout(this.failsafeTimeout);
+                        this.failsafeTimeout = null;
+                    }
                     this.restoreElements();
                 }
             });
@@ -258,6 +273,17 @@ class MatrixMessages {
         if (this.isActive) return;
 
         this.isActive = true;
+        // Clear any existing failsafe timeout
+        if (this.failsafeTimeout) {
+            clearTimeout(this.failsafeTimeout);
+        }
+        
+        // Set failsafe cleanup after 10 seconds (message should complete in ~5 seconds)
+        this.failsafeTimeout = setTimeout(() => {
+            console.log('⚠️ Matrix message failsafe cleanup triggered');
+            this.forceCleanup();
+        }, 10000);
+        
         // Use random selection instead of sequential
         const randomIndex = Math.floor(Math.random() * this.messages.length);
         const message = this.messages[randomIndex];
@@ -271,11 +297,11 @@ class MatrixMessages {
         // Trigger reactive effects on other elements
         this.triggerReactiveEffects('start');
 
-        // Activate blackout immediately with forced inline style - FULL OPACITY
+        // Activate blackout with semi-transparent overlay
         this.blackoutElement.classList.add('active');
-        this.blackoutElement.style.opacity = '1';  // Full opacity - no transparency
+        this.blackoutElement.style.opacity = '0.85';  // Semi-transparent for FX visibility
         this.blackoutElement.style.display = 'block';
-        this.blackoutElement.style.background = '#000000';
+        this.blackoutElement.style.background = 'rgba(0, 0, 0, 0.95)';  // Slightly transparent black
 
         // Subtle entrance effect - removed heavy glitch
         // this.createAnalogGlitch();  // Disabled for less strobe
@@ -563,17 +589,24 @@ class MatrixMessages {
         const restoreDuration = 1.5;  // Slower restoration for smoother transition
 
         if (logoWrapper) {
+            // First restore opacity and basic properties
             gsap.to(logoWrapper, {
                 scale: 1,
                 rotation: 0,
                 skewX: 0,
                 skewY: 0,
-                filter: 'none',
                 opacity: 1,  // Ensure logo wrapper stays fully visible
                 x: 0,
                 y: 0,
                 duration: restoreDuration,
-                ease: 'power2.inOut'
+                ease: 'power2.inOut',
+                onComplete: () => {
+                    // After restoration, reapply current FX settings
+                    if (window.fxController) {
+                        const distortionValue = window.fxController.intensities.distortion;
+                        window.fxController._applySideEffect('distortion', distortionValue);
+                    }
+                }
             });
         }
 
@@ -879,10 +912,80 @@ class MatrixMessages {
         console.log('🧪 Testing matrix message...');
         this.showMessage();
     }
+    
+    forceCleanup() {
+        // Force complete cleanup of matrix elements
+        console.log('🧹 Force cleaning matrix message elements');
+        
+        // Clear failsafe timeout
+        if (this.failsafeTimeout) {
+            clearTimeout(this.failsafeTimeout);
+            this.failsafeTimeout = null;
+        }
+        
+        // Kill all animations
+        if (this.messageElement) {
+            gsap.killTweensOf(this.messageElement);
+            this.messageElement.classList.remove('active', 'glitching');
+            this.messageElement.style.opacity = '0';
+        }
+        
+        // Remove blackout completely
+        if (this.blackoutElement) {
+            gsap.killTweensOf(this.blackoutElement);
+            this.blackoutElement.classList.remove('active');
+            this.blackoutElement.style.display = 'none';
+            this.blackoutElement.style.opacity = '0';
+            if (this.blackoutElement.parentNode) {
+                this.blackoutElement.remove();
+            }
+            this.blackoutElement = null;
+        }
+        
+        // Clear scramble interval
+        if (this.scrambleInterval) {
+            clearInterval(this.scrambleInterval);
+            this.scrambleInterval = null;
+        }
+        
+        this.isActive = false;
+        
+        // Force restore all elements to visible
+        const elements = [
+            '.logo-text-wrapper',
+            '.image-wrapper', 
+            '.text-3886',
+            '.image-2'
+        ];
+        
+        elements.forEach(selector => {
+            const el = document.querySelector(selector);
+            if (el) {
+                el.style.opacity = '1';
+                el.style.transform = '';
+                // Don't clear filter completely as it might have FX applied
+                if (!window.fxController || window.fxController.intensities.distortion === 0) {
+                    el.style.filter = '';
+                }
+            }
+        });
+        
+        // Reapply current FX settings after a short delay
+        if (window.fxController) {
+            setTimeout(() => {
+                Object.keys(window.fxController.intensities).forEach(key => {
+                    window.fxController._applySideEffect(key, window.fxController.intensities[key]);
+                });
+            }, 100);
+        }
+    }
 
     destroy() {
         if (this.scrambleInterval) {
             clearInterval(this.scrambleInterval);
+        }
+        if (this.failsafeTimeout) {
+            clearTimeout(this.failsafeTimeout);
         }
         this.isActive = false;
     }

@@ -2,6 +2,13 @@
 // Integrates with existing chaos engine
 
 import gsap from 'gsap';
+import filterManager from './filter-manager.js';
+import fxController from './fx-controller.js';
+
+// Ensure GSAP is globally available
+if (typeof window !== 'undefined' && !window.gsap) {
+    window.gsap = gsap;
+}
 
 class VJReceiver {
     constructor() {
@@ -277,62 +284,17 @@ class VJReceiver {
         
         console.log('🎛️ Updated color settings:', this.currentSettings.colors);
         
-        // Debounce color filter application for smooth slider movement
-        if (this.colorFilterTimeout) {
-            clearTimeout(this.colorFilterTimeout);
-        }
-        
-        this.colorFilterTimeout = setTimeout(() => {
-            console.log('🎛️ Debounce timeout reached, applying color filter...');
-            this.applyColorFilter();
-        }, 300); // Increased to 300ms for even smoother slider movement
+        // Route through centralized filter manager for smooth, safe updates
+        filterManager.setPartial({ [parameter]: value }, 300);
     }
 
     applyColorFilter() {
         console.log('🎨 applyColorFilter called with settings:', this.currentSettings.colors);
         
         const { hue, saturation, brightness, contrast } = this.currentSettings.colors;
-
-        // Construct filter with safe minimum values to prevent grey flashes
-        const safeHue = Math.max(-180, Math.min(180, hue || 0));
-        const safeSaturation = Math.max(80, Math.min(200, saturation || 100)); // Minimum 80% to prevent grey
-        const safeBrightness = Math.max(95, Math.min(150, brightness || 100)); // Minimum 95% to prevent grey
-        const safeContrast = Math.max(80, Math.min(150, contrast || 100)); // Minimum 80% to prevent washout
-
-        const safeFilter = `hue-rotate(${safeHue}deg) saturate(${safeSaturation}%) brightness(${safeBrightness}%) contrast(${safeContrast}%)`;
-
-        console.log(`🎨 Applying safe filter: ${safeFilter}`);
-
-        try {
-            // Check if GSAP is available
-            if (typeof gsap === 'undefined') {
-                console.error('❌ GSAP not available in VJ receiver');
-                // Fallback to direct CSS
-                document.body.style.filter = safeFilter;
-                return;
-            }
-
-            // Always use direct GSAP for immediate responsiveness with smooth transition
-            gsap.killTweensOf(document.body, 'filter');
-            gsap.to(document.body, {
-                filter: safeFilter,
-                duration: 1.2, // Even longer for very smooth slider movement
-                ease: 'power1.inOut', // Gentler easing for smoother feel
-                onComplete: () => {
-                    console.log('✅ Color filter transition completed');
-                },
-                onUpdate: () => {
-                    // Minimal logging to avoid console spam
-                    // const progress = gsap.getProperty(document.body, 'filter');
-                }
-            });
-            
-            console.log(`✅ Color filter animation started`);
-        } catch (error) {
-            console.error('❌ Error applying color filter:', error);
-            // Emergency fallback
-            document.body.style.filter = safeFilter;
-        }
+        // Delegate to filter manager
+        filterManager.setPartial({ hue, saturation, brightness, contrast }, 0);
+        console.log('✅ Color filter applied via FilterManager');
     }
 
     resetColors() {
@@ -413,39 +375,34 @@ class VJReceiver {
 
     updateGlitchIntensity(value) {
         // Adjust glitch pass intensity
-        if (window.chaosEngine && window.chaosEngine.glitchPass) {
-            window.chaosEngine.glitchPass.enabled = value > 0.1;
-            // Additional glitch parameters would go here
-        }
+        fxController.setIntensity({ glitch: value });
     }
 
     updateParticleIntensity(value) {
         // Adjust particle system
-        if (window.chaosEngine && window.chaosEngine.particles) {
-            window.chaosEngine.particles.material.opacity = value;
-            window.chaosEngine.particles.material.size = 0.5 * value;
-        }
+        fxController.setIntensity({ particles: value });
     }
 
     updateDistortionIntensity(value) {
         // Adjust distortion effects
-        const distortionElements = document.querySelectorAll('.image-wrapper, .logo-text-wrapper');
-        distortionElements.forEach(el => {
-            el.style.filter = `blur(${value * 2}px)`;
-        });
+        fxController.setIntensity({ distortion: value });
     }
 
     updateNoiseIntensity(value) {
         // Adjust static noise
-        const noiseCanvas = document.getElementById('static-noise');
-        if (noiseCanvas) {
-            noiseCanvas.style.opacity = value * 0.03; // Scale to appropriate range
-        }
+        fxController.setIntensity({ noise: value });
     }
 
     triggerEffect(effect) {
         console.log(`⚡ Triggering effect: ${effect}`);
         this.activeFx++;
+
+        // Adjust effect strength/duration using fx intensities
+        const mult = window.fxController ? window.fxController.globalMult : 1;
+        const glitchI = window.fxController ? window.fxController.getIntensity('glitch') : 0.5;
+        const particlesI = window.fxController ? window.fxController.getIntensity('particles') : 0.5;
+        const distortionI = window.fxController ? window.fxController.getIntensity('distortion') : 0.5;
+        const noiseI = window.fxController ? window.fxController.getIntensity('noise') : 0.5;
 
         switch(effect) {
             case 'strobe':
@@ -481,6 +438,10 @@ class VJReceiver {
     }
 
     triggerStrobe() {
+        // Get FX intensities
+        const mult = window.fxController ? window.fxController.globalMult : 1;
+        const glitchI = window.fxController ? window.fxController.getIntensity('glitch') : 0.5;
+        
         const strobe = document.createElement('div');
         strobe.style.cssText = `
             position: fixed;
@@ -497,8 +458,8 @@ class VJReceiver {
         // Slower strobe animation
         gsap.to(strobe, {
             opacity: 0,
-            duration: 0.15,  // Increased from 0.05 - slower strobe
-            repeat: 6,       // Reduced from 10 - fewer flashes
+            duration: 0.1 + (0.2 * (1 - glitchI)),
+            repeat: Math.max(2, Math.round(2 + 6 * glitchI * mult)),
             yoyo: true,
             ease: 'none',
             onComplete: () => strobe.remove()
@@ -506,6 +467,9 @@ class VJReceiver {
     }
 
     triggerBlackout() {
+        // Get FX intensities
+        const glitchI = window.fxController ? window.fxController.getIntensity('glitch') : 0.5;
+        
         const blackout = document.createElement('div');
         blackout.style.cssText = `
             position: fixed;
@@ -521,12 +485,15 @@ class VJReceiver {
         document.body.appendChild(blackout);
 
         gsap.timeline()
-            .to(blackout, { opacity: 1, duration: 0.2 })
-            .to(blackout, { opacity: 0, duration: 0.2, delay: 1 })
+            .to(blackout, { opacity: 1, duration: 0.15 + 0.25 * glitchI })
+            .to(blackout, { opacity: 0, duration: 0.2 + 0.3 * (1 - glitchI), delay: 1 })
             .call(() => blackout.remove());
     }
 
     triggerWhiteout() {
+        // Get FX intensities
+        const glitchI = window.fxController ? window.fxController.getIntensity('glitch') : 0.5;
+        
         const whiteout = document.createElement('div');
         whiteout.style.cssText = `
             position: fixed;
@@ -542,26 +509,29 @@ class VJReceiver {
         document.body.appendChild(whiteout);
 
         gsap.timeline()
-            .to(whiteout, { opacity: 1, duration: 0.1 })
-            .to(whiteout, { opacity: 0, duration: 1.5, ease: 'power2.out' })
+            .to(whiteout, { opacity: 1, duration: 0.1 + 0.2 * glitchI })
+            .to(whiteout, { opacity: 0, duration: 1 + 1 * (1 - glitchI), ease: 'power2.out' })
             .call(() => whiteout.remove());
     }
 
     triggerRGBSplit() {
+        // Get FX intensities
+        const glitchI = window.fxController ? window.fxController.getIntensity('glitch') : 0.5;
+        
         const originalFilter = document.body.style.filter;
 
         gsap.timeline()
             .to(document.body, {
                 filter: 'hue-rotate(120deg) saturate(2)',
-                duration: 0.2  // Increased from 0.1 - slower RGB split
+                duration: 0.15 + 0.25 * glitchI
             })
             .to(document.body, {
                 filter: 'hue-rotate(-120deg) saturate(2)',
-                duration: 0.2  // Increased from 0.1 - slower RGB split
+                duration: 0.15 + 0.25 * glitchI
             })
             .to(document.body, {
                 filter: originalFilter || 'none',
-                duration: 0.5,  // Increased from 0.3 - slower recovery
+                duration: 0.4 + 0.3 * (1 - glitchI),
                 ease: 'power2.out'
             });
     }
@@ -572,6 +542,10 @@ class VJReceiver {
     }
 
     triggerRipple() {
+        // Get FX intensities
+        const mult = window.fxController ? window.fxController.globalMult : 1;
+        const particlesI = window.fxController ? window.fxController.getIntensity('particles') : 0.5;
+        
         const ripple = document.createElement('div');
         ripple.style.cssText = `
             position: fixed;
@@ -588,9 +562,9 @@ class VJReceiver {
         document.body.appendChild(ripple);
 
         gsap.to(ripple, {
-            scale: 20,
+            scale: 8 + 20 * particlesI * mult,
             opacity: 0,
-            duration: 1.5,
+            duration: 1 + 1 * (1 - particlesI),
             ease: 'power2.out',
             onComplete: () => ripple.remove()
         });
@@ -613,7 +587,11 @@ class VJReceiver {
     }
 
     triggerDigitalWave() {
-        for (let i = 0; i < 8; i++) {
+        // Get FX intensities
+        const mult = window.fxController ? window.fxController.globalMult : 1;
+        const particlesI = window.fxController ? window.fxController.getIntensity('particles') : 0.5;
+        
+        for (let i = 0; i < Math.max(4, Math.round(8 * particlesI * mult)); i++) {
             const wave = document.createElement('div');
             wave.style.cssText = `
                 position: fixed;
@@ -632,7 +610,7 @@ class VJReceiver {
             gsap.to(wave, {
                 scale: 15,
                 opacity: 0,
-                duration: Math.random() * 1 + 0.5,
+                duration: Math.random() * (1 + (1 - particlesI)) + 0.4,
                 delay: i * 0.1,
                 ease: 'power2.out',
                 onComplete: () => wave.remove()
@@ -669,21 +647,39 @@ class VJReceiver {
     setPerformanceMode(mode) {
         console.log(`🎮 Setting performance mode: ${mode}`);
 
+        // Map external mode to internal manager mode
+        const mappedMode = (mode === 'auto') ? 'medium' : mode;
+
         // Apply performance mode to all available systems
         if (window.ChaosControl && window.ChaosControl.setPerformance) {
-            window.ChaosControl.setPerformance(mode);
+            window.ChaosControl.setPerformance(mappedMode);
         }
 
-        if (window.performanceManager) {
-            window.performanceManager.setMode(mode);
+        if (window.performanceManager && typeof window.performanceManager.setPerformanceMode === 'function') {
+            window.performanceManager.setPerformanceMode(mappedMode);
         }
 
-        if (window.performanceElementManager) {
-            window.performanceElementManager.setPerformanceMode(mode);
+        if (window.performanceElementManager && typeof window.performanceElementManager.setPerformanceMode === 'function') {
+            window.performanceElementManager.setPerformanceMode(mappedMode);
+        }
+
+        if (window.fxController) {
+            // Scale intensities by mode
+            switch(mode) {
+                case 'low':
+                    window.fxController.setGlobalIntensityMultiplier(0.7);
+                    break;
+                case 'auto':
+                    window.fxController.setGlobalIntensityMultiplier(1.0);
+                    break;
+                case 'high':
+                    window.fxController.setGlobalIntensityMultiplier(1.3);
+                    break;
+            }
         }
 
         if (window.gsapAnimationRegistry) {
-            // Adjust animation limits based on performance mode
+            // Adjust animation limits based on requested external mode
             switch(mode) {
                 case 'low':
                     window.gsapAnimationRegistry.maxAnimations = 50;
@@ -695,7 +691,7 @@ class VJReceiver {
                     window.gsapAnimationRegistry.maxAnimations = 200;
                     break;
             }
-            console.log(`🎬 GSAP animation limit set to ${window.gsapAnimationRegistry.maxAnimations} for ${mode} mode`);
+            console.log(`🎬 GSAP animation limit set to ${window.gsapAnimationRegistry.maxAnimations} for ${mode} mode (mapped to ${mappedMode})`);
         }
 
         // Send confirmation back to control panel
@@ -709,21 +705,43 @@ class VJReceiver {
     emergencyStop() {
         console.log('🚨 EMERGENCY STOP!');
 
-        // Stop all animations
-        gsap.killTweensOf('*');
+        // Selective FX stop: preserve core loops
+        if (window.gsapAnimationRegistry && typeof window.gsapAnimationRegistry.killByFilter === 'function') {
+            window.gsapAnimationRegistry.killByFilter({ category: 'effect', excludeEssential: true });
+            window.gsapAnimationRegistry.killByFilter({ category: 'particle', excludeEssential: true });
+        }
+        if (window.intervalManager && typeof window.intervalManager.clearCategory === 'function') {
+            window.intervalManager.clearCategory('effect');
+            window.intervalManager.clearCategory('particle');
+        }
+        if (window.performanceElementManager && typeof window.performanceElementManager.removeAllByCategory === 'function') {
+            window.performanceElementManager.removeAllByCategory('effect');
+            window.performanceElementManager.removeAllByCategory('particle');
+            window.performanceElementManager.removeAllByCategory('artifact');
+        }
 
         // Reset everything
         this.resetColors();
         this.updateSpeed(1);
 
-        // Disable all effects
-        Object.keys(this.currentSettings.effects).forEach(effect => {
-            this.updateEffectIntensity(effect, 0);
-        });
+        // Disable all effects via FX controller
+        if (window.fxController) {
+            window.fxController.setIntensity({ glitch: 0, particles: 0, distortion: 0, noise: 0 });
+        } else {
+            Object.keys(this.currentSettings.effects).forEach(effect => {
+                this.updateEffectIntensity(effect, 0);
+            });
+        }
 
         // Stop phase animations
         if (window.chaosInit) {
             window.chaosInit.phaseRunning = false;
+        }
+
+        // Optional: brief blackout to mask cleanup
+        if (window.chaosInit && typeof window.chaosInit.showBlackout === 'function') {
+            window.chaosInit.showBlackout(0.9);
+            setTimeout(() => window.chaosInit.hideBlackout(), 800);
         }
 
         // Clear any overlays
@@ -773,25 +791,26 @@ class VJReceiver {
     executePerformanceOptimization() {
         console.log('🧹 VJ Receiver executing performance optimization...');
         
-        // Trigger cleanup on all performance systems
-        if (window.performanceElementManager) {
+        // Trigger cleanup on all performance systems (selective FX focus)
+        if (window.gsapAnimationRegistry && typeof window.gsapAnimationRegistry.killByFilter === 'function') {
+            window.gsapAnimationRegistry.killByFilter({ category: 'effect', excludeEssential: true, olderThan: 10000 });
+            window.gsapAnimationRegistry.killByFilter({ category: 'particle', excludeEssential: true, olderThan: 10000 });
+        } else if (window.gsapAnimationRegistry) {
+            window.gsapAnimationRegistry.performPeriodicCleanup();
+        }
+
+        if (window.performanceElementManager && typeof window.performanceElementManager.removeOrphanedElements === 'function') {
+            window.performanceElementManager.removeOrphanedElements();
+        } else if (window.performanceElementManager) {
             window.performanceElementManager.performPeriodicCleanup();
         }
-        
-        if (window.gsapAnimationRegistry) {
-            console.log(`🎬 GSAP cleanup: ${window.gsapAnimationRegistry.animations.size} animations before cleanup`);
-            window.gsapAnimationRegistry.performPeriodicCleanup();
-            // Force emergency cleanup if still too many
-            if (window.gsapAnimationRegistry.animations.size > 150) {
-                window.gsapAnimationRegistry.performEmergencyCleanup();
-            }
-            console.log(`🎬 GSAP cleanup: ${window.gsapAnimationRegistry.animations.size} animations after cleanup`);
-        }
-        
-        if (window.intervalManager) {
+
+        if (window.intervalManager && typeof window.intervalManager.clearCategory === 'function') {
+            window.intervalManager.clearCategory('effect');
+            window.intervalManager.clearCategory('particle');
             window.intervalManager.performAutoCleanup();
         }
-        
+
         if (window.safePerformanceMonitor) {
             window.safePerformanceMonitor.safeCleanup();
         }

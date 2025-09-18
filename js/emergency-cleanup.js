@@ -100,6 +100,8 @@ class EmergencyCleanup {
                 if (el.id === 'chaos-canvas' || 
                     el.classList.contains('pre-loader') ||
                     el.classList.contains('control-panel') ||
+                    el.classList.contains('matrix-blackout') ||
+                    el.classList.contains('matrix-messages') ||
                     el.querySelector('.logo-text') ||
                     el.querySelector('.image-2')) {
                     return;

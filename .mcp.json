@@ -1,0 +1,1 @@
+{"mcpServers":{"puppeteer":{"type":"stdio","command":"node_modules/.bin/mcp-server-puppeteer","args":[],"env":{}}}}

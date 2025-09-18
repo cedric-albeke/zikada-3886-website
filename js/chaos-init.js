@@ -8,6 +8,7 @@ import randomAnimations from './random-animations.js';
 import extendedAnimations from './extended-animations.js';
 import timingController from './timing-controller.js';
 import enhancedLogoAnimator from './enhanced-logo-animator.js';
+import filterManager from './filter-manager.js';
 import centerpieceLogo from './centerpiece-logo.js';
 import beehiveLogoBlend from './beehive-logo-blend.js';
 import performanceManager from './performance-manager.js';
@@ -19,6 +20,11 @@ import beehiveBackground from './beehive-background.js';
 import directLogoAnimation from './direct-logo-animation.js';
 import vjReceiver from './vj-receiver.js';
 import gsap from 'gsap';
+
+// Ensure GSAP is globally available
+if (typeof window !== 'undefined' && !window.gsap) {
+    window.gsap = gsap;
+}
 
 // Performance Management Imports
 import performanceElementManager from './performance-element-manager.js';
@@ -102,21 +108,18 @@ class ChaosInitializer {
         if (target === document.body) {
             this.filterTransitionInProgress = true;
             this.currentBodyFilter = safeFilter;
-            
             console.log(`🎨 Applying safe filter: ${safeFilter}`);
+            // Route through centralized filter manager for body
+            filterManager.applyImmediate(safeFilter, duration);
+            this.filterTransitionInProgress = false;
+        } else {
+            // Non-body targets still animate locally
+            gsap.to(target, {
+                filter: safeFilter,
+                duration: duration,
+                ease: 'power2.inOut'
+            });
         }
-
-        gsap.to(target, {
-            filter: safeFilter,
-            duration: duration,
-            ease: 'power2.inOut',
-            onComplete: () => {
-                if (target === document.body) {
-                    this.filterTransitionInProgress = false;
-                }
-            },
-            // REMOVED: onUpdate was causing thousands of console messages and performance issues
-        });
     }
 
     /**
@@ -267,6 +270,9 @@ class ChaosInitializer {
 
         // Skip startup sequence - removed status texts
         // this.runStartupSequence();
+        // Create global blackout overlay to ensure full coverage for fades/blackouts
+        this.ensureBlackoutOverlay();
+
         // Start animation phases directly
         setTimeout(() => {
             console.log('🚀 Starting animation phases...');
@@ -799,24 +805,40 @@ class ChaosInitializer {
     }
 
     addStaticNoise() {
-        const canvas = this.performanceElementManager.createElement('canvas', 'effect', {
-            position: 'fixed',
-            top: '0',
-            left: '0',
-            width: '100%',
-            height: '100%',
-            pointerEvents: 'none',
-            zIndex: '1',
-            opacity: '0.015',
-            mixBlendMode: 'screen'
-        });
+        // CRITICAL FIX: Create static-noise canvas outside performance manager
+        // to prevent auto-cleanup that was causing noise effect to disappear
+        const canvas = document.createElement('canvas');
         canvas.id = 'static-noise';
+        canvas.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+            opacity: 0.015;
+            mix-blend-mode: screen;
+        `;
         canvas.width = 256;
         canvas.height = 256;
+        
+        // Add to DOM directly (not through performance manager)
+        document.body.appendChild(canvas);
 
         const ctx = canvas.getContext('2d');
 
         const animateStatic = () => {
+            // Check if canvas still exists (safety check)
+            if (!document.getElementById('static-noise')) {
+                console.warn('⚠️ Static noise canvas was removed, recreating...');
+                // Recreate if somehow removed
+                if (window.chaosInitializer && typeof window.chaosInitializer.addStaticNoise === 'function') {
+                    window.chaosInitializer.addStaticNoise();
+                }
+                return;
+            }
+            
             const imageData = ctx.createImageData(256, 256);
             const data = imageData.data;
 
@@ -833,6 +855,7 @@ class ChaosInitializer {
         };
 
         animateStatic();
+        console.log('✅ Static noise canvas created (outside performance manager to prevent cleanup)');
     }
 
     addDataStreams() {
@@ -1173,8 +1196,12 @@ class ChaosInitializer {
 
         // Heavy glitch effects
         const glitchBurst = () => {
-            // RGB split
-            document.body.style.filter = `hue-rotate(${Math.random() * 360}deg) saturate(${Math.random() * 2 + 0.5})`;
+            // RGB split via safe filter application to avoid flashes
+            this.safeApplyFilter(
+                document.body,
+                `hue-rotate(${Math.random() * 360}deg) saturate(${Math.random() * 2 + 0.5})`,
+                0.2
+            );
 
             // Position glitch
             const elements = document.querySelectorAll('.logo-text-wrapper, .image-wrapper, .text-3886');
@@ -1183,7 +1210,7 @@ class ChaosInitializer {
             });
 
             setTimeout(() => {
-                document.body.style.filter = 'none';
+                this.safeApplyFilter(document.body, 'none', 0.2);
                 elements.forEach(el => {
                     el.style.transform = 'none';
                 });
@@ -2024,6 +2051,33 @@ class ChaosInitializer {
                 duration: 3,
                 onComplete: () => aurora.remove()
             });
+    }
+
+    ensureBlackoutOverlay() {
+        if (this.blackoutEl && document.body.contains(this.blackoutEl)) return;
+        const el = document.createElement('div');
+        el.id = 'viz-blackout';
+        el.style.position = 'fixed';
+        el.style.left = '0';
+        el.style.top = '0';
+        el.style.width = '100vw';
+        el.style.height = '100vh';
+        el.style.background = '#000';
+        el.style.opacity = '0';
+        el.style.pointerEvents = 'none';
+        el.style.zIndex = '2147483647';
+        el.style.transition = 'opacity 180ms linear';
+        document.body.appendChild(el);
+        this.blackoutEl = el;
+    }
+
+    showBlackout(opacity = 1) {
+        this.ensureBlackoutOverlay();
+        this.blackoutEl.style.opacity = String(Math.max(0, Math.min(1, opacity)));
+    }
+
+    hideBlackout() {
+        if (this.blackoutEl) this.blackoutEl.style.opacity = '0';
     }
 
     destroy() {

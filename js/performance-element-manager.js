@@ -215,6 +215,26 @@ class PerformanceElementManager {
         this.adjustPerformanceMode();
     }
 
+    removeOrphanedElements() {
+        const toRemove = [];
+        this.elements.forEach((data, id) => {
+            if (!document.contains(data.element)) toRemove.push(id);
+        });
+        toRemove.forEach(id => this.removeElement(id));
+        if (toRemove.length) {
+            console.log(`🧹 Removed ${toRemove.length} orphaned elements`);
+        }
+    }
+
+    removeAllByCategory(category) {
+        const ids = [];
+        this.elements.forEach((data, id) => {
+            if (data.category === category) ids.push(id);
+        });
+        ids.forEach(id => this.removeElement(id));
+        if (ids.length) console.log(`🗑️ Removed ${ids.length} elements in category '${category}'`);
+    }
+
     /**
      * Adjust performance mode based on element count
      */

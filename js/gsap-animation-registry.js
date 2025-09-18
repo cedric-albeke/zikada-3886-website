@@ -2,6 +2,11 @@
 
 import gsap from 'gsap';
 
+// Ensure GSAP is globally available
+if (typeof window !== 'undefined' && !window.gsap) {
+    window.gsap = gsap;
+}
+
 class GSAPAnimationRegistry {
     constructor() {
         this.animations = new Map(); // Track all animations
@@ -176,6 +181,16 @@ class GSAPAnimationRegistry {
             maxAge: options.maxAge || 60000, // Default 1 minute max age
             autoCleanup: options.autoCleanup !== false
         };
+
+        // Preserve infinite repeat animations (repeat:-1) — never age out core loops
+        try {
+            if (animation && typeof animation.repeat === 'function' && animation.repeat() === -1) {
+                animationData.autoCleanup = false;
+                animationData.maxAge = Infinity;
+            }
+        } catch (e) {
+            // ignore capability probing errors
+        }
 
         this.animations.set(animationId, animationData);
 
@@ -385,6 +400,20 @@ class GSAPAnimationRegistry {
         }
 
         console.log(`🚨 Emergency cleanup completed: removed ${removed} animations`);
+    }
+
+    killByFilter({ category, olderThan, excludeEssential = true } = {}) {
+        const now = Date.now();
+        const ids = [];
+        this.animations.forEach((data, id) => {
+            if (category && data.category !== category) return;
+            if (excludeEssential && data.isEssential) return;
+            if (olderThan && (now - data.createdAt) < olderThan) return;
+            ids.push(id);
+        });
+        ids.forEach(id => this.killAnimation(id));
+        if (ids.length) console.log(`🗑️ Killed ${ids.length} animations by filter`, { category, olderThan, excludeEssential });
+        return ids.length;
     }
 
     /**
