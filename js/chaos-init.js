@@ -19,6 +19,7 @@ import introAnimations from './intro-animations.js';
 import beehiveBackground from './beehive-background.js';
 import directLogoAnimation from './direct-logo-animation.js';
 import vjReceiver from './vj-receiver.js';
+import performanceOptimizer from './performance-optimizer.js';
 import gsap from 'gsap';
 
 // Ensure GSAP is globally available
@@ -123,7 +124,8 @@ class ChaosInitializer {
                 // Import the proper anime.js stack
                 await import('./anime-init.js');
                 await import('./anime-svg-logo.js');
-                console.log('🎬 Anime.js stack loaded successfully');
+                await import('./anime-enhanced-effects.js');
+                console.log('🎬 Anime.js stack loaded successfully with enhanced effects');
             } catch (error) {
                 this.animeStackLoaded = false;
                 console.error('Failed to load anime.js stack', error);
