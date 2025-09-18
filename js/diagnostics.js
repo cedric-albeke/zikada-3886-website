@@ -66,5 +66,4 @@ import gsap from 'gsap';
     console.log('🔍 Diagnostics ready. Use window.__3886_DIAG.getStats() or window.__3886_DIAG.print()');
   }
 
-  export default api;
 })();

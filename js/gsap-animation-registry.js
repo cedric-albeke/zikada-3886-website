@@ -55,9 +55,11 @@ class GSAPAnimationRegistry {
         const registry = this;
 
         const resolveCategory = (vars) => (vars && vars._regCategory) || 'effect';
+        const wantsSoftCap = (vars) => !!(vars && vars._regSoftCap === true);
         
-        // Soft-cap helper
-        const canCreateInCategory = (category) => {
+        // Soft-cap helper (only enforced when explicitly requested)
+        const canCreateInCategory = (category, vars) => {
+            if (!wantsSoftCap(vars)) return true; // default: do not soft-cap unless opted-in
             const cfg = registry.categories[category] || { maxAnimations: 30 };
             const count = registry.getCategoryActiveCount(category);
             return count < cfg.maxAnimations;
@@ -66,7 +68,7 @@ class GSAPAnimationRegistry {
         // Patch gsap.to
         gsap.to = function(targets, vars = {}) {
             const category = resolveCategory(vars);
-            if (!canCreateInCategory(category)) {
+            if (!canCreateInCategory(category, vars)) {
                 if (registry.verbose) console.log(`⏳ Skipping creation in category '${category}' (soft cap reached)`);
                 return registry.createNoopTween();
             }
@@ -80,7 +82,7 @@ class GSAPAnimationRegistry {
         // Patch gsap.from
         gsap.from = function(targets, vars = {}) {
             const category = resolveCategory(vars);
-            if (!canCreateInCategory(category)) {
+            if (!canCreateInCategory(category, vars)) {
                 if (registry.verbose) console.log(`⏳ Skipping creation in category '${category}' (soft cap reached)`);
                 return registry.createNoopTween();
             }
@@ -94,7 +96,7 @@ class GSAPAnimationRegistry {
         // Patch gsap.fromTo
         gsap.fromTo = function(targets, fromVars = {}, toVars = {}) {
             const category = resolveCategory(toVars);
-            if (!canCreateInCategory(category)) {
+            if (!canCreateInCategory(category, toVars)) {
                 if (registry.verbose) console.log(`⏳ Skipping creation in category '${category}' (soft cap reached)`);
                 return registry.createNoopTween();
             }
@@ -108,7 +110,7 @@ class GSAPAnimationRegistry {
         // Patch gsap.timeline
         gsap.timeline = function(vars = {}) {
             const category = resolveCategory(vars);
-            if (!canCreateInCategory(category)) {
+            if (!canCreateInCategory(category, vars)) {
                 if (registry.verbose) console.log(`⏳ Skipping creation in category '${category}' (soft cap reached)`);
                 return registry.createNoopTimeline();
             }
