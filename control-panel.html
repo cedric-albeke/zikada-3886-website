@@ -9,14 +9,65 @@
 </head>
 <body>
     <div class="control-panel">
-        <!-- Header -->
+        <!-- Enhanced Header -->
         <header class="panel-header">
-            <h1>3886 VJ CONTROL</h1>
-            <div class="connection-status" id="connectionStatus">
-                <span class="status-dot"></span>
-                <span class="status-text">DISCONNECTED</span>
+            <div class="header-left">
+                <div class="logo-section">
+                    <div class="logo-icon">◉</div>
+                    <div class="title-section">
+                        <h1>3886 VJ CONTROL</h1>
+                        <div class="subtitle">Visual Control Matrix v2.1</div>
+                    </div>
+                </div>
             </div>
-            <button class="reset-btn" id="systemReset">RESET</button>
+
+            <div class="header-center">
+                <div class="connection-status" id="connectionStatus">
+                    <span class="status-dot"></span>
+                    <span class="status-text">DISCONNECTED</span>
+                    <div class="connection-strength" id="connectionStrength">
+                        <div class="signal-bar"></div>
+                        <div class="signal-bar"></div>
+                        <div class="signal-bar"></div>
+                        <div class="signal-bar"></div>
+                    </div>
+                </div>
+
+                <div class="system-stats">
+                    <div class="stat-item">
+                        <label>UPTIME</label>
+                        <span id="systemUptime">00:00:00</span>
+                    </div>
+                    <div class="stat-item">
+                        <label>EFFECTS</label>
+                        <span id="headerActiveFx">0</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="header-right">
+                <div class="control-buttons">
+                    <button class="header-btn emergency-btn" id="emergencyStop" title="Emergency Stop All Effects">
+                        <span class="btn-icon">⏹</span>
+                        <span class="btn-text">EMERGENCY</span>
+                    </button>
+                    <button class="header-btn reset-btn" id="systemReset" title="Reset All Settings">
+                        <span class="btn-icon">↻</span>
+                        <span class="btn-text">RESET</span>
+                    </button>
+                </div>
+
+                <div class="status-indicators">
+                    <div class="indicator" id="systemHealth" title="System Health">
+                        <div class="indicator-dot"></div>
+                        <span>SYS</span>
+                    </div>
+                    <div class="indicator" id="performanceStatus" title="Performance Status">
+                        <div class="indicator-dot"></div>
+                        <span>PERF</span>
+                    </div>
+                </div>
+            </div>
         </header>
 
         <!-- Main Control Grid -->
@@ -115,7 +166,7 @@
                     <!-- REMOVED: Distortion slider (now handled automatically, applies blur only to logo) -->
                     <div class="slider-container">
                         <label>NOISE</label>
-                        <input type="range" class="control-slider" id="noiseSlider" min="0" max="100" value="50">
+                        <input type="range" class="control-slider" id="noiseSlider" min="0" max="50" value="25">
                         <span class="slider-value">50%</span>
                     </div>
                 </div>

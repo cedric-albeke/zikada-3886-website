@@ -79,13 +79,17 @@ class VJReceiver {
     initLocalStorageFallback() {
         console.log('Using localStorage fallback for VJ control');
 
-        // Listen for storage events
+        // Listen for storage events (cross-tab)
         window.addEventListener('storage', (e) => {
             if (e.key === '3886_vj_message') {
                 const data = JSON.parse(e.newValue);
                 this.handleMessage(data);
             }
         });
+
+        // ADDED: Poll localStorage for changes (same-tab detection)
+        this.lastMessageId = null;
+        this.startLocalStoragePolling();
 
         // Override sendMessage for localStorage
         this.sendMessage = (data) => {
@@ -94,6 +98,24 @@ class VJReceiver {
                 timestamp: Date.now()
             }));
         };
+    }
+
+    startLocalStoragePolling() {
+        setInterval(() => {
+            const messageData = localStorage.getItem('3886_vj_message');
+            if (messageData) {
+                try {
+                    const parsed = JSON.parse(messageData);
+                    if (parsed._id && parsed._id !== this.lastMessageId) {
+                        this.lastMessageId = parsed._id;
+                        console.log('📨 VJ Receiver (polling) received:', parsed.type);
+                        this.handleMessage(parsed);
+                    }
+                } catch (e) {
+                    // Ignore JSON parse errors
+                }
+            }
+        }, 100); // Check every 100ms
     }
 
     sendMessage(data) {
@@ -582,19 +604,19 @@ class VJReceiver {
         
         const originalFilter = document.body.style.filter;
 
-        // INCREASED: Longer RGB Split effect duration for more impact
+        // DOUBLED: RGB Split effect duration doubled for more impact
         gsap.timeline()
             .to(document.body, {
                 filter: 'hue-rotate(120deg) saturate(2)',
-                duration: 0.3 + 0.5 * glitchI // Increased from 0.15 + 0.25
+                duration: 0.6 + 1.0 * glitchI // Doubled from 0.3 + 0.5
             })
             .to(document.body, {
                 filter: 'hue-rotate(-120deg) saturate(2)',
-                duration: 0.3 + 0.5 * glitchI // Increased from 0.15 + 0.25
+                duration: 0.6 + 1.0 * glitchI // Doubled from 0.3 + 0.5
             })
             .to(document.body, {
                 filter: originalFilter || 'none',
-                duration: 0.8 + 0.6 * (1 - glitchI), // Increased from 0.4 + 0.3
+                duration: 1.6 + 1.2 * (1 - glitchI), // Doubled from 0.8 + 0.6
                 ease: 'power2.out'
             });
     }
@@ -608,29 +630,46 @@ class VJReceiver {
         // Get FX intensities
         const mult = window.fxController ? window.fxController.globalMult : 1;
         const particlesI = window.fxController ? window.fxController.getIntensity('particles') : 0.5;
-        
-        const ripple = document.createElement('div');
-        ripple.style.cssText = `
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            width: 50px;
-            height: 50px;
-            border: 3px solid rgba(0, 255, 255, 0.8);
-            border-radius: 50%;
-            pointer-events: none;
-            z-index: 10000;
-            transform: translate(-50%, -50%) scale(0);
-        `;
-        document.body.appendChild(ripple);
 
-        gsap.to(ripple, {
-            scale: 8 + 20 * particlesI * mult,
-            opacity: 0,
-            duration: 1 + 1 * (1 - particlesI),
-            ease: 'power2.out',
-            onComplete: () => ripple.remove()
-        });
+        // Enhanced ripple with multiple waves and gradient colors
+        const rippleCount = Math.max(2, Math.round(3 + 2 * particlesI * mult));
+        const colors = [
+            'rgba(0, 255, 255, 0.9)',
+            'rgba(0, 255, 133, 0.8)',
+            'rgba(255, 0, 255, 0.7)',
+            'rgba(255, 255, 0, 0.6)'
+        ];
+
+        for (let i = 0; i < rippleCount; i++) {
+            setTimeout(() => {
+                const ripple = document.createElement('div');
+                const color = colors[i % colors.length];
+                const size = 40 + i * 15;
+
+                ripple.style.cssText = `
+                    position: fixed;
+                    top: 50%;
+                    left: 50%;
+                    width: ${size}px;
+                    height: ${size}px;
+                    border: ${3 + i}px solid ${color};
+                    border-radius: 50%;
+                    pointer-events: none;
+                    z-index: 10000 - i;
+                    transform: translate(-50%, -50%) scale(0);
+                    box-shadow: 0 0 ${10 + i * 5}px ${color}, inset 0 0 ${5 + i * 2}px ${color};
+                `;
+                document.body.appendChild(ripple);
+
+                gsap.to(ripple, {
+                    scale: (6 + 15 * particlesI * mult) * (1 + i * 0.3),
+                    opacity: 0,
+                    duration: (1.2 + 1.2 * (1 - particlesI)) * (1 + i * 0.2),
+                    ease: 'power2.out',
+                    onComplete: () => ripple.remove()
+                });
+            }, i * 120); // Stagger the ripples for layered effect
+        }
     }
 
     triggerPulse() {
@@ -654,7 +693,7 @@ class VJReceiver {
         const mult = window.fxController ? window.fxController.globalMult : 1;
         const particlesI = window.fxController ? window.fxController.getIntensity('particles') : 0.5;
         
-        for (let i = 0; i < Math.max(4, Math.round(8 * particlesI * mult)); i++) {
+        for (let i = 0; i < Math.max(20, Math.round(40 * particlesI * mult)); i++) {
             const wave = document.createElement('div');
             wave.style.cssText = `
                 position: fixed;

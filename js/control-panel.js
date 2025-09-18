@@ -1000,7 +1000,7 @@ class VJControlPanel {
                 type: 'apply_settings',
                 data: {
                     colors: { hue: 0, saturation: 100, brightness: 100, contrast: 100 },
-                    effects: { glitch: 0.5, particles: 0.5, distortion: 0.5, noise: 0.5 },
+                    effects: { glitch: 0.5, particles: 0.5, distortion: 0.5, noise: 0.25 },
                     speed: 1.0,
                     bpm: 120,
                     scene: 'auto'
@@ -1042,7 +1042,7 @@ class VJControlPanel {
                 'phaseDurationSlider': 30,
                 'glitchSlider': 50,
                 'particlesSlider': 50,
-                'noiseSlider': 50
+                'noiseSlider': 25
             };
 
             Object.entries(sliderResets).forEach(([id, value]) => {

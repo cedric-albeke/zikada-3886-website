@@ -39,39 +39,109 @@ body {
     z-index: 1;
 }
 
-/* Header */
+/* Enhanced Header Layout */
 .panel-header {
-    display: flex;
-    justify-content: space-between;
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
     align-items: center;
-    padding: 20px;
-    border: 1px solid #00ff85;
-    border-radius: 4px;
-    background: rgba(0, 0, 0, 0.8);
+    padding: 16px 24px;
+    border: 2px solid #00ff85;
+    border-radius: 8px;
+    background: linear-gradient(135deg, rgba(0, 0, 0, 0.95) 0%, rgba(0, 20, 10, 0.9) 100%);
     margin-bottom: 20px;
     position: relative;
     z-index: 10;
+    box-shadow: 0 4px 20px rgba(0, 255, 133, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
 }
 
-.panel-header h1 {
+.panel-header::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg,
+        transparent 0%,
+        #00ff85 20%,
+        #00ffff 50%,
+        #00ff85 80%,
+        transparent 100%);
+    animation: headerScan 3s ease-in-out infinite;
+}
+
+@keyframes headerScan {
+    0%, 100% { opacity: 0.5; }
+    50% { opacity: 1; }
+}
+
+/* Header Left Section */
+.header-left {
+    display: flex;
+    align-items: center;
+}
+
+.logo-section {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.logo-icon {
+    font-size: 28px;
     color: #00ff85;
-    font-size: 24px;
+    text-shadow: 0 0 15px #00ff85;
+    animation: logoGlow 2s ease-in-out infinite alternate;
+}
+
+@keyframes logoGlow {
+    0% { text-shadow: 0 0 15px #00ff85; }
+    100% { text-shadow: 0 0 25px #00ff85, 0 0 35px #00ff85; }
+}
+
+.title-section h1 {
+    color: #00ff85;
+    font-size: 20px;
     text-shadow: 0 0 10px #00ff85;
     letter-spacing: 2px;
+    margin: 0;
+    font-weight: 700;
+}
+
+.subtitle {
+    color: #00ffaa;
+    font-size: 11px;
+    opacity: 0.8;
+    margin-top: 2px;
+    letter-spacing: 1px;
+}
+
+/* Header Center Section */
+.header-center {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
 }
 
 .connection-status {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 12px;
+    padding: 8px 16px;
+    background: rgba(0, 0, 0, 0.6);
+    border: 1px solid rgba(0, 255, 133, 0.3);
+    border-radius: 20px;
 }
 
 .status-dot {
-    width: 10px;
-    height: 10px;
+    width: 8px;
+    height: 8px;
     border-radius: 50%;
     background: #ff0000;
     animation: pulse 2s infinite;
+    box-shadow: 0 0 8px currentColor;
 }
 
 .status-dot.connected {
@@ -84,21 +154,164 @@ body {
     50% { opacity: 0.3; }
 }
 
-.emergency-stop {
-    background: #ff0000;
-    color: #fff;
-    border: none;
-    padding: 10px 20px;
-    font-family: inherit;
-    font-weight: bold;
-    cursor: pointer;
-    border-radius: 4px;
-    transition: all 0.2s;
+.connection-strength {
+    display: flex;
+    gap: 2px;
+    margin-left: 8px;
 }
 
-.emergency-stop:hover {
-    background: #ff3333;
-    box-shadow: 0 0 20px rgba(255, 0, 0, 0.5);
+.signal-bar {
+    width: 3px;
+    height: 12px;
+    background: rgba(0, 255, 133, 0.3);
+    border-radius: 1px;
+    transition: background-color 0.3s;
+}
+
+.signal-bar:nth-child(1) { height: 6px; }
+.signal-bar:nth-child(2) { height: 8px; }
+.signal-bar:nth-child(3) { height: 10px; }
+.signal-bar:nth-child(4) { height: 12px; }
+
+.connected .signal-bar { background: #00ff85; }
+
+.system-stats {
+    display: flex;
+    gap: 20px;
+}
+
+.stat-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+}
+
+.stat-item label {
+    font-size: 9px;
+    color: #00ffaa;
+    letter-spacing: 1px;
+    opacity: 0.8;
+}
+
+.stat-item span {
+    font-size: 11px;
+    color: #00ff85;
+    font-weight: 700;
+    text-shadow: 0 0 5px #00ff85;
+}
+
+/* Header Right Section */
+.header-right {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 16px;
+}
+
+.control-buttons {
+    display: flex;
+    gap: 8px;
+}
+
+.header-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: 8px 12px;
+    background: rgba(0, 0, 0, 0.7);
+    border: 1px solid #00ff85;
+    border-radius: 6px;
+    color: #00ff85;
+    font-family: inherit;
+    font-size: 9px;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+}
+
+.header-btn:hover {
+    background: rgba(0, 255, 133, 0.1);
+    box-shadow: 0 0 15px rgba(0, 255, 133, 0.5);
+    transform: translateY(-1px);
+}
+
+.header-btn:disabled {
+    background: #666;
+    cursor: not-allowed;
+    box-shadow: none;
+    transform: none;
+}
+
+.emergency-btn {
+    border-color: #ff4444;
+    color: #ff4444;
+}
+
+.emergency-btn:hover {
+    background: rgba(255, 68, 68, 0.1);
+    box-shadow: 0 0 15px rgba(255, 68, 68, 0.5);
+}
+
+.btn-icon {
+    font-size: 14px;
+    margin-bottom: 2px;
+}
+
+.btn-text {
+    font-size: 8px;
+    letter-spacing: 1px;
+    font-weight: 600;
+}
+
+.status-indicators {
+    display: flex;
+    gap: 8px;
+}
+
+.indicator {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: 4px 6px;
+    background: rgba(0, 0, 0, 0.5);
+    border-radius: 4px;
+    border: 1px solid rgba(0, 255, 133, 0.2);
+}
+
+.indicator-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #ffaa00;
+    animation: indicatorPulse 3s infinite;
+}
+
+.indicator.healthy .indicator-dot {
+    background: #00ff85;
+}
+
+.indicator.warning .indicator-dot {
+    background: #ffaa00;
+}
+
+.indicator.critical .indicator-dot {
+    background: #ff4444;
+}
+
+.indicator span {
+    font-size: 7px;
+    color: #00ffaa;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+
+@keyframes indicatorPulse {
+    0%, 100% { opacity: 0.7; }
+    50% { opacity: 1; }
 }
 
 /* Control Grid */
@@ -170,6 +383,52 @@ body {
 .scene-auto:hover {
     background: rgba(255, 255, 0, 0.2);
     border-color: #ffff00;
+}
+
+.scene-auto.active {
+    background: #ffff00;
+    color: #000;
+    box-shadow: 0 0 15px rgba(255, 255, 0, 0.5);
+}
+
+/* Animated outline for active scene in auto mode */
+.scene-btn.auto-active {
+    position: relative;
+    animation: autoActiveOutline 2s ease-in-out infinite;
+}
+
+.scene-btn.auto-active::before {
+    content: '';
+    position: absolute;
+    top: -2px;
+    left: -2px;
+    right: -2px;
+    bottom: -2px;
+    background: linear-gradient(45deg, #ffff00, #00ff85, #00ffff, #ff00ff);
+    background-size: 400% 400%;
+    border-radius: 2px;
+    z-index: -1;
+    animation: gradientShift 3s ease infinite;
+    opacity: 0.8;
+}
+
+@keyframes autoActiveOutline {
+    0%, 100% {
+        box-shadow: 0 0 5px rgba(255, 255, 0, 0.8),
+                    0 0 10px rgba(255, 255, 0, 0.6),
+                    inset 0 0 5px rgba(255, 255, 0, 0.3);
+    }
+    50% {
+        box-shadow: 0 0 10px rgba(255, 255, 0, 1),
+                    0 0 20px rgba(255, 255, 0, 0.8),
+                    inset 0 0 10px rgba(255, 255, 0, 0.5);
+    }
+}
+
+@keyframes gradientShift {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
 }
 
 /* Sliders */
@@ -396,6 +655,8 @@ body {
     cursor: pointer;
     transition: all 0.2s;
     border-radius: 2px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
 }
 
 .perf-btn:hover {
@@ -406,6 +667,80 @@ body {
 .perf-btn.active {
     background: #0088ff;
     color: #000;
+}
+
+/* ANIME TESTS specific styling */
+#animeEnable, #animeDisable, #animeKill {
+    background: rgba(255, 0, 255, 0.1);
+    color: #ff00ff;
+    border: 1px solid rgba(255, 0, 255, 0.3);
+    padding: 8px;
+    font-size: 10px;
+    font-family: inherit;
+    cursor: pointer;
+    transition: all 0.2s;
+    border-radius: 2px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+#animeEnable:hover, #animeDisable:hover, #animeKill:hover {
+    background: rgba(255, 0, 255, 0.2);
+    border-color: #ff00ff;
+    text-shadow: 0 0 5px #ff00ff;
+}
+
+#animeEnable:disabled, #animeDisable:disabled, #animeKill:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* ANIME trigger buttons */
+[data-anime] {
+    background: rgba(255, 100, 0, 0.1);
+    color: #ff6600;
+    border: 1px solid rgba(255, 100, 0, 0.3);
+    padding: 12px 8px;
+    font-size: 10px;
+    font-family: inherit;
+    cursor: pointer;
+    transition: all 0.2s;
+    border-radius: 2px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+[data-anime]:hover {
+    background: rgba(255, 100, 0, 0.2);
+    border-color: #ff6600;
+    text-shadow: 0 0 5px #ff6600;
+}
+
+[data-anime]:active {
+    background: #ff6600;
+    color: #000;
+    transform: scale(0.95);
+}
+
+/* ANIME status display */
+#animeStatus {
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+#animeStatus.error {
+    color: #ff4444;
+}
+
+/* Fix ANIME TESTS grid layout */
+.control-section h2:contains("ANIME") ~ .scene-grid,
+.control-section:has(h2:contains("ANIME")) .scene-grid {
+    margin-bottom: 15px;
+}
+
+.control-section h2:contains("ANIME") ~ .trigger-grid,
+.control-section:has(h2:contains("ANIME")) .trigger-grid {
+    margin-bottom: 15px;
 }
 
 /* Timeline */
@@ -606,4 +941,159 @@ body {
     #performance-stats {
         grid-template-columns: repeat(2, 1fr);
     }
+}
+#animeStatus[data-waiting='1'] {
+    color: #ffaa00;
+}
+
+
+/* Anime Controls Styling */
+.anime-status-panel {
+    background: rgba(0, 255, 133, 0.1);
+    border: 1px solid #00ff85;
+    border-radius: 4px;
+    padding: 15px;
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+.status-display {
+    font-size: 16px;
+    font-weight: bold;
+    padding: 8px 16px;
+    border-radius: 4px;
+    background: rgba(0, 0, 0, 0.5);
+    border: 1px solid #00ff85;
+    display: inline-block;
+    min-width: 120px;
+}
+
+.status-display.error {
+    color: #ff4444;
+    border-color: #ff4444;
+}
+
+.anime-system-controls, .anime-triggers {
+    margin-bottom: 20px;
+}
+
+.anime-system-controls h3, .anime-triggers h3 {
+    color: #00ff85;
+    font-size: 12px;
+    margin-bottom: 12px;
+    padding-bottom: 5px;
+    border-bottom: 1px solid rgba(0, 255, 133, 0.3);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.system-control-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.system-btn {
+    padding: 12px 8px;
+    border: 1px solid #00ff85;
+    background: rgba(0, 255, 133, 0.1);
+    color: #00ff85;
+    font-family: inherit;
+    font-size: 10px;
+    cursor: pointer;
+    border-radius: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    transition: all 0.2s ease;
+    height: 45px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.system-btn:hover {
+    background: rgba(0, 255, 133, 0.2);
+    box-shadow: 0 0 8px rgba(0, 255, 133, 0.3);
+}
+
+.system-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.system-btn.enable {
+    border-color: #00ff85;
+    color: #00ff85;
+}
+
+.system-btn.disable {
+    border-color: #ffaa00;
+    color: #ffaa00;
+}
+
+.system-btn.disable:hover {
+    background: rgba(255, 170, 0, 0.2);
+    box-shadow: 0 0 8px rgba(255, 170, 0, 0.3);
+}
+
+.system-btn.kill {
+    border-color: #ff4444;
+    color: #ff4444;
+}
+
+.system-btn.kill:hover {
+    background: rgba(255, 68, 68, 0.2);
+    box-shadow: 0 0 8px rgba(255, 68, 68, 0.3);
+}
+
+.trigger-control-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+}
+
+.anim-trigger-btn {
+    padding: 15px 10px;
+    border: 1px solid rgba(0, 255, 133, 0.5);
+    background: rgba(0, 0, 0, 0.7);
+    color: #00ff85;
+    font-family: inherit;
+    cursor: pointer;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+    height: 70px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+}
+
+.anim-trigger-btn:hover {
+    border-color: #00ff85;
+    background: rgba(0, 255, 133, 0.1);
+    box-shadow: 0 0 12px rgba(0, 255, 133, 0.2);
+    transform: translateY(-1px);
+}
+
+.anim-trigger-btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.trigger-label {
+    font-size: 11px;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 3px;
+}
+
+.trigger-desc {
+    font-size: 9px;
+    opacity: 0.7;
+    text-transform: lowercase;
+    letter-spacing: 0.5px;
 }
