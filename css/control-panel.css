@@ -782,6 +782,43 @@ body {
     border-top: 1px solid rgba(0, 255, 133, 0.2);
 }
 
+/* BPM Ripple options */
+.bpm-options {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.bpm-options label {
+    color: rgba(0, 255, 133, 0.8);
+    font-size: 10px;
+    letter-spacing: 1px;
+}
+
+.bpm-toggle-btn {
+    padding: 6px 12px;
+    border: 2px solid #666;
+    background: rgba(0, 0, 0, 0.3);
+    color: #666;
+    font-family: inherit;
+    font-weight: bold;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    min-width: 60px;
+}
+
+.bpm-toggle-btn[data-state="on"] {
+    border-color: #00ff85;
+    color: #00ff85;
+    background: rgba(0, 255, 133, 0.1);
+}
+
+.bpm-toggle-btn:hover {
+    border-color: #00ff85;
+}
+
 .tap-btn {
     background: rgba(0, 255, 255, 0.1);
     color: #00ffff;

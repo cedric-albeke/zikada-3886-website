@@ -99,6 +99,9 @@ Timing / Performance
   - Animation triggers broadened:
     - Matrix targets include #data-streams-overlay, .data-streams
     - Text targets include .text-3886 and .logo-text where applicable
+  - Added BPM Ripple UI toggle (control panel TEMPO section)
+    - Sends bpm_ripple_toggle to main page; also toggles locally if same-tab
+    - Uses SVG-based ripple, optional BPM beat timer
 
 ## Checklist (will be updated)
 - [ ] M1: Connection UI fixed; perf modes wired; transport logs OK

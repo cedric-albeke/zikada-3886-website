@@ -1124,6 +1124,21 @@ class ProfessionalVJControlPanel {
             });
         });
 
+        // BPM Ripple toggle
+        document.getElementById('toggleBpmRipple')?.addEventListener('click', () => {
+            const btn = document.getElementById('toggleBpmRipple');
+            if (!btn) return;
+            const isOn = btn.getAttribute('data-state') === 'on';
+            const newState = !isOn;
+            btn.setAttribute('data-state', newState ? 'on' : 'off');
+            btn.textContent = newState ? 'ON' : 'OFF';
+            this.sendMessage({ type: 'bpm_ripple_toggle', enabled: newState, timestamp: Date.now() });
+            // If same tab, toggle immediately for responsiveness
+            if (window.vjReceiver && typeof window.vjReceiver.setBpmRippleEnabled === 'function') {
+                window.vjReceiver.setBpmRippleEnabled(newState);
+            }
+        });
+
         // Effect sliders
         document.querySelectorAll('.effect-slider input[type="range"]').forEach(slider => {
             const updateSlider = () => {

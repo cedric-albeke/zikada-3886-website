@@ -367,6 +367,11 @@ class VJReceiver {
                 this.executePerformanceOptimization();
                 break;
 
+            case 'bpm_ripple_toggle':
+                this.setBpmRippleEnabled(!!data.enabled);
+                this.sendMessage({ type: 'bpm_ripple_toggled', enabled: !!data.enabled, timestamp: Date.now() });
+                break;
+
             case 'request_performance':
                 this.sendPerformanceData();
                 break;
