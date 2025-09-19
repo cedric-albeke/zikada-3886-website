@@ -781,46 +781,67 @@ class VJReceiver {
         const mult = window.fxController ? window.fxController.globalMult : 1;
         const particlesI = window.fxController ? window.fxController.getIntensity('particles') : 0.5;
 
-        // Enhanced ripple with multiple waves and gradient colors
+        // Use SVG for crisp, anti-aliased rings
+        let svg = document.getElementById('vj-ripple-svg');
+        if (!svg) {
+            svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+            svg.id = 'vj-ripple-svg';
+            svg.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+            svg.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                pointer-events: none;
+                z-index: 9990; /* below blackout (10000) */
+            `;
+            document.body.appendChild(svg);
+        }
+        // Match viewport for crisp vectors
+        svg.setAttribute('viewBox', `0 0 ${window.innerWidth} ${window.innerHeight}`);
+
+        const cx = window.innerWidth / 2;
+        const cy = window.innerHeight / 2;
+
         const rippleCount = Math.max(2, Math.round(3 + 2 * particlesI * mult));
         const colors = [
-            'rgba(0, 255, 255, 0.9)',
-            'rgba(0, 255, 133, 0.8)',
-            'rgba(255, 0, 255, 0.7)',
-            'rgba(255, 255, 0, 0.6)'
+            '#00ffff', // cyan
+            '#00ff85', // green
+            '#ff00ff', // magenta
+            '#ffff00'  // yellow
         ];
+
+        const maxRadius = Math.sqrt(window.innerWidth * window.innerWidth + window.innerHeight * window.innerHeight) * 0.5;
 
         for (let i = 0; i < rippleCount; i++) {
             setTimeout(() => {
-                const ripple = document.createElement('div');
                 const color = colors[i % colors.length];
-                const size = 40 + i * 15;
+                const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                circle.setAttribute('cx', cx);
+                circle.setAttribute('cy', cy);
+                circle.setAttribute('r', 0);
+                circle.setAttribute('fill', 'none');
+                circle.setAttribute('stroke', color);
+                circle.setAttribute('stroke-width', String(2 + i));
+                circle.setAttribute('opacity', '0.9');
+                circle.style.filter = `drop-shadow(0 0 ${6 + i * 3}px ${color})`;
+                circle.style.willChange = 'opacity';
+                svg.appendChild(circle);
 
-                ripple.style.cssText = `
-                    position: fixed;
-                    top: 50%;
-                    left: 50%;
-                    width: ${size}px;
-                    height: ${size}px;
-                    border: ${3 + i}px solid ${color};
-                    border-radius: 50%;
-                    pointer-events: none;
-                    z-index: 999999;
-                    transform: translate(-50%, -50%) scale(0);
-                    box-shadow: 0 0 ${10 + i * 5}px ${color}, inset 0 0 ${5 + i * 2}px ${color};
-                    mix-blend-mode: screen;
-                    will-change: transform, opacity;
-                `;
-                document.body.appendChild(ripple);
-
-                gsap.to(ripple, {
-                    scale: (6 + 15 * particlesI * mult) * (1 + i * 0.3),
-                    opacity: 0,
-                    duration: (1.2 + 1.2 * (1 - particlesI)) * (1 + i * 0.2),
-                    ease: 'power2.out',
-                    onComplete: () => ripple.remove()
+                const targetRadius = maxRadius * (0.45 + 0.2 * i);
+                gsap.to(circle, {
+                    attr: { r: targetRadius },
+                    duration: (1.2 + 1.0 * (1 - particlesI)) * (1 + i * 0.15),
+                    ease: 'power2.out'
                 });
-            }, i * 120); // Stagger the ripples for layered effect
+                gsap.to(circle, {
+                    opacity: 0,
+                    duration: (1.1 + 1.0 * (1 - particlesI)) * (1 + i * 0.15),
+                    ease: 'power2.out',
+                    onComplete: () => circle.remove()
+                });
+            }, i * 120);
         }
     }
 
