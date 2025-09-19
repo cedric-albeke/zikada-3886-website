@@ -171,9 +171,23 @@ async function initLogoAnimation() {
     }
   }
 
+  // Store active pulse animations to prevent accumulation
+  let activeMatrixPulse = null;
+  let activeFlashPaths = null;
+
   function onMatrixMessage() {
+    // Kill previous animations if still running
+    if (activeMatrixPulse && !activeMatrixPulse.completed) {
+      activeMatrixPulse.pause();
+      animeManager.instances.delete(activeMatrixPulse);
+    }
+    if (activeFlashPaths && !activeFlashPaths.completed) {
+      activeFlashPaths.pause();
+      animeManager.instances.delete(activeFlashPaths);
+    }
+
     // Enhanced matrix pulse with multiple effects
-    const matrixPulse = anime({
+    activeMatrixPulse = anime({
       targets: svg,
       scale: [
         { value: 1.05, duration: 120 },
@@ -184,29 +198,37 @@ async function initLogoAnimation() {
       rotate: [0, 5, -3, 0],
       easing: 'easeOutElastic(1, .8)'
     });
-    animeManager.register(matrixPulse, { critical: false, label: 'logo-matrix-pulse' });
+    animeManager.register(activeMatrixPulse, { critical: false, label: 'logo-matrix-pulse' });
 
     // Add flash effect to paths
-    const flashPaths = anime({
+    activeFlashPaths = anime({
       targets: paths,
       opacity: [1, 0.3, 1],
       strokeWidth: [undefined, 6, undefined],
       duration: 400,
       easing: 'easeOutQuad'
     });
-    animeManager.register(flashPaths, { critical: false, label: 'logo-flash-paths' });
+    animeManager.register(activeFlashPaths, { critical: false, label: 'logo-flash-paths' });
   }
 
+  let activeManualPulse = null;
+
   function onLogoPulse() {
+    // Kill previous animation if still running
+    if (activeManualPulse && !activeManualPulse.completed) {
+      activeManualPulse.pause();
+      animeManager.instances.delete(activeManualPulse);
+    }
+
     // Manual pulse trigger
-    const manualPulse = anime({
+    activeManualPulse = anime({
       targets: svg,
       scale: [1, 1.15, 1],
       opacity: [undefined, 0.8, undefined],
       duration: 800,
       easing: 'easeOutBounce'
     });
-    animeManager.register(manualPulse, { critical: false, label: 'logo-manual-pulse' });
+    animeManager.register(activeManualPulse, { critical: false, label: 'logo-manual-pulse' });
   }
 
   function onLogoGlowToggle() {

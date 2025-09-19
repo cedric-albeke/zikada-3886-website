@@ -20,6 +20,7 @@ import beehiveBackground from './beehive-background.js';
 import directLogoAnimation from './direct-logo-animation.js';
 import vjReceiver from './vj-receiver.js';
 import performanceOptimizer from './performance-optimizer.js';
+import VisualEffectsController from './visual-effects-complete.js';
 import gsap from 'gsap';
 
 // Ensure GSAP is globally available
@@ -43,6 +44,10 @@ class ChaosInitializer {
         this.animeStackLoaded = false;
         this.animeStackPromise = null;
         this.animeEnableListener = null;
+        // AUTO phase cadence (default 30s)
+        this.phaseDurationMs = 30000;
+        this.phaseTimer = null;
+        this.currentPhase = null;
         
         // Performance management (with fallbacks if not loaded)
         this.performanceElementManager = window.performanceElementManager || null;
@@ -1016,68 +1021,82 @@ class ChaosInitializer {
 
     startAnimationPhases() {
         // Prevent duplicate phase runners
-        if (this.phaseRunning) {
+        if (this.phaseRunning && this.phaseTimer) {
             console.log('⚠️ Phase animations already running');
             return;
         }
 
-        // Create a more dynamic, randomized animation sequence
+        // Create phase list (name + runner)
         const phases = [
-            () => this.phaseIntense(),
-            () => this.phaseCalm(),
-            () => this.phaseGlitch(),
-            () => this.phaseTechno(),
-            () => this.phaseMatrix(),
-            () => this.phaseMinimal(),
-            () => this.phaseChaotic(),
-            () => this.phaseRetro(),
+            { name: 'intense', run: () => this.phaseIntense() },
+            { name: 'calm', run: () => this.phaseCalm() },
+            { name: 'glitch', run: () => this.phaseGlitch() },
+            { name: 'techno', run: () => this.phaseTechno() },
+            { name: 'matrix', run: () => this.phaseMatrix() },
+            { name: 'minimal', run: () => this.phaseMinimal() },
+            { name: 'chaotic', run: () => this.phaseChaotic() },
+            { name: 'retro', run: () => this.phaseRetro() },
             // Color-themed phases
-            () => this.phaseVaporwave(),
-            () => this.phaseCyberpunk(),
-            () => this.phaseNeon(),
-            () => this.phaseAurora(),
+            { name: 'vaporwave', run: () => this.phaseVaporwave() },
+            { name: 'cyberpunk', run: () => this.phaseCyberpunk() },
+            { name: 'neon', run: () => this.phaseNeon() },
+            { name: 'aurora', run: () => this.phaseAurora() },
             // New additional color phases
-            () => this.phaseSunset(),
-            () => this.phaseOcean(),
-            () => this.phaseForest(),
-            () => this.phaseFire(),
-            () => this.phaseIce(),
-            () => this.phaseGalaxy()
+            { name: 'sunset', run: () => this.phaseSunset() },
+            { name: 'ocean', run: () => this.phaseOcean() },
+            { name: 'forest', run: () => this.phaseForest() },
+            { name: 'fire', run: () => this.phaseFire() },
+            { name: 'ice', run: () => this.phaseIce() },
+            { name: 'galaxy', run: () => this.phaseGalaxy() }
         ];
 
-        let lastPhase = null;
+        let lastPhaseName = null;
         this.phaseRunning = true;
-        this.currentPhase = null;
+
+        const notifyScene = (name) => {
+            if (window.vjReceiver && typeof window.vjReceiver.sendMessage === 'function' && name) {
+                window.vjReceiver.sendMessage({ type: 'scene_changed', scene: name, timestamp: Date.now() });
+            }
+        };
 
         const runRandomPhase = () => {
-            if (!this.phaseRunning) {
-                // Restart if stopped
-                this.phaseRunning = true;
-            }
+            if (!this.phaseRunning) return;
 
-            // Pick a random phase that isn't the last one
-            let availablePhases = phases.filter(p => p !== lastPhase);
-            const randomPhase = availablePhases[Math.floor(Math.random() * availablePhases.length)];
-            lastPhase = randomPhase;
+            const availablePhases = phases.filter(p => p.name !== lastPhaseName);
+            const choice = availablePhases[Math.floor(Math.random() * availablePhases.length)];
+            lastPhaseName = choice.name;
 
-            // Smooth transition with overlap
             if (this.currentPhase) {
                 this.transitionOut();
-                // Delay new phase slightly for overlap
                 setTimeout(() => {
-                    randomPhase();
+                    choice.run();
+                    this.currentPhase = choice.name;
+                    notifyScene(choice.name);
                 }, 500);
             } else {
-                randomPhase();
+                choice.run();
+                this.currentPhase = choice.name;
+                notifyScene(choice.name);
             }
-            this.currentPhase = randomPhase.name;
 
-            // Random duration between 30-60 seconds (increased from 15-40)
-            const nextDelay = Math.random() * 30000 + 30000;
-            setTimeout(runRandomPhase, nextDelay);
+            // schedule next based on configured phaseDurationMs
+            this.clearPhaseTimer();
+            this.phaseTimer = setTimeout(runRandomPhase, Math.max(5000, Number(this.phaseDurationMs) || 30000));
         };
 
         runRandomPhase();
+    }
+
+    stopAnimationPhases() {
+        this.phaseRunning = false;
+        this.clearPhaseTimer();
+    }
+
+    clearPhaseTimer() {
+        if (this.phaseTimer) {
+            clearTimeout(this.phaseTimer);
+            this.phaseTimer = null;
+        }
     }
 
     transitionOut() {

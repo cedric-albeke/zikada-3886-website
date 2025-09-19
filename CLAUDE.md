@@ -103,3 +103,34 @@ The site can be deployed as static files to any web hosting service:
 - Keep external CDN links updated
 - Test cross-browser compatibility after changes
 - Preserve Webflow data attributes for animations to work correctly
+
+## Important Styling Rules
+
+### NO HOVER MOVEMENT ANIMATIONS
+**CRITICAL**: NEVER use translateY, translateX, or any position-changing animations on hover states for buttons or interactive elements. This causes janky, annoying movement effects.
+
+Instead, use ONLY these hover effects:
+- Color/background changes
+- Box shadow changes
+- Border color changes
+- Scale transformations (subtle, max 1.02)
+- Opacity changes
+
+Example of FORBIDDEN hover effects:
+```css
+/* NEVER DO THIS */
+.button:hover {
+    transform: translateY(-2px); /* FORBIDDEN */
+}
+```
+
+Example of ALLOWED hover effects:
+```css
+/* DO THIS INSTEAD */
+.button:hover {
+    background: rgba(0, 255, 133, 0.2);
+    box-shadow: 0 0 15px rgba(0, 255, 133, 0.3);
+    /* Optional subtle scale */
+    transform: scale(1.02);
+}
+```

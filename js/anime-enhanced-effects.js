@@ -246,42 +246,90 @@ class AnimeEnhancedEffects {
         });
     }
 
-    // Effect 3: Holographic Effect (DRASTICALLY REDUCED OCCURRENCE)
+    // Effect 3: Holographic Scan Effect (FIXED - applies to all main elements)
     createHolographicEffect() {
-        const imageWrapper = document.querySelector('.image-wrapper');
-        if (!imageWrapper) return;
-
-        // Create holographic overlay
-        const holoOverlay = document.createElement('div');
-        holoOverlay.className = 'anime-holographic';
-        holoOverlay.style.cssText = `
-            position: absolute;
-            top: -10%;
-            left: -10%;
-            width: 120%;
-            height: 120%;
-            background: linear-gradient(45deg,
-                transparent 40%,
-                rgba(0,255,255,0.03) 50%,
-                transparent 60%);
+        // Create a full-screen holographic scan that affects multiple elements
+        const holoContainer = document.createElement('div');
+        holoContainer.className = 'anime-holographic-container';
+        holoContainer.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
             pointer-events: none;
+            z-index: 9999;
+            overflow: hidden;
+        `;
+        document.body.appendChild(holoContainer);
+
+        // Create the scan line
+        const scanLine = document.createElement('div');
+        scanLine.className = 'anime-holographic-scan';
+        scanLine.style.cssText = `
+            position: absolute;
+            width: 100%;
+            height: 3px;
+            background: linear-gradient(90deg,
+                transparent 0%,
+                rgba(0,255,255,0.2) 20%,
+                rgba(0,255,255,0.8) 50%,
+                rgba(0,255,255,0.2) 80%,
+                transparent 100%);
+            box-shadow: 0 0 20px rgba(0,255,255,0.6),
+                        0 0 40px rgba(0,255,255,0.4);
+            top: -10px;
             opacity: 0;
         `;
-        imageWrapper.appendChild(holoOverlay);
+        holoContainer.appendChild(scanLine);
 
-        // Trigger holographic scan only occasionally - every 45-60 seconds
+        // Function to apply holographic effect to elements
+        const applyHolographicEffect = (progress) => {
+            // Apply to all major elements
+            const elements = document.querySelectorAll('.logo-text, .text-3886, .image-wrapper, .image-2, .glow, .button-primary, .enter-button-wrapper');
+            elements.forEach(el => {
+                const rect = el.getBoundingClientRect();
+                const scanY = window.innerHeight * progress;
+                const distance = Math.abs(rect.top + rect.height/2 - scanY);
+                const maxDistance = 100;
+
+                if (distance < maxDistance) {
+                    const intensity = 1 - (distance / maxDistance);
+                    el.style.filter = `brightness(${1 + intensity * 0.3}) hue-rotate(${intensity * 30}deg) contrast(${1 + intensity * 0.2})`;
+                    el.style.transform = `translateZ(${intensity * 5}px) scale(${1 + intensity * 0.01})`;
+                } else {
+                    el.style.filter = '';
+                    el.style.transform = '';
+                }
+            });
+        };
+
+        // Trigger holographic scan periodically
         const triggerHolographicScan = () => {
+            // Scan animation
             const scanAnim = anime({
-                targets: holoOverlay,
-                opacity: [0, 0.15, 0],  // Much lower opacity
-                backgroundPosition: ['0% 0%', '200% 200%'],
-                rotate: [0, 180],  // Less rotation
-                scale: [0.9, 1.1],  // Less scaling
-                duration: 2000,  // Shorter duration
+                targets: scanLine,
+                top: ['0%', '100%'],
+                opacity: [
+                    { value: 1, duration: 200 },
+                    { value: 1, duration: 1600 },
+                    { value: 0, duration: 200 }
+                ],
+                duration: 2000,
                 easing: 'easeInOutQuad',
+                update: (anim) => {
+                    const progress = anim.progress / 100;
+                    applyHolographicEffect(progress);
+                },
                 complete: () => {
-                    // Schedule next scan in 45-60 seconds
-                    setTimeout(triggerHolographicScan, 45000 + Math.random() * 15000);
+                    // Reset all elements
+                    const elements = document.querySelectorAll('.logo-text, .text-3886, .image-wrapper, .image-2, .glow, .button-primary, .enter-button-wrapper');
+                    elements.forEach(el => {
+                        el.style.filter = '';
+                        el.style.transform = '';
+                    });
+                    // Schedule next scan in 30-45 seconds
+                    setTimeout(triggerHolographicScan, 30000 + Math.random() * 15000);
                 }
             });
 
@@ -291,8 +339,8 @@ class AnimeEnhancedEffects {
             });
         };
 
-        // Start the first scan after 30-45 seconds
-        setTimeout(triggerHolographicScan, 30000 + Math.random() * 15000);
+        // Start the first scan after 10-20 seconds
+        setTimeout(triggerHolographicScan, 10000 + Math.random() * 10000);
     }
 
     // Effect 4: Data Stream Effect (OPTIMIZED)
@@ -873,10 +921,11 @@ class AnimeEnhancedEffects {
         animeManager.register(helixRotate, { critical: false, label: 'dna-helix-rotate' });
     }
 
-    // Create Plasma Field (FULL BACKGROUND ATMOSPHERIC EFFECT)
+    // Create Plasma Field (FIXED - now controlled by FX system)
     createPlasmaField() {
         const plasmaCanvas = document.createElement('canvas');
         plasmaCanvas.className = 'anime-plasma-field';
+        plasmaCanvas.id = 'plasma-field-canvas'; // Add ID for FX control
         plasmaCanvas.width = 400;  // Higher res for quality
         plasmaCanvas.height = 400;
         plasmaCanvas.style.cssText = `
@@ -887,7 +936,8 @@ class AnimeEnhancedEffects {
             height: 100%;
             pointer-events: none;
             z-index: -1;  // Behind everything as true background
-            opacity: 0.15;  // Slightly more visible since it's in background
+            opacity: 0;  // Start hidden - controlled by FX system
+            display: none; // Start hidden
             mix-blend-mode: screen;
             filter: blur(20px);  // Heavy blur for atmospheric effect
             transform: scale(1.2);  // Slightly larger to avoid edge artifacts
@@ -903,8 +953,11 @@ class AnimeEnhancedEffects {
 
         const ctx = plasmaCanvas.getContext('2d');
         let time = 0;
+        let animationId = null;
+        let isRunning = false;
 
         const drawPlasma = () => {
+            if (!isRunning) return;
             const imageData = ctx.createImageData(400, 400);
             const data = imageData.data;
 
@@ -936,18 +989,65 @@ class AnimeEnhancedEffects {
 
             ctx.putImageData(imageData, 0, 0);
             time += 0.02;  // Slower for subtle movement
+
+            animationId = requestAnimationFrame(drawPlasma);
         };
 
-        const plasmaAnim = anime({
-            targets: { time },
-            time: [0, Math.PI * 2],
-            duration: 10000,
-            loop: true,
-            update: drawPlasma,
-            easing: 'linear'
-        });
+        // Control functions for FX system integration
+        const startPlasma = () => {
+            if (!isRunning) {
+                isRunning = true;
+                plasmaCanvas.style.display = 'block';
+                anime({
+                    targets: plasmaCanvas,
+                    opacity: 0.15,
+                    duration: 1000,
+                    easing: 'easeInOutQuad'
+                });
+                drawPlasma();
+            }
+        };
 
-        animeManager.register(plasmaAnim, { critical: false, label: 'plasma-field' });
+        const stopPlasma = () => {
+            if (isRunning) {
+                isRunning = false;
+                if (animationId) {
+                    cancelAnimationFrame(animationId);
+                }
+                anime({
+                    targets: plasmaCanvas,
+                    opacity: 0,
+                    duration: 1000,
+                    easing: 'easeInOutQuad',
+                    complete: () => {
+                        plasmaCanvas.style.display = 'none';
+                    }
+                });
+            }
+        };
+
+        // Store control functions on the canvas element for FX access
+        plasmaCanvas.startEffect = startPlasma;
+        plasmaCanvas.stopEffect = stopPlasma;
+
+        // Register with FX controller if available
+        if (window.fxController) {
+            window.fxController.registerEffect('plasma', {
+                enable: startPlasma,
+                disable: stopPlasma,
+                element: plasmaCanvas
+            });
+        }
+
+        // Check if plasma should be enabled
+        setTimeout(() => {
+            const effectBtn = document.querySelector('.effect-toggle-btn[data-effect="plasma"]');
+            if (effectBtn && effectBtn.getAttribute('data-state') === 'on') {
+                startPlasma();
+            } else if (window.fxController && window.fxController.getIntensity('plasma') > 0) {
+                startPlasma();
+            }
+        }, 1000);
     }
 
     // Create Geometric Mandala

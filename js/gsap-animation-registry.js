@@ -11,13 +11,13 @@ class GSAPAnimationRegistry {
     constructor() {
         this.animations = new Map(); // Track all animations
         this.animationCounter = 0;
-        this.maxAnimations = 150; // Maximum concurrent animations
+        this.maxAnimations = 100; // Reduced from 150 to prevent performance issues
         this.categories = {
-            'phase': { maxAnimations: 30, priority: 1 },
-            'effect': { maxAnimations: 40, priority: 2 },
-            'ui': { maxAnimations: 20, priority: 3 },
-            'background': { maxAnimations: 30, priority: 4 },
-            'particle': { maxAnimations: 50, priority: 5 }
+            'phase': { maxAnimations: 20, priority: 1 }, // Reduced from 30
+            'effect': { maxAnimations: 25, priority: 2 }, // Reduced from 40
+            'ui': { maxAnimations: 15, priority: 3 }, // Reduced from 20
+            'background': { maxAnimations: 20, priority: 4 }, // Reduced from 30
+            'particle': { maxAnimations: 30, priority: 5 } // Reduced from 50
         };
         
         // Logging controls
@@ -217,7 +217,7 @@ class GSAPAnimationRegistry {
             targets: this.getAnimationTargets(animation),
             duration: animation.duration ? animation.duration() : 0,
             progress: 0,
-            maxAge: options.maxAge || 60000, // Default 1 minute max age
+            maxAge: options.maxAge || 30000, // Reduced from 60s to 30s for better memory management
             autoCleanup: options.autoCleanup !== false
         };
 
@@ -236,7 +236,7 @@ class GSAPAnimationRegistry {
         // Reduce logging noise: only log occasionally unless verbose enabled
         if (this.verbose) {
             console.log(`🎬 Registered animation: ${name} (${category}) - Total: ${this.animations.size}`);
-        } else if (this.animationCounter % this.logEvery === 0) {
+        } else if (this.animationCounter % 100 === 0) { // Changed from logEvery (20) to 100 to reduce spam
             console.log(`🎬 Animation registry status - Total: ${this.animations.size}`);
         }
 
@@ -452,7 +452,8 @@ class GSAPAnimationRegistry {
         // Remove identified animations
         toRemove.forEach(id => this.killAnimation(id));
 
-        if (toRemove.length > 0) {
+        // Only log cleanup if significant number removed or verbose mode
+        if (toRemove.length > 10 || (this.verbose && toRemove.length > 0)) {
             console.log(`🧹 Periodic cleanup: removed ${toRemove.length} animations`);
         }
 
@@ -481,7 +482,7 @@ class GSAPAnimationRegistry {
         // Remove animations starting from lowest priority
         const priorities = Array.from(animationsByPriority.keys()).sort((a, b) => b - a);
         let removed = 0;
-        const targetRemoval = Math.floor(this.animations.size * 0.3); // Remove 30%
+        const targetRemoval = Math.floor(this.animations.size * 0.5); // Increased from 30% to 50% for more aggressive cleanup
 
         for (const priority of priorities) {
             if (removed >= targetRemoval) break;
@@ -598,7 +599,7 @@ class GSAPAnimationRegistry {
     /**
      * Start periodic cleanup timer
      */
-    startPeriodicCleanup(interval = 10000) { // Default: 10 seconds
+    startPeriodicCleanup(interval = 5000) { // Reduced from 10s to 5s for better performance
         if (this.cleanupInterval) {
             clearInterval(this.cleanupInterval);
         }

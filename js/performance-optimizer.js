@@ -5,12 +5,14 @@ import gsap from 'gsap';
 
 class PerformanceOptimizer {
     constructor() {
-        this.maxActiveAnimations = 50;
-        this.maxTotalAnimations = 100;
+        this.maxActiveAnimations = 30; // Reduced from 50 for better performance
+        this.maxTotalAnimations = 75; // Reduced from 100
         this.maxDOMNodes = 500;
-        this.minFPS = 30;
+        this.minFPS = 45; // Increased from 30 for smoother experience
         this.cleanupInterval = null;
         this.optimizationLevel = 0; // 0: none, 1: light, 2: medium, 3: heavy
+        this.fpsHistory = [];
+        this.fpsHistorySize = 10;
 
         console.log('🚀 Performance Optimizer initialized');
     }
@@ -31,25 +33,39 @@ class PerformanceOptimizer {
     checkAndOptimize() {
         const metrics = this.getMetrics();
 
-        console.log(`📊 Performance Check:
-            - Animations: ${metrics.totalAnimations} (${metrics.activeAnimations} active)
-            - DOM Nodes: ${metrics.domNodes}
-            - FPS: ${metrics.fps}
-            - Memory: ${metrics.memory.used}MB`);
+        // Track FPS history
+        this.fpsHistory.push(metrics.fps);
+        if (this.fpsHistory.length > this.fpsHistorySize) {
+            this.fpsHistory.shift();
+        }
+
+        // Get average FPS
+        const avgFPS = this.fpsHistory.reduce((a, b) => a + b, 0) / this.fpsHistory.length;
+
+        // Only log periodically to reduce console spam
+        if (Math.random() < 0.1) { // 10% chance to log
+            console.log(`📊 Performance: FPS:${Math.round(avgFPS)} Animations:${metrics.totalAnimations} Memory:${metrics.memory.used}MB`);
+        }
 
         // Determine optimization level needed
         let newOptLevel = 0;
 
-        if (metrics.totalAnimations > 300 || metrics.activeAnimations > 150) {
+        // More aggressive thresholds
+        if (metrics.totalAnimations > 150 || metrics.activeAnimations > 75) {
             newOptLevel = 3; // Heavy optimization needed
-        } else if (metrics.totalAnimations > 200 || metrics.activeAnimations > 100) {
-            newOptLevel = 2; // Medium optimization
         } else if (metrics.totalAnimations > 100 || metrics.activeAnimations > 50) {
+            newOptLevel = 2; // Medium optimization
+        } else if (metrics.totalAnimations > 75 || metrics.activeAnimations > 30) {
             newOptLevel = 1; // Light optimization
         }
 
-        if (metrics.fps < 30) {
-            newOptLevel = Math.max(newOptLevel, 2); // At least medium if FPS is low
+        // FPS-based optimization with average
+        if (avgFPS < 30) {
+            newOptLevel = 3; // Critical - heavy optimization
+        } else if (avgFPS < 45) {
+            newOptLevel = Math.max(newOptLevel, 2); // At least medium
+        } else if (avgFPS < 55) {
+            newOptLevel = Math.max(newOptLevel, 1); // At least light
         }
 
         if (newOptLevel !== this.optimizationLevel) {
@@ -84,7 +100,7 @@ class PerformanceOptimizer {
     }
 
     cleanupAnimations() {
-        console.log('🧹 Cleaning up excessive animations...');
+        // Remove console log to reduce spam
 
         const timeline = gsap.globalTimeline;
         const children = timeline.getChildren();
@@ -142,7 +158,10 @@ class PerformanceOptimizer {
             }
         });
 
-        console.log(`🧹 Removed ${removed} animations`);
+        // Only log if significant cleanup happened
+        if (removed > 15) {
+            console.log(`🧹 Removed ${removed} animations`);
+        }
     }
 
     applyOptimization(level) {

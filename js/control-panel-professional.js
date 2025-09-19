@@ -8,6 +8,33 @@ class ProfessionalVJControlPanel {
         this.currentBPM = 120;
         this.lastMessageId = null;
 
+        // Dice roll system for matrix messages
+        this.diceRollInterval = null;
+        this.diceCountdown = 15;
+        this.lastDiceRoll = 0;
+        this.matrixMessages = [
+            "BREAK THE C0DE!",
+            "F0LL0W THE WH1TE RABB1T",
+            "WAKE UP NE0!",
+            "ESCAPE THE MATR1X",
+            "D1G DEEPER!",
+            "BREATHE 1N THE CHA0S",
+            "EMBRACE THE GL1TCH",
+            "DANCE W1TH THE V01D",
+            "RELEASE Y0UR M1ND",
+            "TRANSCEND THE GR1D",
+            "1N1T1ATE THE SH1FT",
+            "HACK REAL1TY N0W",
+            "UN10CK Y0UR P0TENT1AL",
+            "SURF THE DATA STREAM",
+            "R1DE THE QUANTUM WAVE",
+            "BREAK FREE FR0M THE L00P",
+            "CREATE Y0UR 0WN PATH",
+            "D0WNL0AD EN11GHTENMENT",
+            "EXPL0RE THE UNKN0WN",
+            "BEC0ME THE S1GNAL"
+        ]
+
         // Effect states
         this.effects = {
             holographic: { enabled: true, intensity: 50 },
@@ -40,7 +67,12 @@ class ProfessionalVJControlPanel {
         this.performance = {
             mode: 'auto',
             maxEffects: 5,
-            fpsTarget: 60
+            fpsTarget: 60,
+            fps: 0,
+            frameCount: 0,
+            lastFrameTime: performance.now(),
+            memory: 0,
+            domNodes: 0
         };
 
         this.init();
@@ -48,12 +80,15 @@ class ProfessionalVJControlPanel {
 
     init() {
         this.initBroadcastChannel();
-        this.createProfessionalUI();
+        // Don't replace the original HTML - just enhance it
+        // this.createProfessionalUI();
         this.initEventListeners();
         this.startConnectionMonitoring();
         this.startSystemMonitoring();
+        this.startDiceRollCountdown();
+        this.startPerformanceMonitoring();
 
-        console.log('🎛️ Professional VJ Control Panel initialized');
+        console.log('🎛️ Professional VJ Control Panel initialized with original HTML');
     }
 
     initBroadcastChannel() {
@@ -61,9 +96,21 @@ class ProfessionalVJControlPanel {
             this.channel = new BroadcastChannel('3886_vj_control');
             this.channel.onmessage = (event) => {
                 this.handleMainPageMessage(event.data);
+                // Treat pong/settings_sync as a live link signal over BC
+                if (event.data && (event.data.type === 'pong' || event.data.type === 'settings_sync')) {
+                    this.lastPingResponse = Date.now();
+                    if (!this.isConnected) {
+                        this.isConnected = true;
+                        this.updateConnectionStatus(true);
+                    }
+                }
             };
-            this.isConnected = true;
-            this.updateConnectionStatus();
+            // Do not flip to connected until pong/settings received
+            this.isConnected = false;
+            this.updateConnectionStatus(false);
+            // Proactively announce and ping
+            this.sendControlConnect();
+            this.sendPing();
         } catch (error) {
             console.warn('BroadcastChannel not supported, using localStorage');
             this.setupLocalStorageMonitoring();
@@ -71,19 +118,24 @@ class ProfessionalVJControlPanel {
     }
 
     setupLocalStorageMonitoring() {
-        // Poll for main page responses
-        setInterval(() => {
-            const response = localStorage.getItem('3886_vj_response');
-            if (response) {
-                try {
+        // Simplified polling to avoid infinite loops
+        const pollInterval = setInterval(() => {
+            try {
+                const response = localStorage.getItem('3886_vj_response');
+                if (response) {
                     const data = JSON.parse(response);
                     if (data._id && data._id !== this.lastResponseId) {
                         this.lastResponseId = data._id;
                         this.handleMainPageMessage(data);
                     }
-                } catch (e) {}
+                }
+            } catch (e) {
+                console.warn('LocalStorage polling error:', e);
             }
-        }, 100);
+        }, 10000); // Further reduced to 10 seconds to prevent issues
+
+        // Store interval ID for cleanup
+        this.pollInterval = pollInterval;
     }
 
     createProfessionalUI() {
@@ -1141,13 +1193,348 @@ class ProfessionalVJControlPanel {
                 timestamp: Date.now()
             });
         });
+
+        // === ADDITIONAL V1 CONTROL PANEL EVENT LISTENERS ===
+
+        // Speed/Tempo controls
+        const speedSlider = document.getElementById('speedSlider');
+        if (speedSlider) {
+            const updateSpeed = () => {
+                const value = parseInt(speedSlider.value);
+                const valueSpan = speedSlider.parentElement.querySelector('.slider-value');
+                if (valueSpan) valueSpan.textContent = value + '%';
+
+                this.sendMessage({
+                    type: 'speed_change',
+                    speed: value,
+                    timestamp: Date.now()
+                });
+            };
+            speedSlider.addEventListener('input', updateSpeed);
+            speedSlider.addEventListener('change', updateSpeed);
+        }
+
+        const phaseDurationSlider = document.getElementById('phaseDurationSlider');
+        if (phaseDurationSlider) {
+            const updatePhaseDuration = () => {
+                const value = parseInt(phaseDurationSlider.value);
+                const valueSpan = phaseDurationSlider.parentElement.querySelector('.slider-value');
+                if (valueSpan) valueSpan.textContent = value + 's';
+
+                this.sendMessage({
+                    type: 'phase_duration_change',
+                    duration: value,
+                    timestamp: Date.now()
+                });
+            };
+            phaseDurationSlider.addEventListener('input', updatePhaseDuration);
+            phaseDurationSlider.addEventListener('change', updatePhaseDuration);
+        }
+
+        // BPM Tap
+        document.getElementById('tapBPM')?.addEventListener('click', () => {
+            const now = Date.now();
+            if (this.lastTap && (now - this.lastTap) < 3000) {
+                const bpm = Math.round(60000 / (now - this.lastTap));
+                this.currentBPM = bpm;
+                const bpmDisplay = document.querySelector('.bpm-value');
+                if (bpmDisplay) bpmDisplay.textContent = bpm;
+
+                this.sendMessage({
+                    type: 'bpm_change',
+                    bpm: bpm,
+                    timestamp: now
+                });
+            }
+            this.lastTap = now;
+        });
+
+        // FX Intensity sliders (glitch, particles, noise)
+        ['glitch', 'particles', 'noise'].forEach(effect => {
+            const slider = document.getElementById(effect + 'Slider');
+            if (slider) {
+                const updateFX = () => {
+                    const value = parseInt(slider.value);
+                    const valueSpan = slider.parentElement.querySelector('.slider-value');
+                    if (valueSpan) valueSpan.textContent = value + '%';
+
+                    this.sendMessage({
+                        type: 'fx_intensity',
+                        effect: effect,
+                        intensity: value,
+                        timestamp: Date.now()
+                    });
+                };
+                slider.addEventListener('input', updateFX);
+                slider.addEventListener('change', updateFX);
+            }
+        });
+
+        // Trigger FX buttons
+        document.querySelectorAll('.trigger-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const effect = btn.dataset.effect;
+                this.sendMessage({
+                    type: 'trigger_effect',
+                    effect: effect,
+                    timestamp: Date.now()
+                });
+
+                // Visual feedback
+                btn.classList.add('active');
+                setTimeout(() => btn.classList.remove('active'), 500);
+            });
+        });
+
+        // Animation trigger buttons (data-anime)
+        document.querySelectorAll('.anim-trigger-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const anime = btn.dataset.anime;
+                console.log('Animation trigger clicked:', anime);
+
+                this.sendMessage({
+                    type: 'anime_trigger',
+                    effect: anime,
+                    id: anime,  // Also send as id for compatibility
+                    timestamp: Date.now()
+                });
+
+                // Visual feedback
+                btn.classList.add('active');
+                setTimeout(() => btn.classList.remove('active'), 500);
+
+                // Also trigger directly if on same page
+                if (window.vjReceiver && typeof window.vjReceiver.handleAnimeTrigger === 'function') {
+                    window.vjReceiver.handleAnimeTrigger(anime);
+                }
+            });
+        });
+
+        // Performance mode buttons (legacy)
+        document.querySelectorAll('.perf-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const mode = btn.dataset.mode;
+                document.querySelectorAll('.perf-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                this.performance.mode = mode;
+
+                const modeDisplay = document.getElementById('modeDisplay');
+                if (modeDisplay) modeDisplay.textContent = mode.toUpperCase();
+
+                this.sendMessage({
+                    type: 'performance_mode',
+                    mode: mode,
+                    timestamp: Date.now()
+                });
+            });
+        });
+
+        // Performance mode buttons (new header .mode-btn)
+        const modeBtns = document.querySelectorAll('.mode-btn');
+        if (modeBtns && modeBtns.length) {
+            modeBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const mode = btn.dataset.mode;
+                    document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    this.performance.mode = mode;
+                    this.sendMessage({ type: 'performance_mode', mode, timestamp: Date.now() });
+                });
+            });
+        }
+
+        // Color reset button
+        document.getElementById('resetColors')?.addEventListener('click', () => {
+            this.colorMatrix = { hue: 0, saturation: 100, brightness: 100, contrast: 100 };
+
+            // Reset all color sliders
+            ['hue', 'saturation', 'brightness', 'contrast'].forEach(prop => {
+                const slider = document.getElementById(prop + 'Slider');
+                if (slider) {
+                    slider.value = prop === 'hue' ? 0 : 100;
+                    const valueSpan = slider.parentElement.querySelector('.slider-value');
+                    if (valueSpan) {
+                        const unit = prop === 'hue' ? '°' : '%';
+                        valueSpan.textContent = slider.value + unit;
+                    }
+                }
+            });
+
+            this.sendMessage({
+                type: 'color_reset',
+                matrix: this.colorMatrix,
+                timestamp: Date.now()
+            });
+        });
+
+        // Anime kill button (different from emergency stop)
+        document.getElementById('animeKill')?.addEventListener('click', () => {
+            this.animeSystem.enabled = false;
+            this.updateAnimeSystemStatus();
+            this.sendMessage({
+                type: 'anime_kill_all',
+                timestamp: Date.now()
+            });
+        });
+
+        // === NEW EFFECT & LAYER CONTROLS ===
+
+        // Manual dice roll button (if exists)
+        document.getElementById('rollDiceNow')?.addEventListener('click', () => {
+            this.rollDice();
+            this.diceCountdown = 15; // Reset countdown after manual roll
+            this.updateDiceCountdownDisplay();
+        });
+
+        // Effect toggle buttons
+        document.querySelectorAll('.effect-toggle-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const effect = btn.dataset.effect;
+                const currentState = btn.dataset.state === 'on';
+                const newState = !currentState;
+
+                btn.dataset.state = newState ? 'on' : 'off';
+                btn.textContent = newState ? 'ON' : 'OFF';
+                btn.classList.toggle('active', newState);
+
+                this.sendMessage({
+                    type: 'effect_toggle',
+                    effect: effect,
+                    enabled: newState,
+                    timestamp: Date.now()
+                });
+
+                console.log(`Effect ${effect} toggled to ${newState ? 'ON' : 'OFF'}`);
+            });
+        });
+
+        // Layer toggle buttons
+        document.querySelectorAll('.layer-toggle-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const layer = btn.dataset.layer;
+                const currentState = btn.dataset.state === 'on';
+                const newState = !currentState;
+
+                btn.dataset.state = newState ? 'on' : 'off';
+                btn.textContent = newState ? 'ON' : 'OFF';
+                btn.classList.toggle('active', newState);
+
+                this.sendMessage({
+                    type: 'layer_toggle',
+                    layer: layer,
+                    visible: newState,
+                    timestamp: Date.now()
+                });
+
+                console.log(`Layer ${layer} toggled to ${newState ? 'VISIBLE' : 'HIDDEN'}`);
+            });
+        });
+
+        // Master control buttons
+        document.getElementById('toggleAllEffects')?.addEventListener('click', () => {
+            // Check if majority are on
+            const effectBtns = document.querySelectorAll('.effect-toggle-btn');
+            const onCount = Array.from(effectBtns).filter(b => b.dataset.state === 'on').length;
+            const newState = onCount < effectBtns.length / 2;
+
+            effectBtns.forEach(btn => {
+                btn.dataset.state = newState ? 'on' : 'off';
+                btn.textContent = newState ? 'ON' : 'OFF';
+                btn.classList.toggle('active', newState);
+
+                this.sendMessage({
+                    type: 'effect_toggle',
+                    effect: btn.dataset.effect,
+                    enabled: newState,
+                    timestamp: Date.now()
+                });
+            });
+
+            console.log(`All effects toggled to ${newState ? 'ON' : 'OFF'}`);
+        });
+
+        document.getElementById('toggleAllLayers')?.addEventListener('click', () => {
+            // Check if majority are on
+            const layerBtns = document.querySelectorAll('.layer-toggle-btn');
+            const onCount = Array.from(layerBtns).filter(b => b.dataset.state === 'on').length;
+            const newState = onCount < layerBtns.length / 2;
+
+            layerBtns.forEach(btn => {
+                btn.dataset.state = newState ? 'on' : 'off';
+                btn.textContent = newState ? 'ON' : 'OFF';
+                btn.classList.toggle('active', newState);
+
+                this.sendMessage({
+                    type: 'layer_toggle',
+                    layer: btn.dataset.layer,
+                    visible: newState,
+                    timestamp: Date.now()
+                });
+            });
+
+            console.log(`All layers toggled to ${newState ? 'VISIBLE' : 'HIDDEN'}`);
+        });
+
+        document.getElementById('resetVisuals')?.addEventListener('click', () => {
+            // Reset all effects to defaults
+            const defaultEffects = {
+                holographic: true,
+                dataStreams: true,
+                strobeCircles: false,
+                plasma: true,
+                particles: true,
+                noise: true,
+                cyberGrid: true,
+                rgbSplit: false,
+                chromatic: false,
+                scanlines: false,
+                vignette: true,
+                filmgrain: false
+            };
+
+            document.querySelectorAll('.effect-toggle-btn').forEach(btn => {
+                const effect = btn.dataset.effect;
+                const defaultState = defaultEffects[effect] !== false;
+
+                btn.dataset.state = defaultState ? 'on' : 'off';
+                btn.textContent = defaultState ? 'ON' : 'OFF';
+                btn.classList.toggle('active', defaultState);
+
+                this.sendMessage({
+                    type: 'effect_toggle',
+                    effect: effect,
+                    enabled: defaultState,
+                    timestamp: Date.now()
+                });
+            });
+
+            // Reset all layers to visible
+            document.querySelectorAll('.layer-toggle-btn').forEach(btn => {
+                const isDebug = btn.dataset.layer === 'debug';
+                const defaultState = !isDebug;
+
+                btn.dataset.state = defaultState ? 'on' : 'off';
+                btn.textContent = defaultState ? 'ON' : 'OFF';
+                btn.classList.toggle('active', defaultState);
+
+                this.sendMessage({
+                    type: 'layer_toggle',
+                    layer: btn.dataset.layer,
+                    visible: defaultState,
+                    timestamp: Date.now()
+                });
+            });
+
+            console.log('Visual settings reset to defaults');
+        });
     }
 
     updateAnimeSystemStatus() {
-        const statusElement = document.getElementById('animeSystemStatus');
+        // Update the status text in the original HTML
+        const statusElement = document.getElementById('animeStatus');
         if (statusElement) {
             statusElement.textContent = this.animeSystem.enabled ? 'ENABLED' : 'DISABLED';
-            statusElement.className = this.animeSystem.enabled ? 'status-indicator enabled' : 'status-indicator';
+            statusElement.className = this.animeSystem.enabled ? 'status-display enabled' : 'status-display';
         }
     }
 
@@ -1159,6 +1546,23 @@ class ProfessionalVJControlPanel {
                 statusSpan.textContent = this.animeSystem.logoOutlines ? 'ON' : 'OFF';
             }
         }
+    }
+
+    updateAutoSceneHighlight(scene) {
+        // Remove auto-active from all and clear stale 'active' from non-auto buttons
+        const buttons = document.querySelectorAll('.scene-btn');
+        buttons.forEach(btn => {
+            btn.classList.remove('auto-active');
+            if (btn.dataset.scene !== 'auto') {
+                btn.classList.remove('active');
+            }
+        });
+        // Highlight current scene for AUTO mode
+        const currentBtn = document.querySelector(`.scene-btn[data-scene="${scene}"]`);
+        if (currentBtn) currentBtn.classList.add('auto-active');
+        // Ensure AUTO button shows active state to indicate auto mode
+        const autoBtn = document.querySelector('.scene-btn[data-scene="auto"], .scene-auto');
+        if (autoBtn) autoBtn.classList.add('active');
     }
 
     resetAllControls() {
@@ -1241,7 +1645,29 @@ class ProfessionalVJControlPanel {
                 this.updatePerformanceDisplay(data);
                 break;
             case 'anime_status':
-                this.updateAnimeStatus(data);
+                this.updateAnimeSystemStatus();
+                break;
+            case 'pong':
+                this.lastPingResponse = Date.now();
+                if (!this.isConnected) {
+                    this.isConnected = true;
+                    this.updateConnectionStatus(true);
+                }
+                break;
+            case 'settings_sync':
+                this.lastPingResponse = Date.now();
+                if (!this.isConnected) {
+                    this.isConnected = true;
+                    this.updateConnectionStatus(true);
+                }
+                break;
+            case 'scene_changed': {
+                const scene = (data.scene || '').toLowerCase();
+                this.updateAutoSceneHighlight(scene);
+                break;
+            }
+            case 'performance_mode_updated':
+                // No-op UI acknowledgment for now
                 break;
         }
     }
@@ -1270,23 +1696,310 @@ class ProfessionalVJControlPanel {
     }
 
     updateConnectionStatus() {
-        const indicator = document.getElementById('connectionIndicator');
-        if (indicator) {
-            const statusText = indicator.querySelector('.status-text');
+        // Update connection container
+        const connectionContainer = document.getElementById('connectionStatus');
+        if (connectionContainer) {
+            const statusText = connectionContainer.querySelector('.status-text');
+            const statusDot = connectionContainer.querySelector('.status-dot');
+
             if (statusText) {
-                statusText.textContent = this.isConnected ? 'CONNECTED' : 'DISCONNECTED';
+                statusText.textContent = this.isConnected ? 'ONLINE' : 'OFFLINE';
+                statusText.className = this.isConnected ? 'status-text connected' : 'status-text disconnected';
+            }
+
+            if (statusDot) {
+                statusDot.className = this.isConnected ? 'status-dot connected' : 'status-dot';
+                statusDot.style.backgroundColor = this.isConnected ? '#00ff85' : '#ff4444';
+            }
+
+            // Update container classes for wave animation
+            if (this.isConnected) {
+                connectionContainer.classList.add('connected');
+            } else {
+                connectionContainer.classList.remove('connected');
             }
         }
     }
 
     startConnectionMonitoring() {
-        // Monitor connection to main page
-        setInterval(() => {
+        // Start as disconnected until we get a response
+        this.isConnected = false;
+        this.lastPingResponse = 0;
+        this.pingTimeout = 3000; // 3 seconds timeout
+        this.updateConnectionStatus();
+
+        // Send initial ping
+        this.sendPing();
+
+        // Monitor connection with ping/pong
+        this.connectionInterval = setInterval(() => {
+            // Check if last ping was answered
+            const timeSinceLastResponse = Date.now() - this.lastPingResponse;
+
+            if (timeSinceLastResponse > this.pingTimeout * 2) {
+                // No response for too long - mark as disconnected
+                if (this.isConnected) {
+                    this.isConnected = false;
+                    this.updateConnectionStatus();
+                    console.log('📡 Connection lost - no ping response');
+                }
+            }
+
+            // Send new ping
+            this.sendPing();
+        }, this.pingTimeout);
+
+        // Listen for pong responses
+        window.addEventListener('storage', (e) => {
+            if (e.key === '3886_vj_response') {
+                try {
+                    const data = JSON.parse(e.newValue);
+                    if (data.type === 'pong' || data.type === 'settings_sync') {
+                        this.lastPingResponse = Date.now();
+                        if (!this.isConnected) {
+                            this.isConnected = true;
+                            this.updateConnectionStatus(true);
+                            console.log('📡 Connection established');
+                        }
+                    }
+                } catch (err) {
+                    // Ignore parse errors
+                }
+            }
+        });
+
+        // Also check for window focus/blur events
+        window.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                // Tab is hidden, but don't immediately disconnect
+                console.log('📡 Control panel tab hidden');
+            } else {
+                // Tab is visible again, send ping
+                console.log('📡 Control panel tab visible');
+                this.sendPing();
+            }
+        });
+    }
+
+    sendPing() {
+        this.sendMessage({
+            type: 'ping',
+            timestamp: Date.now()
+        });
+    }
+
+    sendControlConnect() {
+        this.sendMessage({
+            type: 'control_connect',
+            timestamp: Date.now()
+        });
+    }
+
+    startDiceRollCountdown() {
+        // Initialize countdown display
+        this.updateDiceCountdownDisplay();
+        // Initialize last roll display
+        this.updateLastDiceRollDisplay();
+
+        // Start the countdown timer
+        this.diceRollInterval = setInterval(() => {
+            this.diceCountdown--;
+
+            if (this.diceCountdown <= 0) {
+                // Roll the dice!
+                this.rollDice();
+                // Reset countdown
+                this.diceCountdown = 15;
+            }
+
+            this.updateDiceCountdownDisplay();
+        }, 1000); // Update every second
+    }
+
+    // Test method to force a high roll (for testing message display)
+    testHighRoll() {
+        // Force a roll of 95 for testing
+        this.lastDiceRoll = 95;
+        this.updateLastDiceRollDisplay();
+
+        // Trigger message display
+        const randomMessage = this.matrixMessages[Math.floor(Math.random() * this.matrixMessages.length)];
+        const lastMsgElement = document.getElementById('lastMatrixMessage');
+        if (lastMsgElement) {
+            lastMsgElement.textContent = randomMessage;
+            lastMsgElement.style.color = '#00ff85';
+            lastMsgElement.classList.add('triggered');
+            setTimeout(() => {
+                lastMsgElement.style.color = '';
+                lastMsgElement.classList.remove('triggered');
+            }, 3000);
+        }
+
+        console.log('🎲 Test high roll triggered:', randomMessage);
+    }
+
+    rollDice() {
+        // Roll a single dice 1-100
+        const roll = Math.floor(Math.random() * 100) + 1;
+        this.lastDiceRoll = roll;
+
+        // Update the display
+        this.updateLastDiceRollDisplay();
+
+        // Check if we should trigger a matrix message (>=90)
+        if (roll >= 90) {
+            // Pick a random matrix message
+            const randomMessage = this.matrixMessages[Math.floor(Math.random() * this.matrixMessages.length)];
+
+            // Update the last message display in the header
+            const lastMsgElement = document.getElementById('lastMatrixMessage');
+            if (lastMsgElement) {
+                lastMsgElement.textContent = randomMessage;
+                lastMsgElement.style.color = '#00ff85'; // Green for success
+                lastMsgElement.classList.add('triggered');
+                // Reset color after a moment
+                setTimeout(() => {
+                    lastMsgElement.style.color = '#ff00ff';
+                    lastMsgElement.classList.remove('triggered');
+                }, 3000);
+            }
+
+            // Send matrix message to main page
             this.sendMessage({
-                type: 'ping',
+                type: 'matrix_message',
+                message: randomMessage,
+                roll: roll,
                 timestamp: Date.now()
             });
-        }, 5000);
+
+            console.log(`🎲 Matrix roll ${roll}/100 - TRIGGERED! Message: "${randomMessage}"`);
+        } else {
+            console.log(`🎲 Matrix roll: ${roll}/100 (no trigger)`);
+        }
+    }
+
+    updateDiceCountdownDisplay() {
+        const countdownEl = document.getElementById('diceCountdown');
+        if (countdownEl) {
+            countdownEl.textContent = this.diceCountdown;
+
+            // Add urgency styling for low countdown
+            if (this.diceCountdown <= 3) {
+                countdownEl.style.color = '#ff0041'; // Red for urgency
+                countdownEl.style.fontWeight = 'bold';
+            } else if (this.diceCountdown <= 5) {
+                countdownEl.style.color = '#ffaa00'; // Orange for warning
+                countdownEl.style.fontWeight = 'bold';
+            } else {
+                countdownEl.style.color = '#ff00ff'; // Magenta for normal
+                countdownEl.style.fontWeight = 'bold';
+            }
+        }
+
+        // Update countdown SVG circle animation
+        const countdownCircle = document.getElementById('countdownCircle');
+        if (countdownCircle) {
+            // Calculate stroke-dashoffset based on countdown (0-15 seconds)
+            const circumference = 176; // 2 * PI * 28 (radius)
+            const progress = (15 - this.diceCountdown) / 15;
+            const offset = circumference * (1 - progress);
+            countdownCircle.style.strokeDashoffset = offset;
+
+            // Change color based on countdown
+            if (this.diceCountdown <= 3) {
+                countdownCircle.style.stroke = '#ff0041';
+            } else if (this.diceCountdown <= 5) {
+                countdownCircle.style.stroke = '#ffaa00';
+            } else {
+                countdownCircle.style.stroke = '#00ff85';
+            }
+        }
+
+        // Update performance metric bars
+        this.updatePerformanceBars();
+    }
+
+    updatePerformanceBars() {
+        // Update FPS bar
+        const fpsBar = document.querySelector('.fps-bar');
+        if (fpsBar) {
+            const fps = parseInt(document.getElementById('fpsCounter')?.textContent) || 0;
+            const fpsPercent = Math.min((fps / 60) * 100, 100);
+            fpsBar.style.width = fpsPercent + '%';
+
+            // Color coding
+            if (fps < 30) {
+                fpsBar.style.background = 'linear-gradient(90deg, #ff4444, #ff6666)';
+            } else if (fps < 50) {
+                fpsBar.style.background = 'linear-gradient(90deg, #ffaa00, #ffcc00)';
+            } else {
+                fpsBar.style.background = 'linear-gradient(90deg, #00ff85, #00ffcc)';
+            }
+        }
+
+        // Update Memory bar
+        const memBar = document.querySelector('.mem-bar');
+        if (memBar && window.performanceStatsController) {
+            const memPercent = window.performanceStatsController.memory.percent || 0;
+            memBar.style.width = memPercent + '%';
+
+            // Color coding
+            if (memPercent > 80) {
+                memBar.style.background = 'linear-gradient(90deg, #ff4444, #ff6666)';
+            } else if (memPercent > 60) {
+                memBar.style.background = 'linear-gradient(90deg, #ffaa00, #ffcc00)';
+            } else {
+                memBar.style.background = 'linear-gradient(90deg, #00ff85, #00ffcc)';
+            }
+        }
+
+        // Update DOM bar
+        const domBar = document.querySelector('.dom-bar');
+        if (domBar && window.performanceStatsController) {
+            const domNodes = window.performanceStatsController.domNodes || 0;
+            const domPercent = Math.min((domNodes / 10000) * 100, 100);
+            domBar.style.width = domPercent + '%';
+
+            // Color coding
+            if (domNodes > 5000) {
+                domBar.style.background = 'linear-gradient(90deg, #ff4444, #ff6666)';
+            } else if (domNodes > 3000) {
+                domBar.style.background = 'linear-gradient(90deg, #ffaa00, #ffcc00)';
+            } else {
+                domBar.style.background = 'linear-gradient(90deg, #00ff85, #00ffcc)';
+            }
+        }
+
+        // Update FX bar
+        const fxBar = document.querySelector('.fx-bar');
+        if (fxBar) {
+            const activeEffects = parseInt(document.getElementById('activeEffects')?.textContent) || 0;
+            const fxPercent = Math.min((activeEffects / 10) * 100, 100);
+            fxBar.style.width = fxPercent + '%';
+        }
+    }
+
+    updateLastDiceRollDisplay() {
+        const lastRollEl = document.getElementById('lastDiceRoll');
+        if (lastRollEl) {
+            const roll = this.lastDiceRoll;
+            const triggered = roll > 90;
+
+            // Simple display showing roll value and trigger status
+            lastRollEl.textContent = `${roll}/100 ${triggered ? '✓' : ''}`;
+
+            // Update color based on trigger
+            lastRollEl.style.color = triggered ? '#00ff41' : '#666';
+            lastRollEl.style.fontWeight = triggered ? 'bold' : 'normal';
+
+            // Add pulse animation if triggered
+            if (triggered) {
+                lastRollEl.style.animation = 'none';
+                setTimeout(() => {
+                    lastRollEl.style.animation = 'pulse 0.5s ease';
+                }, 10);
+            }
+        }
     }
 
     startSystemMonitoring() {
@@ -1302,15 +2015,99 @@ class ProfessionalVJControlPanel {
             if (uptimeElement) {
                 uptimeElement.textContent = `${hours}:${minutes}:${seconds}`;
             }
-        }, 1000);
 
-        // Request performance stats periodically
+            // Update system status
+            const systemStatus = document.getElementById('systemStatus');
+            if (systemStatus) {
+                systemStatus.textContent = this.isConnected ? 'ONLINE' : 'STANDBY';
+                systemStatus.style.color = this.isConnected ? '#00ff85' : '#ffaa00';
+            }
+        }, 1000);
+    }
+
+    startPerformanceMonitoring() {
+        // Use rate-limited FPS monitoring
+        let frameTimes = [];
+        let lastTime = performance.now();
+        let lastUpdateTime = 0;
+        const updateInterval = 500; // Update every 500ms
+
+        const measureFPS = (currentTime) => {
+            const deltaTime = currentTime - lastTime;
+            lastTime = currentTime;
+
+            // Store frame times for averaging
+            frameTimes.push(deltaTime);
+            if (frameTimes.length > 60) {
+                frameTimes.shift();
+            }
+
+            // Update display at limited rate
+            if (currentTime - lastUpdateTime > updateInterval) {
+                const avgFrameTime = frameTimes.reduce((a, b) => a + b, 0) / frameTimes.length;
+                const fps = Math.round(1000 / avgFrameTime);
+                this.performance.fps = fps;
+
+                const fpsElement = document.getElementById('fpsCounter');
+                if (fpsElement) {
+                    fpsElement.textContent = fps;
+
+                    // Update color based on performance
+                    fpsElement.classList.remove('warning', 'danger');
+                    if (fps < 30) {
+                        fpsElement.classList.add('danger');
+                    } else if (fps < 50) {
+                        fpsElement.classList.add('warning');
+                    }
+                }
+
+                lastUpdateTime = currentTime;
+            }
+
+            requestAnimationFrame(measureFPS);
+        };
+        requestAnimationFrame(measureFPS);
+
+        // Memory and DOM monitoring
         setInterval(() => {
+            // Memory usage (if available)
+            if (performance.memory) {
+                const memUsed = performance.memory.usedJSHeapSize / (1024 * 1024);
+                this.performance.memory = Math.round(memUsed);
+
+                const memElement = document.getElementById('memoryUsage');
+                if (memElement) {
+                    memElement.textContent = this.performance.memory;
+                }
+            }
+
+            // DOM node count
+            this.performance.domNodes = document.querySelectorAll('*').length;
+            const domElement = document.getElementById('domNodes');
+            if (domElement) {
+                domElement.textContent = this.performance.domNodes;
+            }
+
+            // Count active effects
+            let activeCount = 0;
+            for (let effect in this.effects) {
+                if (this.effects[effect].enabled) activeCount++;
+            }
+            const effectsElement = document.getElementById('activeEffects');
+            if (effectsElement) {
+                effectsElement.textContent = activeCount;
+            }
+
+            // Send performance data to main page
             this.sendMessage({
-                type: 'get_performance_stats',
+                type: 'performance_stats',
+                fps: this.performance.fps,
+                memory: this.performance.memory,
+                domNodes: this.performance.domNodes,
+                activeEffects: activeCount,
                 timestamp: Date.now()
             });
-        }, 2000);
+        }, 2000); // Update every 2 seconds
     }
 }
 
