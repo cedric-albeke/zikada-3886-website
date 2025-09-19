@@ -38,14 +38,14 @@ class AnimationManager {
                 cleanup: true
             },
             'matrix-flash': {
-                target: '.matrix-rain, .chaos-matrix',
+                target: '.matrix-rain, .chaos-matrix, #data-streams-overlay, .data-streams',
                 type: 'opacity',
                 duration: 200,
                 opacitySequence: [1, 0, 1, 0, 1],
                 cleanup: true
             },
             'matrix-rain': {
-                target: '.matrix-rain, .chaos-matrix',
+                target: '.matrix-rain, .chaos-matrix, #data-streams-overlay, .data-streams',
                 type: 'composite',
                 duration: 2000,
                 effects: ['opacity', 'scale'],
@@ -54,7 +54,7 @@ class AnimationManager {
                 cleanup: true
             },
             'matrix-glitch': {
-                target: '.matrix-rain, .chaos-matrix',
+                target: '.matrix-rain, .chaos-matrix, #data-streams-overlay, .data-streams',
                 type: 'glitch',
                 duration: 1000,
                 cleanup: true
@@ -86,14 +86,14 @@ class AnimationManager {
                 resetAfter: true,
                 preserveTransform: true
             },
-            'text-scramble': {
-                target: '.text-26, .text-25, h1, h2, h3',
+'text-scramble': {
+                target: '.text-26, .text-25, .text-3886, .logo-text, h1, h2, h3',
                 type: 'scramble',
                 duration: 2000,
                 cleanup: false
             },
             'text-wave': {
-                target: '.text-26, .text-25',
+                target: '.text-26, .text-25, .text-3886',
                 type: 'wave',
                 duration: 2000,
                 amplitude: 20,

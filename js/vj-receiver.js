@@ -15,6 +15,10 @@ class VJReceiver {
     constructor() {
         this.channel = null;
         this.isConnected = false;
+        // Ripple feature flags
+        this.bpmRippleEnabled = false;
+        this.bpmRippleInterval = null;
+        this.clickRippleEnabled = true;
         this.currentSettings = {
             colors: {
                 hue: 0,
@@ -53,6 +57,9 @@ class VJReceiver {
 
         // Hook into existing chaos system
         this.hookIntoChaosEngine();
+
+        // Enable click/touch ripple (centered on pointer) if allowed
+        this.setupClickRipple();
     }
 
     initBroadcastChannel() {
@@ -575,6 +582,9 @@ class VJReceiver {
                 ease: 'sine.inOut'
             });
         }
+
+        // Restart BPM ripple if enabled
+        this.setupBpmRippleTimer();
     }
 
     updateEffectIntensity(effect, value) {
@@ -776,6 +786,40 @@ class VJReceiver {
         this.triggerRipple();
     }
 
+    // Public: enable/disable ripple on BPM
+    setBpmRippleEnabled(enabled) {
+        this.bpmRippleEnabled = !!enabled;
+        this.setupBpmRippleTimer();
+    }
+
+    setupBpmRippleTimer() {
+        if (this.bpmRippleInterval) {
+            clearInterval(this.bpmRippleInterval);
+            this.bpmRippleInterval = null;
+        }
+        if (!this.bpmRippleEnabled) return;
+        const bpm = this.currentSettings.bpm || 120;
+        const period = Math.max(200, Math.floor(60000 / bpm));
+        this.bpmRippleInterval = setInterval(() => {
+            // Center ripple on each beat
+            this.triggerRipple();
+        }, period);
+    }
+
+    setupClickRipple() {
+        if (!this.clickRippleEnabled) return;
+        const handler = (ev) => {
+            try {
+                const x = (ev.touches && ev.touches[0]?.clientX) || ev.clientX || (window.innerWidth / 2);
+                const y = (ev.touches && ev.touches[0]?.clientY) || ev.clientY || (window.innerHeight / 2);
+                this.triggerRippleAt(x, y);
+            } catch (_) {}
+        };
+        window.addEventListener('click', handler);
+        window.addEventListener('touchstart', handler, { passive: true });
+        this._clickRippleHandler = handler;
+    }
+
     triggerRipple() {
         // Get FX intensities
         const mult = window.fxController ? window.fxController.globalMult : 1;
@@ -803,13 +847,25 @@ class VJReceiver {
 
         const cx = window.innerWidth / 2;
         const cy = window.innerHeight / 2;
+        this.triggerRippleAt(cx, cy);
+    }
+
+    triggerRippleAt(x, y) {
+        const mult = window.fxController ? window.fxController.globalMult : 1;
+        const particlesI = window.fxController ? window.fxController.getIntensity('particles') : 0.5;
+
+        let svg = document.getElementById('vj-ripple-svg');
+        if (!svg) return; // safety
+
+        const cx = Math.max(0, Math.min(window.innerWidth, x));
+        const cy = Math.max(0, Math.min(window.innerHeight, y));
 
         const rippleCount = Math.max(2, Math.round(3 + 2 * particlesI * mult));
         const colors = [
-            '#00ffff', // cyan
-            '#00ff85', // green
-            '#ff00ff', // magenta
-            '#ffff00'  // yellow
+            '#00ffff',
+            '#00ff85',
+            '#ff00ff',
+            '#ffff00'
         ];
 
         const maxRadius = Math.sqrt(window.innerWidth * window.innerWidth + window.innerHeight * window.innerHeight) * 0.5;
@@ -841,6 +897,9 @@ class VJReceiver {
                     ease: 'power2.out',
                     onComplete: () => circle.remove()
                 });
+
+                // Synchronized glow pulse on logo
+                this.logoGlowPulse();
             }, i * 120);
         }
     }
@@ -859,6 +918,21 @@ class VJReceiver {
     triggerMatrixRain() {
         // REPLACED: Digital wave effect instead of matrix rain
         this.triggerDigitalWave();
+    }
+
+    logoGlowPulse() {
+        const targets = document.querySelectorAll('.image-2, .logo-text-wrapper');
+        if (!targets.length) return;
+        gsap.fromTo(targets, {
+            filter: 'drop-shadow(0 0 0px rgba(0,255,133,0))'
+        }, {
+            filter: 'drop-shadow(0 0 20px rgba(0,255,133,0.9)) drop-shadow(0 0 40px rgba(0,255,133,0.6))',
+            duration: 0.2,
+            yoyo: true,
+            repeat: 1,
+            clearProps: 'filter',
+            ease: 'power1.out'
+        });
     }
 
     triggerDigitalWave() {

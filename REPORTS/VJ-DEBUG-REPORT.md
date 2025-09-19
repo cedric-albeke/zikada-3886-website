@@ -90,10 +90,15 @@ Timing / Performance
   - Main now sends scene_changed on each AUTO switch; panel highlights active scene via auto-active class
   - Panel highlight refined: removes stale 'active' on non-AUTO, keeps AUTO button active, applies auto-active to current scene
   - Fix: Implemented fxController.registerEffect to support anime-enhanced-effects plasma registration
-- 2025-09-19: M3 prep
+- 2025-09-19: M3 complete
   - Ripple alias supported ("ripple" routes to triggerRipple)
-  - Ripple z-index increased to render above overlays (below blackout)
-  - Additional styling for visibility (blend mode, glow)
+  - Switched to SVG rings for anti-aliased ripple; added logo glow pulse
+  - Ripple layered below blackout (full blackout preserved)
+  - Click/touch ripple (pointer-centered) enabled; optional BPM ripple toggle in code (disabled by default)
+- 2025-09-19: M4 started
+  - Animation triggers broadened:
+    - Matrix targets include #data-streams-overlay, .data-streams
+    - Text targets include .text-3886 and .logo-text where applicable
 
 ## Checklist (will be updated)
 - [ ] M1: Connection UI fixed; perf modes wired; transport logs OK
