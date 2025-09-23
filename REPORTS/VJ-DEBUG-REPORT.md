@@ -111,3 +111,53 @@ Timing / Performance
 - [ ] M5: Effects/Layers unified toggles
 - [ ] M6: Speed timeScale fix; adaptive DPR; particle gating
 - [ ] M7: QA 1–6 completed; ~60 FPS target validated
+
+## Status Update — 2025-09-23 18:44 UTC
+
+### Current Status
+- M1 Transport/Control Panel wiring: Completed.
+  - Connection UI mapped to `#connectionStatus`/`#systemStatus`; BroadcastChannel + localStorage fallback verified in code.
+  - Performance modes bound to `.mode-btn` and messages are sent appropriately.
+- M2 AUTO Mode: In progress.
+  - Phase Duration now drives cadence via `vj-receiver` → `chaos-init` (seconds→ms). AUTO sends `scene_changed` back to panel.
+  - Panel highlight behavior implemented (AUTO button + active scene). Needs in-browser verification for highlight + manual-cancel behavior.
+- M3 Ripple FX: Completed.
+  - Alias "ripple" supported; SVG ring implementation with anti-aliasing, pointer-centered ripple, optional BPM pulses.
+  - Layered beneath blackout overlay; synchronized logo glow pulse implemented.
+- M4 Animation Triggers: Partially completed.
+  - Broadened selectors (text/logo/data streams, etc.).
+  - Added Diagnostics Runner in main + diagnostics UI in control panel. Pending: run and capture report in this doc.
+- M5 Visual Effects & Layers: Preparation done.
+  - Unified/tolerant layer map drafted in `vj-receiver` for overlay ID differences (e.g., `#vignette-overlay` vs `#vignette-effect`). Implementation/QA next.
+- M6 Performance/Stability: Pending.
+  - timeScale percent mapping fix and adaptive DPR/particle gating still to implement.
+- M7 QA/Validation: Not started.
+
+### Tasks Left (Actionable)
+- [ ] Run Animation Trigger Diagnostics and paste summary results (success/fail per trigger) into this report.
+- [ ] M5: Implement unified/tolerant layer toggles. Verify visibility for: background, matrix rain, logo layer, text elements, overlays (vignette, film grain, scanlines), particles, debug HUD.
+- [ ] Fix Time Scale mapping: set GSAP global `timeScale = percent/100` with clamping (e.g., 0.25–2.0). Audit any per-timeline overrides.
+- [ ] Adaptive DPR: monitor FPS and reduce device pixel ratio or effect resolution when FPS < threshold; restore when FPS recovers.
+- [ ] Particle/Heavy FX gating: gracefully disable expensive effects (particles, complex post FX) at low FPS; re-enable when stable.
+- [ ] Confirm AUTO scene UI behavior: ensure AUTO stays active while cycling; manual scene select cancels AUTO and clears highlight state.
+- [ ] Verify RIPPLE z-index across all overlays; ensure visibility beneath blackout; no pointer-event interference.
+- [ ] Persist BPM ripple toggle (settings_sync). Ensure idempotent setup/teardown for timers and DOM containers.
+- [ ] Add non-blocking warnings when selectors resolve 0 targets; ensure fallbacks (e.g., body-level effects) where sensible.
+- [ ] Update README/docs: BPM ripple usage, Diagnostics Runner workflow, and expanded animation trigger coverage.
+- [ ] Final QA pass: capture FPS/memory snapshots before/after; record short demo video for regression archive.
+
+### Notes & Useful Insights
+- Transport: `BroadcastChannel('3886_vj_control')` with localStorage fallback is solid. Treating `settings_sync` as an alive signal improves reliability.
+- Ripple Strategy: SVG circles with animated stroke provide crisp rings versus DIV borders; minimal perf impact. Keep container fixed and non-clipping; check HDPI scaling.
+- Layering: Keep ripple below blackout for intentional full blackouts; audit `z-index` stacks and ensure no `overflow: hidden` clipping in ancestors.
+- Selector Coverage: Expanded to `.logo-text`, `.text-3886`, `#data-streams-overlay`, plus generic headings where present. Log warnings for missing targets; fallback to page-level effects when appropriate.
+- Effects/Layers Unification: Tolerant querying (try multiple IDs/selectors) prevents silent no-ops across differing overlay implementations.
+- Performance: Fixing timeScale units is critical—percent values (e.g., 120) must map to 1.2, not 120x. Add clamps and reflect percent in UI.
+- Diagnostics: The runner provides quick coverage verification and a repeatable test harness. Consider console/table output in addition to UI summary.
+- Stability: Ensure cleanup paths are idempotent (ripple containers, timers, observers) to avoid leaks on repeated toggles.
+
+### Next Actions (Short)
+1) Execute Diagnostics Runner and add the results here.
+2) Implement M5 unified layer toggles and test visually.
+3) Apply timeScale mapping fix and add adaptive performance gates.
+4) Quick QA round (2 tabs, same origin) to validate AUTO highlight + ripple visibility.

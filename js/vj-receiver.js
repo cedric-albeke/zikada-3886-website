@@ -385,6 +385,10 @@ class VJReceiver {
                 this.sendDetailedPerformanceData();
                 break;
 
+            case 'run_animation_diagnostics':
+                this.runAnimationDiagnostics();
+                break;
+
             case 'sequence_event':
                 this.handleSequenceEvent(data);
                 break;
@@ -2099,6 +2103,63 @@ class VJReceiver {
         console.log('✅ FULL SYSTEM RESTART COMPLETED - All systems recreated like F5 refresh!');
     }
 
+    async runAnimationDiagnostics() {
+        const animTriggers = [
+            'logo-pulse', 'logo-spin', 'logo-glow',
+            'matrix-flash', 'matrix-rain', 'matrix-glitch',
+            'bg-warp', 'bg-shake', 'bg-zoom',
+            'text-scramble', 'text-wave'
+        ];
+        const effectTriggers = ['strobe', 'blackout', 'whiteout', 'rgbsplit', 'pulse', 'matrix-rain'];
+
+        const targetMap = {
+            'logo-pulse': '.image-2, .logo-text-wrapper',
+            'logo-spin': '.image-2, .logo-text-wrapper',
+            'logo-glow': '.image-2, .logo-text-wrapper',
+            'matrix-flash': '.matrix-rain, .chaos-matrix',
+            'matrix-rain': '.matrix-rain, .chaos-matrix',
+            'matrix-glitch': '.matrix-rain, .chaos-matrix',
+            'bg-warp': 'body',
+            'bg-shake': 'body',
+            'bg-zoom': 'body',
+            'text-scramble': '.text-26, .text-25, h1, h2, h3',
+            'text-wave': '.text-26, .text-25'
+        };
+
+        const successes = [];
+        const failures = [];
+
+        for (const id of animTriggers) {
+            try {
+                const selector = targetMap[id] || 'body';
+                const exists = !!document.querySelector(selector);
+                // Fire trigger regardless — we still want to exercise the pipeline
+                this.handleAnimeTrigger(id);
+                if (exists) {
+                    successes.push(id);
+                } else {
+                    failures.push(`${id} (missing target: ${selector})`);
+                }
+                await new Promise(r => setTimeout(r, 200));
+            } catch (e) {
+                failures.push(`${id} (error: ${e?.message || 'unknown'})`);
+            }
+        }
+
+        // Test effect triggers
+        for (const eff of effectTriggers) {
+            try {
+                this.triggerEffect(eff);
+                successes.push(`fx:${eff}`);
+                await new Promise(r => setTimeout(r, 200));
+            } catch (e) {
+                failures.push(`fx:${eff} (error: ${e?.message || 'unknown'})`);
+            }
+        }
+
+        this.sendMessage({ type: 'diagnostics_report', category: 'animations', successes, failures, timestamp: Date.now() });
+    }
+
     handleSequenceEvent(data) {
         // Replay recorded events
         switch(data.originalType) {
@@ -2347,7 +2408,7 @@ class VJReceiver {
             'text': '.text-3886, .logo-text, .scramble-text, .heading-20, .enter-button-wrapper, h1, h2, h3, p',
 
             // Overlay effects - vignette, noise, scanlines
-            'overlay': '#vignette-effect, #scanlines-effect, #digital-noise-effect, #film-grain-effect, #chromatic-aberration, .chaos-overlay',
+'overlay': '#vignette-effect, #vignette-overlay, #scanlines-effect, #scanlines-overlay, #digital-noise-effect, #grain-overlay, #film-grain-effect, #chromatic-aberration, .chaos-overlay',
 
             // Debug and performance info
             'debug': '.debug-overlay, .debug-info, .performance-monitor, #performanceMonitor',

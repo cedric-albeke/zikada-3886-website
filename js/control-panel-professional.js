@@ -1358,6 +1358,13 @@ class ProfessionalVJControlPanel {
             });
         }
 
+        // Diagnostics
+        document.getElementById('runAnimDiagnostics')?.addEventListener('click', () => {
+            this.sendMessage({ type: 'run_animation_diagnostics', timestamp: Date.now() });
+            const res = document.getElementById('animDiagnosticsResult');
+            if (res) res.textContent = 'Running diagnostics...';
+        });
+
         // Color reset button
         document.getElementById('resetColors')?.addEventListener('click', () => {
             this.colorMatrix = { hue: 0, saturation: 100, brightness: 100, contrast: 100 };
@@ -1684,6 +1691,16 @@ class ProfessionalVJControlPanel {
             case 'performance_mode_updated':
                 // No-op UI acknowledgment for now
                 break;
+            case 'diagnostics_report': {
+                const res = document.getElementById('animDiagnosticsResult');
+                if (res) {
+                    const ok = data.successes?.length || 0;
+                    const fail = data.failures?.length || 0;
+                    res.textContent = `Diagnostics: ${ok} ok, ${fail} failed`;
+                }
+                console.log('Diagnostics report:', data);
+                break;
+            }
         }
     }
 
