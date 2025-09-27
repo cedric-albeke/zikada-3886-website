@@ -1,3 +1,24 @@
+/**
+ * CONTROL PANEL LAYOUT - PRIORITY SYSTEM
+ * ========================================
+ * This control panel uses CSS Grid with explicit areas for priority-based layout:
+ * 
+ * PANEL PRIORITIES:
+ * 1. TRIGGER FX (Primary) - Takes up 50% of the main grid space, most prominent
+ * 2. VISUAL EFFECTS & LAYERS (Secondary) - 25% of space, important but secondary
+ * 3. ANIMATION SYSTEM (Secondary) - 25% of space, equal priority with Visual Effects
+ * 4. SCENE SELECT (Minimal) - Bottom row, minimal height, can be collapsed
+ * 
+ * HEADER CHANGES:
+ * - Merged Performance Metrics, Kill/Reset/Reload buttons, and L/A/H modes into unified section
+ * - Removed BPM Ripple button (not needed)
+ * - Reorganized LINK.STATUS for better clarity
+ * 
+ * HOVER RULES (per WARP.md):
+ * - NO translateX/translateY animations on hover
+ * - Only use: color changes, box-shadow, subtle scale (max 1.02), opacity
+ */
+
 * {
     margin: 0;
     padding: 0;
@@ -16,6 +37,8 @@
     --radius: 8px;
     --panel-bg: rgba(0, 0, 0, 0.9);
     --panel-border: rgba(0, 255, 133, 0.3);
+    --cp-gap: 16px;
+    --cp-panel-radius: 8px;
 }
 
 body {
@@ -77,6 +100,13 @@ body {
     min-height: 160px;
     align-items: stretch;
     width: 100%;
+    flex-wrap: wrap;
+}
+
+@media (min-width: 1280px) {
+    .matrix-header {
+        flex-wrap: nowrap;
+    }
 }
 
 /* Matrix decorative elements */
@@ -171,6 +201,224 @@ body {
 
 .matrix-controls {
     flex: 1.1;
+}
+
+/* NEW Unified System Controls Styles */
+.cp-system-controls {
+    display: flex;
+    align-items: stretch;
+    gap: var(--space-4);
+    width: 100%;
+    padding: var(--space-2);
+    background: rgba(0, 0, 0, 0.6);
+    border: 1px solid rgba(0, 255, 133, 0.2);
+    border-radius: 4px;
+    min-height: 120px;
+    flex: 2;
+}
+
+.cp-system-controls .cp-metrics {
+    flex: 1.5;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+}
+
+.cp-system-controls .cp-modes {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+    gap: var(--space-2);
+    padding: 0 var(--space-2);
+}
+
+.cp-system-controls .cp-actions {
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-end;
+    align-items: center;
+    gap: var(--space-2);
+    flex: 1;
+}
+
+/* Style mode buttons */
+.cp-modes .mode-btn {
+    padding: 6px 12px;
+    background: rgba(0, 255, 133, 0.1);
+    border: 1px solid rgba(0, 255, 133, 0.3);
+    color: rgba(0, 255, 133, 0.6);
+    font-size: 10px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s;
+    border-radius: 3px;
+}
+
+.cp-modes .mode-btn:hover {
+    background: rgba(0, 255, 133, 0.2);
+    border-color: #00ff85;
+    color: #00ff85;
+    transform: scale(1.02);
+}
+
+.cp-modes .mode-btn.active {
+    background: rgba(0, 255, 133, 0.3);
+    border-color: #00ff85;
+    color: #00ff85;
+    box-shadow: 0 0 10px rgba(0, 255, 133, 0.5);
+}
+
+/* Style control action buttons */
+.cp-actions .matrix-control-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: 8px 12px;
+    background: linear-gradient(135deg, rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.5));
+    border: 1px solid rgba(0, 255, 133, 0.3);
+    color: #00ff85;
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    font-weight: bold;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: all 0.2s;
+    text-transform: uppercase;
+    min-width: 70px;
+}
+
+.cp-actions .matrix-control-btn:hover {
+    background: linear-gradient(135deg, rgba(0, 255, 133, 0.2), rgba(0, 255, 133, 0.1));
+    border-color: #00ff85;
+    box-shadow: 0 0 15px rgba(0, 255, 133, 0.3);
+    transform: scale(1.02);
+}
+
+.cp-actions .kill-btn {
+    border-color: #ff4444;
+    color: #ff4444;
+}
+
+.cp-actions .kill-btn:hover {
+    background: linear-gradient(135deg, rgba(255, 68, 68, 0.2), rgba(255, 68, 68, 0.1));
+    border-color: #ff6666;
+    box-shadow: 0 0 15px rgba(255, 68, 68, 0.5);
+}
+
+.cp-actions .reset-btn {
+    border-color: #ffaa00;
+    color: #ffaa00;
+}
+
+.cp-actions .reset-btn:hover {
+    background: linear-gradient(135deg, rgba(255, 170, 0, 0.2), rgba(255, 170, 0, 0.1));
+    border-color: #ffcc00;
+    box-shadow: 0 0 15px rgba(255, 170, 0, 0.5);
+}
+
+.cp-actions .reload-btn {
+    border-color: #00aaff;
+    color: #00aaff;
+}
+
+.cp-actions .reload-btn:hover {
+    background: linear-gradient(135deg, rgba(0, 170, 255, 0.2), rgba(0, 170, 255, 0.1));
+    border-color: #00ccff;
+    box-shadow: 0 0 15px rgba(0, 170, 255, 0.5);
+}
+
+.matrix-control-btn .btn-glyph {
+    font-size: 14px;
+}
+
+.matrix-control-btn .btn-label {
+    font-size: 9px;
+    letter-spacing: 0.5px;
+}
+
+.matrix-control-btn .btn-code {
+    font-size: 7px;
+    opacity: 0.6;
+}
+
+/* Link Status Panel Styles */
+.cp-link-status {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    flex-wrap: wrap;
+    padding: var(--space-2) 0;
+}
+
+.cp-link-status .connection-indicator {
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+}
+
+.cp-link-status .uptime-display,
+.cp-link-status .bpm-display {
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+    font-size: 10px;
+    color: rgba(0, 255, 133, 0.8);
+}
+
+.cp-link-status .tap-btn {
+    padding: 4px 12px;
+    background: rgba(0, 255, 133, 0.1);
+    border: 1px solid rgba(0, 255, 133, 0.4);
+    border-radius: 4px;
+    color: #00ff85;
+    font-size: 10px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.cp-link-status .tap-btn:hover {
+    background: rgba(0, 255, 133, 0.2);
+    box-shadow: 0 0 10px rgba(0, 255, 133, 0.3);
+    transform: scale(1.02);
+}
+
+/* Tempo Controls Styles */
+.tempo-controls {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    padding-top: var(--space-2);
+    border-top: 1px solid rgba(0, 255, 133, 0.15);
+    margin-top: var(--space-2);
+}
+
+.tempo-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.tempo-row label {
+    font-size: 9px;
+    color: rgba(0, 255, 133, 0.7);
+    min-width: 100px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.tempo-row input[type="range"] {
+    flex: 1;
+    height: 4px;
+}
+
+.tempo-val {
+    min-width: 40px;
+    text-align: right;
+    font-size: 10px;
+    color: #00ff85;
 }
 
 .matrix-section h3 {
@@ -732,44 +980,118 @@ body {
     letter-spacing: 0.8px;
 }
 
-/* Control Grid - Full viewport 12-column system */
-.control-grid {
+/* Old control-grid styles - DEPRECATED, replaced by cp-main-grid */
+
+/* NEW Main Control Grid with Priority Layout */
+.cp-main-grid {
     display: grid;
-    gap: 12px;
-    grid-auto-flow: row dense;
-    align-items: stretch;
-    margin-bottom: 12px;
-    /* default: phones */
-    grid-template-columns: 1fr;
-    height: 100%;
+    gap: var(--cp-gap);
+    padding: var(--space-3);
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    grid-auto-rows: minmax(120px, auto);
+    grid-template-areas:
+        "trigger trigger trigger trigger trigger trigger visual visual visual animation animation animation"
+        "trigger trigger trigger trigger trigger trigger visual visual visual animation animation animation"
+        "scene scene scene scene scene scene scene scene scene scene scene scene";
+    width: 100%;
+    max-width: 1920px;
+    margin: 0 auto;
 }
-@media (min-width: 1600px) and (max-height: 1100px) { .control-grid { gap: 10px; } }
-/* small: ≥ 681px - 6 columns */
+
+/* Panel Area Assignments - Fix grid areas */
+.cp-panel {
+    background: var(--panel-bg);
+    border: 1px solid var(--panel-border);
+    border-radius: var(--radius);
+    padding: var(--card-pad);
+    min-width: 0;
+}
+
+.cp-panel--trigger-fx { 
+    grid-area: trigger;
+    min-height: 420px;
+    background: linear-gradient(135deg, rgba(0, 0, 0, 0.95), rgba(0, 40, 20, 0.9));
+    border: 2px solid rgba(0, 255, 133, 0.4);
+}
+
+.cp-panel--visual { 
+    grid-area: visual;
+    min-height: 420px;
+}
+
+.cp-panel--animation { 
+    grid-area: animation;
+    min-height: 420px;
+}
+
+.cp-panel--scene { 
+    grid-area: scene;
+    min-height: 120px;
+    max-height: 180px;
+    overflow-y: auto;
+}
+
+/* Responsive Grid Layouts - Tablet */
+@media (max-width: 1024px) {
+    .cp-main-grid {
+        grid-template-columns: repeat(6, 1fr);
+        grid-template-areas:
+            "trigger trigger trigger trigger trigger trigger"
+            "visual visual visual animation animation animation"
+            "scene scene scene scene scene scene";
+    }
+    .cp-panel--trigger-fx { min-height: 380px; }
+    .cp-panel--visual,
+    .cp-panel--animation { min-height: 280px; }
+    .cp-panel--scene { 
+        min-height: 100px;
+        max-height: 140px;
+    }
+}
+
+/* Responsive Grid Layouts - Mobile */
+@media (max-width: 767px) {
+    .cp-main-grid {
+        grid-template-columns: 1fr;
+        grid-template-areas:
+            "trigger"
+            "visual"
+            "animation"
+            "scene";
+        padding: var(--space-2);
+        gap: var(--space-3);
+    }
+    .cp-panel--trigger-fx { min-height: 340px; }
+    .cp-panel--visual,
+    .cp-panel--animation { min-height: 260px; }
+    .cp-panel--scene { 
+        min-height: 90px;
+        max-height: 120px;
+    }
+}
+/* OLD grid columns - DEPRECATED
 @media (min-width: 681px) {
     .control-grid {
         grid-template-columns: repeat(6, minmax(0, 1fr));
     }
 }
 
-/* medium: ≥ 960px - 8 columns */
 @media (min-width: 960px) {
     .control-grid {
         grid-template-columns: repeat(8, minmax(0, 1fr));
-        grid-auto-flow: row dense; /* Enable dense packing */
+        grid-auto-flow: row dense;
     }
 }
 
-/* large: ≥ 1280px - 12 columns */
 @media (min-width: 1280px) {
     .control-grid {
         grid-template-columns: repeat(12, minmax(0, 1fr));
-        grid-auto-flow: row dense; /* Enable dense packing */
+        grid-auto-flow: row dense;
     }
 }
+*/
 
-/* Section Spans - Responsive Grid Column Assignments */
-
-/* Small screens (681-959px): 6 columns */
+/* OLD Section Spans - DEPRECATED by new cp-main-grid
 @media (min-width: 681px) and (max-width: 959px) {
     .section--ve-layers { grid-column: span 6; }
     .section--animation { grid-column: span 6; }
@@ -780,7 +1102,6 @@ body {
     .section--triggers  { grid-column: span 3; }
 }
 
-/* Medium screens (960-1279px): 8 columns */
 @media (min-width: 960px) and (max-width: 1279px) {
     .section--ve-layers { grid-column: span 5; }
     .section--animation { grid-column: span 5; }
@@ -791,11 +1112,11 @@ body {
     .section--triggers  { grid-column: span 3; }
 }
 
-/* Large screens (≥1280px): 12 columns - Full viewport layout */
 @media (min-width: 1280px) {
     .control-grid {
         grid-template-rows: auto auto 1fr;
     }
+*/
     
     /* Row 1: Color(3) + Tempo(2) + Intensity(2) + Triggers(5) = 12 */
     .section--color     { 
