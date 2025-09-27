@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Performance Viewer</title>
+  <style>
+    body { font-family: system-ui, sans-serif; background:#0b0f12; color:#dfe7ec; padding: 16px; }
+    .card { background: #10161b; border: 1px solid #24313a; border-radius: 8px; padding: 16px; margin-bottom: 16px; }
+    canvas { width: 100%; height: 240px; background:#0e1318; border:1px solid #1f2a32; border-radius:4px; }
+    label { display:block; margin-bottom: 8px; }
+    .row { display:flex; gap:16px; flex-wrap:wrap; }
+    .row .card { flex:1 1 460px; }
+  </style>
+</head>
+<body>
+  <h1>Performance Viewer</h1>
+  <div class="card">
+    <label>Load JSONL file (soak/baseline): <input id="file" type="file" accept=".jsonl" /></label>
+    <div id="summary"></div>
+  </div>
+  <div class="row">
+    <div class="card"><h3>FPS</h3><canvas id="fps"></canvas></div>
+    <div class="card"><h3>Memory (MB)</h3><canvas id="mem"></canvas></div>
+  </div>
+  <div class="row">
+    <div class="card"><h3>DOM Count</h3><canvas id="dom"></canvas></div>
+    <div class="card"><h3>Overlays / Active FX</h3><canvas id="fx"></canvas></div>
+  </div>
+  <script>
+    const els = {
+      fps: document.getElementById('fps'),
+      mem: document.getElementById('mem'),
+      dom: document.getElementById('dom'),
+      fx: document.getElementById('fx'),
+      summary: document.getElementById('summary'),
+      file: document.getElementById('file')
+    };
+
+    function parseJsonl(text) {
+      const out=[]; const lines=text.split(/\r?\n/);
+      for (const line of lines) { if (!line.trim()) continue; try { out.push(JSON.parse(line)); } catch {}}
+      return out;
+    }
+
+    function drawLine(canvas, xs, ys, color='#00ff85', label='') {
+      const ctx = canvas.getContext('2d');
+      const w = canvas.width = canvas.clientWidth * devicePixelRatio;
+      const h = canvas.height = canvas.clientHeight * devicePixelRatio;
+      ctx.clearRect(0,0,w,h);
+      ctx.strokeStyle = '#1f2a32'; ctx.lineWidth = 1;
+      for (let i=1;i<6;i++){ const y = (h/6)*i; ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(w,y); ctx.stroke(); }
+      const xmin = Math.min(...xs), xmax = Math.max(...xs)||1;
+      const ymin = Math.min(...ys), ymax = Math.max(...ys)||1;
+      const nx = v => (v - xmin)/(xmax - xmin || 1) * (w-8) + 4;
+      const ny = v => h - ((v - ymin)/(ymax - ymin || 1) * (h-8) + 4);
+      ctx.beginPath(); ctx.strokeStyle = color; ctx.lineWidth = 2;
+      xs.forEach((x,i)=>{ const X = nx(x), Y = ny(ys[i]); if(i===0) ctx.moveTo(X,Y); else ctx.lineTo(X,Y); });
+      ctx.stroke();
+      ctx.fillStyle = '#9fb2be'; ctx.fillText(label, 8, 18);
+    }
+
+    function toMB(bytes){ return (bytes/1024/1024); }
+
+    els.file.addEventListener('change', async (e) => {
+      const f = e.target.files?.[0]; if (!f) return;
+      const text = await f.text();
+      const rows = parseJsonl(text);
+      if (!rows.length){ els.summary.textContent = 'No rows parsed.'; return; }
+      const xs = rows.map(r=>r.t || r.timestamp || 0);
+      const fps = rows.map(r=>r.fps ?? 0);
+      const mem = rows.map(r=>toMB(r.mem ?? r.memory ?? 0));
+      const dom = rows.map(r=>r.dom ?? r.domNodes ?? 0);
+      const overlays = rows.map(r=>r.overlays ?? 0);
+      const activeFx = rows.map(r=>r.activeFx ?? 0);
+
+      const avg = arr => arr.reduce((a,b)=>a+b,0)/(arr.length||1);
+      els.summary.innerHTML = `Samples: ${rows.length}<br/>FPS avg: ${avg(fps).toFixed(1)} | DOM avg: ${avg(dom).toFixed(0)} | Mem avg (MB): ${avg(mem).toFixed(1)}`;
+
+      drawLine(els.fps, xs, fps, '#00ff85', 'FPS');
+      drawLine(els.mem, xs, mem, '#00aaff', 'MB');
+      drawLine(els.dom, xs, dom, '#ffcc00', 'DOM');
+      // overlay line: overlays in green, activeFx in magenta overlayed
+      drawLine(els.fx, xs, overlays, '#66ff99', 'Overlays');
+      // draw second series
+      const ctx = els.fx.getContext('2d');
+      const w = els.fx.width, h = els.fx.height;
+      const xmin = Math.min(...xs), xmax = Math.max(...xs)||1;
+      const ymin = Math.min(...activeFx), ymax = Math.max(...activeFx)||1;
+      const nx = v => (v - xmin)/(xmax - xmin || 1) * (w-8) + 4;
+      const ny = v => h - ((v - ymin)/(ymax - ymin || 1) * (h-8) + 4);
+      ctx.beginPath(); ctx.strokeStyle = '#ff66ff'; ctx.lineWidth = 2;
+      xs.forEach((x,i)=>{ const X = nx(x), Y = ny(activeFx[i]); if(i===0) ctx.moveTo(X,Y); else ctx.lineTo(X,Y); });
+      ctx.stroke();
+    });
+  </script>
+</body>
+</html>
