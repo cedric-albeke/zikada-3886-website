@@ -982,17 +982,17 @@ body {
 
 /* Old control-grid styles - DEPRECATED, replaced by cp-main-grid */
 
-/* NEW Main Control Grid with Priority Layout */
+/* NEW Main Control Grid with Priority Layout - OVERRIDE OLD */
 .cp-main-grid {
-    display: grid;
-    gap: var(--cp-gap);
+    display: grid !important;
+    gap: var(--cp-gap) !important;
     padding: var(--space-3);
-    grid-template-columns: repeat(12, minmax(0, 1fr));
-    grid-auto-rows: minmax(120px, auto);
+    grid-template-columns: repeat(12, minmax(0, 1fr)) !important;
+    grid-auto-rows: minmax(120px, auto) !important;
     grid-template-areas:
         "trigger trigger trigger trigger trigger trigger visual visual visual animation animation animation"
         "trigger trigger trigger trigger trigger trigger visual visual visual animation animation animation"
-        "scene scene scene scene scene scene scene scene scene scene scene scene";
+        "scene scene scene scene scene scene scene scene scene scene scene scene" !important;
     width: 100%;
     max-width: 1920px;
     margin: 0 auto;
@@ -1008,24 +1008,24 @@ body {
 }
 
 .cp-panel--trigger-fx { 
-    grid-area: trigger;
+    grid-area: trigger !important;
     min-height: 420px;
     background: linear-gradient(135deg, rgba(0, 0, 0, 0.95), rgba(0, 40, 20, 0.9));
     border: 2px solid rgba(0, 255, 133, 0.4);
 }
 
 .cp-panel--visual { 
-    grid-area: visual;
+    grid-area: visual !important;
     min-height: 420px;
 }
 
 .cp-panel--animation { 
-    grid-area: animation;
+    grid-area: animation !important;
     min-height: 420px;
 }
 
 .cp-panel--scene { 
-    grid-area: scene;
+    grid-area: scene !important;
     min-height: 120px;
     max-height: 180px;
     overflow-y: auto;

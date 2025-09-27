@@ -9,26 +9,34 @@
   --gap: 12px;
 }
 
-/* New master grid: 12 columns with named areas, height based on content needs */
-.control-grid {
+/* NEW LAYOUT - Using cp-main-grid with proper priorities */
+.cp-main-grid {
   display: grid !important;
   grid-template-columns: repeat(12, minmax(0, 1fr)) !important;
-grid-template-rows:
-    minmax(520px, auto)         /* Row 1: triggers (most important) */
-    minmax(360px, 1fr)          /* Row 2: animation */ !important;
+  grid-template-rows:
+    minmax(420px, auto)         /* Row 1: triggers and visual effects/animation */
+    minmax(420px, auto)         /* Row 2: continuation */
+    minmax(120px, 180px)        /* Row 3: scene selector (minimal) */ !important;
   gap: var(--gap) !important;
-  height: calc(100vh - 180px) !important; /* header ≈ 150-160 + margins */
+  height: calc(100vh - 200px) !important;
   align-items: start !important;
-grid-template-areas:
-    "scenes scenes scenes triggers  triggers  triggers  triggers  triggers  triggers  ve ve ve"
-    "scenes scenes scenes animation animation animation animation animation animation ve ve ve" !important;
+  grid-template-areas:
+    "trigger trigger trigger trigger trigger trigger visual visual visual animation animation animation"
+    "trigger trigger trigger trigger trigger trigger visual visual visual animation animation animation"
+    "scene scene scene scene scene scene scene scene scene scene scene scene" !important;
 }
 
-/* Area assignments */
-.section--scenes    { grid-area: scenes    !important; display: flex; flex-direction: column; min-height: 560px; }
-.section--triggers  { grid-area: triggers  !important; min-height: 520px; display: flex; flex-direction: column; }
-.section--animation { grid-area: animation !important; display: flex; flex-direction: column; min-height: 360px; }
-.section--ve-layers { grid-area: ve        !important; display: flex; flex-direction: column; min-height: 0; height: 100%; }
+/* NEW Area assignments for reorganized panels */
+.cp-panel--trigger-fx { grid-area: trigger !important; min-height: 420px; display: flex; flex-direction: column; }
+.cp-panel--visual     { grid-area: visual !important; min-height: 420px; display: flex; flex-direction: column; }
+.cp-panel--animation  { grid-area: animation !important; min-height: 420px; display: flex; flex-direction: column; }
+.cp-panel--scene      { grid-area: scene !important; min-height: 120px; max-height: 180px; display: flex; flex-direction: column; overflow-y: auto; }
+
+/* OLD Area assignments - DEPRECATED but kept for backwards compatibility */
+.section--scenes    { grid-area: scene !important; }
+.section--triggers  { grid-area: trigger !important; }
+.section--animation { grid-area: animation !important; }
+.section--ve-layers { grid-area: visual !important; }
 
 /* Internal scrolling where appropriate */
 .scene-control .scene-grid { flex: 1; overflow: auto; padding-right: 4px; }
