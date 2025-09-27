@@ -4,7 +4,7 @@ class IntervalManager {
     constructor() {
         this.intervals = new Map(); // Track all managed intervals
         this.intervalCounter = 0;
-        this.maxIntervals = 20; // Maximum concurrent intervals
+        this.maxIntervals = 15; // Tighter maximum concurrent intervals
         
         console.log('⏰ Interval Manager initialized');
     }

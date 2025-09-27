@@ -1,4 +1,5 @@
 import gsap from 'gsap';
+import filterManager from './filter-manager.js';
 
 class SubtleEffects {
     constructor() {
@@ -257,9 +258,9 @@ class SubtleEffects {
     triggerMidnightEffect() {
         // Midnight effect - only 5% chance of occurring
         if (Math.random() < 0.05) {
-            document.body.style.filter = 'invert(1)';
+            filterManager.applyImmediate('invert(1)', { duration: 0.2, ease: 'power1.inOut' });
             setTimeout(() => {
-                document.body.style.filter = 'none';
+                filterManager.applyImmediate('none', { duration: 0.3, ease: 'power1.inOut' });
             }, 1000);
         }
     }

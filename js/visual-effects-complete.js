@@ -1,5 +1,6 @@
 // Complete Visual Effects Implementation
 // Properly handles all visual effects for the control panel
+import filterManager from './filter-manager.js';
 
 class VisualEffectsController {
     constructor() {
@@ -32,7 +33,12 @@ class VisualEffectsController {
     }
 
     setupMessageListener() {
-        // Listen for control panel messages
+        // If the central vj-receiver is active, defer to it to avoid duplicate FX handling
+        if (window.vjReceiver) {
+            console.log('🎛️ VisualEffectsController: deferring to vj-receiver/fx-controller (no local storage listener)');
+            return;
+        }
+        // Listen for control panel messages only when vj-receiver is not available (legacy fallback)
         window.addEventListener('storage', (e) => {
             if (e.key === '3886_vj_message') {
                 try {
@@ -162,7 +168,7 @@ class VisualEffectsController {
             z-index: 1;
             animation: gridMove 10s linear infinite;
         `;
-        document.body.appendChild(grid);
+        (document.getElementById('fx-root') || document.body).appendChild(grid);
         this.effectElements.cyberGrid = grid;
 
         // Add animation
@@ -224,7 +230,7 @@ class VisualEffectsController {
             z-index: 9998;
             mix-blend-mode: screen;
         `;
-        document.body.appendChild(filter);
+        (document.getElementById('fx-root') || document.body).appendChild(filter);
         this.effectElements.chromaticAberration = filter;
     }
 
@@ -256,7 +262,7 @@ class VisualEffectsController {
             z-index: 9997;
             animation: scanlineMove 8s linear infinite;
         `;
-        document.body.appendChild(scanlines);
+        (document.getElementById('fx-root') || document.body).appendChild(scanlines);
         this.effectElements.scanlines = scanlines;
 
         if (!document.getElementById('scanlines-style')) {
@@ -296,7 +302,7 @@ class VisualEffectsController {
             pointer-events: none;
             z-index: 9996;
         `;
-        document.body.appendChild(vignette);
+        (document.getElementById('fx-root') || document.body).appendChild(vignette);
         this.effectElements.vignette = vignette;
     }
 
@@ -321,7 +327,7 @@ class VisualEffectsController {
             z-index: 9995;
             opacity: 0.15;
         `;
-        document.body.appendChild(grain);
+        (document.getElementById('fx-root') || document.body).appendChild(grain);
         this.effectElements.filmGrain = grain;
 
         // Animated grain using canvas
@@ -446,12 +452,12 @@ class VisualEffectsController {
         if (window.animeEnhancedEffects) {
             console.log('Triggering anime holographic effect');
         }
-        // Add CSS filter fallback
-        document.body.style.filter = 'hue-rotate(1deg) contrast(1.02)';
+        // Route body filter through Filter Manager for safety
+        filterManager.applyImmediate('hue-rotate(1deg) contrast(1.02)', { duration: 0.4, ease: 'power1.inOut' });
     }
 
     disableHolographic() {
-        document.body.style.filter = '';
+        filterManager.applyImmediate('none', { duration: 0.25, ease: 'power1.inOut' });
     }
 
     // Data Streams (already implemented in fx-controller.js)

@@ -4,13 +4,23 @@
   "description": "ZIKADA 3886 Records - Psy & Techno Website",
   "main": "index.html",
   "scripts": {
-    "dev": "npm run kill-servers && npm run clear-cache && vite --port 3886 --force",
-    "dev-clean": "npm run kill-servers && npm run clear-cache && vite --port 3886 --force",
-    "kill-servers": "npx kill-port 3886 || echo Port 3886 clean",
+    "dev": "npm run kill-servers && npm run clear-cache && vite --port 3886 --host 127.0.0.1 --force",
+    "dev-clean": "npm run kill-servers && npm run clear-cache && vite --port 3886 --host 127.0.0.1 --force",
+    "kill-servers": "kill-port 3886 || echo Port 3886 clean",
     "clear-cache": "rimraf node_modules/.vite && rimraf dist && echo Cache cleared",
     "build": "vite build",
     "serve": "npx http-server . -p 3886",
-    "preview": "vite preview --port 3886"
+    "preview": "vite preview --port 3886",
+    "test:e2e": "playwright test",
+    "baseline": "BASELINE_SECS=120 playwright test tests/e2e/perf-baseline.spec.ts --project=chromium",
+    "runbook:duplicates": "DUPES_SECS=60 playwright test tests/e2e/runbook-duplicates.spec.ts --project=chromium",
+    "soak": "SOAK_SECS=60 playwright test tests/e2e/soak.spec.ts --project=chromium",
+    "soak:10": "SOAK_SECS=600 playwright test tests/e2e/soak.spec.ts --project=chromium --timeout=960000",
+    "flicker": "playwright test tests/e2e/first-load-flicker.spec.ts --project=chromium",
+    "screenshots:triggers": "playwright test tests/e2e/triggers-gallery.spec.ts --project=chromium",
+    "check:hover-translate": "rg -n \"hover[^\\{]*\\{[\\s\\S]*?transform:.*translate\" css styles || echo 'No :hover translate violations found'",
+    "check:filters": "rg -n \"document\\.body\\.style\\.filter\" js || echo 'No direct body filter writes found'",
+    "check:guardrails": "npm run -s check:hover-translate && npm run -s check:filters"
   },
   "keywords": [
     "webflow",
@@ -27,7 +37,8 @@
     "http-server": "^14.1.1",
     "kill-port": "^2.0.1",
     "rimraf": "^6.0.1",
-    "vite": "^5.4.20"
+    "vite": "^5.4.20",
+    "@playwright/test": "^1.47.2"
   },
   "dependencies": {
     "@lottiefiles/lottie-player": "^2.0.12",

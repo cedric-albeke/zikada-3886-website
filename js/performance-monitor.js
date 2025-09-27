@@ -465,7 +465,17 @@ const performanceMonitor = new PerformanceMonitor();
 // Make it globally available
 window.performanceMonitor = performanceMonitor;
 
-// Auto-start monitoring
-performanceMonitor.startMonitoring();
+// Auto-start monitoring only on control panel or when explicitly enabled
+try {
+    const isControlPanel = /control-panel/i.test(window.location.pathname);
+    const enabledByFlag = !!(window.__3886_DEBUG && window.__3886_DEBUG.perfMonitor);
+    if (isControlPanel || enabledByFlag) {
+        performanceMonitor.startMonitoring();
+    } else {
+        console.log('📊 Performance Monitor is idle (enable via __3886_DEBUG.perfMonitor or open control-panel).');
+    }
+} catch (_) {
+    // Fallback: remain idle
+}
 
 export default performanceMonitor;

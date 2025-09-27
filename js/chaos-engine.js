@@ -55,11 +55,78 @@ class ChaosEngine {
         this.setupAnimations();
         this.animate();
 
+        // Adaptive performance based on shared FPS bus
+        this.setupPerformanceAdaptive();
+
         this.isInitialized = true;
         
         if (forceRestart) {
             console.log('✅ Chaos Engine force restart completed');
         }
+    }
+
+    setupPerformanceAdaptive() {
+        try {
+            this.basePixelRatio = Math.min(window.devicePixelRatio || 1, 2);
+            this.currentPixelRatio = this.basePixelRatio;
+            this._currentProfile = 'high';
+            const thresholds = {
+                // Enter thresholds (hysteresis): leave/add buffers to avoid oscillation
+                highUp: 53,   // need >= 53 avgFPS to climb to high
+                highDown: 45, // drop below -> to medium
+                medUp: 46,    // need >= 46 to climb from low to medium
+                medDown: 33,  // drop below -> to low
+            };
+            const applyProfile = (profile) => {
+                switch (profile) {
+                    case 'low':
+                        this.updateFrequency = 4;
+                        this.adjustPostProcessing('low');
+                        this.setPixelRatio(1);
+                        break;
+                    case 'medium':
+                        this.updateFrequency = 3;
+                        this.adjustPostProcessing('medium');
+                        this.setPixelRatio(Math.min(1.25, this.basePixelRatio));
+                        break;
+                    default:
+                        this.updateFrequency = 2;
+                        this.adjustPostProcessing('high');
+                        this.setPixelRatio(this.basePixelRatio);
+                        break;
+                }
+                this._currentProfile = profile;
+            };
+
+            // Subscribe to performance bus if available
+            if (window.performanceBus && typeof window.performanceBus.subscribe === 'function') {
+                this._perfUnsub = window.performanceBus.subscribe(({ avgFPS }) => {
+                    const cur = this._currentProfile;
+                    if (cur === 'high') {
+                        if (avgFPS < thresholds.highDown) applyProfile('medium');
+                        else applyProfile('high');
+                    } else if (cur === 'medium') {
+                        if (avgFPS < thresholds.medDown) applyProfile('low');
+                        else if (avgFPS >= thresholds.highUp) applyProfile('high');
+                        else applyProfile('medium');
+                    } else { // low
+                        if (avgFPS >= thresholds.medUp) applyProfile('medium');
+                        else applyProfile('low');
+                    }
+                });
+            }
+        } catch (_) {}
+    }
+
+    setPixelRatio(value) {
+        const v = Math.max(0.75, Math.min(2, Number(value) || 1));
+        if (Math.abs(v - this.currentPixelRatio) < 0.05) return;
+        this.currentPixelRatio = v;
+        try {
+            this.renderer.setPixelRatio(v);
+            // Trigger a resize to update composer targets
+            this.handleResize();
+        } catch (_) {}
     }
 
     setupRenderer() {
@@ -228,19 +295,18 @@ class ChaosEngine {
         );
         this.composer.addPass(bloomPass);
 
-        // Glitch pass
-        this.glitchPass = new GlitchPass();
-        this.glitchPass.enabled = false; // Will be triggered periodically
-        this.composer.addPass(this.glitchPass);
+        // Glitch pass (lazy-initialized when needed)
+        this.glitchPass = null;
 
-        // Film grain pass
-        const filmPass = new FilmPass(
+        // Film grain pass (lazy-initialized)
+        this.filmPass = null;
+        /* const filmPass = new FilmPass(
             0.35,   // noise intensity
             0.025,  // scanline intensity
             648,    // scanline count
             false   // grayscale
         );
-        this.composer.addPass(filmPass);
+        filmPass.enabled = false; this.composer.addPass(filmPass); this.filmPass = filmPass; */
 
         // Chromatic Aberration shader
         this.chromaticAberrationPass = new ShaderPass({
@@ -355,6 +421,9 @@ class ChaosEngine {
     animate() {
         requestAnimationFrame(() => this.animate());
 
+        // Skip heavy work in hidden tabs (browser will throttle rAF anyway)
+        if (document.hidden) return;
+
         const time = this.clock.getElapsedTime();
         const delta = this.clock.getDelta();
 
@@ -437,8 +506,20 @@ class ChaosEngine {
         this.camera.position.y = Math.cos(time * 0.1) * 3;
         this.camera.lookAt(0, 0, 0);
 
-        // Render
-        this.composer.render(delta);
+        // Render: short-circuit composer when no active post-processing
+        if (this.hasActivePostProcessing()) {
+            this.composer.render(delta);
+        } else {
+            this.renderer.render(this.scene, this.camera);
+        }
+    }
+
+    hasActivePostProcessing() {
+        const glitch = !!(this.glitchPass && this.glitchPass.enabled);
+        const chromaAmt = this.chromaticAberrationPass?.uniforms?.amount?.value || 0;
+        const chroma = chromaAmt > 0.001;
+        const film = !!(this.filmPass && this.filmPass.enabled);
+        return glitch || chroma || film;
     }
 
     handleResize() {
@@ -472,16 +553,22 @@ class ChaosEngine {
 
         switch (quality) {
             case 'low':
-                this.glitchPass.enabled = false;
-                this.chromaticAberrationPass.uniforms.amount.value = 0.001;
+                if (this.glitchPass) this.glitchPass.enabled = false;
+                this.chromaticAberrationPass.uniforms.amount.value = 0.0005;
+                if (this.filmPass) this.filmPass.enabled = false;
                 break;
             case 'medium':
-                this.glitchPass.enabled = true;
+                if (!this.glitchPass) { this.glitchPass = new GlitchPass(); this.glitchPass.enabled = true; this.composer.addPass(this.glitchPass); }
+                else this.glitchPass.enabled = true;
                 this.chromaticAberrationPass.uniforms.amount.value = 0.002;
+                if (this.filmPass) this.filmPass.enabled = false;
                 break;
             case 'high':
-                this.glitchPass.enabled = true;
+                if (!this.glitchPass) { this.glitchPass = new GlitchPass(); this.glitchPass.enabled = true; this.composer.addPass(this.glitchPass); }
+                else this.glitchPass.enabled = true;
                 this.chromaticAberrationPass.uniforms.amount.value = 0.005;
+                if (!this.filmPass) { const fp = new FilmPass(0.35, 0.025, 648, false); fp.enabled = true; this.composer.addPass(fp); this.filmPass = fp; }
+                else this.filmPass.enabled = true;
                 break;
         }
         this.performanceMode = quality;

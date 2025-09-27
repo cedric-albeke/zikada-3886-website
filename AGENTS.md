@@ -1,29 +1,36 @@
 # Repository Guidelines
 
+Codex CLI agents should pair these repository rules with the role-specific checklist in `CODEX.md`.
+
 ## Project Structure & Module Organization
-- Root entry points live in `index.html` and `control-panel.html`, with bundling handled by `vite.config.js`.
-- Runtime logic resides in `js/` as ES modules; feature areas stay grouped (`chaos-*`, `anime-*`, `performance-*`). Extend features by creating a new module within the matching namespace.
-- Styling lives in `css/` for global layers and `styles/` for scoped overrides, while media assets are stored in `images/`, `videos/`, and animation data under `animations/`.
-- Research notes such as `ANIMEJS-INTEGRATION-PLAN.md`, `PERFORMANCE-IMPROVEMENTS.md`, and `DEV-BRANCH-SUMMARY.md` must stay aligned with animation work.
+- Entry points: `index.html` and `control-panel.html`; Vite bundling is driven by `vite.config.js`.
+- Source modules reside in `js/`, grouped by namespace prefixes. Add features by exporting a factory-based module within the matching `chaos-`, `anime-`, or `performance-` area.
+- Global styles live in `css/`, scoped overrides in `styles/`; assets sit under `images/`, `videos/`, `animations/`, and `fonts/`, while control panel UI widgets live in `control-panel/`.
+- Research notes in the root plus branch worklogs in `docs/` must ship alongside related animation or performance updates.
 
 ## Build, Test, and Development Commands
-- `npm install` installs Vite, GSAP, and helper tooling after dependency updates.
-- `npm run dev` clears caches, frees port 3886, and launches Vite with `--force` to surface module mismatches early.
-- `npm run build` outputs the production bundle to `dist/` with manual chunking for `three`, `gsap`, and post-processing utilities.
+- `npm install` refreshes Vite, GSAP, Three.js helpers, and supporting tooling after dependency changes.
+- `npm run dev` clears caches, frees port 3886, and starts Vite with `--force` to expose import issues early.
+- `npm run build` emits the production bundle in `dist/`, with manual chunks for `three`, `gsap`, and post-processing utilities.
 - `npm run preview` serves the built bundle on port 3886 for pre-release smoke checks.
-- `npm run serve` uses `http-server` to mimic static hosting; pair it with CDN caching investigations.
+- `npm run serve` launches `http-server` to mimic static hosting during CDN/cache investigations.
 
 ## Coding Style & Naming Conventions
-- JavaScript uses ES modules, 2-space indentation, semicolons, and `const`/`let`; files stay kebab-case (`chaos-engine.js`). Prefer exporting factories over singletons when state must be shared.
-- Keep descriptive prefixes (`chaos-`, `performance-`, `anime-`) to signal feature areas, and reuse helpers like `animeManager.register` instead of re-implementing lifecycle logic.
-- CSS favors BEM-leaning class names with namespace prefixes (`chaos__panel`); isolate experimental tweaks in dedicated files rather than editing `components.css` directly.
+- JavaScript uses ES modules, 2-space indentation, semicolons, and `const`/`let`; filenames stay kebab-case (e.g., `chaos-engine.js`).
+- Prefix feature modules with `chaos-`, `anime-`, or `performance-`; favor shared helpers such as `animeManager.register` over bespoke lifecycle code.
+- CSS favors namespace+BEM classes (`chaos__panel`). Keep experimental overrides isolated within dedicated files in `styles/`.
+
+## Styling Guardrails
+- Honor the **no hover movement** rule: never animate translate or other positional shifts on hover. Prefer color, border, shadow, opacity, or ≤1.02 scale tweaks.
+- Preserve legacy Webflow data attributes and animation hooks when editing existing markup.
+- Avoid white flashes by following the `filter-manager.js` pattern—sanitize filters before transitions and maintain safe defaults.
 
 ## Testing Guidelines
-- No automated runner is configured; rely on manual QA via `control-panel.html` toggles and the dashboards in `js/performance-*`.
-- Before opening a PR, run `npm run build`, scan the console for warnings, and capture FPS/memory observations when touching animation loops.
-- Toggle the anime.js stack with `?anime=1` or dispatch `3886:enable-anime`, then exercise the control panel Anime Tests buttons to confirm GSAP/anime timelines stay in sync.
+- Manual QA only: rely on `control-panel.html` toggles and the dashboards under `js/performance-*`.
+- Before a PR, run `npm run build`, monitor the console for warnings, and log FPS/memory deltas when touching animation loops.
+- Enable anime.js with `?anime=1` or dispatch `3886:enable-anime`, then trigger Anime Tests to verify GSAP/anime synchronization.
 
 ## Commit & Pull Request Guidelines
-- Follow the repo's Conventional Commit pattern (`feat:`, `fix:`, `docs:`) with concise subjects (~72 chars).
-- PRs should ship with a clear summary, linked issue or task ID, visuals for UI changes, and notes on manual verification steps.
-- Call out dependency updates and refresh companion docs when controls or behavior shift.
+- Follow Conventional Commits (`feat:`, `fix:`, `docs:`) with imperative subjects under ~72 characters.
+- PRs require a clear summary, linked task or issue, relevant visuals, and manual verification notes.
+- Surface dependency updates and refresh companion docs (`ANIMEJS-INTEGRATION-PLAN.md`, `PERFORMANCE-IMPROVEMENTS.md`, `DEV-BRANCH-SUMMARY.md`, `docs/*`) whenever behavior or controls shift.

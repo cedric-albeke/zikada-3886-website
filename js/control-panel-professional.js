@@ -1,8 +1,12 @@
 // Professional VJ Control Panel for ZIKADA 3886
 // Comprehensive control system for all animations and effects
 
+import MATRIX_MESSAGES from './matrix-message-pool.js';
+
 class ProfessionalVJControlPanel {
     constructor() {
+        // Use localStorage bridge only when BroadcastChannel is unavailable
+        this._useLocalStorageBridge = true;
         this.isConnected = false;
         this.currentScene = 'auto';
         this.currentBPM = 120;
@@ -12,28 +16,7 @@ class ProfessionalVJControlPanel {
         this.diceRollInterval = null;
         this.diceCountdown = 15;
         this.lastDiceRoll = 0;
-        this.matrixMessages = [
-            "BREAK THE C0DE!",
-            "F0LL0W THE WH1TE RABB1T",
-            "WAKE UP NE0!",
-            "ESCAPE THE MATR1X",
-            "D1G DEEPER!",
-            "BREATHE 1N THE CHA0S",
-            "EMBRACE THE GL1TCH",
-            "DANCE W1TH THE V01D",
-            "RELEASE Y0UR M1ND",
-            "TRANSCEND THE GR1D",
-            "1N1T1ATE THE SH1FT",
-            "HACK REAL1TY N0W",
-            "UN10CK Y0UR P0TENT1AL",
-            "SURF THE DATA STREAM",
-            "R1DE THE QUANTUM WAVE",
-            "BREAK FREE FR0M THE L00P",
-            "CREATE Y0UR 0WN PATH",
-            "D0WNL0AD EN11GHTENMENT",
-            "EXPL0RE THE UNKN0WN",
-            "BEC0ME THE S1GNAL"
-        ]
+        this.matrixMessages = MATRIX_MESSAGES;
 
         // Effect states
         this.effects = {
@@ -78,6 +61,15 @@ class ProfessionalVJControlPanel {
         this.init();
     }
 
+    // Lightweight debounce for high-frequency UI events
+    _debounce(fn, wait = 32) {
+        let t;
+        return (...args) => {
+            clearTimeout(t);
+            t = setTimeout(() => fn.apply(this, args), wait);
+        };
+    }
+
     init() {
         this.initBroadcastChannel();
         // Don't replace the original HTML - just enhance it
@@ -94,6 +86,8 @@ class ProfessionalVJControlPanel {
     initBroadcastChannel() {
         try {
             this.channel = new BroadcastChannel('3886_vj_control');
+            // Disable LS bridge when BroadcastChannel is available
+            this._useLocalStorageBridge = false;
             this.channel.onmessage = (event) => {
                 this.handleMainPageMessage(event.data);
                 // Treat pong/settings_sync as a live link signal over BC
@@ -118,6 +112,8 @@ class ProfessionalVJControlPanel {
     }
 
     setupLocalStorageMonitoring() {
+        // Enable LS bridge when BC is not available
+        this._useLocalStorageBridge = true;
         // Simplified polling to avoid infinite loops
         const pollInterval = setInterval(() => {
             try {
@@ -1141,7 +1137,7 @@ class ProfessionalVJControlPanel {
 
         // Effect sliders
         document.querySelectorAll('.effect-slider input[type="range"]').forEach(slider => {
-            const updateSlider = () => {
+            const updateImmediate = () => {
                 const value = slider.value;
                 const valueSpan = slider.parentElement.querySelector('.slider-value');
                 if (valueSpan) {
@@ -1160,16 +1156,16 @@ class ProfessionalVJControlPanel {
                     });
                 }
             };
-
+            const updateSlider = this._debounce(updateImmediate, 32);
             slider.addEventListener('input', updateSlider);
-            slider.addEventListener('change', updateSlider);
+            slider.addEventListener('change', updateImmediate);
         });
 
         // Color controls
         ['hue', 'saturation', 'brightness', 'contrast'].forEach(property => {
             const slider = document.getElementById(property + 'Slider');
             if (slider) {
-                const updateColor = () => {
+                const updateImmediate = () => {
                     const value = parseInt(slider.value);
                     this.colorMatrix[property] = value;
 
@@ -1187,9 +1183,9 @@ class ProfessionalVJControlPanel {
                         timestamp: Date.now()
                     });
                 };
-
+                const updateColor = this._debounce(updateImmediate, 32);
                 slider.addEventListener('input', updateColor);
-                slider.addEventListener('change', updateColor);
+                slider.addEventListener('change', updateImmediate);
             }
         });
 
@@ -1209,12 +1205,27 @@ class ProfessionalVJControlPanel {
             });
         });
 
+        // System reload (full restart)
+        document.getElementById('systemReload')?.addEventListener('click', () => {
+            // Immediate UI feedback
+            const container = document.getElementById('connectionStatus');
+            if (container) {
+                const statusText = container.querySelector('.status-text');
+                if (statusText) statusText.textContent = 'RELOADING…';
+                container.classList.add('reloading');
+            }
+            this.sendMessage({
+                type: 'system_reload',
+                timestamp: Date.now()
+            });
+        });
+
         // === ADDITIONAL V1 CONTROL PANEL EVENT LISTENERS ===
 
         // Speed/Tempo controls
         const speedSlider = document.getElementById('speedSlider');
         if (speedSlider) {
-            const updateSpeed = () => {
+            const updateImmediate = () => {
                 const value = parseInt(speedSlider.value);
                 const valueSpan = speedSlider.parentElement.querySelector('.slider-value');
                 if (valueSpan) valueSpan.textContent = value + '%';
@@ -1225,13 +1236,14 @@ class ProfessionalVJControlPanel {
                     timestamp: Date.now()
                 });
             };
+            const updateSpeed = this._debounce(updateImmediate, 32);
             speedSlider.addEventListener('input', updateSpeed);
-            speedSlider.addEventListener('change', updateSpeed);
+            speedSlider.addEventListener('change', updateImmediate);
         }
 
         const phaseDurationSlider = document.getElementById('phaseDurationSlider');
         if (phaseDurationSlider) {
-            const updatePhaseDuration = () => {
+            const updateImmediate = () => {
                 const value = parseInt(phaseDurationSlider.value);
                 const valueSpan = phaseDurationSlider.parentElement.querySelector('.slider-value');
                 if (valueSpan) valueSpan.textContent = value + 's';
@@ -1242,8 +1254,9 @@ class ProfessionalVJControlPanel {
                     timestamp: Date.now()
                 });
             };
+            const updatePhaseDuration = this._debounce(updateImmediate, 32);
             phaseDurationSlider.addEventListener('input', updatePhaseDuration);
-            phaseDurationSlider.addEventListener('change', updatePhaseDuration);
+            phaseDurationSlider.addEventListener('change', updateImmediate);
         }
 
         // BPM Tap
@@ -1268,7 +1281,7 @@ class ProfessionalVJControlPanel {
         ['glitch', 'particles', 'noise'].forEach(effect => {
             const slider = document.getElementById(effect + 'Slider');
             if (slider) {
-                const updateFX = () => {
+                const updateImmediate = () => {
                     const value = parseInt(slider.value);
                     const valueSpan = slider.parentElement.querySelector('.slider-value');
                     if (valueSpan) valueSpan.textContent = value + '%';
@@ -1280,15 +1293,17 @@ class ProfessionalVJControlPanel {
                         timestamp: Date.now()
                     });
                 };
+                const updateFX = this._debounce(updateImmediate, 32);
                 slider.addEventListener('input', updateFX);
-                slider.addEventListener('change', updateFX);
+                slider.addEventListener('change', updateImmediate);
             }
         });
 
-        // Trigger FX buttons
+        // Trigger FX buttons (with short cooldown to prevent spam)
         document.querySelectorAll('.trigger-btn').forEach(btn => {
             btn.addEventListener('click', () => {
                 const effect = btn.dataset.effect;
+                if (btn.disabled) return;
                 this.sendMessage({
                     type: 'trigger_effect',
                     effect: effect,
@@ -1298,6 +1313,52 @@ class ProfessionalVJControlPanel {
                 // Visual feedback
                 btn.classList.add('active');
                 setTimeout(() => btn.classList.remove('active'), 500);
+
+                // Cooldown
+                btn.disabled = true;
+                btn.classList.add('cooldown');
+                setTimeout(() => { btn.disabled = false; btn.classList.remove('cooldown'); }, 600);
+            });
+        });
+
+        // Trigger theme + sliders
+        this.triggerSettings = { theme: 'green', intensity: 0.7, speed: 0.6 };
+        const themeWrap = document.getElementById('triggerTheme');
+        themeWrap?.querySelectorAll('.theme-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                themeWrap.querySelectorAll('.theme-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                this.triggerSettings.theme = btn.dataset.theme || 'green';
+                this.sendMessage({ type: 'trigger_settings', settings: this.triggerSettings, timestamp: Date.now() });
+            });
+        });
+        const intSlider = document.getElementById('triggerIntensity');
+        const intVal = document.getElementById('triggerIntensityVal');
+        const spdSlider = document.getElementById('triggerSpeed');
+        const spdVal = document.getElementById('triggerSpeedVal');
+        const sendSettings = this._debounce(() => {
+            this.sendMessage({ type: 'trigger_settings', settings: this.triggerSettings, timestamp: Date.now() });
+        }, 64);
+        intSlider?.addEventListener('input', () => {
+            const raw = parseInt(intSlider.value || '70');
+            if (intVal) intVal.textContent = String(raw);
+            this.triggerSettings.intensity = Math.max(0, Math.min(1, raw / 100));
+            sendSettings();
+        });
+        spdSlider?.addEventListener('input', () => {
+            const raw = parseInt(spdSlider.value || '60');
+            if (spdVal) spdVal.textContent = String(raw);
+            this.triggerSettings.speed = Math.max(0.1, Math.min(1, raw / 100));
+            sendSettings();
+        });
+
+        // Macro triggers
+        document.querySelectorAll('.macro-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const macro = btn.dataset.macro;
+                this.sendMessage({ type: 'trigger_macro', macro, settings: this.triggerSettings, timestamp: Date.now() });
+                btn.disabled = true; btn.classList.add('cooldown');
+                setTimeout(() => { btn.disabled = false; btn.classList.remove('cooldown'); }, 1200);
             });
         });
 
@@ -1408,17 +1469,25 @@ class ProfessionalVJControlPanel {
             this.updateDiceCountdownDisplay();
         });
 
-        // Effect toggle buttons
-        document.querySelectorAll('.effect-toggle-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
+        // Effect toggle buttons (delegated) – supports dynamically injected Lottie buttons
+        if (!this._effectToggleDelegated) {
+            document.addEventListener('click', (e) => {
+                const btn = e.target?.closest?.('.effect-toggle-btn');
+                if (!btn) return;
                 const effect = btn.dataset.effect;
                 const currentState = btn.dataset.state === 'on';
                 const newState = !currentState;
 
+                // Update button UI
                 btn.dataset.state = newState ? 'on' : 'off';
                 btn.textContent = newState ? 'ON' : 'OFF';
                 btn.classList.toggle('active', newState);
 
+                // Lazily track effect state in panel state
+                if (!this.effects[effect]) this.effects[effect] = { enabled: newState, intensity: 50 };
+                this.effects[effect].enabled = newState;
+
+                // Send toggle to main page; supports both built-in and lottie:* effects
                 this.sendMessage({
                     type: 'effect_toggle',
                     effect: effect,
@@ -1428,7 +1497,8 @@ class ProfessionalVJControlPanel {
 
                 console.log(`Effect ${effect} toggled to ${newState ? 'ON' : 'OFF'}`);
             });
-        });
+            this._effectToggleDelegated = true;
+        }
 
         // Layer toggle buttons
         document.querySelectorAll('.layer-toggle-btn').forEach(btn => {
@@ -1656,17 +1726,50 @@ class ProfessionalVJControlPanel {
             this.channel.postMessage(data);
         }
 
-        // Also use localStorage for cross-tab communication
-        localStorage.setItem('3886_vj_message', JSON.stringify(data));
+        // Use localStorage bridge only when BroadcastChannel is unavailable
+        if (this._useLocalStorageBridge) {
+            try { localStorage.setItem('3886_vj_message', JSON.stringify(data)); } catch {}
+        }
     }
 
     handleMainPageMessage(data) {
         // Handle responses from main page
         switch (data.type) {
+            case 'performance_update': {
+                if (typeof data.fps === 'number' && window.performanceBus && typeof window.performanceBus.ingestRemote === 'function') {
+                    window.performanceBus.ingestRemote(data.fps);
+                }
+                this.updatePerformanceDisplay(data);
+                break;
+            }
+            case 'matrix_message_displayed': {
+                // Update LAST MSG strictly on ACK from animation page
+                const lastMsgElement = document.getElementById('lastMatrixMessage');
+                if (lastMsgElement) {
+                    lastMsgElement.textContent = data.message || '—';
+                    lastMsgElement.style.color = '#00ff85';
+                    lastMsgElement.classList.add('triggered');
+                    setTimeout(() => {
+                        lastMsgElement.style.color = '#ff00ff';
+                        lastMsgElement.classList.remove('triggered');
+                    }, 3000);
+                }
+                break;
+            }
+            case 'detailed_performance_update': {
+                if (typeof data.fps === 'number' && window.performanceBus && typeof window.performanceBus.ingestRemote === 'function') {
+                    window.performanceBus.ingestRemote(data.fps);
+                }
+                this.updatePerformanceDisplay({ fps: data.fps, memory: data.memory, activeFx: data.activeFx });
+                break;
+            }
             case 'performance_stats':
                 this.updatePerformanceDisplay(data);
                 break;
             case 'anime_status':
+                if (typeof data.enabled === 'boolean') {
+                    this.animeSystem.enabled = data.enabled;
+                }
                 this.updateAnimeSystemStatus();
                 break;
             case 'pong':
@@ -1688,9 +1791,16 @@ class ProfessionalVJControlPanel {
                 this.updateAutoSceneHighlight(scene);
                 break;
             }
-            case 'performance_mode_updated':
-                // No-op UI acknowledgment for now
+            case 'performance_mode_updated': {
+                // Reflect active mode in UI buttons
+                try {
+                    const mode = data.mode;
+                    document.querySelectorAll('.mode-btn').forEach(btn => {
+                        btn.classList.toggle('active', btn.dataset.mode === mode);
+                    });
+                } catch (_) {}
                 break;
+            }
             case 'diagnostics_report': {
                 const res = document.getElementById('animDiagnosticsResult');
                 if (res) {
@@ -1699,6 +1809,13 @@ class ProfessionalVJControlPanel {
                     res.textContent = `Diagnostics: ${ok} ok, ${fail} failed`;
                 }
                 console.log('Diagnostics report:', data);
+                break;
+            }
+            case 'system_reset_complete': {
+                // Light UI acknowledgment
+                const el = document.querySelector('#connectionStatus .status-text');
+                if (el) el.textContent = this.isConnected ? 'ONLINE' : 'STANDBY';
+                console.log('✅ System reset complete (ack received)');
                 break;
             }
         }
@@ -1730,6 +1847,10 @@ class ProfessionalVJControlPanel {
     updateConnectionStatus() {
         // Update connection container
         const connectionContainer = document.getElementById('connectionStatus');
+        if (connectionContainer && connectionContainer.classList.contains('reloading') && this.isConnected) {
+            // Clear reloading state once reconnected
+            connectionContainer.classList.remove('reloading');
+        }
         if (connectionContainer) {
             const statusText = connectionContainer.querySelector('.status-text');
             const statusDot = connectionContainer.querySelector('.status-dot');
@@ -1811,6 +1932,19 @@ class ProfessionalVJControlPanel {
                 this.sendPing();
             }
         });
+
+        // Keyboard shortcuts for performance mode: L (low), A (auto), H (high)
+        document.addEventListener('keydown', (e) => {
+            const tag = (e.target && e.target.tagName) || '';
+            if (tag === 'INPUT' || tag === 'TEXTAREA' || e.target?.isContentEditable) return;
+            const k = e.key?.toLowerCase?.();
+            if (k === 'l' || k === 'a' || k === 'h') {
+                const mode = k === 'l' ? 'low' : (k === 'a' ? 'auto' : 'high');
+                document.querySelectorAll('.mode-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.mode === mode));
+                this.performance.mode = mode;
+                this.sendMessage({ type: 'performance_mode', mode, timestamp: Date.now() });
+            }
+        });
     }
 
     sendPing() {
@@ -1830,22 +1964,27 @@ class ProfessionalVJControlPanel {
     startDiceRollCountdown() {
         // Initialize countdown display
         this.updateDiceCountdownDisplay();
-        // Initialize last roll display
         this.updateLastDiceRollDisplay();
 
-        // Start the countdown timer
-        this.diceRollInterval = setInterval(() => {
+        // Use a shared 1Hz ticker to avoid extra intervals
+        const ensureTicker = () => {
+            if (!window.__oneHzTicker) {
+                const subs = new Set();
+                const interval = setInterval(() => { subs.forEach(fn => { try { fn(); } catch(_) {} }); }, 1000);
+                window.__oneHzTicker = { subscribe(fn){ subs.add(fn); return () => subs.delete(fn); }, _stop(){ clearInterval(interval); } };
+            }
+            return window.__oneHzTicker;
+        };
+        const ticker = ensureTicker();
+        if (this._diceUnsub) this._diceUnsub();
+        this._diceUnsub = ticker.subscribe(() => {
             this.diceCountdown--;
-
             if (this.diceCountdown <= 0) {
-                // Roll the dice!
                 this.rollDice();
-                // Reset countdown
                 this.diceCountdown = 15;
             }
-
             this.updateDiceCountdownDisplay();
-        }, 1000); // Update every second
+        });
     }
 
     // Test method to force a high roll (for testing message display)
@@ -1882,21 +2021,14 @@ class ProfessionalVJControlPanel {
         if (roll >= 90) {
             // Pick a random matrix message
             const randomMessage = this.matrixMessages[Math.floor(Math.random() * this.matrixMessages.length)];
-
-            // Update the last message display in the header
+            // Mark as pending until animation page acknowledges
             const lastMsgElement = document.getElementById('lastMatrixMessage');
             if (lastMsgElement) {
-                lastMsgElement.textContent = randomMessage;
-                lastMsgElement.style.color = '#00ff85'; // Green for success
-                lastMsgElement.classList.add('triggered');
-                // Reset color after a moment
-                setTimeout(() => {
-                    lastMsgElement.style.color = '#ff00ff';
-                    lastMsgElement.classList.remove('triggered');
-                }, 3000);
+                lastMsgElement.textContent = 'PENDING…';
+                lastMsgElement.style.color = '#ffaa00';
             }
 
-            // Send matrix message to main page
+            // Send matrix message to main page; will be ACKed via matrix_message_displayed
             this.sendMessage({
                 type: 'matrix_message',
                 message: randomMessage,
@@ -2058,47 +2190,50 @@ class ProfessionalVJControlPanel {
     }
 
     startPerformanceMonitoring() {
-        // Use rate-limited FPS monitoring
-        let frameTimes = [];
-        let lastTime = performance.now();
-        let lastUpdateTime = 0;
-        const updateInterval = 500; // Update every 500ms
-
-        const measureFPS = (currentTime) => {
-            const deltaTime = currentTime - lastTime;
-            lastTime = currentTime;
-
-            // Store frame times for averaging
-            frameTimes.push(deltaTime);
-            if (frameTimes.length > 60) {
-                frameTimes.shift();
-            }
-
-            // Update display at limited rate
-            if (currentTime - lastUpdateTime > updateInterval) {
-                const avgFrameTime = frameTimes.reduce((a, b) => a + b, 0) / frameTimes.length;
-                const fps = Math.round(1000 / avgFrameTime);
-                this.performance.fps = fps;
-
+        // Prefer shared performance bus so values match the main page
+        if (window.performanceBus && typeof window.performanceBus.subscribe === 'function') {
+            window.performanceBus.subscribe(({ fps }) => {
+                const value = Number.isFinite(fps) ? fps : 0;
+                this.performance.fps = value;
                 const fpsElement = document.getElementById('fpsCounter');
                 if (fpsElement) {
-                    fpsElement.textContent = fps;
-
-                    // Update color based on performance
+                    fpsElement.textContent = value;
                     fpsElement.classList.remove('warning', 'danger');
-                    if (fps < 30) {
+                    if (value < 30) {
                         fpsElement.classList.add('danger');
-                    } else if (fps < 50) {
+                    } else if (value < 50) {
                         fpsElement.classList.add('warning');
                     }
                 }
-
-                lastUpdateTime = currentTime;
-            }
-
+            });
+        } else {
+            // Fallback: local rAF averaging (kept for offline debugging)
+            let frameTimes = [];
+            let lastTime = performance.now();
+            let lastUpdateTime = 0;
+            const updateInterval = 500; // Update every 500ms
+            const measureFPS = (currentTime) => {
+                const deltaTime = currentTime - lastTime;
+                lastTime = currentTime;
+                frameTimes.push(deltaTime);
+                if (frameTimes.length > 60) frameTimes.shift();
+                if (currentTime - lastUpdateTime > updateInterval) {
+                    const avgFrameTime = frameTimes.reduce((a, b) => a + b, 0) / frameTimes.length;
+                    const fps = Math.round(1000 / avgFrameTime);
+                    this.performance.fps = fps;
+                    const fpsElement = document.getElementById('fpsCounter');
+                    if (fpsElement) {
+                        fpsElement.textContent = fps;
+                        fpsElement.classList.remove('warning', 'danger');
+                        if (fps < 30) fpsElement.classList.add('danger');
+                        else if (fps < 50) fpsElement.classList.add('warning');
+                    }
+                    lastUpdateTime = currentTime;
+                }
+                requestAnimationFrame(measureFPS);
+            };
             requestAnimationFrame(measureFPS);
-        };
-        requestAnimationFrame(measureFPS);
+        }
 
         // Memory and DOM monitoring
         setInterval(() => {
@@ -2140,6 +2275,11 @@ class ProfessionalVJControlPanel {
                 timestamp: Date.now()
             });
         }, 2000); // Update every 2 seconds
+
+        // Request the main page's live performance once per second
+        setInterval(() => {
+            this.sendMessage({ type: 'request_performance', timestamp: Date.now() });
+        }, 1000);
     }
 }
 

@@ -34,13 +34,7 @@ img[alt*="Logo"],
     mix-blend-mode: normal !important;
 }
 
-/* Override any animations that try to change opacity or filters */
-@keyframes * {
-    from, to {
-        opacity: 1 !important;
-        filter: none !important;
-    }
-}
+/* Note: Removed invalid `@keyframes *` wildcard override. Protection is enforced via explicit selectors below. */
 
 /* Prevent hover effects from changing opacity or filters */
 .image-wrapper:hover img,

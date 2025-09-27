@@ -44,33 +44,36 @@ class AnimeEnhancedEffects {
             this.triggerDiceAnimation();
         });
 
-        // Listen for control panel messages
-        window.addEventListener('storage', (e) => {
-            if (e.key === '3886_vj_message') {
-                try {
-                    const message = JSON.parse(e.newValue);
-                    this.handleControlPanelMessage(message);
-                } catch (err) {
-                    // Ignore JSON parse errors
-                }
-            }
-        });
-
-        // Also poll localStorage for same-tab communication
-        setInterval(() => {
-            const messageData = localStorage.getItem('3886_vj_message');
-            if (messageData) {
-                try {
-                    const parsed = JSON.parse(messageData);
-                    if (parsed._id && parsed._id !== this.lastMessageId) {
-                        this.lastMessageId = parsed._id;
-                        this.handleControlPanelMessage(parsed);
+        // Prefer BroadcastChannel path via vj-receiver. If BC exists, skip LS-based listeners.
+        if (!window.BroadcastChannel) {
+            // Listen for control panel messages via localStorage only as a legacy fallback
+            window.addEventListener('storage', (e) => {
+                if (e.key === '3886_vj_message') {
+                    try {
+                        const message = JSON.parse(e.newValue);
+                        this.handleControlPanelMessage(message);
+                    } catch (err) {
+                        // Ignore JSON parse errors
                     }
-                } catch (e) {
-                    // Ignore JSON parse errors
                 }
-            }
-        }, 100);
+            });
+
+            // Also poll localStorage for same-tab communication (legacy fallback)
+            setInterval(() => {
+                const messageData = localStorage.getItem('3886_vj_message');
+                if (messageData) {
+                    try {
+                        const parsed = JSON.parse(messageData);
+                        if (parsed._id && parsed._id !== this.lastMessageId) {
+                            this.lastMessageId = parsed._id;
+                            this.handleControlPanelMessage(parsed);
+                        }
+                    } catch (e) {
+                        // Ignore JSON parse errors
+                    }
+                }
+            }, 500);
+        }
     }
 
     handleControlPanelMessage(message) {
@@ -935,7 +938,7 @@ class AnimeEnhancedEffects {
             width: 100%;
             height: 100%;
             pointer-events: none;
-            z-index: -1;  // Behind everything as true background
+            z-index: 2;  // Above .bg (z-index:1) but below primary content
             opacity: 0;  // Start hidden - controlled by FX system
             display: none; // Start hidden
             mix-blend-mode: screen;
@@ -944,12 +947,16 @@ class AnimeEnhancedEffects {
             transform-origin: center center;
         `;
 
-        // Insert as first child of body to ensure it's behind everything
-        if (document.body.firstChild) {
+        // Prefer FX root container; fallback to body
+        const fxRoot = document.getElementById('fx-root');
+        if (fxRoot) {
+            fxRoot.appendChild(plasmaCanvas);
+        } else if (document.body.firstChild) {
             document.body.insertBefore(plasmaCanvas, document.body.firstChild);
         } else {
             document.body.appendChild(plasmaCanvas);
         }
+        plasmaCanvas.setAttribute('data-fx-overlay', 'plasma');
 
         const ctx = plasmaCanvas.getContext('2d');
         let time = 0;
@@ -1030,11 +1037,24 @@ class AnimeEnhancedEffects {
         plasmaCanvas.startEffect = startPlasma;
         plasmaCanvas.stopEffect = stopPlasma;
 
+        // Keep-alive: if external cleanup removes the canvas while plasma is enabled, recreate quickly
+        const keepAlive = setInterval(() => {
+            const enabled = !!(window.fxController && window.fxController.effectStates && window.fxController.effectStates.plasma);
+            if (enabled && !document.getElementById('plasma-field-canvas')) {
+                try {
+                    if (fxRoot) fxRoot.appendChild(plasmaCanvas);
+                    else document.body.appendChild(plasmaCanvas);
+                    startPlasma();
+                } catch {}
+            }
+        }, 2000);
+        plasmaCanvas._keepAlive = keepAlive;
+
         // Register with FX controller if available
         if (window.fxController) {
             window.fxController.registerEffect('plasma', {
                 enable: startPlasma,
-                disable: stopPlasma,
+                disable: () => { try { stopPlasma(); } finally { try { clearInterval(plasmaCanvas._keepAlive); } catch {} } },
                 element: plasmaCanvas
             });
         }

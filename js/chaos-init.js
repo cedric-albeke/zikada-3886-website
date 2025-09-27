@@ -119,9 +119,10 @@ class ChaosInitializer {
             try {
                 // Import the proper anime.js stack
                 await import('./anime-init.js');
+                await import('./animation-manager.js');
                 await import('./anime-svg-logo.js');
                 await import('./anime-enhanced-effects.js');
-                console.log('🎬 Anime.js stack loaded successfully with enhanced effects');
+                console.log('🎬 Anime.js stack loaded successfully with enhanced effects and animation manager');
             } catch (error) {
                 this.animeStackLoaded = false;
                 console.error('Failed to load anime.js stack', error);
@@ -321,6 +322,8 @@ class ChaosInitializer {
 
     initialize() {
         console.log('🌀 ZIKADA 3886 CHAOS ENGINE INITIALIZING...');
+        // Ensure a single FX overlay root to prevent z-index conflicts and flicker
+        this.ensureFxRoot();
 
         // Initialize timing controller first for coordination
         timingController.init();
@@ -366,6 +369,20 @@ class ChaosInitializer {
 
         // DISABLED: Grey flash prevention was causing performance catastrophe
         // this.startGreyFlashPrevention();
+    }
+
+    ensureFxRoot() {
+        try {
+            let root = document.getElementById('fx-root');
+            if (!root) {
+                root = document.createElement('div');
+                root.id = 'fx-root';
+                root.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:500;';
+                document.body.appendChild(root);
+            }
+        } catch (e) {
+            // No-op on failure; modules will fallback to body
+        }
     }
 
     handlePhaseChange(phase) {
@@ -926,20 +943,15 @@ class ChaosInitializer {
 
         const ctx = canvas.getContext('2d');
 
-        const animateStatic = () => {
-            // Check if canvas still exists (safety check)
-            if (!document.getElementById('static-noise')) {
-                console.warn('⚠️ Static noise canvas was removed, recreating...');
-                // Recreate if somehow removed
-                if (window.chaosInitializer && typeof window.chaosInitializer.addStaticNoise === 'function') {
-                    window.chaosInitializer.addStaticNoise();
-                }
-                return;
-            }
-            
-            const imageData = ctx.createImageData(256, 256);
-            const data = imageData.data;
+        // Store references for start/stop control
+        this._noiseCanvas = canvas;
+        this._noiseCtx = ctx;
 
+        // Rendering routine (invoked by rAF loop)
+        this._renderNoiseFrame = () => {
+            if (!this._noiseCtx || !this._noiseCanvas) return;
+            const imageData = this._noiseCtx.createImageData(256, 256);
+            const data = imageData.data;
             for (let i = 0; i < data.length; i += 4) {
                 const value = Math.random() * 255;
                 data[i] = value;
@@ -947,13 +959,56 @@ class ChaosInitializer {
                 data[i + 2] = value;
                 data[i + 3] = 255;
             }
-
-            ctx.putImageData(imageData, 0, 0);
-            setTimeout(animateStatic, 50);
+            this._noiseCtx.putImageData(imageData, 0, 0);
         };
 
-        animateStatic();
+        // Visibility-aware rAF loop at ~10 FPS
+        this._noiseActive = false;
+        this._noiseRAF = null;
+        this._noiseLastTick = 0;
+        this.startNoiseAnimation();
+        
+        // Pause/resume on tab visibility change
+        window.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                this.stopNoiseAnimation();
+            } else {
+                // Only resume if noise is visible and opacity > 0
+                const canvasEl = document.getElementById('static-noise');
+                const isVisible = canvasEl && canvasEl.style.display !== 'none' && parseFloat(canvasEl.style.opacity || '0') > 0;
+                if (isVisible) this.startNoiseAnimation();
+            }
+        });
+
         console.log('✅ Static noise canvas created (outside performance manager to prevent cleanup)');
+    }
+
+    startNoiseAnimation() {
+        const canvasEl = document.getElementById('static-noise');
+        if (!canvasEl || !this._noiseCtx) return;
+        if (this._noiseActive) return;
+        // Only run if noise is actually visible and has opacity
+        const visible = canvasEl.style.display !== 'none' && parseFloat(canvasEl.style.opacity || '0') > 0;
+        if (!visible) return;
+        this._noiseActive = true;
+        const loop = (now) => {
+            if (!this._noiseActive) return;
+            // Throttle to ~10 FPS
+            if (!this._noiseLastTick || (now - this._noiseLastTick) >= 100) {
+                this._noiseLastTick = now;
+                this._renderNoiseFrame && this._renderNoiseFrame();
+            }
+            this._noiseRAF = requestAnimationFrame(loop);
+        };
+        this._noiseRAF = requestAnimationFrame(loop);
+    }
+
+    stopNoiseAnimation() {
+        this._noiseActive = false;
+        if (this._noiseRAF) {
+            cancelAnimationFrame(this._noiseRAF);
+            this._noiseRAF = null;
+        }
     }
 
     addDataStreams() {
