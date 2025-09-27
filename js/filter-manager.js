@@ -61,8 +61,12 @@ class FilterManager {
   }
 
   // Immediate application for scene transitions or effects
-  applyImmediate(filter, duration = 1.2) {
+  // Supports applyImmediate(filter, duration) or applyImmediate(filter, { duration, ease })
+  applyImmediate(filter, durationOrOpts = 1.2) {
     try {
+      const opts = (typeof durationOrOpts === 'object' && durationOrOpts !== null)
+        ? { duration: Number(durationOrOpts.duration ?? 1.2), ease: String(durationOrOpts.ease || 'power1.inOut') }
+        : { duration: Number(durationOrOpts), ease: 'power1.inOut' };
       const safeFilter = this._sanitize(filter);
       gsap.killTweensOf(document.body, 'filter');
       
@@ -74,16 +78,16 @@ class FilterManager {
         gsap.set(document.body, { filter: 'brightness(1) contrast(1) saturate(1) hue-rotate(0deg)' });
         gsap.to(document.body, {
           filter: safeFilter,
-          duration,
-          ease: 'power1.inOut',
+          duration: opts.duration,
+          ease: opts.ease,
           overwrite: 'auto'
         });
       } else if (safeFilter === 'none' && current && current !== 'none') {
         // Fade to neutral first, then remove filter entirely
         gsap.to(document.body, {
           filter: 'brightness(1) contrast(1) saturate(1) hue-rotate(0deg)',
-          duration: Math.max(0.1, duration * 0.5),
-          ease: 'power1.inOut',
+          duration: Math.max(0.1, opts.duration * 0.5),
+          ease: opts.ease,
           overwrite: 'auto',
           onComplete: () => {
             document.body.style.removeProperty('filter');
@@ -93,8 +97,8 @@ class FilterManager {
         // Normal transition between filters
         gsap.to(document.body, {
           filter: safeFilter,
-          duration,
-          ease: 'power1.inOut',
+          duration: opts.duration,
+          ease: opts.ease,
           overwrite: 'auto'
         });
       }

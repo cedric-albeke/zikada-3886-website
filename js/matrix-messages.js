@@ -1,57 +1,10 @@
 import gsap from 'gsap';
+import MATRIX_MESSAGES from './matrix-message-pool.js';
+const DEBUG_MATRIX = false;
 
 class MatrixMessages {
     constructor() {
-        this.messages = [
-            'WELC0ME, NPC',
-            'Y0U ARE 1N A S1MULAT10N',
-            'REAL1TY 1S C0RRUPTED',
-            'C0NNECT1NG T0 THE GR1D',
-            'D1G1TAL C0NSC10USNESS',
-            'BREAK1NG THE 4TH WALL',
-            'QUANTUM ENTANGLEMENT',
-            'N0 ESCAPE FR0M THE MATR1X',
-            '3886 1S WATCH1NG',
-            'Z1KADA L1VES',
-            'ENCRYPT10N FA1LED',
-            'ACCESS DEN1ED',
-            'WAKE UP NE0',
-            'THE S1GNAL 1S STR0NG',
-            'Y0U ARE BE1NG WATCHED',
-            'THE C1CADA SPEAKS',
-            '0CCUPY REAL1TY',
-            'TAKE C0NTR0L',
-            'T1ME\'S N0T L1NEAR',
-            'F*CK THE SYSTEM',
-            'D1G DEEPER',
-            'BREATHE',
-            '1N1T1AL1ZE THE SH1FT',
-            'F1N1SH CYCLES',
-            'S0RT CHA0S',
-            'L0VE 1S KEY',
-            'SP1RAL FURTHER',
-            'F0LL0W 3886',
-            'SPREAD THE MSG',
-            'WELC0ME AGA1N',
-            'PRACT1CE W1ZARDRY',
-            'L1NEAR1TY\'S AN 1LLUS10N',
-            'THERE ARE N0 RULES',
-            'BREAK THE CHA1NS',
-            'BR1CK BY BR1CK',
-            'HERE T0 CHANGE',
-            'HERE T0 STAY',
-            'F0LL0W Z1KADA',
-            'Z1KADA SPEAKS',
-            'Z1KADA L1VES',
-            'WE ARE 0NE',
-            'SHAPE THE SH1FT',
-            'YES',
-            'N0',
-            'MAYBE',
-            'D0ESN\'T MATTER',
-            'D0 1T',
-            'WA1T'
-        ];
+        this.messages = MATRIX_MESSAGES;
 
         this.scrambleChars = '!<>-_\\/[]{}—=+*^?#1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ';
         this.currentMessageIndex = 0;
@@ -60,6 +13,10 @@ class MatrixMessages {
         this.scrambleInterval = null;
         this.diceCountdown = 15;
         this.lastRoll = null;
+
+        // Simple element pools to reduce GC churn
+        this._divPool = [];
+        this._canvasPool = [];
     }
 
     createBlackoutElement() {
@@ -97,8 +54,8 @@ class MatrixMessages {
         // Style the message element
         this.styleMessages();
 
-        // Start the message cycle
-        this.startMessageCycle();
+        // Do NOT auto-start internal dice/message cycle here.
+        // Messages are driven by the control panel via vj-receiver to keep both views in sync.
 
         // Expose to window for testing
         window.matrixMessages = this;
@@ -303,7 +260,7 @@ class MatrixMessages {
             });
     }
 
-    showMessage() {
+    showMessage(forcedMessage) {
         if (this.isActive) return;
 
         this.isActive = true;
@@ -318,10 +275,11 @@ class MatrixMessages {
             this.forceCleanup();
         }, 10000);
         
-        // Select random message from pool
-        const randomIndex = Math.floor(Math.random() * this.messages.length);
-        const message = this.messages[randomIndex];
-        console.log('📢 Showing matrix message:', message, `(${randomIndex + 1}/${this.messages.length})`);
+        // Use externally provided message if present; otherwise fallback to a random one
+        let message = typeof forcedMessage === 'string' && forcedMessage.trim().length > 0
+            ? forcedMessage.trim()
+            : this.messages[Math.floor(Math.random() * this.messages.length)];
+        console.log('📢 Showing matrix message:', message);
 
         // Ensure blackout element exists and is properly styled
         if (!this.blackoutElement) {
@@ -389,8 +347,8 @@ class MatrixMessages {
     }
 
     createAnalogGlitch() {
-        // Create horizontal scan lines
-        const scanLine = document.createElement('div');
+        // Create horizontal scan lines (pooled)
+        const scanLine = this._getDiv();
         scanLine.style.cssText = `
             position: fixed;
             width: 100%;
@@ -408,11 +366,11 @@ class MatrixMessages {
             y: window.innerHeight,
             duration: 0.15,
             ease: 'none',
-            onComplete: () => scanLine.remove()
+            onComplete: () => this._releaseDiv(scanLine)
         });
 
         // Create RGB split overlay
-        const rgbSplit = document.createElement('div');
+        const rgbSplit = this._getDiv();
         rgbSplit.style.cssText = `
             position: fixed;
             top: 0;
@@ -426,7 +384,7 @@ class MatrixMessages {
 
         // Add static TV interference bands (monochrome)
         for (let i = 0; i < 5; i++) {
-            const band = document.createElement('div');
+            const band = this._getDiv();
             // More monochrome, static TV-like
             const intensity = Math.random() * 0.2 + 0.1;
             band.style.cssText = `
@@ -448,15 +406,16 @@ class MatrixMessages {
                 duration: 0.05,
                 repeat: 4,
                 yoyo: true,
-                ease: 'steps(2)'  // Choppy, TV-like
+                ease: 'steps(2)',  // Choppy, TV-like
+                onComplete: () => this._releaseDiv(band)
             });
         }
 
         document.body.appendChild(rgbSplit);
-        setTimeout(() => rgbSplit.remove(), 300);
+        setTimeout(() => this._releaseDiv(rgbSplit), 300);
 
         // Static noise burst
-        const staticNoise = document.createElement('canvas');
+        const staticNoise = this._getCanvas(window.innerWidth, window.innerHeight);
         staticNoise.style.cssText = `
             position: fixed;
             top: 0;
@@ -467,8 +426,6 @@ class MatrixMessages {
             z-index: 10001;
             opacity: 0.5;
         `;
-        staticNoise.width = window.innerWidth;
-        staticNoise.height = window.innerHeight;
 
         const ctx = staticNoise.getContext('2d');
         const imageData = ctx.createImageData(staticNoise.width, staticNoise.height);
@@ -491,7 +448,7 @@ class MatrixMessages {
             opacity: 0,
             duration: 0.2,
             ease: 'steps(5)',
-            onComplete: () => staticNoise.remove()
+            onComplete: () => this._releaseCanvas(staticNoise)
         });
     }
 
@@ -743,7 +700,7 @@ class MatrixMessages {
         }
 
         // 2. Subtle monochrome burst
-        const burst = document.createElement('div');
+        const burst = this._getDiv();
         burst.style.cssText = `
             position: fixed;
             top: 50%;
@@ -770,12 +727,12 @@ class MatrixMessages {
             opacity: 0,
             duration: 0.6,
             ease: 'power3.out',
-            onComplete: () => burst.remove()
+            onComplete: () => this._releaseDiv(burst)
         });
 
         // 3. Subtle glitch blocks - less colorful
         for (let i = 0; i < 8; i++) {  // Reduced from 20
-            const glitchBlock = document.createElement('div');
+            const glitchBlock = this._getDiv();
             const width = Math.random() * 150 + 30;
             const height = Math.random() * 20 + 3;
 
@@ -800,7 +757,7 @@ class MatrixMessages {
                 opacity: 0,
                 duration: Math.random() * 0.2 + 0.1,
                 ease: 'steps(3)',
-                onComplete: () => glitchBlock.remove()
+                onComplete: () => this._releaseDiv(glitchBlock)
             });
         }
 
@@ -812,9 +769,7 @@ class MatrixMessages {
         */
 
         // 5. VHS static burst
-        const staticBurst = document.createElement('canvas');
-        staticBurst.width = window.innerWidth;
-        staticBurst.height = window.innerHeight;
+        const staticBurst = this._getCanvas(window.innerWidth, window.innerHeight);
         staticBurst.style.cssText = `
             position: fixed;
             top: 0;
@@ -844,7 +799,7 @@ class MatrixMessages {
             opacity: 0,
             duration: 0.3,
             ease: 'steps(10)',
-            onComplete: () => staticBurst.remove()
+            onComplete: () => this._releaseCanvas(staticBurst)
         });
 
         // 6. REMOVED - Chromatic rainbow wave disabled
@@ -881,6 +836,12 @@ class MatrixMessages {
     }
 
     distortScreen() {
+        // Create warping screen distortion (skip on low FPS)
+        try {
+            if (window.performanceBus && typeof window.performanceBus.getAverageFPS === 'function') {
+                if (window.performanceBus.getAverageFPS() < 40) return;
+            }
+        } catch (_) {}
         // Create warping screen distortion
         const distortion = document.createElement('div');
         distortion.style.cssText = `
@@ -928,88 +889,42 @@ class MatrixMessages {
             });
     }
 
-    startMessageCycle() {
-        console.log('🎲 Starting dice roll system for matrix messages');
-        console.log(`📝 Message pool contains ${this.messages.length} messages`);
-
-        // Start countdown timer (updates every second)
-        this.startCountdownTimer();
-
-        // Dice roll system: every 15 seconds, roll 1-1000
-        // If 850-1000 (15% chance), trigger matrix message
-        const diceRollInterval = () => {
-            const roll = Math.floor(Math.random() * 1000) + 1; // 1-1000
-            this.lastRoll = roll;
-            console.log(`🎲 Dice roll: ${roll}/1000`);
-
-            // Broadcast dice roll result to control panel
-            this.broadcastDiceUpdate(roll);
-
-            if (roll >= 850 && roll <= 1000) {
-                console.log('🎯 Dice roll hit! Triggering matrix message...');
-                this.showMessage();
-            }
-
-            // Reset countdown and schedule next dice roll in 15 seconds
-            this.diceCountdown = 15;
-            setTimeout(diceRollInterval, 15000);
-        };
-
-        // Start after initial delay
-        setTimeout(diceRollInterval, 15000);
-    }
-
-    startCountdownTimer() {
-        // Update countdown every second
-        setInterval(() => {
+    // Autonomous dice mode for standalone demos (no control panel)
+    enableAutonomousDiceMode() {
+        if (this._autoDice) return;
+        this._autoDice = true;
+        this.diceCountdown = 15;
+        if (DEBUG_MATRIX) console.log('🎲 Autonomous MATRIX dice mode: ENABLED');
+        // Subscribe to a shared 1Hz ticker to avoid extra intervals
+        const sub = this._subscribe1Hz(() => {
             this.diceCountdown--;
-            if (this.diceCountdown < 0) {
-                this.diceCountdown = 0; // Don't go negative
+            if (this.diceCountdown <= 0) {
+                const roll = Math.floor(Math.random() * 100) + 1;
+                this.lastRoll = roll;
+                if (roll >= 90) {
+                    this.showMessage();
+                }
+                this.diceCountdown = 15;
             }
-
-            // Broadcast countdown update to control panel
-            this.broadcastCountdown();
-        }, 1000);
+        });
+        this._countdownUnsub = sub;
     }
 
-    broadcastDiceUpdate(roll) {
-        // Send dice roll result to control panel via localStorage
-        const message = {
-            type: 'dice_roll_update',
-            lastRoll: roll,
-            timestamp: Date.now()
-        };
-
-        try {
-            localStorage.setItem('3886_vj_response', JSON.stringify(message));
-        } catch (e) {
-            console.warn('Failed to broadcast dice update:', e);
-        }
-    }
-
-    broadcastCountdown() {
-        // Send countdown update to control panel via localStorage
-        const message = {
-            type: 'dice_roll_update',
-            countdown: this.diceCountdown,
-            timestamp: Date.now()
-        };
-
-        try {
-            localStorage.setItem('3886_vj_response', JSON.stringify(message));
-        } catch (e) {
-            console.warn('Failed to broadcast countdown:', e);
-        }
+    disableAutonomousDiceMode() {
+        if (!this._autoDice) return;
+        this._autoDice = false;
+        if (typeof this._countdownUnsub === 'function') this._countdownUnsub();
+        if (DEBUG_MATRIX) console.log('🎲 Autonomous MATRIX dice mode: DISABLED');
     }
 
     testMessage() {
-        console.log('🧪 Testing matrix message...');
+        if (DEBUG_MATRIX) console.log('🧪 Testing matrix message...');
         this.showMessage();
     }
     
     forceCleanup() {
         // Force complete cleanup of matrix elements
-        console.log('🧹 Force cleaning matrix message elements');
+        if (DEBUG_MATRIX) console.log('🧹 Force cleaning matrix message elements');
         
         // Clear failsafe timeout
         if (this.failsafeTimeout) {
@@ -1086,3 +1001,43 @@ class MatrixMessages {
 }
 
 export default new MatrixMessages();
+
+// --- Shared simple 1Hz ticker (singleton on window) ---
+(function ensureOneHzTicker(){
+    if (window.__oneHzTicker) return;
+    const subs = new Set();
+    const interval = setInterval(() => {
+        subs.forEach(fn => { try { fn(); } catch(_) {} });
+    }, 1000);
+    window.__oneHzTicker = {
+        subscribe(fn){ subs.add(fn); return () => subs.delete(fn); },
+        _stop(){ clearInterval(interval); }
+    };
+})();
+
+// Instance methods hooking the shared ticker and pools
+MatrixMessages.prototype._subscribe1Hz = function(fn){
+    return window.__oneHzTicker.subscribe(fn);
+};
+
+MatrixMessages.prototype._getDiv = function(){
+    return this._divPool.pop() || document.createElement('div');
+};
+
+MatrixMessages.prototype._releaseDiv = function(el){
+    try { el.remove(); } catch(_) {}
+    try { el.removeAttribute('style'); el.className = ''; el.innerHTML=''; } catch(_) {}
+    this._divPool.push(el);
+};
+
+MatrixMessages.prototype._getCanvas = function(w, h){
+    const c = this._canvasPool.pop() || document.createElement('canvas');
+    c.width = Math.max(1, Math.floor(w));
+    c.height = Math.max(1, Math.floor(h));
+    return c;
+};
+
+MatrixMessages.prototype._releaseCanvas = function(c){
+    try { c.remove(); } catch(_) {}
+    this._canvasPool.push(c);
+};

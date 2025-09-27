@@ -107,7 +107,19 @@ class TextEffects {
             }
         };
 
-        setInterval(drawMatrix, 50);
+        // rAF-driven loop with hidden-tab backoff
+        let last = performance.now();
+        const baseStep = 50; // ms
+        const loop = (ts) => {
+            const hidden = document.hidden === true;
+            const step = hidden ? 200 : baseStep;
+            if (ts - last >= step) {
+                drawMatrix();
+                last = ts;
+            }
+            requestAnimationFrame(loop);
+        };
+        requestAnimationFrame(loop);
 
         // Handle resize
         window.addEventListener('resize', () => {

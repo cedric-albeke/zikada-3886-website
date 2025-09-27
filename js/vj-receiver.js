@@ -2,6 +2,7 @@
 // Integrates with existing chaos engine
 
 import gsap from 'gsap';
+const VJ_DEBUG = false;
 import filterManager from './filter-manager.js';
 import fxController from './fx-controller.js';
 import animationManager from './animation-manager.js';
@@ -15,6 +16,9 @@ class VJReceiver {
     constructor() {
         this.channel = null;
         this.isConnected = false;
+        this.hasControlPanel = false; // set true once any message arrives from the control panel
+        // Use localStorage bridge only when BroadcastChannel is unavailable
+        this._useLocalStorageBridge = true;
         // Ripple feature flags
         this.bpmRippleEnabled = false;
         this.bpmRippleInterval = null;
@@ -38,6 +42,11 @@ class VJReceiver {
             bpm: 120,
             animeEnabled: false
         };
+        this.triggerSettings = {
+            theme: 'green',
+            intensity: 0.7,
+            speed: 0.6
+        };
 
         this.animeEnabled = false;
         this.activeFx = 0;
@@ -60,16 +69,27 @@ class VJReceiver {
 
         // Enable click/touch ripple (centered on pointer) if allowed
         this.setupClickRipple();
+
+        // If no control panel connects shortly, enable autonomous MATRIX dice as fallback
+        this._fallbackArmTimeout = setTimeout(() => {
+            if (!this.hasControlPanel && window.matrixMessages && typeof window.matrixMessages.enableAutonomousDiceMode === 'function') {
+                console.log('🕒 No control panel detected — enabling autonomous MATRIX dice mode');
+                window.matrixMessages.enableAutonomousDiceMode();
+                this._fallbackDiceEnabled = true;
+            }
+        }, 25000);
     }
 
     initBroadcastChannel() {
         try {
             // Create broadcast channel
             this.channel = new BroadcastChannel('3886_vj_control');
+            // Disable LS bridge when BroadcastChannel is available
+            this._useLocalStorageBridge = false;
 
             // Use addEventListener for better reliability
             this.channel.addEventListener('message', (event) => {
-                console.log('📨 VJ Receiver received:', event.data.type);
+                if (VJ_DEBUG) console.log('📨 VJ Receiver received:', event.data.type);
                 this.handleMessage(event.data);
             });
 
@@ -85,6 +105,8 @@ class VJReceiver {
     }
 
     initLocalStorageFallback() {
+        // Enable LS bridge when BC is not available
+        this._useLocalStorageBridge = true;
         console.log('Using localStorage fallback for VJ control');
 
         // Listen for storage events (cross-tab)
@@ -101,10 +123,16 @@ class VJReceiver {
 
         // Override sendMessage for localStorage
         this.sendMessage = (data) => {
-            localStorage.setItem('3886_vj_response', JSON.stringify({
+            const payload = {
                 ...data,
                 timestamp: Date.now()
-            }));
+            };
+            if (this._useLocalStorageBridge) {
+                try { localStorage.setItem('3886_vj_response', JSON.stringify(payload)); } catch {}
+            }
+            if (this.channel) {
+                try { this.channel.postMessage(payload); } catch {}
+            }
         };
     }
 
@@ -123,7 +151,7 @@ class VJReceiver {
                     // Ignore JSON parse errors
                 }
             }
-        }, 100); // Check every 100ms
+        }, 1500); // Reduced polling to 1.5s when using LS fallback
     }
 
     sendMessage(data) {
@@ -133,9 +161,13 @@ class VJReceiver {
             _id: Math.random().toString(36).substr(2, 9)
         };
 
-        // Always use localStorage for reliability
-        console.log('📤 VJ Receiver sending via LS:', messageData.type, messageData);
-        localStorage.setItem('3886_vj_response', JSON.stringify(messageData));
+        // Prefer BroadcastChannel; LS bridge only when needed
+        if (this._useLocalStorageBridge) {
+            try {
+                console.log('📤 VJ Receiver sending via LS:', messageData.type, messageData);
+                localStorage.setItem('3886_vj_response', JSON.stringify(messageData));
+            } catch {}
+        }
 
         // Also try BroadcastChannel if available
         if (this.channel) {
@@ -145,6 +177,11 @@ class VJReceiver {
                 // Ignore BC errors, localStorage is primary
             }
         }
+
+        // Redundant safety: for critical connection messages, mirror to LS to wake legacy listeners
+        if (!this._useLocalStorageBridge && (messageData.type === 'pong' || messageData.type === 'settings_sync')) {
+            try { localStorage.setItem('3886_vj_response', JSON.stringify(messageData)); } catch {}
+        }
     }
 
     handleMessage(data) {
@@ -152,10 +189,20 @@ class VJReceiver {
 
         switch(data.type) {
             case 'control_connect':
+                this.hasControlPanel = true;
+                if (this._fallbackDiceEnabled && window.matrixMessages?.disableAutonomousDiceMode) {
+                    window.matrixMessages.disableAutonomousDiceMode();
+                    this._fallbackDiceEnabled = false;
+                }
                 this.handleConnection();
                 break;
 
             case 'ping':
+                this.hasControlPanel = true;
+                if (this._fallbackDiceEnabled && window.matrixMessages?.disableAutonomousDiceMode) {
+                    window.matrixMessages.disableAutonomousDiceMode();
+                    this._fallbackDiceEnabled = false;
+                }
                 this.sendMessage({ type: 'pong' });
                 break;
 
@@ -206,17 +253,35 @@ class VJReceiver {
                 this.updateBPM(data.bpm);
                 break;
 
-            case 'effect_intensity':
-                this.updateEffectIntensity(data.effect, data.value);
+            case 'effect_intensity': {
+                // Accept both value (0..1) and intensity (0..100) from different panels
+                let raw = (data.value !== undefined) ? data.value : data.intensity;
+                if (raw === undefined || raw === null) break;
+                const val = Number(raw) > 1 ? Number(raw) / 100 : Number(raw);
+                this.updateEffectIntensity(data.effect, val);
                 break;
+            }
 
             // Support 'fx_intensity' from control panel
-            case 'fx_intensity':
-                this.updateEffectIntensity(data.effect, data.intensity);
+            case 'fx_intensity': {
+                // Normalized 0..1 expected; some send 0..100
+                const val = Number(data.intensity) > 1 ? Number(data.intensity) / 100 : Number(data.intensity);
+                this.updateEffectIntensity(data.effect, val);
                 break;
+            }
 
             case 'trigger_effect':
-                this.triggerEffect(data.effect);
+                if (data.settings) this._mergeTriggerSettings(data.settings);
+                this.triggerEffect(data.effect, data.settings);
+                break;
+
+            case 'trigger_settings':
+                if (data.settings) this._mergeTriggerSettings(data.settings);
+                break;
+
+            case 'trigger_macro':
+                if (data.settings) this._mergeTriggerSettings(data.settings);
+                this.runMacro(data.macro || 'impact', data.settings);
                 break;
 
             case 'preset_load':
@@ -239,6 +304,10 @@ class VJReceiver {
                     window.animeManager.pauseAll();
                 }
                 this.setAnimeFlag(false);
+                // Also stop enhanced effects and logo system, and cleanup custom animations
+                try { window.animeEnhancedEffects?.pause?.(); } catch {}
+                try { window.disableLogoAnimation?.(); } catch {}
+                try { window.animationManager?.cleanup?.(); } catch {}
                 this.sendAnimeStatus('disabled', false, { success: true });
                 break;
 
@@ -276,25 +345,54 @@ class VJReceiver {
             // Logo animation controls
             case 'logo_pulse_trigger':
                 console.log('💫 Triggering logo pulse');
-                if (window.triggerLogoPulse) {
+                if (this.animeEnabled === false) {
+                    console.warn('⚠️ Logo pulse blocked: anime system disabled');
+                    this.sendAnimeStatus('blocked', false, { actionId: 'logo-pulse', success: false, reason: 'disabled' });
+                    break;
+                }
+                // Prefer the professional animation manager
+                if (window.animationManager && typeof window.animationManager.trigger === 'function') {
+                    window.animationManager.trigger('logo-pulse');
+                } else if (window.triggerLogoPulse) {
                     window.triggerLogoPulse();
                 } else if (window.logoAnimations?.drawIn) {
-                    // Fallback to logo animations if available
                     window.logoAnimations.drawIn.restart();
+                } else {
+                    // Last-resort GSAP pulse on the raster logo
+                    const gsap = window.gsap;
+                    const logo = document.querySelector('.image-2');
+                    if (gsap && logo) {
+                        gsap.to(logo, { scale: 1.2, duration: 0.3, yoyo: true, repeat: 1, ease: 'power2.inOut' });
+                    }
                 }
                 this.sendMessage({ type: 'logo_pulse_triggered', timestamp: Date.now() });
                 break;
 
             case 'logo_glow_toggle':
                 console.log('✨ Toggling logo glow');
-                if (window.toggleLogoGlow) {
+                if (this.animeEnabled === false) {
+                    console.warn('⚠️ Logo glow toggle blocked: anime system disabled');
+                    this.sendAnimeStatus('blocked', false, { actionId: 'logo-glow', success: false, reason: 'disabled' });
+                    break;
+                }
+                if (window.animationManager && typeof window.animationManager.trigger === 'function') {
+                    // Use a one-shot glow pulse
+                    window.animationManager.trigger('logo-glow');
+                } else if (window.toggleLogoGlow) {
                     window.toggleLogoGlow();
                 } else if (window.logoAnimations?.glowPulse) {
-                    // Fallback to toggle glow animation
                     if (window.logoAnimations.glowPulse.paused) {
                         window.logoAnimations.glowPulse.play();
                     } else {
                         window.logoAnimations.glowPulse.pause();
+                    }
+                } else {
+                    // Basic CSS glow fallback
+                    const el = document.querySelector('.image-2');
+                    if (el) {
+                        const prev = el.style.filter;
+                        el.style.filter = 'drop-shadow(0 0 30px #00ff41) drop-shadow(0 0 60px #00ff41)';
+                        setTimeout(() => { el.style.filter = prev; }, 1000);
                     }
                 }
                 this.sendMessage({ type: 'logo_glow_toggled', timestamp: Date.now() });
@@ -326,11 +424,22 @@ class VJReceiver {
                 // Trigger matrix message display
                 if (window.matrixMessages && window.matrixMessages.showMessage) {
                     window.matrixMessages.showMessage(data.message);
+                    // Acknowledge immediately that the message display has started
+                    this.sendMessage({
+                        type: 'matrix_message_displayed',
+                        message: data.message,
+                        timestamp: Date.now()
+                    });
                 } else {
                     // Fallback: dispatch event for other systems to handle
                     window.dispatchEvent(new CustomEvent('matrixMessage', {
                         detail: { message: data.message, roll: data.roll }
                     }));
+                    this.sendMessage({
+                        type: 'matrix_message_displayed',
+                        message: data.message,
+                        timestamp: Date.now()
+                    });
                 }
                 break;
 
@@ -341,6 +450,24 @@ class VJReceiver {
             case 'system_reset':
                 console.log('🔄 Processing system_reset');
                 this.resetAllSystems();
+                break;
+
+            case 'system_reload':
+                console.log('🌀 Processing system_reload (full restart)');
+                try {
+                    if (window.ChaosControl && typeof window.ChaosControl.restart === 'function') {
+                        window.ChaosControl.restart();
+                    } else if (window.chaosInit && typeof window.chaosInit.init === 'function') {
+                        window.chaosInit.destroy?.();
+                        setTimeout(() => window.chaosInit.init(), 100);
+                    } else {
+                        // Fallback: hard reload as last resort
+                        window.location.reload();
+                    }
+                } catch (e) {
+                    console.error('Failed to process system_reload, reloading page:', e);
+                    try { window.location.reload(); } catch {}
+                }
                 break;
 
             case 'effect_toggle':
@@ -682,12 +809,221 @@ class VJReceiver {
             case 'cosmic':
                 this.triggerCosmicBurst();
                 break;
+            case 'vignette-pulse':
+                this.triggerVignettePulse();
+                break;
+            case 'scanlines-sweep':
+                this.triggerScanlinesSweep();
+                break;
+            case 'chroma-pulse':
+                this.triggerChromaticPulse();
+                break;
+            case 'noise-burst':
+                this.triggerNoiseBurst();
+                break;
+            case 'grid-flash':
+                this.triggerGridFlash();
+                break;
+            case 'lens-flare':
+                this.triggerLensFlare();
+                break;
+            case 'zoom-blur':
+                this.triggerZoomBlurPulse();
+                break;
+            case 'invert-flicker':
+                this.triggerInvertFlicker();
+                break;
+            case 'spotlight-sweep':
+                this.triggerSpotlightSweep();
+                break;
+            case 'heat-shimmer':
+                this.triggerHeatShimmer();
+                break;
         }
 
         // Decrement active effects counter after effect duration
         setTimeout(() => {
             this.activeFx--;
         }, 2000);
+    }
+
+    _mergeTriggerSettings(s) {
+        if (!s) return;
+        this.triggerSettings.theme = (s.theme || this.triggerSettings.theme);
+        if (typeof s.intensity === 'number') this.triggerSettings.intensity = Math.max(0, Math.min(1, s.intensity));
+        if (typeof s.speed === 'number') this.triggerSettings.speed = Math.max(0.1, Math.min(1, s.speed));
+    }
+
+    _themeColor() {
+        const t = (this.triggerSettings.theme || 'green').toLowerCase();
+        switch (t) {
+            case 'cyan': return '#00ffff';
+            case 'magenta': return '#ff00ff';
+            case 'amber': return '#ffcc00';
+            default: return '#00ff85';
+        }
+    }
+
+    // Macro sequences
+    runMacro(id) {
+        const speed = this.triggerSettings.speed || 0.6;
+        const delay = (ms) => new Promise(r => setTimeout(r, ms));
+        const step = Math.max(80, Math.round(220 - speed * 150));
+        const seq = async (arr) => {
+            for (const e of arr) { this.triggerEffect(e); await delay(step + Math.random()*80); }
+        };
+        switch ((id || '').toLowerCase()) {
+            case 'glitch':
+                seq(['chroma-pulse', 'rgbsplit', 'invert-flicker', 'scanlines-sweep']);
+                break;
+            case 'wave':
+                seq(['spotlight-sweep', 'ripple', 'digital-wave', 'lens-flare']);
+                break;
+            default:
+                // impact
+                seq(['zoom-blur', 'vignette-pulse', 'lens-flare', 'strobe']);
+        }
+    }
+
+    triggerVignettePulse() {
+        const overlay = document.createElement('div');
+        overlay.style.cssText = `
+            position: fixed; inset: 0; pointer-events: none; z-index: 10000;
+            background: radial-gradient(circle at center,
+                rgba(0,0,0,0) 30%, rgba(0,0,0,0.4) 60%, rgba(0,0,0,0.8) 100%);
+            opacity: 0;
+        `;
+        document.body.appendChild(overlay);
+        gsap.to(overlay, { opacity: 1, duration: 0.15, ease: 'power2.out' });
+        gsap.to(overlay, { opacity: 0, duration: 0.4, ease: 'power2.in', delay: 0.15, onComplete: () => overlay.remove() });
+    }
+
+    triggerScanlinesSweep() {
+        const overlay = document.createElement('div');
+        overlay.style.cssText = `
+            position: fixed; inset: 0; pointer-events: none; z-index: 10000;
+            background-image: repeating-linear-gradient(0deg, rgba(0,0,0,0.15) 0px, rgba(0,0,0,0.15) 2px, transparent 2px, transparent 4px);
+            transform: translateY(-10px);
+            opacity: 0.8;
+        `;
+        document.body.appendChild(overlay);
+        gsap.to(overlay, { y: window.innerHeight + 10, duration: 0.6, ease: 'linear' });
+        gsap.to(overlay, { opacity: 0, duration: 0.2, delay: 0.45, onComplete: () => overlay.remove() });
+    }
+
+    triggerChromaticPulse() {
+        try {
+            const ce = window.chaosEngine;
+            if (ce && ce.chromaticAberrationPass) {
+                const u = ce.chromaticAberrationPass.uniforms;
+                const base = u.amount.value;
+                gsap.to(u.amount, { value: Math.max(base, 0.01), duration: 0.1, ease: 'power2.out' });
+                gsap.to(u.amount, { value: base, duration: 0.25, delay: 0.12, ease: 'power2.in' });
+                return;
+            }
+        } catch {}
+        // Fallback: brief hue rotate on body
+        const prev = document.body.style.filter || '';
+        document.body.style.filter = 'hue-rotate(45deg)';
+        setTimeout(() => { document.body.style.filter = prev; }, 250);
+    }
+
+    triggerNoiseBurst() {
+        // Prefer fxController intensity pulse
+        try {
+            if (window.fxController) {
+                const current = window.fxController.getIntensity('noise');
+                window.fxController.setIntensity({ noise: Math.min(1, current + 0.5) });
+                setTimeout(() => window.fxController.setIntensity({ noise: current }), 300);
+                return;
+            }
+        } catch {}
+        // Fallback overlay
+        const overlay = document.createElement('div');
+        overlay.style.cssText = `
+            position: fixed; inset: 0; pointer-events: none; z-index: 10000; opacity: 0.25;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Cfilter id='n'%3E%3CfeTurbulence baseFrequency='0.9' /%3E%3C/filter%3E%3Crect width='100' height='100' filter='url(%23n)' opacity='0.9'/%3E%3C/svg%3E");
+            background-size: 200px 200px;
+        `;
+        document.body.appendChild(overlay);
+        gsap.to(overlay, { opacity: 0, duration: 0.3, ease: 'power2.in', onComplete: () => overlay.remove() });
+    }
+    triggerGridFlash() {
+        // Pulse cyber grid via fxController state, restore after
+        try {
+            const fx = window.fxController;
+            if (fx) {
+                const wasOn = !!fx.effectStates?.cyberGrid;
+                fx.setEffectEnabled('cyberGrid', true);
+                setTimeout(() => fx.setEffectEnabled('cyberGrid', wasOn), 500);
+                return;
+            }
+        } catch {}
+        // Fallback: quick grid overlay
+        const grid = document.createElement('div');
+        grid.style.cssText = `
+            position: fixed; inset: 0; pointer-events:none; z-index: 10000; opacity: 0.9;
+            background-image:
+                repeating-linear-gradient(0deg, rgba(0,255,133,0.15) 0px, transparent 1px, transparent 40px, rgba(0,255,133,0.15) 40px),
+                repeating-linear-gradient(90deg, rgba(0,255,133,0.15) 0px, transparent 1px, transparent 40px, rgba(0,255,133,0.15) 40px);
+        `;
+        document.body.appendChild(grid);
+        gsap.to(grid, { opacity: 0, duration: 0.3, ease: 'power2.in', onComplete: () => grid.remove() });
+    }
+
+    triggerLensFlare() {
+        // Lightweight diagonal flare sweep
+        const flare = document.createElement('div');
+        flare.style.cssText = `
+            position: fixed; inset: -20% -20% -20% -20%; z-index: 10000; pointer-events: none;
+            background: radial-gradient(closest-side, rgba(255,255,255,0.25), rgba(255,255,255,0) 60%);
+            mix-blend-mode: screen; opacity: 0; transform: rotate(25deg) translateX(-50%);
+        `;
+        document.body.appendChild(flare);
+        gsap.to(flare, { opacity: 1, duration: 0.05, ease: 'power2.out' });
+        gsap.to(flare, { x: window.innerWidth * 1.5, duration: 0.6, ease: 'power2.inOut' });
+        gsap.to(flare, { opacity: 0, duration: 0.25, delay: 0.35, onComplete: () => flare.remove() });
+    }
+
+    triggerZoomBlurPulse() {
+        // Subtle zoom + blur pulse on main elements
+        const targets = '.pre-loader, .bg, .image-wrapper, .image-2, .logo-text-wrapper';
+        const prev = document.body.style.filter || '';
+        gsap.to(targets, { scale: 1.06, duration: 0.12, ease: 'power2.out' });
+        document.body.style.filter = 'blur(2px)';
+        gsap.to(targets, { scale: 1, duration: 0.25, delay: 0.12, ease: 'power2.in' });
+        setTimeout(() => { document.body.style.filter = prev; }, 400);
+    }
+
+    triggerInvertFlicker() {
+        const prev = document.documentElement.style.filter || '';
+        document.documentElement.style.filter = 'invert(1)';
+        setTimeout(() => { document.documentElement.style.filter = prev; }, 120);
+    }
+
+    triggerSpotlightSweep() {
+        const spot = document.createElement('div');
+        spot.style.cssText = `
+            position: fixed; inset: 0; pointer-events: none; z-index: 10000;
+            background: radial-gradient(350px 350px at -200px 50%, rgba(255,255,255,0.8), rgba(255,255,255,0) 60%);
+            mix-blend-mode: screen; opacity: 0.7;
+        `;
+        document.body.appendChild(spot);
+        gsap.to(spot, { backgroundPositionX: `${window.innerWidth + 400}px`, duration: 0.7, ease: 'power2.inOut' });
+        gsap.to(spot, { opacity: 0, duration: 0.2, delay: 0.55, onComplete: () => spot.remove() });
+    }
+
+    triggerHeatShimmer() {
+        // Quick heat shimmer overlay using subtle transform noise
+        const shim = document.createElement('div');
+        shim.style.cssText = `
+            position: fixed; inset: 0; pointer-events: none; z-index: 10000; opacity: 0.35;
+            background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='w'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.01' numOctaves='2'/%3E%3CfeDisplacementMap in='SourceGraphic' scale='20'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23w)' fill='rgba(255,255,255,0.0)'/%3E%3C/svg%3E");
+            background-size: 240px 240px;
+        `;
+        document.body.appendChild(shim);
+        gsap.to(shim, { opacity: 0, duration: 0.35, ease: 'power2.in', onComplete: () => shim.remove() });
+>>>>>>> Stashed changes
     }
 
     triggerStrobe() {
@@ -770,24 +1106,21 @@ class VJReceiver {
     triggerRGBSplit() {
         // Get FX intensities
         const glitchI = window.fxController ? window.fxController.getIntensity('glitch') : 0.5;
-        
-        const originalFilter = document.body.style.filter;
+        const originalFilter = window.getComputedStyle(document.body).filter || 'none';
 
-        // DOUBLED: RGB Split effect duration doubled for more impact
-        gsap.timeline()
-            .to(document.body, {
-                filter: 'hue-rotate(120deg) saturate(2)',
-                duration: 0.6 + 1.0 * glitchI // Doubled from 0.3 + 0.5
-            })
-            .to(document.body, {
-                filter: 'hue-rotate(-120deg) saturate(2)',
-                duration: 0.6 + 1.0 * glitchI // Doubled from 0.3 + 0.5
-            })
-            .to(document.body, {
-                filter: originalFilter || 'none',
-                duration: 1.6 + 1.2 * (1 - glitchI), // Doubled from 0.8 + 0.6
-                ease: 'power2.out'
-            });
+        // Durations in seconds (kept from previous behavior)
+        const d1 = 0.6 + 1.0 * glitchI;
+        const d2 = 0.6 + 1.0 * glitchI;
+        const d3 = 1.6 + 1.2 * (1 - glitchI);
+
+        // Sequence via Filter Manager (sanitized, atomic transitions)
+        filterManager.applyImmediate('hue-rotate(120deg) saturate(2)', { duration: d1, ease: 'power2.inOut' });
+        setTimeout(() => {
+            filterManager.applyImmediate('hue-rotate(-120deg) saturate(2)', { duration: d2, ease: 'power2.inOut' });
+            setTimeout(() => {
+                filterManager.applyImmediate(originalFilter || 'none', { duration: d3, ease: 'power2.out' });
+            }, Math.max(0, Math.round(d2 * 1000)));
+        }, Math.max(0, Math.round(d1 * 1000)));
     }
 
     triggerShake() {
@@ -945,11 +1278,18 @@ class VJReceiver {
     }
 
     triggerDigitalWave() {
+        // Performance-aware guard
+        try {
+            const fps = (window.performanceBus && window.performanceBus.metrics?.fps) || (window.safePerformanceMonitor && window.safePerformanceMonitor.metrics?.fps) || 60;
+            const dom = document.querySelectorAll('*').length;
+            if (fps < 25 || dom > 1500) return;
+        } catch {}
         // Get FX intensities
         const mult = window.fxController ? window.fxController.globalMult : 1;
         const particlesI = window.fxController ? window.fxController.getIntensity('particles') : 0.5;
         
-        for (let i = 0; i < Math.max(20, Math.round(40 * particlesI * mult)); i++) {
+        const targetBursts = Math.min(15, Math.max(8, Math.round(20 * particlesI * mult)));
+        for (let i = 0; i < targetBursts; i++) {
             const wave = document.createElement('div');
             wave.style.cssText = `
                 position: fixed;
@@ -1043,8 +1383,8 @@ class VJReceiver {
         console.log('🎯 Enabling anime.js...');
 
         try {
-            // Load anime stack if not already loaded
-            if (!window.animeManager) {
+            // Load anime stack if core managers are missing
+            if (!window.animeManager || !window.animationManager) {
                 const loaded = await this.loadAnimeStack();
                 if (!loaded) {
                     this.sendAnimeStatus('error', false, { error: 'Failed to load anime stack', success: false });
@@ -1056,11 +1396,27 @@ class VJReceiver {
             this.setAnimeFlag(true);
             window.__ANIME_POC_ENABLED = true;
 
-            if (window.animeManager) {
+            if (window.animeManager && window.animationManager) {
+                try { window.animeEnhancedEffects?.resume?.(); } catch {}
+                // Kick off the signature logo animation if available (retry for a short window)
+                const tryStart = () => { try { window.enableLogoAnimation?.(); } catch {} };
+                if (typeof window.enableLogoAnimation === 'function') {
+                    tryStart();
+                } else {
+                    let retries = 10;
+                    const iv = setInterval(() => {
+                        if (typeof window.enableLogoAnimation === 'function') {
+                            clearInterval(iv);
+                            tryStart();
+                        } else if (--retries <= 0) {
+                            clearInterval(iv);
+                        }
+                    }, 200);
+                }
                 this.sendAnimeStatus('enabled', true, { success: true });
                 console.log('✅ Anime enabled successfully');
             } else {
-                this.sendAnimeStatus('error', false, { error: 'anime.js not available', success: false });
+                this.sendAnimeStatus('error', false, { error: 'anime or animation manager not available', success: false });
             }
 
         } catch (error) {
@@ -1069,24 +1425,50 @@ class VJReceiver {
         }
     }
 
-    handleAnimeTrigger(animationId) {
-        console.log('🎬 Triggering animation:', animationId);
+    async handleAnimeTrigger(animationId) {
+        if (VJ_DEBUG) console.log('🎬 Triggering animation:', animationId);
 
-        // Use the new professional animation manager
+        // If the animation system is explicitly disabled, block triggers
+        if (this.animeEnabled === false) {
+            console.warn('⚠️ Animation trigger blocked: anime system disabled');
+            this.sendAnimeStatus('blocked', false, { actionId: animationId, success: false, reason: 'disabled' });
+            return;
+        }
+
+        // Attempt lazy load if manager missing
+        if (!window.animationManager) {
+            try {
+                const loaded = await this.loadAnimeStack();
+                if (!loaded) {
+                    console.warn('Animation stack failed to load lazily; using fallback');
+                }
+            } catch (e) {
+                console.warn('Lazy load of animation stack threw:', e);
+            }
+        }
+
+        // Alias legacy IDs to canonical ones
+        const aliasMap = {
+            'logo-burst': 'logo-pulse',
+            'system-glitch': 'matrix-glitch'
+        };
+        const id = aliasMap[animationId] || animationId;
+
+        // Use the new professional animation manager if available
         if (window.animationManager) {
-            window.animationManager.trigger(animationId)
+            window.animationManager.trigger(id)
                 .then(success => {
-                    console.log(`✅ Animation ${animationId} completed: ${success}`);
+                    console.log(`✅ Animation ${id} completed: ${success}`);
                     this.sendAnimeStatus('trigger', this.animeEnabled, {
-                        actionId: animationId,
+                        actionId: id,
                         success: success
                     });
                 })
                 .catch(error => {
-                    console.error(`❌ Animation ${animationId} failed:`, error);
+                    console.error(`❌ Animation ${id} failed:`, error);
                     this.sendAnimeStatus('error', this.animeEnabled, {
                         error: error.message || 'trigger failed',
-                        actionId: animationId,
+                        actionId: id,
                         success: false
                     });
                 });
@@ -1354,10 +1736,10 @@ class VJReceiver {
                     this.handleAnimeTrigger('bg-shake');
                     this.handleAnimeTrigger('text-scramble');
 
-                    // Add extra chaos
-                    document.body.style.filter = 'hue-rotate(180deg) saturate(200%)';
+                    // Add extra chaos (route via Filter Manager for safety)
+                    filterManager.applyImmediate('hue-rotate(180deg) saturate(200%)', { duration: 0.5, ease: 'power2.inOut' });
                     setTimeout(() => {
-                        document.body.style.filter = '';
+                        filterManager.applyImmediate('none', { duration: 0.5, ease: 'power2.inOut' });
                     }, 2000);
                     success = true;
                     break;
@@ -1412,9 +1794,19 @@ class VJReceiver {
     setPerformanceMode(mode) {
         console.log(`🎮 Setting performance mode: ${mode}`);
 
-        // Map external mode to internal manager mode
-        const mappedMode = (mode === 'auto') ? 'medium' : mode;
-        const perfDetail = { mode: mappedMode, source: 'vj-receiver', raw: mode };
+        // If centralized manager exists, delegate and return
+        if (window.performanceModeManager && typeof window.performanceModeManager.applyMode === 'function') {
+            window.performanceModeManager.applyMode(mode);
+            this.sendMessage({ type: 'performance_mode_updated', mode, timestamp: Date.now() });
+            return;
+        }
+
+        // Normalize for different subsystems
+        // performanceManager expects: 'low' | 'medium' | 'high' (no 'auto')
+        const pmMode = (mode === 'auto') ? 'medium' : mode;
+        // performanceElementManager expects: 'aggressive' | 'conservative' | 'normal'
+        const pemMode = (mode === 'low') ? 'aggressive' : 'normal'; // 'auto' and 'high' map to normal
+        const perfDetail = { mode: pmMode, source: 'vj-receiver', raw: mode };
 
         if (window.animePerfAdapter && typeof window.animePerfAdapter.applyMode === 'function') {
             window.animePerfAdapter.applyMode(mappedMode);
@@ -1428,15 +1820,15 @@ class VJReceiver {
 
         // Apply performance mode to all available systems
         if (window.ChaosControl && window.ChaosControl.setPerformance) {
-            window.ChaosControl.setPerformance(mappedMode);
+            window.ChaosControl.setPerformance(pmMode);
         }
 
         if (window.performanceManager && typeof window.performanceManager.setPerformanceMode === 'function') {
-            window.performanceManager.setPerformanceMode(mappedMode);
+            window.performanceManager.setPerformanceMode(pmMode);
         }
 
         if (window.performanceElementManager && typeof window.performanceElementManager.setPerformanceMode === 'function') {
-            window.performanceElementManager.setPerformanceMode(mappedMode);
+            window.performanceElementManager.setPerformanceMode(pemMode);
         }
 
         if (window.fxController) {
@@ -1467,7 +1859,7 @@ class VJReceiver {
                     window.gsapAnimationRegistry.maxAnimations = 200;
                     break;
             }
-            console.log(`🎬 GSAP animation limit set to ${window.gsapAnimationRegistry.maxAnimations} for ${mode} mode (mapped to ${mappedMode})`);
+            console.log(`🎬 GSAP animation limit set to ${window.gsapAnimationRegistry.maxAnimations} for ${mode} mode (pm:${pmMode}, pem:${pemMode})`);
         }
 
         // Send confirmation back to control panel
@@ -2232,9 +2624,10 @@ class VJReceiver {
     }
 
     sendPerformanceData() {
+        const preferredFPS = (window.safePerformanceMonitor && window.safePerformanceMonitor.metrics?.fps) ? window.safePerformanceMonitor.metrics.fps : this.currentFPS || 60;
         const data = {
             type: 'performance_update',
-            fps: this.currentFPS || 60,
+            fps: preferredFPS,
             activeFx: this.activeFx,
             cpu: 0 // Would need actual CPU monitoring
         };
@@ -2382,9 +2775,11 @@ class VJReceiver {
             }
         };
 
-        // Execute the effect toggle
+        // Execute the effect toggle or fall back to generic handler (supports lottie:* keys)
         if (effectActions[effectName]) {
             effectActions[effectName]();
+        } else if (window.fxController) {
+            window.fxController.setEffectEnabled(effectName, enabled);
         }
 
         // Update active FX count
@@ -2528,7 +2923,11 @@ class VJReceiver {
     }
 
     getCurrentFPS() {
-        // Simple FPS calculation
+        // Prefer shared performance bus for consistent values
+        if (window.performanceBus && typeof window.performanceBus.getFPS === 'function') {
+            return window.performanceBus.getFPS();
+        }
+        // Fallback: simple local estimate
         if (!this.fpsFrames) this.fpsFrames = [];
         const now = performance.now();
         this.fpsFrames.push(now);

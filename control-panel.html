@@ -6,6 +6,7 @@
     <title>3886 VJ Control Panel</title>
     <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
     <link href="css/control-panel.css" rel="stylesheet">
+    <link href="css/control-panel-compact.css" rel="stylesheet">
     <link href="css/control-panel-visual-effects.css" rel="stylesheet">
 </head>
 <body>
@@ -18,18 +19,18 @@
 
             <!-- System Identity Section -->
             <div class="matrix-section matrix-identity">
-                <div class="matrix-logo-container">
-                    <div class="matrix-hex">⬢</div>
-                    <div class="matrix-pulse"></div>
-                    <div class="matrix-ring"></div>
-                </div>
-                <div class="matrix-system-info">
-                    <div class="system-designation">ZIKADA.3886</div>
-                    <div class="system-protocol">MATRIX.CTRL.v4.2</div>
-                    <div class="system-status">
-                        <span class="status-prefix">[ </span>
-                        <span id="systemStatus" class="status-value">ONLINE</span>
-                        <span class="status-suffix"> ]</span>
+                <div class="live-preview">
+                    <div class="preview-header">
+                        <span class="preview-title">LIVE PREVIEW</span>
+                        <span class="preview-hint">Tab capture</span>
+                    </div>
+                    <div class="preview-frame-wrap">
+                        <video id="livePreviewVideo" class="preview-video" autoplay muted playsinline></video>
+                        <div class="preview-overlay" id="previewOverlay">
+                            <button id="startPreviewBtn" class="preview-btn">Start Preview</button>
+                            <button id="stopPreviewBtn" class="preview-btn hidden">Stop</button>
+                            <span class="preview-note">Select the animation tab in the prompt</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -139,7 +140,7 @@
         <div class="control-grid">
 
             <!-- Scene Selection -->
-            <section class="control-section scene-control">
+            <section class="control-section scene-control section section--scenes">
                 <h2>SCENE SELECT</h2>
                 <div class="scene-grid">
                     <button class="scene-btn" data-scene="intense">INTENSE</button>
@@ -165,7 +166,7 @@
             </section>
 
             <!-- Color Controls -->
-            <section class="control-section color-control">
+            <section class="control-section color-control section section--color">
                 <h2>COLOR MATRIX</h2>
                 <div class="slider-group">
                     <div class="slider-container">
@@ -193,7 +194,7 @@
             </section>
 
             <!-- Animation Speed -->
-            <section class="control-section speed-control">
+            <section class="control-section speed-control section section--tempo">
                 <h2>TEMPO</h2>
                 <div class="slider-group">
                     <div class="slider-container">
@@ -219,7 +220,7 @@
             </section>
 
             <!-- Effects Intensity -->
-            <section class="control-section effects-control">
+            <section class="control-section effects-control section section--intensity">
                 <h2>FX INTENSITY</h2>
                 <div class="slider-group">
                     <div class="slider-container">
@@ -242,8 +243,24 @@
             </section>
 
             <!-- Special Effects Triggers -->
-            <section class="control-section trigger-control">
+            <section class="control-section trigger-control section section--triggers">
                 <h2>TRIGGER FX</h2>
+                <div class="trigger-toolbar">
+                    <div class="theme-group" id="triggerTheme">
+                        <button class="theme-btn active" data-theme="green">GREEN</button>
+                        <button class="theme-btn" data-theme="cyan">CYAN</button>
+                        <button class="theme-btn" data-theme="magenta">MAGENTA</button>
+                        <button class="theme-btn" data-theme="amber">AMBER</button>
+                    </div>
+                    <div class="mini-sliders">
+                        <label>INT</label>
+                        <input type="range" id="triggerIntensity" min="0" max="100" value="70">
+                        <span class="mini-value" id="triggerIntensityVal">70</span>
+                        <label>SPD</label>
+                        <input type="range" id="triggerSpeed" min="10" max="100" value="60">
+                        <span class="mini-value" id="triggerSpeedVal">60</span>
+                    </div>
+                </div>
                 <div class="trigger-grid">
                     <button class="trigger-btn" data-effect="strobe">STROBE</button>
                     <button class="trigger-btn" data-effect="blackout">BLACKOUT</button>
@@ -253,35 +270,51 @@
                     <button class="trigger-btn" data-effect="pulse">LOGO PULSE</button>
                     <button class="trigger-btn" data-effect="matrix-rain">DIGITAL WAVE</button>
                     <button class="trigger-btn" data-effect="cosmic">COSMIC (SOFT)</button>
+                    <button class="trigger-btn" data-effect="vignette-pulse">VIGNETTE PULSE</button>
+                    <button class="trigger-btn" data-effect="scanlines-sweep">SCANLINE SWEEP</button>
+                    <button class="trigger-btn" data-effect="chroma-pulse">CHROMA PULSE</button>
+                    <button class="trigger-btn" data-effect="noise-burst">NOISE BURST</button>
+                    <button class="trigger-btn" data-effect="grid-flash">GRID FLASH</button>
+                    <button class="trigger-btn" data-effect="lens-flare">LENS FLARE</button>
+                    <button class="trigger-btn" data-effect="zoom-blur">ZOOM BLUR</button>
+                    <button class="trigger-btn" data-effect="invert-flicker">INVERT FLICKER</button>
+                    <button class="trigger-btn" data-effect="spotlight-sweep">SPOTLIGHT SWEEP</button>
+                    <button class="trigger-btn" data-effect="heat-shimmer">HEAT SHIMMER</button>
+                </div>
+                <div class="macro-grid">
+                    <button class="macro-btn" data-macro="impact">MACRO: IMPACT</button>
+                    <button class="macro-btn" data-macro="glitch">MACRO: GLITCH</button>
+                    <button class="macro-btn" data-macro="wave">MACRO: WAVE</button>
                 </div>
             </section>
 
             <!-- Anime.js Controls -->
-            <section class="control-section">
+            <section class="control-section section section--animation">
                 <h2>ANIMATION SYSTEM</h2>
 
-                <!-- System Status -->
-                <div class="anime-status-panel">
-                    <div class="monitor-stat">
-                        <label>SYSTEM STATUS</label>
-                        <span id="animeStatus" class="status-display">DISABLED</span>
+                <div class="animation-grid">
+                    <!-- System Status -->
+                    <div class="anime-status-panel animation-status">
+                        <div class="monitor-stat">
+                            <label>SYSTEM STATUS</label>
+                            <span id="animeStatus" class="status-display">DISABLED</span>
+                        </div>
                     </div>
-                </div>
 
-                <!-- System Controls -->
-                <div class="anime-system-controls">
-                    <h3>System Control</h3>
-                    <div class="system-control-grid">
-                        <button class="system-btn enable" id="animeEnable">ENABLE</button>
-                        <button class="system-btn disable" id="animeDisable">DISABLE</button>
-                        <button class="system-btn kill" id="animeKill">EMERGENCY STOP</button>
+                    <!-- System Controls -->
+                    <div class="anime-system-controls animation-sys">
+                        <h3>System Control</h3>
+                        <div class="system-control-grid">
+                            <button class="system-btn enable" id="animeEnable">ENABLE</button>
+                            <button class="system-btn disable" id="animeDisable">DISABLE</button>
+                            <button class="system-btn kill" id="animeKill">EMERGENCY STOP</button>
+                        </div>
                     </div>
-                </div>
 
-                <!-- Animation Triggers -->
-                <div class="anime-triggers">
-                    <h3>Animation Triggers</h3>
-                    <div class="trigger-control-grid">
+                    <!-- Animation Triggers -->
+                    <div class="anime-triggers animation-triggers">
+                        <h3>Animation Triggers</h3>
+                        <div class="trigger-control-grid">
                         <button class="anim-trigger-btn" data-anime="logo-pulse">
                             <span class="trigger-label">LOGO</span>
                             <span class="trigger-desc">Pulse Effect</span>
@@ -330,19 +363,15 @@
                             <span class="trigger-label">CHAOS</span>
                             <span class="trigger-desc">Full Chaos</span>
                         </button>
+                        </div>
                     </div>
-                </div>
 
-                <!-- Diagnostics -->
-                <div class="anime-diagnostics" style="margin-top:12px;">
-                    <h3>Diagnostics</h3>
-                    <button class="system-btn" id="runAnimDiagnostics">RUN TRIGGER DIAGNOSTICS</button>
-                    <div id="animDiagnosticsResult" style="margin-top:8px;font-size:11px;color:#66ff99;"></div>
+                    <!-- Diagnostics section removed for performance -->
                 </div>
             </section>
 
             <!-- Visual Effects & Layers Control -->
-            <section class="control-section effects-layers-control">
+            <section class="control-section effects-layers-control section section--ve-layers">
                 <h2>VISUAL EFFECTS & LAYERS</h2>
 
                 <!-- Effect Toggles -->
@@ -397,6 +426,22 @@
                             <label>Film Grain</label>
                             <button class="effect-toggle-btn" data-effect="filmgrain" data-state="off">OFF</button>
                         </div>
+                        <div class="toggle-item">
+                            <label>Aurora</label>
+                            <button class="effect-toggle-btn" data-effect="aurora" data-state="off">OFF</button>
+                        </div>
+                        <div class="toggle-item">
+                            <label>Neon Rings</label>
+                            <button class="effect-toggle-btn" data-effect="neonRings" data-state="off">OFF</button>
+                        </div>
+                        <div class="toggle-item">
+                            <label>Circuit Grid</label>
+                            <button class="effect-toggle-btn" data-effect="circuitGrid" data-state="off">OFF</button>
+                        </div>
+                        <div class="toggle-item">
+                            <label>Chromatic Pulse</label>
+                            <button class="effect-toggle-btn" data-effect="chromaticPulse" data-state="off">OFF</button>
+                        </div>
                     </div>
                 </div>
 
@@ -449,11 +494,16 @@
 
     <!-- Use professional VJ control panel -->
     <script type="module">
-        // Import performance stats controller first
+        // Shared FPS bus so control panel and main page agree
+        import './js/performance-bus.js';
+        // Import performance stats controller first (uses bus if present)
         import performanceStatsController from './js/performance-stats-controller.js';
-
-        // Then import control panel
-        import('./js/control-panel-professional.js');
+        // Optional Lottie UI: inject toggles from /lotties/manifest.json when available
+        import './js/lottie-ui.js';
+        // Then import control panel core
+        import './js/control-panel-professional.js';
+        // Live preview client
+        import './js/preview-client.js';
     </script>
 </body>
 </html>

@@ -347,6 +347,10 @@ function disableLogoAnimation() {
   }
 }
 
+// Expose controls for external callers (e.g., vj-receiver)
+window.enableLogoAnimation = enableLogoAnimation;
+window.disableLogoAnimation = disableLogoAnimation;
+
 // DO NOT auto-enable logo animation - let it start in normal mode
 // Logo animation will be enabled/disabled via control panel only
 if (document.readyState === 'loading') {

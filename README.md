@@ -75,18 +75,49 @@ The system cycles through multiple themed phases:
 - **Three.js**: 3D graphics and particle systems
 - **Simplex Noise**: For organic animation patterns
 
-## Installation
+## Installation & Bring-up
 
 ```bash
 # Install dependencies
-npm install
+npm ci
 
 # Run development server (port 3886)
 npm run dev
 
+# Open two tabs in the same browser profile:
+#  - Main:         http://localhost:3886/
+#  - Control Panel: http://localhost:3886/control-panel.html
+
 # Build for production
 npm run build
 ```
+
+### Ports
+- Vite dev and preview servers run on port 3886 by default
+
+## E2E & Soak
+
+```bash
+# Run full E2E suite (spawns preview server on 3886)
+npm run test:e2e
+
+# 2-minute performance baseline log to artifacts/baseline/
+npm run baseline
+
+# Duplicate overlays runbook (60s), logs to artifacts/baseline/
+npm run runbook:duplicates
+
+# 10-minute soak to validate stability
+npm run soak:10
+
+# First-load flicker capture (overlay/z-index mutations ~10s)
+npm run flicker
+```
+
+## Contributor Guides
+
+- `AGENTS.md` – core repository conventions, manual QA expectations, and doc sync requirements.
+- `CODEX.md` – Codex CLI agent checklist for scoped changes, verification, and handoff notes.
 
 ## Configuration
 

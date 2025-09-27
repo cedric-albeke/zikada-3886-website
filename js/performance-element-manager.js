@@ -11,11 +11,11 @@ class PerformanceElementManager {
         
         // Categories for different element types
         this.categories = {
-            'effect': { maxElements: 20, cleanupAge: 15000 },
-            'particle': { maxElements: 50, cleanupAge: 10000 },
-            'overlay': { maxElements: 5, cleanupAge: 20000 },
-            'stream': { maxElements: 30, cleanupAge: 8000 },
-            'artifact': { maxElements: 15, cleanupAge: 5000 }
+            'effect': { maxElements: 12, cleanupAge: 10000 },
+            'particle': { maxElements: 35, cleanupAge: 8000 },
+            'overlay': { maxElements: 5, cleanupAge: 18000 },
+            'stream': { maxElements: 20, cleanupAge: 5000 },
+            'artifact': { maxElements: 10, cleanupAge: 3500 }
         };
 
         // Start periodic cleanup
@@ -188,6 +188,14 @@ class PerformanceElementManager {
      * Perform periodic cleanup of old elements
      */
     performPeriodicCleanup() {
+        // If too many elements overall, aggressively remove oldest across all categories
+        const hardCap = 400;
+        const softCap = 300;
+        if (this.elements.size > hardCap) {
+            const removeCount = this.elements.size - softCap;
+            const oldest = Array.from(this.elements.values()).sort((a, b) => a.createdAt - b.createdAt).slice(0, removeCount);
+            oldest.forEach(el => this.removeElement(el.id));
+        }
         const now = Date.now();
         const elementsToRemove = [];
 

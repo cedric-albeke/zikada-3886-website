@@ -11,8 +11,8 @@ class AnimationManager {
 
         // Animation configurations
         this.animations = {
-            'logo-pulse': {
-                target: '.image-2',
+'logo-pulse': {
+                target: '.anime-logo-container svg, .image-2',
                 type: 'scale',
                 duration: 600,
                 easing: 'easeOutElastic',
@@ -21,8 +21,8 @@ class AnimationManager {
                 yoyo: true,
                 cleanup: true
             },
-            'logo-spin': {
-                target: '.image-2',
+'logo-spin': {
+                target: '.anime-logo-container svg, .image-2',
                 type: 'rotation',
                 duration: 1000,
                 easing: 'easeInOutCubic',
@@ -30,22 +30,24 @@ class AnimationManager {
                 cleanup: true,
                 resetAfter: true
             },
-            'logo-glow': {
-                target: '.image-2',
+'logo-glow': {
+                target: '.anime-logo-container svg, .image-2',
                 type: 'filter',
                 duration: 1000,
                 filter: 'drop-shadow(0 0 30px #00ff41) drop-shadow(0 0 60px #00ff41)',
                 cleanup: true
             },
-            'matrix-flash': {
+'matrix-flash': {
                 target: '.matrix-rain, .chaos-matrix, #data-streams-overlay, .data-streams',
+                fallbackTarget: 'body',
                 type: 'opacity',
                 duration: 200,
                 opacitySequence: [1, 0, 1, 0, 1],
                 cleanup: true
             },
-            'matrix-rain': {
+'matrix-rain': {
                 target: '.matrix-rain, .chaos-matrix, #data-streams-overlay, .data-streams',
+                fallbackTarget: 'body',
                 type: 'composite',
                 duration: 2000,
                 effects: ['opacity', 'scale'],
@@ -53,8 +55,9 @@ class AnimationManager {
                 scale: [1, 1.1, 1],
                 cleanup: true
             },
-            'matrix-glitch': {
+'matrix-glitch': {
                 target: '.matrix-rain, .chaos-matrix, #data-streams-overlay, .data-streams',
+                fallbackTarget: 'body',
                 type: 'glitch',
                 duration: 1000,
                 cleanup: true
@@ -235,9 +238,14 @@ class AnimationManager {
 
         try {
             // Get target elements
-            const elements = document.querySelectorAll(config.target);
+            let elements = document.querySelectorAll(config.target);
+            if (elements.length === 0 && config.fallbackTarget) {
+                console.warn(`No elements found for selector: ${config.target}, trying fallback ${config.fallbackTarget}`);
+                elements = document.querySelectorAll(config.fallbackTarget);
+            }
             if (elements.length === 0) {
-                console.warn(`No elements found for selector: ${config.target}`);
+                console.warn(`No elements found for selector: ${config.target} (and no fallback)`);
+                try { window.dispatchEvent(new CustomEvent('triggerResult', { detail: { id: animationId, success: false, target: config.target, count: 0, error: 'no-target-elements' } })); } catch {}
                 return false;
             }
 
@@ -292,10 +300,18 @@ class AnimationManager {
                 this.cleanupAnimation(animationInstance);
             }
 
+            // Emit diagnostic event
+            try {
+                window.dispatchEvent(new CustomEvent('triggerResult', { detail: { id: animationId, success: true, target: config.target, count: animationInstance.elements?.length || 0 } }));
+            } catch {}
+
             return true;
         } catch (error) {
             console.error(`Animation ${animationId} failed:`, error);
             this.cleanupAnimation(animationInstance);
+            try {
+                window.dispatchEvent(new CustomEvent('triggerResult', { detail: { id: animationId, success: false, target: config?.target || '', count: animationInstance.elements?.length || 0, error: String(error?.message || error) } }));
+            } catch {}
             return false;
         } finally {
             // Remove from active animations
@@ -315,7 +331,7 @@ class AnimationManager {
 
         if (window.anime) {
             // Use anime.js if available
-            const animation = anime({
+            const animation = window.anime({
                 targets: elements,
                 scale: [1, config.scale || 1.2],
                 duration: config.duration || 600,
@@ -323,6 +339,9 @@ class AnimationManager {
                 direction: config.yoyo ? 'alternate' : 'normal',
                 loop: config.repeat || false
             });
+            if (window.animeManager && typeof window.animeManager.register === 'function') {
+                window.animeManager.register(animation, { label: instance.id });
+            }
 
             await animation.finished;
         } else {
@@ -353,12 +372,15 @@ class AnimationManager {
         const { config, elements } = instance;
 
         if (window.anime) {
-            const animation = anime({
+            const animation = window.anime({
                 targets: elements,
                 rotate: config.rotation || 360,
                 duration: config.duration || 1000,
                 easing: config.easing || 'easeInOutCubic'
             });
+            if (window.animeManager && typeof window.animeManager.register === 'function') {
+                window.animeManager.register(animation, { label: instance.id });
+            }
 
             await animation.finished;
         } else {
@@ -490,7 +512,7 @@ class AnimationManager {
 
         if (window.anime) {
             elements.forEach((el, i) => {
-                anime({
+                window.anime({
                     targets: el,
                     translateY: [
                         { value: amplitude * Math.sin(i * 0.5), duration: duration / 4 },

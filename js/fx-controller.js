@@ -15,6 +15,33 @@ class FXController {
     this.effectStates = this.effectStates || {};
   }
 
+  // Utility: create overlay lazily under #fx-root with fade-in
+  _ensureOverlay(id, styleText) {
+    let el = document.getElementById(id);
+    if (!el) {
+      el = document.createElement('div');
+      el.id = id;
+      el.style.cssText = styleText;
+      el.style.opacity = '0';
+      (document.getElementById('fx-root') || document.body).appendChild(el);
+      // Fade-in
+      requestAnimationFrame(() => { el.style.transition = 'opacity 300ms ease'; el.style.opacity = '1'; });
+    }
+    return el;
+  }
+
+  // Utility: fade out and remove overlay by id
+  _removeOverlay(id) {
+    const el = document.getElementById(id);
+    if (el) {
+      try {
+        el.style.transition = 'opacity 200ms ease';
+        el.style.opacity = '0';
+        setTimeout(() => { try { el.remove(); } catch {} }, 220);
+      } catch { try { el.remove(); } catch {} }
+    }
+  }
+
   setIntensity(partial) {
     Object.entries(partial || {}).forEach(([k, v]) => {
       const clamped = Math.max(0, Math.min(1, Number(v)));
@@ -103,6 +130,18 @@ class FXController {
       case 'filmgrain':
         this.applyFilmGrainEffect(enabled);
         break;
+      case 'aurora':
+        this.applyAuroraEffect(enabled);
+        break;
+      case 'neonRings':
+        this.applyNeonRingsEffect(enabled);
+        break;
+      case 'circuitGrid':
+        this.applyCircuitGrid(enabled);
+        break;
+      case 'chromaticPulse':
+        this.applyChromaticPulse(enabled);
+        break;
       default:
         console.warn(`Unknown effect: ${effectName}`);
     }
@@ -148,30 +187,68 @@ class FXController {
             height: 100%;
             pointer-events: none;
             z-index: 9999;
-            opacity: 0.1;
+            opacity: 0.25;
             color: #00ff85;
             font-family: monospace;
-            font-size: 10px;
+            font-size: 12px;
+            letter-spacing: 1px;
             overflow: hidden;
           `;
-          document.body.appendChild(overlay);
+          (document.getElementById('fx-root') || document.body).appendChild(overlay);
         }
 
         // Animate data streams
+        // Reduce spawn frequency for stability
+        const SPAWN_INTERVAL_MS = 400;
         this.dataStreamsInterval = setInterval(() => {
+          // Performance-aware guard
+          try {
+            const fps = (window.performanceBus && window.performanceBus.metrics?.fps) || (window.safePerformanceMonitor && window.safePerformanceMonitor.metrics?.fps) || 60;
+            const dom = document.querySelectorAll('*').length;
+            const childLimit = 60;
+            if (fps < 15 || dom > 4000) return;
+            if (overlay.childNodes.length > childLimit) return;
+          } catch {}
+
+          // Prune oldest if too many children exist
+          try {
+            const maxChildren = 35;
+            while (overlay.childNodes.length > maxChildren) {
+              const first = overlay.firstChild;
+              if (first && first.parentNode) first.parentNode.removeChild(first); else break;
+            }
+          } catch {}
+
           const stream = document.createElement('div');
+          stream._createdAt = Date.now();
           stream.style.cssText = `
             position: absolute;
             left: ${Math.random() * 100}%;
             top: -20px;
             writing-mode: vertical-rl;
-            animation: fall 3s linear;
+            text-shadow: 0 0 6px rgba(0,255,133,0.6);
+            animation: fall 3.2s linear;
           `;
           stream.textContent = Math.random().toString(36).substring(2, 15);
           overlay.appendChild(stream);
 
-          setTimeout(() => stream.remove(), 3000);
-        }, 200);
+          // Remove after 3s and opportunistically prune stale nodes
+          setTimeout(() => {
+            try { stream.remove(); } catch {}
+            try {
+              const now = Date.now();
+              // Remove any child older than 4s just in case
+              overlay.childNodes.forEach((n) => {
+                try {
+                  const anyNode = n;
+                  if (anyNode && typeof anyNode._createdAt === 'number' && now - anyNode._createdAt > 4000) {
+                    if (anyNode.parentNode) anyNode.parentNode.removeChild(anyNode);
+                  }
+                } catch {}
+              });
+            } catch {}
+          }, 3000);
+        }, SPAWN_INTERVAL_MS);
 
         // Add CSS animation
         if (!document.getElementById('data-streams-style')) {
@@ -184,10 +261,24 @@ class FXController {
           `;
           document.head.appendChild(style);
         }
+
+        // Keep-alive to guard against accidental overlay removal
+        if (!this.dataStreamsKeepAlive) {
+          this.dataStreamsKeepAlive = setInterval(() => {
+            try {
+              const enabled = this.effectStates && this.effectStates.dataStreams;
+              if (!enabled) return;
+              if (!document.getElementById('data-streams-overlay')) {
+                this.applyDataStreamsEffect(true);
+              }
+            } catch {}
+          }, 2000);
+        }
       }
     } else if (!enabled) {
       clearInterval(this.dataStreamsInterval);
       this.dataStreamsInterval = null;
+      if (this.dataStreamsKeepAlive) { try { clearInterval(this.dataStreamsKeepAlive); } catch {} this.dataStreamsKeepAlive = null; }
       const overlay = document.getElementById('data-streams-overlay');
       if (overlay) overlay.remove();
     }
@@ -213,7 +304,7 @@ class FXController {
         z-index: 9998;
         animation: strobe-pulse 0.5s infinite;
       `;
-      document.body.appendChild(strobeOverlay);
+      (document.getElementById('fx-root') || document.body).appendChild(strobeOverlay);
 
       // Add strobe animation
       if (!document.getElementById('strobe-style')) {
@@ -294,9 +385,9 @@ class FXController {
         // Insert before main content but after background
         const mainWrapper = document.querySelector('.main-wrapper');
         if (mainWrapper) {
-          mainWrapper.parentNode.insertBefore(plasmaOverlay, mainWrapper);
+          (document.getElementById('fx-root') || mainWrapper.parentNode || document.body).appendChild(plasmaOverlay);
         } else {
-          document.body.insertBefore(plasmaOverlay, document.body.firstChild);
+          (document.getElementById('fx-root') || document.body).appendChild(plasmaOverlay);
         }
 
         // Add plasma animation
@@ -317,6 +408,20 @@ class FXController {
           document.head.appendChild(style);
         }
       }
+      // Keep-alive to guard against accidental cleanup
+      if (!this.plasmaKeepAlive) {
+        this.plasmaKeepAlive = setInterval(() => {
+          try {
+            const enabled = this.effectStates && this.effectStates.plasma;
+            if (!enabled) return;
+            let overlay = document.getElementById('plasma-overlay');
+            if (!overlay) {
+              // Recreate quickly if missing
+              this.applyPlasmaEffect(true);
+            }
+          } catch {}
+        }, 2000);
+      }
     } else {
       if (plasmaOverlay) {
         plasmaOverlay.remove();
@@ -325,6 +430,7 @@ class FXController {
       if (plasmaStyle) {
         plasmaStyle.remove();
       }
+      if (this.plasmaKeepAlive) { try { clearInterval(this.plasmaKeepAlive); } catch {} this.plasmaKeepAlive = null; }
     }
   }
 
@@ -349,7 +455,7 @@ class FXController {
         background-size: 50px 50px;
         animation: grid-move 10s linear infinite;
       `;
-      document.body.appendChild(gridOverlay);
+      (document.getElementById('fx-root') || document.body).appendChild(gridOverlay);
 
       // Add grid animation
       if (!document.getElementById('grid-style')) {
@@ -377,48 +483,38 @@ class FXController {
         rgbStyle = document.createElement('style');
         rgbStyle.id = 'rgb-split-style';
         rgbStyle.textContent = `
-          .main-wrapper {
-            animation: rgb-split 0.5s infinite;
+          .rgb-split-target {
+            position: relative;
+            text-shadow: 1px 0 #ff0000, -1px 0 #00ffff;
+            transition: text-shadow 0.2s ease;
+          }
+          .rgb-split-target.rgb-anim {
+            animation: rgb-split 1.2s ease-in-out infinite;
           }
           @keyframes rgb-split {
-            0%, 100% {
-              text-shadow: 2px 0 #ff0000, -2px 0 #00ffff;
-              filter: none;
-            }
-            25% {
-              text-shadow: -2px 0 #ff0000, 2px 0 #00ffff;
-              filter: contrast(1.1);
-            }
-            50% {
-              text-shadow: 3px 0 #ff00ff, -3px 0 #00ff00;
-              filter: contrast(1.2);
-            }
-            75% {
-              text-shadow: -3px 0 #ff00ff, 3px 0 #00ff00;
-              filter: contrast(1.1);
-            }
+            0%, 100% { text-shadow: 1px 0 #ff0000, -1px 0 #00ffff; }
+            50% { text-shadow: -1px 0 #ff0000, 1px 0 #00ffff; }
           }
         `;
         document.head.appendChild(rgbStyle);
       }
 
-      // Apply to main elements
-      const mainWrapper = document.querySelector('.main-wrapper');
-      if (mainWrapper) {
-        mainWrapper.style.animation = 'rgb-split 0.5s infinite';
-      }
+      // Apply to selected text/logo elements only
+      const targets = document.querySelectorAll('.logo-text, .text-3886, h1, h2, h3');
+      targets.forEach(el => el.classList.add('rgb-split-target', 'rgb-anim'));
     } else {
+      const targets = document.querySelectorAll('.rgb-split-target');
+      targets.forEach(el => {
+        el.classList.remove('rgb-anim');
+        el.classList.remove('rgb-split-target');
+      });
       if (rgbStyle) rgbStyle.remove();
-      const mainWrapper = document.querySelector('.main-wrapper');
-      if (mainWrapper) {
-        mainWrapper.style.animation = '';
-      }
     }
   }
 
   // Chromatic Aberration Effect
   applyChromaticAberrationEffect(enabled) {
-    const elements = document.querySelectorAll('.text-3886, .logo-text-wrapper, h1, h2, h3');
+    const elements = document.querySelectorAll('.logo-text, .text-3886, h1, h2, h3');
 
     if (enabled) {
       // Create chromatic style if needed
@@ -427,43 +523,33 @@ class FXController {
         chromStyle = document.createElement('style');
         chromStyle.id = 'chromatic-style';
         chromStyle.textContent = `
-          .chromatic-active {
-            position: relative;
-          }
+          .chromatic-active { position: relative; }
           .chromatic-active::before,
           .chromatic-active::after {
             content: attr(data-text);
             position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            opacity: 0.8;
+            top: 0; left: 0; width: 100%; height: 100%;
+            opacity: 0.7;
+            mix-blend-mode: screen;
             pointer-events: none;
           }
-          .chromatic-active::before {
-            color: #ff0000;
-            transform: translate(-2px, -1px);
-            mix-blend-mode: screen;
-          }
-          .chromatic-active::after {
-            color: #00ffff;
-            transform: translate(2px, 1px);
-            mix-blend-mode: screen;
-          }
+          .chromatic-active::before { color: #ff0000; transform: translate(-1px, -1px); }
+          .chromatic-active::after  { color: #00ffff; transform: translate(1px, 1px); }
         `;
         document.head.appendChild(chromStyle);
       }
 
       elements.forEach(el => {
         el.classList.add('chromatic-active');
-        el.setAttribute('data-text', el.textContent);
+        el.setAttribute('data-text', el.textContent || '');
       });
     } else {
-      elements.forEach(el => {
+      document.querySelectorAll('.chromatic-active').forEach(el => {
         el.classList.remove('chromatic-active');
         el.removeAttribute('data-text');
       });
+      const chromStyle = document.getElementById('chromatic-style');
+      if (chromStyle) chromStyle.remove();
     }
   }
 
@@ -491,7 +577,7 @@ class FXController {
         );
         animation: scanlines-move 8s linear infinite;
       `;
-      document.body.appendChild(scanlinesOverlay);
+      (document.getElementById('fx-root') || document.body).appendChild(scanlinesOverlay);
 
       // Add animation
       if (!document.getElementById('scanlines-anim-style')) {
@@ -532,7 +618,7 @@ class FXController {
           rgba(0, 0, 0, 0.6) 100%
         );
       `;
-      document.body.appendChild(vignetteOverlay);
+      (document.getElementById('fx-root') || document.body).appendChild(vignetteOverlay);
     } else if (!enabled && vignetteOverlay) {
       vignetteOverlay.remove();
     }
@@ -547,14 +633,16 @@ class FXController {
       grainOverlay.id = 'grain-overlay';
       grainOverlay.style.cssText = `
         position: fixed;
-        top: -100%;
-        left: -100%;
-        width: 200%;
-        height: 200%;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
         pointer-events: none;
         z-index: 9993;
-        opacity: 0.05;
-        animation: grain 0.5s steps(1) infinite;
+        opacity: 0.06;
+        background-repeat: repeat;
+        background-size: 200px 200px;
+        animation: grain-move 0.8s steps(1) infinite;
       `;
 
       // Create noise pattern
@@ -575,20 +663,20 @@ class FXController {
 
       ctx.putImageData(imageData, 0, 0);
       grainOverlay.style.backgroundImage = `url(${canvas.toDataURL()})`;
-      grainOverlay.style.backgroundSize = '200px 200px';
 
-      document.body.appendChild(grainOverlay);
+      (document.getElementById('fx-root') || document.body).appendChild(grainOverlay);
 
       // Add animation
       if (!document.getElementById('grain-anim-style')) {
         const style = document.createElement('style');
         style.id = 'grain-anim-style';
         style.textContent = `
-          @keyframes grain {
-            0%, 100% { transform: translate(0, 0); }
-            25% { transform: translate(-5%, -5%); }
-            50% { transform: translate(-10%, 5%); }
-            75% { transform: translate(5%, -10%); }
+          @keyframes grain-move {
+            0%   { background-position: 0 0; }
+            25%  { background-position: -5px -3px; }
+            50%  { background-position: 7px -2px; }
+            75%  { background-position: -4px 6px; }
+            100% { background-position: 0 0; }
           }
         `;
         document.head.appendChild(style);
@@ -596,6 +684,97 @@ class FXController {
     } else if (!enabled && grainOverlay) {
       grainOverlay.remove();
     }
+  }
+
+  // Aurora Effect (soft animated gradient)
+  applyAuroraEffect(enabled) {
+    if (enabled) {
+      this._ensureOverlay('aurora-overlay', `
+        position: fixed; inset: 0; pointer-events: none; z-index: 2;
+        background: radial-gradient(100% 60% at 30% 30%, rgba(0,255,133,0.08), transparent 60%),
+                    radial-gradient(120% 70% at 70% 70%, rgba(0,170,255,0.06), transparent 60%);
+        animation: aurora-shift 16s ease-in-out infinite;
+        will-change: background-position, transform, opacity;
+      `);
+      if (!document.getElementById('aurora-style')) {
+        const style = document.createElement('style');
+        style.id = 'aurora-style';
+        style.textContent = `
+          @keyframes aurora-shift {
+            0% { filter: hue-rotate(0deg); transform: translate3d(0,0,0); }
+            50% { filter: hue-rotate(30deg); transform: translate3d(0, -1%, 0); }
+            100% { filter: hue-rotate(0deg); transform: translate3d(0,0,0); }
+          }
+        `;
+        document.head.appendChild(style);
+      }
+    } else {
+      this._removeOverlay('aurora-overlay');
+      const s = document.getElementById('aurora-style'); if (s) s.remove();
+    }
+  }
+
+  // Neon Rings (center pulses)
+  applyNeonRingsEffect(enabled) {
+    if (enabled) {
+      const el = this._ensureOverlay('neon-rings-overlay', `
+        position: fixed; inset: 0; pointer-events: none; z-index: 3;
+        display: grid; place-items: center;
+      `);
+      if (!document.getElementById('neon-rings-inner')) {
+        const inner = document.createElement('div');
+        inner.id = 'neon-rings-inner';
+        inner.style.cssText = `
+          width: 220px; height: 220px; border-radius: 50%;
+          box-shadow: 0 0 24px rgba(0,255,133,0.3), inset 0 0 18px rgba(0,255,133,0.25);
+          border: 2px solid rgba(0,255,133,0.4);
+          animation: neon-ring 6s ease-in-out infinite; will-change: transform, opacity;
+        `;
+        el.appendChild(inner);
+      }
+      if (!document.getElementById('neon-rings-style')) {
+        const style = document.createElement('style'); style.id = 'neon-rings-style';
+        style.textContent = `@keyframes neon-ring { 0%,100% { transform: scale(1); opacity: .6 } 50% { transform: scale(1.2); opacity: .9 } }`;
+        document.head.appendChild(style);
+      }
+    } else {
+      this._removeOverlay('neon-rings-overlay');
+      const s = document.getElementById('neon-rings-style'); if (s) s.remove();
+    }
+  }
+
+  // Circuit Grid (slow drift grid)
+  applyCircuitGrid(enabled) {
+    if (enabled) {
+      this._ensureOverlay('circuit-grid-overlay', `
+        position: fixed; inset: 0; pointer-events: none; z-index: 2; opacity: 0.25;
+        background-image:
+          linear-gradient(rgba(0, 255, 133, 0.07) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(0, 255, 133, 0.07) 1px, transparent 1px);
+        background-size: 60px 60px; animation: circuit-move 20s linear infinite; will-change: transform;
+      `);
+      if (!document.getElementById('circuit-style')) {
+        const style = document.createElement('style'); style.id = 'circuit-style';
+        style.textContent = `@keyframes circuit-move { 0% { transform: translate3d(0,0,0) } 100% { transform: translate3d(60px,60px,0) } }`;
+        document.head.appendChild(style);
+      }
+    } else {
+      this._removeOverlay('circuit-grid-overlay');
+      const s = document.getElementById('circuit-style'); if (s) s.remove();
+    }
+  }
+
+  // Chromatic pulse via chaosEngine shader if present
+  applyChromaticPulse(enabled) {
+    try {
+      const pass = window.chaosEngine?.chromaticAberrationPass;
+      if (!pass) return;
+      if (enabled) {
+        pass.uniforms.amount.value = 0.01;
+      } else {
+        pass.uniforms.amount.value = 0.002;
+      }
+    } catch {}
   }
 
   // Apply to live systems (chaosEngine and DOM)
@@ -610,8 +789,9 @@ class FXController {
       if (window.chaosEngine && window.chaosEngine.particles) {
         const mat = window.chaosEngine.particles.material;
         if (mat) {
-          mat.opacity = Math.min(1, 0.2 + value * 0.8);
-          mat.size = 0.2 + value * 1.2;
+          // Boost visual range so slider/toggle produces noticeable change
+          mat.opacity = Math.min(1, 0.1 + value * 0.9);
+          mat.size = 0.5 + value * 3.0;
         }
       }
     }
@@ -634,10 +814,16 @@ class FXController {
           // Completely hide noise when set to 0%
           noiseCanvas.style.display = 'none';
           noiseCanvas.style.opacity = '0';
+          if (window.chaosInitializer && typeof window.chaosInitializer.stopNoiseAnimation === 'function') {
+            window.chaosInitializer.stopNoiseAnimation();
+          }
         } else {
           // Show and set opacity for non-zero values
           noiseCanvas.style.display = 'block';
           noiseCanvas.style.opacity = (value * 0.05).toFixed(3);
+          if (window.chaosInitializer && typeof window.chaosInitializer.startNoiseAnimation === 'function') {
+            window.chaosInitializer.startNoiseAnimation();
+          }
         }
 
         // Clear any body background noise fallback when canvas is available
@@ -656,10 +842,16 @@ class FXController {
               // Completely hide noise when set to 0%
               recreatedCanvas.style.display = 'none';
               recreatedCanvas.style.opacity = '0';
+              if (window.chaosInitializer && typeof window.chaosInitializer.stopNoiseAnimation === 'function') {
+                window.chaosInitializer.stopNoiseAnimation();
+              }
             } else {
               // Show and set opacity for non-zero values
               recreatedCanvas.style.display = 'block';
               recreatedCanvas.style.opacity = (value * 0.05).toFixed(3);
+              if (window.chaosInitializer && typeof window.chaosInitializer.startNoiseAnimation === 'function') {
+                window.chaosInitializer.startNoiseAnimation();
+              }
             }
             return; // Success, don't use body fallback
           }

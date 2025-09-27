@@ -1,0 +1,332 @@
+/* Compact Control Panel Layout Optimizations */
+/* Designed for 1920x1080 optimal viewing */
+
+:root {
+    /* Design tokens for compact layout */
+    --accent: #00ff88;
+    --accent-2: #00e0ff;
+    --text: #c8f7e0;
+    --muted: #87f5c7;
+    --danger: #ff3b64;
+    --line: 1px solid rgba(0,255,136,0.22);
+    --shadow-neon: 0 0 8px rgba(0,255,136,0.5), 0 0 18px rgba(0,224,255,0.28);
+}
+
+/* Optimized Grid Layout for 1920x1080 */
+@media (min-width: 1280px) {
+    .control-grid {
+        grid-template-rows: auto auto 1fr;
+        gap: 12px !important;
+    }
+    
+    /* Row 1: More balanced distribution */
+    .section--color { 
+        grid-column: span 3 !important; 
+        grid-row: 1;
+    }
+    .section--tempo { 
+        grid-column: span 3 !important;
+        grid-row: 1;
+        max-width: 380px;
+    }
+    .section--intensity { 
+        grid-column: span 3 !important;
+        grid-row: 1;
+        max-width: 380px;
+    }
+    .section--triggers { 
+        grid-column: span 3 !important;
+        grid-row: 1;
+    }
+
+    /* Row 2: Compact Scene Select, expanded Animation */
+    .section--scenes { 
+        grid-column: span 4 !important;
+        grid-row: 2;
+        max-width: 420px;
+        min-width: 360px;
+    }
+    .section--animation { 
+        grid-column: span 8 !important;
+        grid-row: 2;
+    }
+
+    /* Row 3: Visual Effects full width */
+    .section--ve-layers { 
+        grid-column: 1 / -1 !important;
+        grid-row: 3;
+        max-height: 400px;
+        overflow-y: auto;
+    }
+}
+
+/* Scene Grid Optimization - Much more compact */
+.scene-control .scene-grid {
+    display: grid !important;
+    gap: 5px !important;
+    grid-template-columns: repeat(auto-fill, minmax(85px, 1fr)) !important;
+    max-height: 240px !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    padding-right: 5px !important;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(0,255,133,0.3) rgba(0,255,133,0.08);
+}
+
+.scene-grid::-webkit-scrollbar { 
+    width: 5px !important;
+}
+
+.scene-grid::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, rgba(0,255,133,0.4), rgba(0,224,255,0.35));
+    border-radius: 3px;
+}
+
+.scene-grid::-webkit-scrollbar-track {
+    background: rgba(0,255,133,0.08);
+}
+
+/* Smaller Scene Buttons */
+.scene-btn {
+    padding: 4px 6px !important;
+    font-size: 7px !important;
+    min-height: 28px !important;
+    letter-spacing: 0.2px !important;
+}
+
+.scene-btn:hover {
+    transform: none !important; /* Remove translateY animation */
+}
+
+/* FX INTENSITY Improvements */
+.section--intensity {
+    container-type: inline-size;
+}
+
+.section--intensity .slider-group {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px !important;
+}
+
+.section--intensity .slider-container {
+    display: grid;
+    grid-template-columns: 55px 1fr 32px !important;
+    align-items: center;
+    gap: 6px !important;
+}
+
+.section--intensity .slider-container label {
+    font-size: 7px !important;
+    letter-spacing: 0.3px;
+}
+
+.section--intensity .slider-value {
+    font-size: 9px !important;
+}
+
+/* TEMPO Section Improvements */
+.section--tempo {
+    container-type: inline-size;
+}
+
+.section--tempo .slider-group {
+    gap: 8px !important;
+}
+
+.section--tempo .slider-container {
+    display: grid;
+    grid-template-columns: 70px 1fr 35px !important;
+    gap: 6px !important;
+}
+
+.section--tempo .slider-container label {
+    font-size: 8px !important;
+}
+
+/* BPM Display Optimization */
+.section--tempo .bpm-display {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 8px !important;
+    margin-top: 10px !important;
+    padding-top: 10px !important;
+}
+
+.section--tempo .tap-btn {
+    padding: 6px 12px !important;
+    font-size: 9px !important;
+}
+
+.section--tempo .bpm-value {
+    font-size: 14px !important;
+}
+
+/* Trigger Grid Optimization */
+.section--triggers .trigger-grid {
+    display: grid !important;
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 6px !important;
+}
+
+.section--triggers .trigger-btn {
+    padding: 8px 6px !important;
+    font-size: 8px !important;
+    letter-spacing: 0.5px !important;
+    min-height: 36px !important;
+}
+
+/* Animation System Compact Layout */
+.section--animation .animation-grid {
+    gap: 10px !important;
+}
+
+.section--animation .trigger-control-grid {
+    grid-template-columns: repeat(4, 1fr) !important;
+    gap: 6px !important;
+}
+
+.section--animation .anim-trigger-btn {
+    padding: 10px 6px !important;
+    height: 55px !important;
+}
+
+.section--animation .trigger-label {
+    font-size: 9px !important;
+}
+
+.section--animation .trigger-desc {
+    font-size: 8px !important;
+}
+
+/* Visual Effects & Layers Optimization */
+.section--ve-layers .toggle-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr) !important;
+    gap: 8px !important;
+}
+
+.section--ve-layers .toggle-item {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    gap: 6px;
+}
+
+.section--ve-layers .toggle-item label {
+    font-size: 8px !important;
+    letter-spacing: 0.3px;
+}
+
+.section--ve-layers .effect-toggle-btn,
+.section--ve-layers .layer-toggle-btn {
+    padding: 4px 8px !important;
+    font-size: 8px !important;
+    min-width: 35px !important;
+}
+
+/* Remove Diagnostics Section */
+.animation-diag,
+.anime-diagnostics {
+    display: none !important;
+}
+
+#runAnimDiagnostics,
+#animDiagnosticsResult {
+    display: none !important;
+}
+
+/* Header Optimization for 1920x1080 */
+@media (min-width: 1600px) and (max-height: 1100px) {
+    .matrix-header {
+        min-height: 140px !important;
+        padding: 12px !important;
+        margin-bottom: 12px !important;
+    }
+    
+    .matrix-section {
+        min-height: 100px !important;
+        padding: 8px !important;
+    }
+    
+    .control-panel {
+        padding: 12px !important;
+    }
+    
+    /* Ensure sections don't overflow */
+    .section--color,
+    .section--tempo,
+    .section--intensity {
+        max-height: 180px !important;
+        overflow-y: auto;
+    }
+    
+    .section--triggers {
+        max-height: 180px !important;
+        overflow-y: auto;
+    }
+    
+    .section--scenes {
+        max-height: 280px !important;
+    }
+    
+    .section--animation {
+        max-height: 280px !important;
+        overflow-y: auto;
+    }
+    
+    .section--ve-layers {
+        max-height: 320px !important;
+    }
+}
+
+/* Improved Scrollbars */
+.section::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+}
+
+.section::-webkit-scrollbar-track {
+    background: rgba(0, 255, 133, 0.05);
+}
+
+.section::-webkit-scrollbar-thumb {
+    background: rgba(0, 255, 133, 0.3);
+    border-radius: 3px;
+}
+
+.section::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 255, 133, 0.5);
+}
+
+/* Performance optimizations */
+.control-section {
+    will-change: auto !important; /* Remove unnecessary will-change */
+}
+
+/* Disable hover animations that cause reflow */
+.scene-btn:hover,
+.trigger-btn:hover,
+.anim-trigger-btn:hover,
+.effect-toggle-btn:hover,
+.layer-toggle-btn:hover {
+    transform: none !important;
+}
+
+/* Accessibility: Maintain focus states */
+.scene-btn:focus-visible,
+.trigger-btn:focus-visible,
+.anim-trigger-btn:focus-visible {
+    outline: 2px solid var(--accent-2);
+    outline-offset: 2px;
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+    * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}

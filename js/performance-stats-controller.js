@@ -27,7 +27,15 @@ class PerformanceStatsController {
 
     init() {
         console.log('📊 Performance Stats Controller initialized');
-        this.startFPSMonitoring();
+        // Prefer shared performance bus if available to keep values aligned
+        if (window.performanceBus && typeof window.performanceBus.subscribe === 'function') {
+            window.performanceBus.subscribe(({ fps }) => {
+                this.fps = fps || 0;
+                this.updateFPSDisplay();
+            });
+        } else {
+            this.startFPSMonitoring();
+        }
         this.startMemoryMonitoring();
         this.startDOMMonitoring();
     }
