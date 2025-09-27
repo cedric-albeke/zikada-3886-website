@@ -690,6 +690,44 @@ class VJReceiver {
         }, 2000);
     }
 
+    _mergeTriggerSettings(s) {
+        if (!s) return;
+        this.triggerSettings.theme = (s.theme || this.triggerSettings.theme);
+        if (typeof s.intensity === 'number') this.triggerSettings.intensity = Math.max(0, Math.min(1, s.intensity));
+        if (typeof s.speed === 'number') this.triggerSettings.speed = Math.max(0.1, Math.min(1, s.speed));
+    }
+
+    _themeColor() {
+        const t = (this.triggerSettings.theme || 'green').toLowerCase();
+        switch (t) {
+            case 'cyan': return '#00ffff';
+            case 'magenta': return '#ff00ff';
+            case 'amber': return '#ffcc00';
+            default: return '#00ff85';
+        }
+    }
+
+    // Macro sequences
+    runMacro(id) {
+        const speed = this.triggerSettings.speed || 0.6;
+        const delay = (ms) => new Promise(r => setTimeout(r, ms));
+        const step = Math.max(80, Math.round(220 - speed * 150));
+        const seq = async (arr) => {
+            for (const e of arr) { this.triggerEffect(e); await delay(step + Math.random()*80); }
+        };
+        switch ((id || '').toLowerCase()) {
+            case 'glitch':
+                seq(['chroma-pulse', 'rgbsplit', 'invert-flicker', 'scanlines-sweep']);
+                break;
+            case 'wave':
+                seq(['spotlight-sweep', 'ripple', 'digital-wave', 'lens-flare']);
+                break;
+            default:
+                // impact
+                seq(['zoom-blur', 'vignette-pulse', 'lens-flare', 'strobe']);
+        }
+    }
+
     triggerStrobe() {
         // Get FX intensities
         const mult = window.fxController ? window.fxController.globalMult : 1;

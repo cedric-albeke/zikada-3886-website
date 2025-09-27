@@ -1,0 +1,303 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e2]:
+  - banner [ref=e3]:
+    - generic [ref=e5]:
+      - generic [ref=e6]:
+        - generic [ref=e7]: LIVE PREVIEW
+        - generic [ref=e8]: Tab capture
+      - generic [ref=e11]:
+        - button "Start Preview" [ref=e12] [cursor=pointer]
+        - generic [ref=e13]: Select the animation tab in the prompt
+    - generic [ref=e14]:
+      - generic [ref=e15]: PERFORMANCE.METRICS
+      - generic [ref=e16]:
+        - generic [ref=e17]:
+          - generic [ref=e18]: FPS
+          - generic [ref=e19]: "--"
+        - generic [ref=e21]:
+          - generic [ref=e22]: MEM
+          - generic [ref=e23]: "--"
+        - generic [ref=e25]:
+          - generic [ref=e26]: DOM
+          - generic [ref=e27]: "--"
+        - generic [ref=e29]:
+          - generic [ref=e30]: FX
+          - generic [ref=e31]: "0"
+    - generic [ref=e33]:
+      - generic [ref=e34]: MATRIX.DICE.SYSTEM
+      - generic [ref=e35]:
+        - generic [ref=e36]:
+          - img [ref=e37]
+          - generic [ref=e40]: "15"
+        - generic [ref=e41]:
+          - generic [ref=e42]:
+            - generic [ref=e43]: THRESHOLD ≥ 90
+            - generic [ref=e44]:
+              - generic [ref=e45]: "LAST:"
+              - generic [ref=e46]: 0/100
+          - generic [ref=e47]:
+            - generic [ref=e48]: "LAST MSG:"
+            - generic [ref=e49]: STANDBY
+    - generic [ref=e50]:
+      - generic [ref=e51]: LINK.STATUS
+      - generic [ref=e56]:
+        - generic [ref=e57]: OFFLINE
+        - generic [ref=e58]:
+          - generic [ref=e59]: "UP:"
+          - generic [ref=e60]: 00:00:00
+    - generic [ref=e61]:
+      - generic [ref=e62]:
+        - button "☠ KILL [ESC]" [ref=e63] [cursor=pointer]:
+          - generic [ref=e64] [cursor=pointer]: ☠
+          - generic [ref=e65] [cursor=pointer]: KILL
+          - generic [ref=e66] [cursor=pointer]: "[ESC]"
+        - button "↻ RESET [RST]" [ref=e67] [cursor=pointer]:
+          - generic [ref=e68] [cursor=pointer]: ↻
+          - generic [ref=e69] [cursor=pointer]: RESET
+          - generic [ref=e70] [cursor=pointer]: "[RST]"
+        - button "⟳ RELOAD [RLD]" [ref=e71] [cursor=pointer]:
+          - generic [ref=e72] [cursor=pointer]: ⟳
+          - generic [ref=e73] [cursor=pointer]: RELOAD
+          - generic [ref=e74] [cursor=pointer]: "[RLD]"
+      - generic [ref=e75]:
+        - button "[L]" [ref=e76] [cursor=pointer]
+        - button "[A]" [ref=e77] [cursor=pointer]
+        - button "[H]" [ref=e78] [cursor=pointer]
+  - generic [ref=e79]:
+    - generic [ref=e80]:
+      - heading "SCENE SELECT" [level=2] [ref=e81]
+      - generic [ref=e82]:
+        - button "INTENSE" [ref=e83] [cursor=pointer]
+        - button "CALM" [ref=e84] [cursor=pointer]
+        - button "GLITCH" [ref=e85] [cursor=pointer]
+        - button "TECHNO" [ref=e86] [cursor=pointer]
+        - button "MATRIX" [ref=e87] [cursor=pointer]
+        - button "MINIMAL" [ref=e88] [cursor=pointer]
+        - button "CHAOTIC" [ref=e89] [cursor=pointer]
+        - button "RETRO" [ref=e90] [cursor=pointer]
+        - button "VAPORWAVE" [ref=e91] [cursor=pointer]
+        - button "CYBERPUNK" [ref=e92] [cursor=pointer]
+        - button "NEON" [ref=e93] [cursor=pointer]
+        - button "AURORA" [ref=e94] [cursor=pointer]
+        - button "SUNSET" [ref=e95] [cursor=pointer]
+        - button "OCEAN" [ref=e96] [cursor=pointer]
+        - button "FOREST" [ref=e97] [cursor=pointer]
+        - button "FIRE" [ref=e98] [cursor=pointer]
+        - button "ICE" [ref=e99] [cursor=pointer]
+        - button "GALAXY" [ref=e100] [cursor=pointer]
+        - button "AUTO" [ref=e101] [cursor=pointer]
+    - generic [ref=e102]:
+      - heading "COLOR MATRIX" [level=2] [ref=e103]
+      - generic [ref=e104]:
+        - generic [ref=e105]:
+          - generic [ref=e106]: HUE
+          - slider [ref=e107]: "0"
+          - generic [ref=e108]: 0°
+        - generic [ref=e109]:
+          - generic [ref=e110]: SATURATION
+          - slider [ref=e111]: "100"
+          - generic [ref=e112]: 100%
+        - generic [ref=e113]:
+          - generic [ref=e114]: BRIGHTNESS
+          - slider [ref=e115]: "100"
+          - generic [ref=e116]: 100%
+        - generic [ref=e117]:
+          - generic [ref=e118]: CONTRAST
+          - slider [ref=e119]: "100"
+          - generic [ref=e120]: 100%
+      - button "RESET" [ref=e121] [cursor=pointer]
+    - generic [ref=e122]:
+      - heading "TEMPO" [level=2] [ref=e123]
+      - generic [ref=e124]:
+        - generic [ref=e125]:
+          - generic [ref=e126]: GLOBAL SPEED
+          - slider [ref=e127]: "100"
+          - generic [ref=e128]: 100%
+        - generic [ref=e129]:
+          - generic [ref=e130]: PHASE DURATION
+          - slider [ref=e131]: "30"
+          - generic [ref=e132]: 30s
+      - generic [ref=e133]:
+        - generic [ref=e134]: BPM TAP
+        - button "TAP" [ref=e135] [cursor=pointer]
+        - generic [ref=e136]: "120"
+      - generic [ref=e137]:
+        - generic [ref=e138]: BPM RIPPLE
+        - button "OFF" [ref=e139] [cursor=pointer]
+    - generic [ref=e140]:
+      - heading "FX INTENSITY" [level=2] [ref=e141]
+      - generic [ref=e142]:
+        - generic [ref=e143]:
+          - generic [ref=e144]: GLITCH
+          - slider [ref=e145]: "50"
+          - generic [ref=e146]: 50%
+        - generic [ref=e147]:
+          - generic [ref=e148]: PARTICLES
+          - slider [ref=e149]: "50"
+          - generic [ref=e150]: 50%
+        - generic [ref=e151]:
+          - generic [ref=e152]: NOISE
+          - slider [ref=e153]: "25"
+          - generic [ref=e154]: 25%
+    - generic [ref=e155]:
+      - heading "TRIGGER FX" [level=2] [ref=e156]
+      - generic [ref=e157]:
+        - button "STROBE" [ref=e158] [cursor=pointer]
+        - button "BLACKOUT" [ref=e159] [cursor=pointer]
+        - button "WHITEOUT" [ref=e160] [cursor=pointer]
+        - button "RGB SPLIT" [ref=e161] [cursor=pointer]
+        - button "RIPPLE" [ref=e162] [cursor=pointer]
+        - button "LOGO PULSE" [ref=e163] [cursor=pointer]
+        - button "DIGITAL WAVE" [ref=e164] [cursor=pointer]
+        - button "COSMIC (SOFT)" [ref=e165] [cursor=pointer]
+        - button "VIGNETTE PULSE" [ref=e166] [cursor=pointer]
+        - button "SCANLINE SWEEP" [ref=e167] [cursor=pointer]
+        - button "CHROMA PULSE" [ref=e168] [cursor=pointer]
+        - button "NOISE BURST" [ref=e169] [cursor=pointer]
+        - button "GRID FLASH" [ref=e170] [cursor=pointer]
+        - button "LENS FLARE" [ref=e171] [cursor=pointer]
+        - button "ZOOM BLUR" [ref=e172] [cursor=pointer]
+        - button "INVERT FLICKER" [ref=e173] [cursor=pointer]
+        - button "SPOTLIGHT SWEEP" [ref=e174] [cursor=pointer]
+        - button "HEAT SHIMMER" [ref=e175] [cursor=pointer]
+    - generic [ref=e176]:
+      - heading "ANIMATION SYSTEM" [level=2] [ref=e177]
+      - generic [ref=e178]:
+        - generic [ref=e180]:
+          - generic [ref=e181]: SYSTEM STATUS
+          - generic [ref=e182]: DISABLED
+        - generic [ref=e183]:
+          - heading "System Control" [level=3] [ref=e184]
+          - generic [ref=e185]:
+            - button "ENABLE" [ref=e186] [cursor=pointer]
+            - button "DISABLE" [ref=e187] [cursor=pointer]
+            - button "EMERGENCY STOP" [ref=e188] [cursor=pointer]
+        - generic [ref=e189]:
+          - heading "Animation Triggers" [level=3] [ref=e190]
+          - generic [ref=e191]:
+            - button "LOGO Pulse Effect" [ref=e192] [cursor=pointer]:
+              - generic [ref=e193] [cursor=pointer]: LOGO
+              - generic [ref=e194] [cursor=pointer]: Pulse Effect
+            - button "LOGO Spin 360°" [ref=e195] [cursor=pointer]:
+              - generic [ref=e196] [cursor=pointer]: LOGO
+              - generic [ref=e197] [cursor=pointer]: Spin 360°
+            - button "LOGO Glow Burst" [ref=e198] [cursor=pointer]:
+              - generic [ref=e199] [cursor=pointer]: LOGO
+              - generic [ref=e200] [cursor=pointer]: Glow Burst
+            - button "MATRIX Flash Effect" [ref=e201] [cursor=pointer]:
+              - generic [ref=e202] [cursor=pointer]: MATRIX
+              - generic [ref=e203] [cursor=pointer]: Flash Effect
+            - button "MATRIX Rain Effect" [ref=e204] [cursor=pointer]:
+              - generic [ref=e205] [cursor=pointer]: MATRIX
+              - generic [ref=e206] [cursor=pointer]: Rain Effect
+            - button "MATRIX Glitch Wave" [ref=e207] [cursor=pointer]:
+              - generic [ref=e208] [cursor=pointer]: MATRIX
+              - generic [ref=e209] [cursor=pointer]: Glitch Wave
+            - button "BACKGROUND Warp Effect" [ref=e210] [cursor=pointer]:
+              - generic [ref=e211] [cursor=pointer]: BACKGROUND
+              - generic [ref=e212] [cursor=pointer]: Warp Effect
+            - button "BACKGROUND Shake" [ref=e213] [cursor=pointer]:
+              - generic [ref=e214] [cursor=pointer]: BACKGROUND
+              - generic [ref=e215] [cursor=pointer]: Shake
+            - button "BACKGROUND Zoom Burst" [ref=e216] [cursor=pointer]:
+              - generic [ref=e217] [cursor=pointer]: BACKGROUND
+              - generic [ref=e218] [cursor=pointer]: Zoom Burst
+            - button "TEXT Scramble" [ref=e219] [cursor=pointer]:
+              - generic [ref=e220] [cursor=pointer]: TEXT
+              - generic [ref=e221] [cursor=pointer]: Scramble
+            - button "TEXT Wave Motion" [ref=e222] [cursor=pointer]:
+              - generic [ref=e223] [cursor=pointer]: TEXT
+              - generic [ref=e224] [cursor=pointer]: Wave Motion
+            - button "CHAOS Full Chaos" [ref=e225] [cursor=pointer]:
+              - generic [ref=e226] [cursor=pointer]: CHAOS
+              - generic [ref=e227] [cursor=pointer]: Full Chaos
+        - generic [ref=e228]:
+          - heading "Diagnostics" [level=3] [ref=e229]
+          - button "RUN TRIGGER DIAGNOSTICS" [ref=e230] [cursor=pointer]
+    - generic [ref=e231]:
+      - heading "VISUAL EFFECTS & LAYERS" [level=2] [ref=e232]
+      - generic [ref=e233]:
+        - heading "Effect Controls" [level=3] [ref=e234]
+        - generic [ref=e235]:
+          - generic [ref=e236]:
+            - generic [ref=e237]: Holographic Scan
+            - button "ON" [ref=e238] [cursor=pointer]
+          - generic [ref=e239]:
+            - generic [ref=e240]: Data Streams
+            - button "ON" [ref=e241] [cursor=pointer]
+          - generic [ref=e242]:
+            - generic [ref=e243]: Strobe Circles
+            - button "OFF" [ref=e244] [cursor=pointer]
+          - generic [ref=e245]:
+            - generic [ref=e246]: Plasma Field
+            - button "ON" [ref=e247] [cursor=pointer]
+          - generic [ref=e248]:
+            - generic [ref=e249]: Particle System
+            - button "ON" [ref=e250] [cursor=pointer]
+          - generic [ref=e251]:
+            - generic [ref=e252]: Digital Noise
+            - button "ON" [ref=e253] [cursor=pointer]
+          - generic [ref=e254]:
+            - generic [ref=e255]: Cyber Grid
+            - button "ON" [ref=e256] [cursor=pointer]
+          - generic [ref=e257]:
+            - generic [ref=e258]: RGB Split
+            - button "OFF" [ref=e259] [cursor=pointer]
+          - generic [ref=e260]:
+            - generic [ref=e261]: Chromatic Aberration
+            - button "OFF" [ref=e262] [cursor=pointer]
+          - generic [ref=e263]:
+            - generic [ref=e264]: Scan Lines
+            - button "OFF" [ref=e265] [cursor=pointer]
+          - generic [ref=e266]:
+            - generic [ref=e267]: Vignette
+            - button "ON" [ref=e268] [cursor=pointer]
+          - generic [ref=e269]:
+            - generic [ref=e270]: Film Grain
+            - button "OFF" [ref=e271] [cursor=pointer]
+          - generic [ref=e272]:
+            - generic [ref=e273]: Aurora
+            - button "OFF" [ref=e274] [cursor=pointer]
+          - generic [ref=e275]:
+            - generic [ref=e276]: Neon Rings
+            - button "OFF" [ref=e277] [cursor=pointer]
+          - generic [ref=e278]:
+            - generic [ref=e279]: Circuit Grid
+            - button "OFF" [ref=e280] [cursor=pointer]
+          - generic [ref=e281]:
+            - generic [ref=e282]: Chromatic Pulse
+            - button "OFF" [ref=e283] [cursor=pointer]
+          - generic [ref=e284]:
+            - generic [ref=e285]: "Lottie: sunBurst"
+            - button "OFF" [ref=e286] [cursor=pointer]
+          - generic [ref=e287]:
+            - generic [ref=e288]: "Lottie: cosmicDust"
+            - button "OFF" [ref=e289] [cursor=pointer]
+      - generic [ref=e290]:
+        - heading "Layer Visibility" [level=3] [ref=e291]
+        - generic [ref=e292]:
+          - generic [ref=e293]:
+            - generic [ref=e294]: Background Layer
+            - button "ON" [ref=e295] [cursor=pointer]
+          - generic [ref=e296]:
+            - generic [ref=e297]: Matrix Rain
+            - button "ON" [ref=e298] [cursor=pointer]
+          - generic [ref=e299]:
+            - generic [ref=e300]: Logo Layer
+            - button "ON" [ref=e301] [cursor=pointer]
+          - generic [ref=e302]:
+            - generic [ref=e303]: Text Elements
+            - button "ON" [ref=e304] [cursor=pointer]
+          - generic [ref=e305]:
+            - generic [ref=e306]: Overlay Effects
+            - button "ON" [ref=e307] [cursor=pointer]
+          - generic [ref=e308]:
+            - generic [ref=e309]: Debug Info
+            - button "OFF" [ref=e310] [cursor=pointer]
+      - generic [ref=e311]:
+        - button "TOGGLE ALL EFFECTS" [ref=e312] [cursor=pointer]
+        - button "TOGGLE ALL LAYERS" [ref=e313] [cursor=pointer]
+        - button "RESET VISUALS" [ref=e314] [cursor=pointer]
+```
