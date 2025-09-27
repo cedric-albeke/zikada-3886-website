@@ -15,49 +15,34 @@
 /* Optimized Grid Layout for 1920x1080 */
 @media (min-width: 1280px) {
     .control-grid {
-        grid-template-rows: auto auto 1fr;
+        grid-template-rows: auto auto auto;
         gap: 12px !important;
-    }
-    
-    /* Row 1: More balanced distribution */
-    .section--color { 
-        grid-column: span 3 !important; 
-        grid-row: 1;
-    }
-    .section--tempo { 
-        grid-column: span 3 !important;
-        grid-row: 1;
-        max-width: 380px;
-    }
-    .section--intensity { 
-        grid-column: span 3 !important;
-        grid-row: 1;
-        max-width: 380px;
-    }
-    .section--triggers { 
-        grid-column: span 3 !important;
-        grid-row: 1;
+        align-items: start;
     }
 
-    /* Row 2: Compact Scene Select, expanded Animation */
-    .section--scenes { 
-        grid-column: span 4 !important;
-        grid-row: 2;
-        max-width: 420px;
-        min-width: 360px;
-    }
-    .section--animation { 
-        grid-column: span 8 !important;
-        grid-row: 2;
-    }
+    /* New layout map */
+    /* Row 1: Color(4) + Tempo(4) + FX Intensity(4) */
+    .section--color     { grid-column: span 4 !important; grid-row: 1; }
+    .section--tempo     { grid-column: span 4 !important; grid-row: 1; }
+    .section--intensity { grid-column: span 4 !important; grid-row: 1; }
 
-    /* Row 3: Visual Effects full width */
-    .section--ve-layers { 
-        grid-column: 1 / -1 !important;
-        grid-row: 3;
-        max-height: 400px;
-        overflow-y: auto;
-    }
+    /* Row 2: Scenes(4) + Trigger FX(4) + Animation(4) */
+    .section--scenes    { grid-column: span 4 !important; grid-row: 2; }
+    .section--triggers  { grid-column: span 4 !important; grid-row: 2; }
+    .section--animation { grid-column: span 4 !important; grid-row: 2; }
+
+    /* Row 3: VE & Layers full width */
+    .section--ve-layers { grid-column: 1 / -1 !important; grid-row: 3; }
+
+    /* Remove hard height constraints for better natural sizing */
+    .section--color, .section--tempo, .section--intensity, .section--triggers,
+    .section--scenes, .section--animation, .section--ve-layers { min-height: auto; max-height: none; overflow: visible; }
+}
+
+/* Section padding/heading compaction */
+@media (min-width: 1280px) {
+  .control-section.section, .section { padding: 10px !important; }
+  .section h2 { margin: 0 0 6px 0; font-size: 12px; }
 }
 
 /* Scene Grid Optimization - Much more compact */
@@ -166,30 +151,51 @@
 /* Trigger Grid Optimization */
 .section--triggers .trigger-grid {
     display: grid !important;
-    grid-template-columns: repeat(3, 1fr) !important;
+    grid-template-columns: repeat(2, 1fr) !important;
     gap: 6px !important;
+}
+@container (min-width: 900px) {
+    .section--triggers .trigger-grid { grid-template-columns: repeat(4, 1fr) !important; }
 }
 
 .section--triggers .trigger-btn {
-    padding: 8px 6px !important;
+    padding: 6px 6px !important;
     font-size: 8px !important;
     letter-spacing: 0.5px !important;
-    min-height: 36px !important;
+    min-height: 32px !important;
 }
 
 /* Animation System Compact Layout */
-.section--animation .animation-grid {
-    gap: 10px !important;
-}
+.section--animation .animation-grid { gap: 8px !important; }
+/* tighter headings and panels */
+.section--animation .anime-status-panel { padding: 8px 10px; }
+.section--animation .animation-sys h3 { margin-bottom: 4px; }
+.section--animation .system-btn { padding: 6px 8px; font-size: 9px; min-width: 100px; height: 34px; }
 
+/* Head row: status + controls in a compact bar */
+.section--animation .animation-head {
+    display: grid;
+    grid-template-columns: minmax(220px, 1fr) auto;
+    gap: 10px;
+    align-items: center;
+}
+.section--animation .animation-head .anime-status-panel { margin: 0; }
+.section--animation .animation-head .anime-system-controls { margin: 0; }
+.section--animation .animation-head .system-control-grid { grid-template-columns: repeat(3, max-content); gap: 8px; }
+.section--animation .animation-head .system-btn { min-width: 120px; }
+
+/* Triggers grid */
 .section--animation .trigger-control-grid {
-    grid-template-columns: repeat(4, 1fr) !important;
+    grid-template-columns: repeat(3, 1fr) !important;
     gap: 6px !important;
+}
+@container (min-width: 1100px) {
+    .section--animation .trigger-control-grid { grid-template-columns: repeat(4, 1fr) !important; }
 }
 
 .section--animation .anim-trigger-btn {
-    padding: 10px 6px !important;
-    height: 55px !important;
+    padding: 8px 6px !important;
+    height: 48px !important;
 }
 
 .section--animation .trigger-label {
@@ -200,11 +206,67 @@
     font-size: 8px !important;
 }
 
+/* VE & Layers group styles */
+.section--ve-layers .ve-group {
+    border: 1px solid rgba(0, 255, 133, 0.15);
+    padding: 8px;
+    border-radius: 4px;
+    background: rgba(0, 0, 0, 0.4);
+}
+.section--ve-layers .ve-group legend {
+    padding: 0 6px;
+    font-size: 9px;
+    color: rgba(0,255,133,0.7);
+}
+
 /* Visual Effects & Layers Optimization */
+.section--ve-layers .ve-layout {
+    display: grid;
+    grid-template-columns: 3fr 2fr;
+    gap: 12px;
+}
+
+.section--ve-layers .ve-effects {
+    display: grid;
+    gap: 12px;
+    align-content: start;
+}
+
+.section--ve-layers .ve-layers-col {
+    display: grid;
+    gap: 12px;
+    align-content: start;
+}
+
+.section--ve-layers .master-controls--inline {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+.section--ve-layers .master-controls .master-btn {
+    padding: 6px 10px;
+    font-size: 9px;
+}
+
+.section--ve-layers .master-controls--stacked {
+    display: grid;
+    gap: 8px;
+}
+
+.section--ve-layers .lottie-effects h3,
+.section--ve-layers .effect-toggles h3,
+.section--ve-layers .layer-controls h3 {
+    margin-bottom: 6px;
+}
+
 .section--ve-layers .toggle-grid {
     display: grid;
-    grid-template-columns: repeat(4, 1fr) !important;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
     gap: 8px !important;
+}
+
+@container (min-width: 900px) {
+    .section--ve-layers .toggle-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
 }
 
 .section--ve-layers .toggle-item {
@@ -217,13 +279,16 @@
 .section--ve-layers .toggle-item label {
     font-size: 8px !important;
     letter-spacing: 0.3px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .section--ve-layers .effect-toggle-btn,
 .section--ve-layers .layer-toggle-btn {
-    padding: 4px 8px !important;
-    font-size: 8px !important;
-    min-width: 35px !important;
+    padding: 6px 10px !important;
+    font-size: 9px !important;
+    min-width: 48px !important;
 }
 
 /* Remove Diagnostics Section */

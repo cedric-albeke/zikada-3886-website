@@ -12,10 +12,11 @@ async function fetchManifest() {
 
 function addButtons(effects) {
   if (!effects.length) return;
-  const grid = document.querySelector('.effects-layers-control .toggle-grid, .effects-layers-control .effect-toggles .toggle-grid, .effects-layers-control .toggle-grid');
+  const grid = document.querySelector('#lottieEffects .toggle-grid') || document.querySelector('.effects-layers-control .effect-toggles .toggle-grid') || document.querySelector('.effects-layers-control .toggle-grid');
   if (!grid) return;
 
   for (const e of effects) {
+    if (!e?.id) continue;
     const item = document.createElement('div');
     item.className = 'toggle-item';
     const label = document.createElement('label');

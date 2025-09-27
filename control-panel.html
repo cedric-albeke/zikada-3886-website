@@ -6,8 +6,8 @@
     <title>3886 VJ Control Panel</title>
     <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
     <link href="css/control-panel.css" rel="stylesheet">
-    <link href="css/control-panel-compact.css" rel="stylesheet">
     <link href="css/control-panel-visual-effects.css" rel="stylesheet">
+    <link href="css/control-panel-layout-map.css" rel="stylesheet">
 </head>
 <body>
     <div class="control-panel">
@@ -107,6 +107,25 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Inline Tempo controls merged into Link Status -->
+                <div class="tempo-inline">
+                    <div class="tempo-row">
+                        <label>GLOBAL SPEED</label>
+                        <input type="range" class="control-slider" id="speedSlider" min="10" max="200" value="100">
+                        <span class="tempo-val" id="tempoSpeedVal">100%</span>
+                    </div>
+                    <div class="tempo-row">
+                        <label>PHASE</label>
+                        <input type="range" class="control-slider" id="phaseDurationSlider" min="5" max="60" value="30">
+                        <span class="tempo-val" id="tempoPhaseVal">30s</span>
+                    </div>
+                    <div class="tempo-tools">
+                        <button class="tap-btn" id="tapBPM">TAP</button>
+                        <span class="bpm-value">120</span>
+                        <button class="bpm-toggle-btn" id="toggleBpmRipple" data-state="off">RIPPLE: OFF</button>
+                    </div>
+                </div>
             </div>
 
             <!-- System Controls -->
@@ -165,82 +184,8 @@
                 </div>
             </section>
 
-            <!-- Color Controls -->
-            <section class="control-section color-control section section--color">
-                <h2>COLOR MATRIX</h2>
-                <div class="slider-group">
-                    <div class="slider-container">
-                        <label>HUE</label>
-                        <input type="range" class="control-slider" id="hueSlider" min="-180" max="180" value="0">
-                        <span class="slider-value">0°</span>
-                    </div>
-                    <div class="slider-container">
-                        <label>SATURATION</label>
-                        <input type="range" class="control-slider" id="saturationSlider" min="80" max="200" value="100">
-                        <span class="slider-value">100%</span>
-                    </div>
-                    <div class="slider-container">
-                        <label>BRIGHTNESS</label>
-                        <input type="range" class="control-slider" id="brightnessSlider" min="95" max="150" value="100">
-                        <span class="slider-value">100%</span>
-                    </div>
-                    <div class="slider-container">
-                        <label>CONTRAST</label>
-                        <input type="range" class="control-slider" id="contrastSlider" min="80" max="150" value="100">
-                        <span class="slider-value">100%</span>
-                    </div>
-                </div>
-                <button class="reset-btn" id="resetColors">RESET</button>
-            </section>
 
-            <!-- Animation Speed -->
-            <section class="control-section speed-control section section--tempo">
-                <h2>TEMPO</h2>
-                <div class="slider-group">
-                    <div class="slider-container">
-                        <label>GLOBAL SPEED</label>
-                        <input type="range" class="control-slider" id="speedSlider" min="10" max="200" value="100">
-                        <span class="slider-value">100%</span>
-                    </div>
-                    <div class="slider-container">
-                        <label>PHASE DURATION</label>
-                        <input type="range" class="control-slider" id="phaseDurationSlider" min="5" max="60" value="30">
-                        <span class="slider-value">30s</span>
-                    </div>
-                </div>
-                <div class="bpm-display">
-                    <label>BPM TAP</label>
-                    <button class="tap-btn" id="tapBPM">TAP</button>
-                    <span class="bpm-value">120</span>
-                </div>
-                <div class="bpm-options">
-                    <label>BPM RIPPLE</label>
-                    <button class="bpm-toggle-btn" id="toggleBpmRipple" data-state="off">OFF</button>
-                </div>
-            </section>
 
-            <!-- Effects Intensity -->
-            <section class="control-section effects-control section section--intensity">
-                <h2>FX INTENSITY</h2>
-                <div class="slider-group">
-                    <div class="slider-container">
-                        <label>GLITCH</label>
-                        <input type="range" class="control-slider" id="glitchSlider" min="0" max="100" value="50">
-                        <span class="slider-value">50%</span>
-                    </div>
-                    <div class="slider-container">
-                        <label>PARTICLES</label>
-                        <input type="range" class="control-slider" id="particlesSlider" min="0" max="100" value="50">
-                        <span class="slider-value">50%</span>
-                    </div>
-                    <!-- REMOVED: Distortion slider (now handled automatically, applies blur only to logo) -->
-                    <div class="slider-container">
-                        <label>NOISE</label>
-                        <input type="range" class="control-slider" id="noiseSlider" min="0" max="50" value="25">
-                        <span class="slider-value">25%</span>
-                    </div>
-                </div>
-            </section>
 
             <!-- Special Effects Triggers -->
             <section class="control-section trigger-control section section--triggers">
@@ -293,21 +238,21 @@
                 <h2>ANIMATION SYSTEM</h2>
 
                 <div class="animation-grid">
-                    <!-- System Status -->
-                    <div class="anime-status-panel animation-status">
-                        <div class="monitor-stat">
-                            <label>SYSTEM STATUS</label>
-                            <span id="animeStatus" class="status-display">DISABLED</span>
+                    <!-- Compact Head: Status + Controls -->
+                    <div class="animation-head">
+                        <div class="anime-status-panel animation-status">
+                            <div class="monitor-stat">
+                                <label>SYSTEM STATUS</label>
+                                <span id="animeStatus" class="status-display">DISABLED</span>
+                            </div>
                         </div>
-                    </div>
-
-                    <!-- System Controls -->
-                    <div class="anime-system-controls animation-sys">
-                        <h3>System Control</h3>
-                        <div class="system-control-grid">
-                            <button class="system-btn enable" id="animeEnable">ENABLE</button>
-                            <button class="system-btn disable" id="animeDisable">DISABLE</button>
-                            <button class="system-btn kill" id="animeKill">EMERGENCY STOP</button>
+                        <div class="anime-system-controls animation-sys">
+                            <h3>System Control</h3>
+                            <div class="system-control-grid">
+                                <button class="system-btn enable" id="animeEnable">ENABLE</button>
+                                <button class="system-btn disable" id="animeDisable">DISABLE</button>
+                                <button class="system-btn kill" id="animeKill">EMERGENCY STOP</button>
+                            </div>
                         </div>
                     </div>
 
@@ -374,113 +319,143 @@
             <section class="control-section effects-layers-control section section--ve-layers">
                 <h2>VISUAL EFFECTS & LAYERS</h2>
 
-                <!-- Effect Toggles -->
-                <div class="effect-toggles">
-                    <h3>Effect Controls</h3>
-                    <div class="toggle-grid">
-                        <div class="toggle-item">
-                            <label>Holographic Scan</label>
-                            <button class="effect-toggle-btn" data-effect="holographic" data-state="on">ON</button>
+                <div class="ve-layout">
+                    <!-- Left: Effect controls (core + lottie) -->
+                    <div class="ve-effects">
+                        <!-- Master Controls (sticky inside left column) -->
+                        <div class="master-controls master-controls--inline">
+                            <button class="master-btn" id="toggleAllEffects">TOGGLE ALL EFFECTS</button>
+                            <button class="master-btn" id="resetVisuals">RESET VISUALS</button>
                         </div>
-                        <div class="toggle-item">
-                            <label>Data Streams</label>
-                            <button class="effect-toggle-btn" data-effect="dataStreams" data-state="on">ON</button>
+
+                        <!-- Core Effect Toggles -->
+                        <div class="effect-toggles">
+                            <h3>Core Effects</h3>
+                            <fieldset class="ve-group">
+                                <legend>Motion & Fields</legend>
+                                <div class="toggle-grid">
+                                    <div class="toggle-item">
+                                        <label>Particle System</label>
+                                        <button class="effect-toggle-btn" data-effect="particles" data-state="on">ON</button>
+                                    </div>
+                                    <div class="toggle-item">
+                                        <label>Plasma Field</label>
+                                        <button class="effect-toggle-btn" data-effect="plasma" data-state="on">ON</button>
+                                    </div>
+                                    <div class="toggle-item">
+                                        <label>Strobe Circles</label>
+                                        <button class="effect-toggle-btn" data-effect="strobeCircles" data-state="off">OFF</button>
+                                    </div>
+                                    <div class="toggle-item">
+                                        <label>Cyber Grid</label>
+                                        <button class="effect-toggle-btn" data-effect="cyberGrid" data-state="on">ON</button>
+                                    </div>
+                                </div>
+                            </fieldset>
+
+                            <fieldset class="ve-group" style="margin-top:8px;">
+                                <legend>Image & Color</legend>
+                                <div class="toggle-grid">
+                                    <div class="toggle-item">
+                                        <label>RGB Split</label>
+                                        <button class="effect-toggle-btn" data-effect="rgbSplit" data-state="off">OFF</button>
+                                    </div>
+                                    <div class="toggle-item">
+                                        <label>Chromatic Aberration</label>
+                                        <button class="effect-toggle-btn" data-effect="chromatic" data-state="off">OFF</button>
+                                    </div>
+                                    <div class="toggle-item">
+                                        <label>Chromatic Pulse</label>
+                                        <button class="effect-toggle-btn" data-effect="chromaticPulse" data-state="off">OFF</button>
+                                    </div>
+                                    <div class="toggle-item">
+                                        <label>Scan Lines</label>
+                                        <button class="effect-toggle-btn" data-effect="scanlines" data-state="off">OFF</button>
+                                    </div>
+                                </div>
+                            </fieldset>
+
+                            <fieldset class="ve-group" style="margin-top:8px;">
+                                <legend>Overlays</legend>
+                                <div class="toggle-grid">
+                                    <div class="toggle-item">
+                                        <label>Holographic Scan</label>
+                                        <button class="effect-toggle-btn" data-effect="holographic" data-state="on">ON</button>
+                                    </div>
+                                    <div class="toggle-item">
+                                        <label>Data Streams</label>
+                                        <button class="effect-toggle-btn" data-effect="dataStreams" data-state="on">ON</button>
+                                    </div>
+                                    <div class="toggle-item">
+                                        <label>Digital Noise</label>
+                                        <button class="effect-toggle-btn" data-effect="noise" data-state="on">ON</button>
+                                    </div>
+                                    <div class="toggle-item">
+                                        <label>Vignette</label>
+                                        <button class="effect-toggle-btn" data-effect="vignette" data-state="on">ON</button>
+                                    </div>
+                                    <div class="toggle-item">
+                                        <label>Film Grain</label>
+                                        <button class="effect-toggle-btn" data-effect="filmgrain" data-state="off">OFF</button>
+                                    </div>
+                                    <div class="toggle-item">
+                                        <label>Aurora</label>
+                                        <button class="effect-toggle-btn" data-effect="aurora" data-state="off">OFF</button>
+                                    </div>
+                                    <div class="toggle-item">
+                                        <label>Neon Rings</label>
+                                        <button class="effect-toggle-btn" data-effect="neonRings" data-state="off">OFF</button>
+                                    </div>
+                                    <div class="toggle-item">
+                                        <label>Circuit Grid</label>
+                                        <button class="effect-toggle-btn" data-effect="circuitGrid" data-state="off">OFF</button>
+                                    </div>
+                                </div>
+                            </fieldset>
                         </div>
-                        <div class="toggle-item">
-                            <label>Strobe Circles</label>
-                            <button class="effect-toggle-btn" data-effect="strobeCircles" data-state="off">OFF</button>
-                        </div>
-                        <div class="toggle-item">
-                            <label>Plasma Field</label>
-                            <button class="effect-toggle-btn" data-effect="plasma" data-state="on">ON</button>
-                        </div>
-                        <div class="toggle-item">
-                            <label>Particle System</label>
-                            <button class="effect-toggle-btn" data-effect="particles" data-state="on">ON</button>
-                        </div>
-                        <div class="toggle-item">
-                            <label>Digital Noise</label>
-                            <button class="effect-toggle-btn" data-effect="noise" data-state="on">ON</button>
-                        </div>
-                        <div class="toggle-item">
-                            <label>Cyber Grid</label>
-                            <button class="effect-toggle-btn" data-effect="cyberGrid" data-state="on">ON</button>
-                        </div>
-                        <div class="toggle-item">
-                            <label>RGB Split</label>
-                            <button class="effect-toggle-btn" data-effect="rgbSplit" data-state="off">OFF</button>
-                        </div>
-                        <div class="toggle-item">
-                            <label>Chromatic Aberration</label>
-                            <button class="effect-toggle-btn" data-effect="chromatic" data-state="off">OFF</button>
-                        </div>
-                        <div class="toggle-item">
-                            <label>Scan Lines</label>
-                            <button class="effect-toggle-btn" data-effect="scanlines" data-state="off">OFF</button>
-                        </div>
-                        <div class="toggle-item">
-                            <label>Vignette</label>
-                            <button class="effect-toggle-btn" data-effect="vignette" data-state="on">ON</button>
-                        </div>
-                        <div class="toggle-item">
-                            <label>Film Grain</label>
-                            <button class="effect-toggle-btn" data-effect="filmgrain" data-state="off">OFF</button>
-                        </div>
-                        <div class="toggle-item">
-                            <label>Aurora</label>
-                            <button class="effect-toggle-btn" data-effect="aurora" data-state="off">OFF</button>
-                        </div>
-                        <div class="toggle-item">
-                            <label>Neon Rings</label>
-                            <button class="effect-toggle-btn" data-effect="neonRings" data-state="off">OFF</button>
-                        </div>
-                        <div class="toggle-item">
-                            <label>Circuit Grid</label>
-                            <button class="effect-toggle-btn" data-effect="circuitGrid" data-state="off">OFF</button>
-                        </div>
-                        <div class="toggle-item">
-                            <label>Chromatic Pulse</label>
-                            <button class="effect-toggle-btn" data-effect="chromaticPulse" data-state="off">OFF</button>
+
+                        <!-- Lottie Effects (buttons injected here if present) -->
+                        <div class="lottie-effects" id="lottieEffects">
+                            <h3>Lottie Effects</h3>
+                            <div class="toggle-grid"></div>
                         </div>
                     </div>
-                </div>
 
-                <!-- Layer Controls -->
-                <div class="layer-controls">
-                    <h3>Layer Visibility</h3>
-                    <div class="toggle-grid">
-                        <div class="toggle-item">
-                            <label>Background Layer</label>
-                            <button class="layer-toggle-btn" data-layer="background" data-state="on">ON</button>
+                    <!-- Right: Layer visibility with master toggle -->
+                    <div class="ve-layers-col">
+                        <div class="layer-controls">
+                            <h3>Layer Visibility</h3>
+                            <div class="toggle-grid">
+                                <div class="toggle-item">
+                                    <label>Background Layer</label>
+                                    <button class="layer-toggle-btn" data-layer="background" data-state="on">ON</button>
+                                </div>
+                                <div class="toggle-item">
+                                    <label>Matrix Rain</label>
+                                    <button class="layer-toggle-btn" data-layer="matrix-rain" data-state="on">ON</button>
+                                </div>
+                                <div class="toggle-item">
+                                    <label>Logo Layer</label>
+                                    <button class="layer-toggle-btn" data-layer="logo" data-state="on">ON</button>
+                                </div>
+                                <div class="toggle-item">
+                                    <label>Text Elements</label>
+                                    <button class="layer-toggle-btn" data-layer="text" data-state="on">ON</button>
+                                </div>
+                                <div class="toggle-item">
+                                    <label>Overlay Effects</label>
+                                    <button class="layer-toggle-btn" data-layer="overlay" data-state="on">ON</button>
+                                </div>
+                                <div class="toggle-item">
+                                    <label>Debug Info</label>
+                                    <button class="layer-toggle-btn" data-layer="debug" data-state="off">OFF</button>
+                                </div>
+                            </div>
                         </div>
-                        <div class="toggle-item">
-                            <label>Matrix Rain</label>
-                            <button class="layer-toggle-btn" data-layer="matrix-rain" data-state="on">ON</button>
-                        </div>
-                        <div class="toggle-item">
-                            <label>Logo Layer</label>
-                            <button class="layer-toggle-btn" data-layer="logo" data-state="on">ON</button>
-                        </div>
-                        <div class="toggle-item">
-                            <label>Text Elements</label>
-                            <button class="layer-toggle-btn" data-layer="text" data-state="on">ON</button>
-                        </div>
-                        <div class="toggle-item">
-                            <label>Overlay Effects</label>
-                            <button class="layer-toggle-btn" data-layer="overlay" data-state="on">ON</button>
-                        </div>
-                        <div class="toggle-item">
-                            <label>Debug Info</label>
-                            <button class="layer-toggle-btn" data-layer="debug" data-state="off">OFF</button>
+                        <div class="master-controls master-controls--stacked">
+                            <button class="master-btn" id="toggleAllLayers">TOGGLE ALL LAYERS</button>
                         </div>
                     </div>
-                </div>
-
-                <!-- Master Controls -->
-                <div class="master-controls">
-                    <button class="master-btn" id="toggleAllEffects">TOGGLE ALL EFFECTS</button>
-                    <button class="master-btn" id="toggleAllLayers">TOGGLE ALL LAYERS</button>
-                    <button class="master-btn" id="resetVisuals">RESET VISUALS</button>
                 </div>
             </section>
 

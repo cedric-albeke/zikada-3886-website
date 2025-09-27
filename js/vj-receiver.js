@@ -1023,7 +1023,6 @@ class VJReceiver {
         `;
         document.body.appendChild(shim);
         gsap.to(shim, { opacity: 0, duration: 0.35, ease: 'power2.in', onComplete: () => shim.remove() });
->>>>>>> Stashed changes
     }
 
     triggerStrobe() {

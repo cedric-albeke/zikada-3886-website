@@ -1,0 +1,58 @@
+/* ========================================
+   CONTROL PANEL LAYOUT MAP (Grid Template Areas)
+   Purpose: provide a single source of truth for section placement
+   This file focuses ONLY on layout (positioning and sizing), leaving
+   component styles to the other CSS files. Load this LAST.
+   ======================================== */
+
+:root {
+  --gap: 12px;
+}
+
+/* New master grid: 12 columns with named areas, height based on content needs */
+.control-grid {
+  display: grid !important;
+  grid-template-columns: repeat(12, minmax(0, 1fr)) !important;
+grid-template-rows:
+    minmax(520px, auto)         /* Row 1: triggers (most important) */
+    minmax(360px, 1fr)          /* Row 2: animation */ !important;
+  gap: var(--gap) !important;
+  height: calc(100vh - 180px) !important; /* header ≈ 150-160 + margins */
+  align-items: start !important;
+grid-template-areas:
+    "scenes scenes scenes triggers  triggers  triggers  triggers  triggers  triggers  ve ve ve"
+    "scenes scenes scenes animation animation animation animation animation animation ve ve ve" !important;
+}
+
+/* Area assignments */
+.section--scenes    { grid-area: scenes    !important; display: flex; flex-direction: column; min-height: 560px; }
+.section--triggers  { grid-area: triggers  !important; min-height: 520px; display: flex; flex-direction: column; }
+.section--animation { grid-area: animation !important; display: flex; flex-direction: column; min-height: 360px; }
+.section--ve-layers { grid-area: ve        !important; display: flex; flex-direction: column; min-height: 0; height: 100%; }
+
+/* Internal scrolling where appropriate */
+.scene-control .scene-grid { flex: 1; overflow: auto; padding-right: 4px; }
+.section--ve-layers .ve-layout { display: grid; grid-template-columns: 2.5fr 1.5fr; gap: var(--gap); height: 100%; min-height: 0; align-items: start; }
+.animation-triggers .trigger-control-grid { flex: 1; overflow: auto; }
+.section--triggers .trigger-grid { grid-template-columns: repeat(5, 1fr) !important; gap: 10px !important; flex: 1; overflow: auto; padding-right: 4px; }
+.section--triggers .trigger-btn { min-height: 46px; font-size: 10px; padding: 8px; }
+.section--tempo .slider-container { grid-template-columns: 80px 1fr 40px !important; }
+
+/* Ensure sections don’t force the grid to overflow */
+.control-section.section { height: 100%; min-height: 0 !important; overflow: hidden; }
+
+/* Header height remains predictable */
+.matrix-header { min-height: 150px !important; }
+
+/* Slightly tighter gaps on narrower widths */
+@media (max-width: 1700px) {
+  .control-grid { gap: 10px !important; }
+}
+
+/* Keep header height predictable to support the above height calc */
+.matrix-header { min-height: 150px !important; }
+
+/* Optional: smaller gutters at slightly narrower widths */
+@media (max-width: 1700px) {
+  :root { --gutter: 10px; --colA: 270px; --colB: 340px; --colC: 340px; }
+}

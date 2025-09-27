@@ -194,6 +194,24 @@ body {
     overflow: hidden;
 }
 
+/* Tempo inline in Link.Status */
+.tempo-inline {
+    margin-top: 8px;
+    border-top: 1px solid rgba(0, 255, 133, 0.15);
+    padding-top: 6px;
+    display: grid;
+    gap: 6px;
+}
+.tempo-row {
+    display: grid;
+    grid-template-columns: 80px 1fr 48px;
+    align-items: center;
+    gap: 6px;
+}
+.tempo-row label { font-size: 9px; color: #66ff99; }
+.tempo-val { font-size: 10px; color: #00ff85; text-align: right; }
+.tempo-tools { display: flex; align-items: center; gap: 8px; }
+
 .live-preview .preview-header {
     position: absolute;
     top: 6px;
@@ -902,10 +920,10 @@ body {
 .animation-diag     { grid-area: diag; }
 
 /* Triggers: 12 buttons in a 3-column grid that collapses responsively */
-.animation-triggers .trigger-control-grid {
+.animation-triggers .trigger-control-grid { flex: 1; overflow: auto;
     display: grid;
     gap: var(--space-2);
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
 .animation-triggers button {
