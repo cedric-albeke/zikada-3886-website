@@ -1158,10 +1158,19 @@ class ChaosInitializer {
         // SIMPLIFIED: No filter reset during transitions to prevent grey flashes
         // Let new phase handle its own filter without resetting first
         
+        // Kill previous phase animations if GSAP registry is available
+        if (this.currentPhase && window.gsapAnimationRegistry) {
+            const phaseName = `chaos-phase-${this.currentPhase}`;
+            const killed = window.gsapAnimationRegistry.killOwner(phaseName);
+            if (killed > 0) {
+                console.log(`🗑️ Killed ${killed} animations from previous phase: ${this.currentPhase}`);
+            }
+        }
+        
         // Only clean up overlays (no filter manipulation)
         this.cleanupPhaseElements();
         
-        console.log('🔄 Phase transition - overlay cleanup only (no filter reset)');
+        console.log('🔄 Phase transition - overlay and animation cleanup completed');
     }
 
     cleanupPhaseElements() {

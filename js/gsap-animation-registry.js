@@ -1,6 +1,7 @@
 // GSAP Animation Registry - Tracks and manages all GSAP animations to prevent accumulation
 
 import gsap from 'gsap';
+import intervalManager from './interval-manager.js';
 
 // Ensure GSAP is globally available
 if (typeof window !== 'undefined' && !window.gsap) {
@@ -23,6 +24,7 @@ class GSAPAnimationRegistry {
         // Logging controls
         this.verbose = !!(window.__3886_DEBUG && window.__3886_DEBUG.gsapRegistryVerbose);
         this.logEvery = 20; // Only log every N registrations when not verbose
+        this.cleanupIntervalHandle = null; // Track cleanup interval for proper management
         
         // Override GSAP methods to auto-register
         this.patchGSAPMethods();
@@ -211,6 +213,7 @@ class GSAPAnimationRegistry {
             animation: animation,
             name: name,
             category: category,
+            ownerLabel: options.ownerLabel || null, // Add owner label support
             createdAt: Date.now(),
             lastUsed: Date.now(),
             isActive: true,
@@ -378,6 +381,26 @@ class GSAPAnimationRegistry {
 
         return killed.length;
     }
+    
+    /**
+     * Kill all animations by owner label
+     */
+    killOwner(ownerLabel) {
+        const killed = [];
+        
+        this.animations.forEach((data, id) => {
+            if (data.ownerLabel === ownerLabel || data.name.startsWith(ownerLabel)) {
+                this.killAnimation(id);
+                killed.push(data.name);
+            }
+        });
+
+        if (killed.length > 0) {
+            console.log(`🗑️ Killed ${killed.length} animations with owner '${ownerLabel}':`, killed);
+        }
+
+        return killed.length;
+    }
 
     /**
      * Enforce animation limits per category
@@ -534,6 +557,34 @@ class GSAPAnimationRegistry {
     }
 
     /**
+     * Get the total number of animations
+     */
+    size() {
+        return this.animations.size;
+    }
+    
+    /**
+     * List all unique owner labels
+     */
+    listOwners() {
+        const owners = new Set();
+        
+        this.animations.forEach(data => {
+            if (data.ownerLabel) {
+                owners.add(data.ownerLabel);
+            } else if (data.name && data.name.includes('-')) {
+                // Extract owner from name pattern
+                const parts = data.name.split('-');
+                if (parts.length > 1) {
+                    owners.add(parts[0]);
+                }
+            }
+        });
+        
+        return Array.from(owners);
+    }
+
+    /**
      * Get animation statistics
      */
     getStats() {
@@ -600,15 +651,21 @@ class GSAPAnimationRegistry {
      * Start periodic cleanup timer
      */
     startPeriodicCleanup(interval = 5000) { // Reduced from 10s to 5s for better performance
-        if (this.cleanupInterval) {
-            clearInterval(this.cleanupInterval);
+        // Clear existing cleanup interval
+        if (this.cleanupIntervalHandle) {
+            this.cleanupIntervalHandle.clear();
+            this.cleanupIntervalHandle = null;
         }
 
-        this.cleanupInterval = setInterval(() => {
+        // Create managed interval for cleanup
+        this.cleanupIntervalHandle = intervalManager.createInterval(() => {
             this.performPeriodicCleanup();
-        }, interval);
+        }, interval, 'gsap-periodic-cleanup', {
+            category: 'system',
+            maxAge: Infinity // Keep running until explicitly cleared
+        });
 
-        console.log(`🧹 GSAP cleanup started (every ${interval}ms)`);
+        console.log(`🧽 GSAP cleanup started (every ${interval}ms)`);
     }
 
     /**
@@ -617,8 +674,10 @@ class GSAPAnimationRegistry {
     destroy() {
         this.emergencyStop();
         
-        if (this.cleanupInterval) {
-            clearInterval(this.cleanupInterval);
+        // Clear managed cleanup interval
+        if (this.cleanupIntervalHandle) {
+            this.cleanupIntervalHandle.clear();
+            this.cleanupIntervalHandle = null;
         }
         
         console.log('💀 GSAP Animation Registry destroyed');
