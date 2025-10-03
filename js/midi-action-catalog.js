@@ -218,10 +218,20 @@ class MIDIActionCatalog {
             'pixelate': () => {
                 if (enabled) {
                     document.body.style.imageRendering = 'pixelated';
-                    document.body.style.filter = (document.body.style.filter || '') + ' blur(1px)';
+                    // Route through filter-manager for safe filter application
+                    const current = window.getComputedStyle(document.body).filter;
+                    const newFilter = current === 'none' ? 'blur(1px)' : `${current} blur(1px)`;
+                    if (window.filterManager) {
+                        window.filterManager.applyImmediate(newFilter, { duration: 0.3 });
+                    }
                 } else {
                     document.body.style.imageRendering = '';
-                    document.body.style.filter = document.body.style.filter.replace('blur(1px)', '');
+                    // Remove blur filter safely
+                    const current = window.getComputedStyle(document.body).filter;
+                    const newFilter = current.replace(/blur\([^)]*\)/g, '').trim();
+                    if (window.filterManager) {
+                        window.filterManager.applyImmediate(newFilter || 'none', { duration: 0.3 });
+                    }
                 }
             },
             'mirror': () => {

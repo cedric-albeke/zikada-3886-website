@@ -922,10 +922,15 @@ class VJReceiver {
                 return;
             }
         } catch {}
-        // Fallback: brief hue rotate on body
-        const prev = document.body.style.filter || '';
-        document.body.style.filter = 'hue-rotate(45deg)';
-        setTimeout(() => { document.body.style.filter = prev; }, 250);
+        // Fallback: brief hue rotate on body via filter-manager
+        if (window.filterManager) {
+            const current = window.getComputedStyle(document.body).filter;
+            const pulsedFilter = current === 'none' ? 'hue-rotate(45deg)' : `${current} hue-rotate(45deg)`;
+            window.filterManager.applyImmediate(pulsedFilter, { duration: 0.1 });
+            setTimeout(() => {
+                window.filterManager.applyImmediate(current === 'none' ? 'none' : current, { duration: 0.15 });
+            }, 250);
+        }
     }
 
     triggerNoiseBurst() {
@@ -988,11 +993,19 @@ class VJReceiver {
     triggerZoomBlurPulse() {
         // Subtle zoom + blur pulse on main elements
         const targets = '.pre-loader, .bg, .image-wrapper, .image-2, .logo-text-wrapper';
-        const prev = document.body.style.filter || '';
+        const current = window.getComputedStyle(document.body).filter;
         gsap.to(targets, { scale: 1.06, duration: 0.12, ease: 'power2.out' });
-        document.body.style.filter = 'blur(2px)';
+        // Apply blur via filter-manager
+        if (window.filterManager) {
+            const blurFilter = current === 'none' ? 'blur(2px)' : `${current} blur(2px)`;
+            window.filterManager.applyImmediate(blurFilter, { duration: 0.1 });
+        }
         gsap.to(targets, { scale: 1, duration: 0.25, delay: 0.12, ease: 'power2.in' });
-        setTimeout(() => { document.body.style.filter = prev; }, 400);
+        setTimeout(() => {
+            if (window.filterManager) {
+                window.filterManager.applyImmediate(current === 'none' ? 'none' : current, { duration: 0.15 });
+            }
+        }, 400);
     }
 
     triggerInvertFlicker() {
