@@ -491,4 +491,8 @@ class MIDIFeedbackManager {
     }
 }
 
-export default MIDIFeedbackManager;
+// Export for global access
+if (typeof window !== 'undefined') {
+    window.MIDIFeedbackManager = MIDIFeedbackManager;
+    console.log('🎹 MIDIFeedbackManager class available globally');
+}

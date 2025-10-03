@@ -825,10 +825,28 @@ class EnhancedVJControlPanel {
     async initMIDISupport() {
         console.log('🎹 Initializing MIDI support...');
         
-        // Initialize MIDI controller in broadcast mode for control panel
-        if (window.midiController) {
-            this.midiController = window.midiController;
-            this.midiController.setMode('broadcast');
+        // Wait for MIDI controller to be available
+        const waitForMIDI = () => {
+            return new Promise((resolve) => {
+                if (window.midiController) {
+                    resolve(window.midiController);
+                } else {
+                    // Wait for DOM content loaded event which initializes MIDI
+                    setTimeout(() => {
+                        if (window.midiController) {
+                            resolve(window.midiController);
+                        } else {
+                            resolve(null);
+                        }
+                    }, 1000);
+                }
+            });
+        };
+        
+        this.midiController = await waitForMIDI();
+        
+        if (this.midiController) {
+            console.log('🎹 MIDI controller found, initializing UI integration');
         } else {
             console.warn('🎹 MIDI Controller not available');
             this.hideMIDIControls();

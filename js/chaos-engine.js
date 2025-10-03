@@ -29,10 +29,82 @@ class ChaosEngine {
         this.updateFrequency = 2; // Update particles every N frames
         this.performanceMode = 'high';
         this.originalPositions = null;
+        
+        // Three.js resource lifecycle tracking
+        this.resources = {
+            geometries: [],
+            materials: [],
+            textures: [],
+            meshes: [],
+            lights: []
+        };
+        
+        // Resource counters for monitoring
+        this.resourceCounters = {
+            created: {
+                geometries: 0,
+                materials: 0,
+                textures: 0,
+                meshes: 0,
+                lights: 0
+            },
+            disposed: {
+                geometries: 0,
+                materials: 0,
+                textures: 0,
+                meshes: 0,
+                lights: 0
+            }
+        };
 
         // Listen for performance adjustments
         window.addEventListener('adjustParticles', (e) => this.adjustParticleCount(e.detail.count));
         window.addEventListener('adjustPostProcessing', (e) => this.adjustPostProcessing(e.detail.quality));
+    }
+    
+    // Three.js resource tracking helper methods
+    trackGeometry(geometry) {
+        this.resources.geometries.push(geometry);
+        this.resourceCounters.created.geometries++;
+        return geometry;
+    }
+    
+    trackMaterial(material) {
+        this.resources.materials.push(material);
+        this.resourceCounters.created.materials++;
+        return material;
+    }
+    
+    trackTexture(texture) {
+        this.resources.textures.push(texture);
+        this.resourceCounters.created.textures++;
+        return texture;
+    }
+    
+    trackMesh(mesh) {
+        this.resources.meshes.push(mesh);
+        this.resourceCounters.created.meshes++;
+        return mesh;
+    }
+    
+    trackLight(light) {
+        this.resources.lights.push(light);
+        this.resourceCounters.created.lights++;
+        return light;
+    }
+    
+    // Get resource statistics
+    getResourceStats() {
+        return {
+            active: {
+                geometries: this.resources.geometries.length,
+                materials: this.resources.materials.length,
+                textures: this.resources.textures.length,
+                meshes: this.resources.meshes.length,
+                lights: this.resources.lights.length
+            },
+            counters: this.resourceCounters
+        };
     }
 
     init(forceRestart = false) {
@@ -176,6 +248,7 @@ class ChaosEngine {
         // Ambient light
         const ambientLight = new THREE.AmbientLight(0x0a0a0a);
         this.scene.add(ambientLight);
+        this.trackLight(ambientLight);
 
         // Animated point lights
         this.lights = [];
@@ -190,29 +263,31 @@ class ChaosEngine {
             );
             this.scene.add(light);
             this.lights.push(light);
+            this.trackLight(light);
         });
     }
 
     createGeometry() {
         // Create multiple geometric shapes
         const geometries = [
-            new THREE.IcosahedronGeometry(8, 1),
-            new THREE.TorusKnotGeometry(6, 2, 100, 16),
-            new THREE.OctahedronGeometry(7, 0),
-            new THREE.TetrahedronGeometry(8, 2)
+            this.trackGeometry(new THREE.IcosahedronGeometry(8, 1)),
+            this.trackGeometry(new THREE.TorusKnotGeometry(6, 2, 100, 16)),
+            this.trackGeometry(new THREE.OctahedronGeometry(7, 0)),
+            this.trackGeometry(new THREE.TetrahedronGeometry(8, 2))
         ];
 
-        const material = new THREE.MeshPhongMaterial({
+        const baseMaterial = this.trackMaterial(new THREE.MeshPhongMaterial({
             color: 0x00ffff,
             wireframe: true,
             emissive: 0x001111,
             emissiveIntensity: 0.5,
             transparent: true,
             opacity: 0.3
-        });
+        }));
 
         geometries.forEach((geo, i) => {
-            const mesh = new THREE.Mesh(geo, material.clone());
+            const material = this.trackMaterial(baseMaterial.clone());
+            const mesh = new THREE.Mesh(geo, material);
             mesh.position.set(
                 (i - 1.5) * 15,
                 Math.random() * 10 - 5,
@@ -226,6 +301,7 @@ class ChaosEngine {
             };
             this.scene.add(mesh);
             this.meshes.push(mesh);
+            this.trackMesh(mesh);
         });
     }
 
@@ -277,6 +353,10 @@ class ChaosEngine {
 
         this.particles = new THREE.Points(geometry, material);
         this.scene.add(this.particles);
+        
+        // Track resources for cleanup
+        this.trackGeometry(geometry);
+        this.trackMaterial(material);
     }
 
     setupPostProcessing() {
@@ -579,19 +659,82 @@ class ChaosEngine {
         window.removeEventListener('adjustParticles', this.adjustParticleCount);
         window.removeEventListener('adjustPostProcessing', this.adjustPostProcessing);
 
-        // Clean up resources
-        this.meshes.forEach(mesh => {
-            mesh.geometry.dispose();
-            mesh.material.dispose();
+        // Dispose tracked geometries
+        this.trackedGeometries.forEach(geometry => {
+            if (geometry && typeof geometry.dispose === 'function') {
+                geometry.dispose();
+            }
+        });
+        this.trackedGeometries = [];
+        this.geometryCount = 0;
+
+        // Dispose tracked materials
+        this.trackedMaterials.forEach(material => {
+            if (material && typeof material.dispose === 'function') {
+                material.dispose();
+            }
+        });
+        this.trackedMaterials = [];
+        this.materialCount = 0;
+
+        // Dispose tracked textures
+        this.trackedTextures.forEach(texture => {
+            if (texture && typeof texture.dispose === 'function') {
+                texture.dispose();
+            }
+        });
+        this.trackedTextures = [];
+        this.textureCount = 0;
+
+        // Remove tracked meshes from scene
+        this.trackedMeshes.forEach(mesh => {
+            if (mesh && mesh.parent) {
+                mesh.parent.remove(mesh);
+            }
+        });
+        this.trackedMeshes = [];
+        this.meshCount = 0;
+
+        // Remove tracked lights from scene
+        this.trackedLights.forEach(light => {
+            if (light && light.parent) {
+                light.parent.remove(light);
+            }
+        });
+        this.trackedLights = [];
+        this.lightCount = 0;
+
+        // Remove all remaining children from scene
+        const childrenToRemove = [...this.scene.children];
+        childrenToRemove.forEach(child => {
+            if (child) {
+                this.scene.remove(child);
+            }
         });
 
-        if (this.particles) {
-            this.particles.geometry.dispose();
-            this.particles.material.dispose();
+        // Dispose post-processing components
+        if (this.composer) {
+            this.composer.dispose();
+            this.composer = null;
+        }
+        
+        // Dispose main renderer
+        if (this.renderer) {
+            this.renderer.dispose();
+            this.renderer = null;
         }
 
-        this.renderer.dispose();
+        // Clear arrays and references
+        this.meshes = [];
+        this.lights = [];
+        this.particles = null;
+        this.originalPositions = null;
+        this.scene = null;
+        this.camera = null;
+
         this.isInitialized = false;
+        
+        console.log('ChaosEngine: Cleanup completed - all resources disposed');
     }
 }
 

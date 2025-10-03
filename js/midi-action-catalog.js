@@ -484,10 +484,11 @@ class MIDIActionCatalog {
 }
 
 // Export for global access
-window.MIDIActionCatalog = MIDIActionCatalog;
-
-// Auto-instantiate if MIDI controller is available
 if (typeof window !== 'undefined') {
+    window.MIDIActionCatalog = MIDIActionCatalog;
+    console.log('🎹 MIDIActionCatalog class available globally');
+    
+    // Auto-instantiate if MIDI controller is available
     window.addEventListener('DOMContentLoaded', () => {
         if (window.midiController && !window.midiActionCatalog) {
             window.midiActionCatalog = new MIDIActionCatalog();
@@ -495,5 +496,3 @@ if (typeof window !== 'undefined') {
         }
     });
 }
-
-export default MIDIActionCatalog;

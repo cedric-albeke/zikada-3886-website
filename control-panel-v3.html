@@ -135,6 +135,56 @@
                     <button class="mode-btn" data-mode="high" id="perfHigh" title="High Performance">[H]</button>
                 </div>
             </div>
+            
+            <!-- MIDI Control Section -->
+            <div class="matrix-section matrix-midi">
+                <div class="midi-title">MIDI.CONTROL.SYSTEM</div>
+                <div class="midi-compact-container">
+                    <!-- Status Row -->
+                    <div class="midi-status-row">
+                        <div class="device-status-compact">
+                            <span class="midi-dot" id="midiStatusDot"></span>
+                            <span class="status-text" id="midiStatusText">NO.DEV</span>
+                        </div>
+                        <div class="clock-status-compact">
+                            <span class="clock-dot" id="clockStatusDot"></span>
+                            <span class="clock-text" id="clockStatusText">INT.CLK</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Device & Learn Row -->
+                    <div class="midi-device-row">
+                        <select id="midiDeviceSelect" class="midi-device-dropdown">
+                            <option value="">SELECT.DEVICE</option>
+                        </select>
+                        <button id="midiLearnBtn" class="midi-learn-compact">LEARN.OFF</button>
+                    </div>
+                    
+                    <!-- Actions Row -->
+                    <div class="midi-actions-row">
+                        <button id="midiLoadPresetBtn" class="midi-action-compact">PRESET</button>
+                        <button id="midiClearBtn" class="midi-action-compact">CLEAR</button>
+                        <button id="midiDebugBtn" class="midi-action-compact">DEBUG</button>
+                    </div>
+                    
+                    <!-- Activity Display -->
+                    <div class="midi-activity-compact" id="midiActivity">
+                        <div class="activity-display-compact" id="activityDisplay">
+                            <span class="activity-text-compact">NO.MIDI.ACTIVITY</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Hidden elements for full functionality -->
+                <div style="display: none;">
+                    <div class="midi-mappings" id="midiMappings">
+                        <div class="mappings-list" id="mappingsList">
+                            <div class="no-mappings">No mappings configured</div>
+                        </div>
+                    </div>
+                    <input type="file" id="importMappingsFile" accept=".json">
+                </div>
+            </div>
         </header>
 
         <!-- ============================================
@@ -442,12 +492,18 @@
                 </div>
             </section>
 
+
         </div>
     </div>
 
     <!-- ============================================
          JAVASCRIPT - Control Panel Logic
          ============================================ -->
+    <!-- MIDI Support Scripts -->
+    <script src="./js/midi-controller.js"></script>
+    <script src="./js/midi-action-catalog.js"></script>
+    <script src="./js/midi-feedback.js"></script>
+    
     <script type="module">
         // Import performance stats controller
         import performanceStatsController from './js/performance-stats-controller.js';
@@ -460,6 +516,21 @@
         
         // Import preview client for live preview feature
         import './js/preview-client.js';
+        
+        // Initialize MIDI support
+        window.addEventListener('DOMContentLoaded', () => {
+            // Enable MIDI by default in control panel
+            localStorage.setItem('3886_midi_enabled', '1');
+            
+            // Initialize MIDI Controller globally
+            if (window.MIDIController && !window.midiController) {
+                window.midiController = new window.MIDIController({ 
+                    mode: 'broadcast',
+                    debug: localStorage.getItem('3886_midi_debug') === '1'
+                });
+                console.log('🎹 Global MIDI Controller initialized');
+            }
+        });
     </script>
 </body>
 </html>

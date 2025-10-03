@@ -29,6 +29,7 @@ export default defineConfig({
   },
   server: {
     port: 3886,
-    open: true
+    open: true,
+    allowedHosts: ['chaos.3886.io']
   }
 });

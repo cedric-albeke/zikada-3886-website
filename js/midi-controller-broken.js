@@ -94,43 +94,40 @@ class MIDIController {
             // Initialize existing devices
             this.scanDevices();
             
-            // Load existing mappings
-            this.loadMappings();
-            
             this.isActive = true;
-            this.onReady();
-            return true;
-            
-        } catch (error) {
-            console.error('🎹 MIDI Access denied or failed:', error);
-            this.onError('PERMISSION_DENIED', error.message);
-            return false;
-        }
-    }
-    
-    // Initialize action catalog integration
-    initActionCatalog() {
-        if (window.MIDIActionCatalog && !window.midiActionCatalog) {
-            window.midiActionCatalog = new window.MIDIActionCatalog({ mode: this.mode });
-            console.log('✅ MIDI Action Catalog initialized');
-        }
-    }
-    
-    scanDevices() {
-        // Scan inputs
-        for (const input of this.midiAccess.inputs.values()) {
-            this.addInput(input);
-        }
+        this.onReady();
+        return true;
         
-        // Scan outputs
-        for (const output of this.midiAccess.outputs.values()) {
-            this.addOutput(output);
-        }
-        
-        console.log(`🎹 Found ${this.inputs.size} input(s) and ${this.outputs.size} output(s)`);
+    } catch (error) {
+        console.error('🎹 MIDI Access denied or failed:', error);
+        this.onError('PERMISSION_DENIED', error.message);
+        return false;
+    }
+}
+
+// Initialize action catalog integration
+initActionCatalog() {
+    if (window.MIDIActionCatalog && !window.midiActionCatalog) {
+        window.midiActionCatalog = new window.MIDIActionCatalog({ mode: this.mode });
+        console.log('✅ MIDI Action Catalog initialized');
+    }
+}
+    
+scanDevices() {
+    // Scan inputs
+    for (const input of this.midiAccess.inputs.values()) {
+        this.addInput(input);
     }
     
-    addInput(input) {
+    // Scan outputs
+    for (const output of this.midiAccess.outputs.values()) {
+        this.addOutput(output);
+    }
+    
+    console.log(`🎹 Found ${this.inputs.size} input(s) and ${this.outputs.size} output(s)`);
+}
+    
+addInput(input) {
         const deviceInfo = {
             id: input.id,
             name: input.name || 'Unknown',
@@ -276,6 +273,40 @@ class MIDIController {
         return normalized;
     }
     
+    handleMIDIClock(event) {
+        if (!this.midiClock.enabled) return;
+        
+        const now = event.timestamp;
+        this.midiClock.pulses.push(now);
+        
+        // Keep only last 48 pulses (2 beats at 24 PPQ)
+        if (this.midiClock.pulses.length > 48) {
+            this.midiClock.pulses = this.midiClock.pulses.slice(-48);
+        }
+        
+        // Calculate BPM from last 24 pulses (1 beat)
+        if (this.midiClock.pulses.length >= 24) {
+            const recentPulses = this.midiClock.pulses.slice(-24);
+            const totalTime = recentPulses[recentPulses.length - 1] - recentPulses[0];
+            const avgInterval = totalTime / 23; // 23 intervals between 24 pulses
+            const bpm = Math.round(60000 / (avgInterval * 24));
+            
+            // Only update if BPM seems reasonable and stable
+            if (bpm >= 60 && bpm <= 200 && Math.abs(bpm - (this.midiClock.bpm || bpm)) <= 2) {
+                this.midiClock.bpm = bpm;
+                this.midiClock.isLocked = true;
+                
+                // Update system BPM
+                this.routeAction({
+                    type: 'bpm',
+                    params: { bpm }
+                });
+            }
+        }
+        
+        this.midiClock.lastPulseTime = now;
+    }
+    
     routeEvent(event) {
         // Handle MIDI Learn mode
         if (this.pendingLearnTarget) {
@@ -294,6 +325,11 @@ class MIDIController {
                 // Apply transforms
                 if (mapping.transform && event.type === 'cc') {
                     processedValue = this.applyTransforms(processedValue, mapping.transform);
+                }
+                
+                // Apply smoothing if configured
+                if (mapping.transform?.smoothMs && event.type === 'cc') {
+                    processedValue = this.applySmoothing(mapping.id, processedValue, mapping.transform.smoothMs);
                 }
                 
                 // Create action
@@ -349,11 +385,45 @@ class MIDIController {
             normalized = 1 - normalized;
         }
         
+        // Apply curve
+        if (transform.curve) {
+            switch (transform.curve) {
+                case 'exp':
+                    normalized = normalized * normalized;
+                    break;
+                case 'log':
+                    normalized = Math.sqrt(normalized);
+                    break;
+                case 'linear':
+                default:
+                    // Already linear
+                    break;
+            }
+        }
+        
         // Apply custom range
         const min = transform.min !== undefined ? transform.min : 0;
         const max = transform.max !== undefined ? transform.max : 1;
         
         return min + normalized * (max - min);
+    }
+    
+    applySmoothing(mappingId, newValue, smoothMs) {
+        const now = performance.now();
+        const buffer = this.smoothingBuffers.get(mappingId) || { 
+            value: newValue, 
+            lastUpdate: now 
+        };
+        
+        const timeDelta = now - buffer.lastUpdate;
+        const alpha = Math.min(1, timeDelta / smoothMs);
+        
+        buffer.value = buffer.value * (1 - alpha) + newValue * alpha;
+        buffer.lastUpdate = now;
+        
+        this.smoothingBuffers.set(mappingId, buffer);
+        
+        return buffer.value;
     }
     
     routeAction(action) {
@@ -383,9 +453,43 @@ class MIDIController {
                     }
                     break;
                     
+                case 'intensity':
+                    if (fx && fx.setIntensity) {
+                        const target = action.params.target;
+                        const value = action.processedValue;
+                        fx.setIntensity({ [target]: value });
+                    }
+                    break;
+                    
+                case 'toggle':
+                    if (fx && fx.setEffectEnabled) {
+                        const enabled = action.processedValue > 0.5;
+                        fx.setEffectEnabled(action.params.effect, enabled);
+                    }
+                    break;
+                    
                 case 'scene':
                     if (vj && vj.changeScene) {
                         vj.changeScene(action.params.scene);
+                    }
+                    break;
+                    
+                case 'color':
+                    if (vj && vj.updateColor) {
+                        vj.updateColor(action.params.property, action.processedValue);
+                    }
+                    break;
+                    
+                case 'layer':
+                    if (vj && vj.toggleLayer) {
+                        const visible = action.processedValue > 0.5;
+                        vj.toggleLayer(action.params.layer, visible);
+                    }
+                    break;
+                    
+                case 'bpm':
+                    if (vj && vj.updateBPM) {
+                        vj.updateBPM(action.params.bpm);
                     }
                     break;
             }
@@ -394,6 +498,7 @@ class MIDIController {
         }
     }
     
+    // Route actions through the centralized action catalog
     executeViaActionCatalog(action) {
         const catalog = window.midiActionCatalog;
         const value = action.processedValue;
@@ -404,16 +509,61 @@ class MIDIController {
                 case 'trigger':
                     catalog.triggerEffect(params.effect || params.target);
                     break;
+                case 'intensity':
+                    catalog.setIntensity(params.target, value);
+                    break;
+                case 'toggle':
+                    catalog.toggleEffect(params.effect || params.target, value > 0.5);
+                    break;
                 case 'scene':
                     catalog.changeScene(params.scene);
                     break;
-                case 'animation':
-                    if (value > 0.5) {
-                        catalog.triggerAnimation(params.anime);
+                case 'color':
+                    // Map normalized value to appropriate color ranges
+                    let colorValue = value;
+                    if (params.property === 'hue') {
+                        colorValue = value * 360;
+                    } else {
+                        colorValue = value * 200;
+                    }
+                    catalog.updateColor(params.property, colorValue);
+                    break;
+                case 'layer':
+                    catalog.toggleLayer(params.layer, value > 0.5);
+                    break;
+                case 'bpm':
+                    const bpm = params.bpm || (60 + value * 140); // 60-200 BPM range
+                    catalog.updateBPM(bpm);
+                    break;
+                case 'realtime':
+                    if (params.target === 'speed') {
+                        const speed = 0.1 + value * 2.9; // 0.1-3.0 range
+                        catalog.setSpeed(speed);
                     }
                     break;
-                case 'effect_toggle':
-                    catalog.toggleEffect(params.effect, value > 0.5);
+                case 'matrix':
+                    // 4x4 effect matrix handling
+                    catalog.applyEffectMatrix(params.effect, value > 0.5);
+                    break;
+                case 'animation':
+                    if (value > 0.5) {
+                        catalog.triggerAnimation(params.id);
+                    }
+                    break;
+                case 'system':
+                    if (value > 0.5) {
+                        switch (params.action) {
+                            case 'anime_enable':
+                                catalog.setAnimeEnabled(true);
+                                break;
+                            case 'anime_disable':
+                                catalog.setAnimeEnabled(false);
+                                break;
+                            case 'diagnostics':
+                                catalog.runDiagnostics();
+                                break;
+                        }
+                    }
                     break;
             }
         } catch (error) {
@@ -434,6 +584,24 @@ class MIDIController {
                 };
                 break;
                 
+            case 'intensity':
+                message = {
+                    type: 'fx_intensity',
+                    effect: action.params.target,
+                    intensity: action.processedValue,
+                    timestamp: Date.now()
+                };
+                break;
+                
+            case 'toggle':
+                message = {
+                    type: 'effect_toggle',
+                    effect: action.params.effect,
+                    enabled: action.processedValue > 0.5,
+                    timestamp: Date.now()
+                };
+                break;
+                
             case 'scene':
                 message = {
                     type: 'scene_change',
@@ -442,19 +610,28 @@ class MIDIController {
                 };
                 break;
                 
-            case 'animation':
+            case 'color':
                 message = {
-                    type: 'trigger_animation',
-                    animation: action.params.anime,
+                    type: 'color_change',
+                    property: action.params.property,
+                    value: action.processedValue,
                     timestamp: Date.now()
                 };
                 break;
                 
-            case 'effect_toggle':
+            case 'layer':
                 message = {
-                    type: 'effect_toggle',
-                    effect: action.params.effect,
-                    enabled: action.processedValue > 0.5,
+                    type: 'layer_toggle',
+                    layer: action.params.layer,
+                    visible: action.processedValue > 0.5,
+                    timestamp: Date.now()
+                };
+                break;
+                
+            case 'bpm':
+                message = {
+                    type: 'bpm_change',
+                    bpm: action.params.bpm,
                     timestamp: Date.now()
                 };
                 break;
@@ -511,6 +688,36 @@ class MIDIController {
     }
     
     // Public API methods
+    start() {
+        if (!this.isActive) {
+            return this.init();
+        }
+        return Promise.resolve(true);
+    }
+    
+    stop() {
+        this.isActive = false;
+        
+        // Close all inputs
+        for (const input of this.inputs.values()) {
+            if (input.raw && input.raw.close) {
+                input.raw.close();
+            }
+        }
+        
+        // Close all outputs  
+        for (const output of this.outputs.values()) {
+            if (output.raw && output.raw.close) {
+                output.raw.close();
+            }
+        }
+        
+        this.inputs.clear();
+        this.outputs.clear();
+        
+        console.log('🎹 MIDI Controller stopped');
+    }
+    
     getDevices() {
         return {
             inputs: Array.from(this.inputs.values()).map(d => ({
@@ -527,6 +734,15 @@ class MIDIController {
                 state: d.state
             }))
         };
+    }
+    
+    setMapping(mapping) {
+        this.mappings.set(mapping.id, mapping);
+        this.saveMappings();
+    }
+    
+    getMapping(id) {
+        return this.mappings.get(id);
     }
     
     getMappings() {
@@ -546,6 +762,40 @@ class MIDIController {
     stopLearn() {
         this.pendingLearnTarget = null;
         console.log('🎹 Learning mode deactivated');
+    }
+    
+    setMode(mode) {
+        if (['direct', 'broadcast', 'auto'].includes(mode)) {
+            this.mode = mode;
+            if (mode === 'auto') {
+                this.detectRouting();
+            }
+            console.log('🎹 Mode changed to:', this.mode);
+        }
+    }
+    
+    enableMIDIClock(enabled = true) {
+        this.midiClock.enabled = enabled;
+        if (!enabled) {
+            this.midiClock.pulses = [];
+            this.midiClock.bpm = null;
+            this.midiClock.isLocked = false;
+        }
+        console.log('🎹 MIDI Clock:', enabled ? 'enabled' : 'disabled');
+    }
+    
+    sendFeedback(deviceId, note, velocity, channel = 1) {
+        const device = this.outputs.get(deviceId);
+        if (!device || !device.raw) return false;
+        
+        try {
+            const status = 0x90 | (channel - 1); // Note On
+            device.raw.send([status, note, velocity]);
+            return true;
+        } catch (error) {
+            console.error('🎹 Error sending feedback:', error);
+            return false;
+        }
     }
     
     saveMappings() {
@@ -621,5 +871,6 @@ class MIDIController {
 // Create singleton instance and global export
 if (typeof window !== 'undefined') {
     window.MIDIController = MIDIController;
+    // Don't create instance immediately - let the HTML initialization handle it
     console.log('🎹 MIDIController class available globally');
 }
