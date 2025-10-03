@@ -2,6 +2,7 @@
 // Comprehensive control system for all animations and effects
 
 import MATRIX_MESSAGES from './matrix-message-pool.js';
+import intervalManager from './interval-manager.js';
 
 class ProfessionalVJControlPanel {
     constructor() {
@@ -114,8 +115,8 @@ class ProfessionalVJControlPanel {
     setupLocalStorageMonitoring() {
         // Enable LS bridge when BC is not available
         this._useLocalStorageBridge = true;
-        // Simplified polling to avoid infinite loops
-        const pollInterval = setInterval(() => {
+        // Simplified polling to avoid infinite loops (managed)
+        this.pollInterval = intervalManager.set('prof-panel-localStorage-polling', () => {
             try {
                 const response = localStorage.getItem('3886_vj_response');
                 if (response) {
@@ -129,9 +130,6 @@ class ProfessionalVJControlPanel {
                 console.warn('LocalStorage polling error:', e);
             }
         }, 10000); // Further reduced to 10 seconds to prevent issues
-
-        // Store interval ID for cleanup
-        this.pollInterval = pollInterval;
     }
 
     createProfessionalUI() {
@@ -1849,8 +1847,8 @@ class ProfessionalVJControlPanel {
         // Send initial ping
         this.sendPing();
 
-        // Monitor connection with ping/pong
-        this.connectionInterval = setInterval(() => {
+        // Monitor connection with ping/pong (managed)
+        this.connectionInterval = intervalManager.set('prof-panel-connection-monitor', () => {
             // Check if last ping was answered
             const timeSinceLastResponse = Date.now() - this.lastPingResponse;
 
@@ -1931,14 +1929,14 @@ class ProfessionalVJControlPanel {
         this.updateDiceCountdownDisplay();
         this.updateLastDiceRollDisplay();
 
-        // Use a shared 1Hz ticker to avoid extra intervals
+        // Use interval manager's shared 1Hz ticker instead of custom implementation
         const ensureTicker = () => {
-            if (!window.__oneHzTicker) {
-                const subs = new Set();
-                const interval = setInterval(() => { subs.forEach(fn => { try { fn(); } catch(_) {} }); }, 1000);
-                window.__oneHzTicker = { subscribe(fn){ subs.add(fn); return () => subs.delete(fn); }, _stop(){ clearInterval(interval); } };
-            }
-            return window.__oneHzTicker;
+            return {
+                subscribe(fn) {
+                    const intervalId = intervalManager.set('prof-panel-dice-ticker-' + Math.random().toString(36).substr(2, 9), fn, 1000);
+                    return () => intervalManager.clear(intervalId);
+                }
+            };
         };
         const ticker = ensureTicker();
         if (this._diceUnsub) this._diceUnsub();
@@ -2144,9 +2142,9 @@ class ProfessionalVJControlPanel {
     }
 
     startSystemMonitoring() {
-        // Update system uptime
+        // Update system uptime (managed)
         const startTime = Date.now();
-        setInterval(() => {
+        intervalManager.set('prof-panel-system-monitoring', () => {
             const uptime = Date.now() - startTime;
             const hours = Math.floor(uptime / 3600000).toString().padStart(2, '0');
             const minutes = Math.floor((uptime % 3600000) / 60000).toString().padStart(2, '0');
@@ -2212,8 +2210,8 @@ class ProfessionalVJControlPanel {
             requestAnimationFrame(measureFPS);
         }
 
-        // Memory and DOM monitoring
-        setInterval(() => {
+        // Memory and DOM monitoring (managed)
+        intervalManager.set('prof-panel-performance-monitoring', () => {
             // Memory usage (if available)
             if (performance.memory) {
                 const memUsed = performance.memory.usedJSHeapSize / (1024 * 1024);
@@ -2253,8 +2251,8 @@ class ProfessionalVJControlPanel {
             });
         }, 2000); // Update every 2 seconds
 
-        // Request the main page's live performance once per second
-        setInterval(() => {
+        // Request the main page's live performance once per second (managed)
+        intervalManager.set('prof-panel-performance-requests', () => {
             this.sendMessage({ type: 'request_performance', timestamp: Date.now() });
         }, 1000);
     }
