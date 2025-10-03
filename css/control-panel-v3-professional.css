@@ -1,0 +1,758 @@
+/**
+ * ============================================================================
+ * CONTROL PANEL V3 PROFESSIONAL - Complete Overhaul
+ * ============================================================================
+ * 
+ * Restores all V1 professional features + modern improvements
+ * Version: 3.1.0
+ * Date: 2025-10-03
+ */
+
+/* Import V1 base styles for matrix header and core components */
+@import url('control-panel.css');
+
+/* ============================================================================
+   OVERRIDES & ENHANCEMENTS
+   ============================================================================ */
+
+/* Ensure control panel uses V1 layout strategy */
+.control-panel {
+    width: 100%;
+    min-height: 100vh;
+    background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%);
+    padding: 12px;
+    position: relative;
+    max-width: 1920px;
+    margin-inline: auto;
+}
+
+/* V3-specific section styling - align with V1 */
+.cp-section {
+    background: rgba(0, 0, 0, 0.9);
+    border: 1px solid rgba(0, 255, 133, 0.3);
+    border-radius: 8px;
+    padding: 14px;
+    min-width: 0;
+}
+
+.cp-section__title {
+    margin: 0 0 10px 0;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: #00ff85;
+}
+
+.cp-section__content {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+/* ============================================================================
+   MATRIX HEADER - V1 Professional Design
+   ============================================================================ */
+
+/* Matrix header already styled by imported control-panel.css */
+/* Additional V3-specific enhancements */
+
+.matrix-section h3,
+.metrics-title,
+.dice-title,
+.connection-title {
+    font-size: 9px;
+    color: rgba(0, 255, 133, 0.7);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 8px;
+    padding-bottom: 2px;
+    border-bottom: 1px solid rgba(0, 255, 133, 0.1);
+}
+
+/* ============================================================================
+   PERFORMANCE METRICS - Visual Bars & Animations
+   ============================================================================ */
+
+.metric-bar {
+    width: 100%;
+    height: 4px;
+    background: rgba(0, 255, 133, 0.1);
+    border-radius: 2px;
+    overflow: hidden;
+    margin-top: 4px;
+}
+
+.bar-fill {
+    display: block;
+    height: 100%;
+    background: #00ff85;
+    border-radius: 2px;
+    transition: width 0.3s ease;
+    box-shadow: 0 0 8px rgba(0, 255, 133, 0.6);
+}
+
+.fps-bar { width: 90%; background: linear-gradient(90deg, #00ff85, #00cc6a); }
+.mem-bar { width: 45%; background: linear-gradient(90deg, #00ff85, #ffaa00); }
+.dom-bar { width: 60%; background: linear-gradient(90deg, #00ff85, #00aaff); }
+.fx-bar  { width: 0%; background: linear-gradient(90deg, #ff6600, #ff0066); }
+
+/* Pulsing animation for status indicators */
+@keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.7; transform: scale(1.1); }
+}
+
+.status-dot {
+    animation: pulse 2s infinite;
+}
+
+/* Connection wave effect */
+.status-wave {
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    border: 2px solid #00ff85;
+    opacity: 0;
+    animation: waveExpand 2s infinite;
+}
+
+@keyframes waveExpand {
+    0% { transform: scale(1); opacity: 0.8; }
+    100% { transform: scale(2.5); opacity: 0; }
+}
+
+/* ============================================================================
+   SYSTEM CONTROLS - Professional Button Design
+   ============================================================================ */
+
+.matrix-control-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 8px 12px;
+    border: 2px solid currentColor;
+    background: rgba(0, 0, 0, 0.6);
+    font-family: 'Space Mono', monospace;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border-radius: 4px;
+}
+
+.matrix-control-btn:hover {
+    background: rgba(0, 255, 133, 0.1);
+    box-shadow: 0 0 15px currentColor;
+    transform: translateY(-2px);
+}
+
+.btn-glyph {
+    font-size: 18px;
+    line-height: 1;
+}
+
+.btn-label {
+    font-size: 10px;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+.btn-code {
+    font-size: 8px;
+    opacity: 0.6;
+}
+
+.kill-btn {
+    color: #ff4444;
+}
+
+.reset-btn {
+    color: #ffaa00;
+}
+
+.reload-btn {
+    color: #00aaff;
+}
+
+/* Performance mode buttons */
+.performance-modes {
+    display: flex;
+    gap: 6px;
+    margin-top: 8px;
+}
+
+.mode-btn {
+    flex: 1;
+    padding: 6px 8px;
+    border: 1px solid rgba(0, 255, 133, 0.3);
+    background: rgba(0, 0, 0, 0.4);
+    color: rgba(0, 255, 133, 0.6);
+    font-family: inherit;
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border-radius: 3px;
+}
+
+.mode-btn:hover {
+    background: rgba(0, 255, 133, 0.1);
+    border-color: #00ff85;
+}
+
+.mode-btn.active {
+    background: rgba(0, 255, 133, 0.2);
+    border-color: #00ff85;
+    color: #00ff85;
+    box-shadow: 0 0 10px rgba(0, 255, 133, 0.3);
+}
+
+/* ============================================================================
+   SCENE SELECTION
+   ============================================================================ */
+
+.scene-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+    gap: 8px;
+}
+
+.scene-btn {
+    padding: 12px 8px;
+    border: 2px solid rgba(0, 255, 133, 0.4);
+    background: rgba(0, 0, 0, 0.4);
+    color: #00ff85;
+    font-family: inherit;
+    font-size: 11px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border-radius: 4px;
+    position: relative;
+    overflow: hidden;
+}
+
+.scene-btn:hover {
+    background: rgba(0, 255, 133, 0.1);
+    border-color: #00ff85;
+    box-shadow: 0 0 15px rgba(0, 255, 133, 0.3);
+    transform: scale(1.05);
+}
+
+.scene-btn.active {
+    background: rgba(0, 255, 133, 0.2);
+    border-color: #00ff85;
+    color: #ffffff;
+    box-shadow: 0 0 20px rgba(0, 255, 133, 0.5);
+}
+
+.scene-auto {
+    grid-column: 1 / -1;
+    background: linear-gradient(135deg, rgba(255, 170, 0, 0.2), rgba(255, 102, 0, 0.2));
+    border-color: #ffaa00;
+    color: #ffaa00;
+}
+
+.scene-auto.active {
+    background: linear-gradient(135deg, rgba(255, 170, 0, 0.3), rgba(255, 102, 0, 0.3));
+    box-shadow: 0 0 25px rgba(255, 170, 0, 0.6);
+}
+
+/* ============================================================================
+   TRIGGER FX SECTION
+   ============================================================================ */
+
+.trigger-fx-grid {
+    display: grid;
+    gap: 8px;
+}
+
+.trigger-effects {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+}
+
+.trigger-btn {
+    padding: 8px 6px;
+    border: 2px solid #ff6600;
+    background: rgba(255, 102, 0, 0.1);
+    color: #ff6600;
+    font-family: inherit;
+    font-weight: bold;
+    font-size: 9px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border-radius: 4px;
+    text-transform: uppercase;
+    min-height: 32px;
+}
+
+.trigger-btn:hover {
+    background: rgba(255, 102, 0, 0.3);
+    box-shadow: 0 0 15px rgba(255, 102, 0, 0.5);
+    transform: translateY(-2px);
+}
+
+.trigger-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 0 25px rgba(255, 102, 0, 0.8);
+}
+
+.trigger-macros {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+}
+
+.macro-btn {
+    padding: 8px 6px;
+    border: 2px solid #00aaff;
+    background: rgba(0, 170, 255, 0.1);
+    color: #00aaff;
+    font-family: inherit;
+    font-weight: bold;
+    font-size: 9px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border-radius: 4px;
+    min-height: 32px;
+}
+
+.macro-btn:hover {
+    background: rgba(0, 170, 255, 0.2);
+    box-shadow: 0 0 20px rgba(0, 170, 255, 0.5);
+}
+
+/* Tempo controls */
+.trigger-tempo {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1.2fr;
+    gap: 12px;
+    padding: 12px;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(0, 255, 133, 0.2);
+    border-radius: 4px;
+}
+
+.tempo-control,
+.tempo-bpm {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.tempo-label {
+    font-size: 10px;
+    font-weight: bold;
+    color: rgba(0, 255, 133, 0.8);
+    min-width: 50px;
+}
+
+.tempo-slider {
+    flex: 1;
+    height: 6px;
+    background: rgba(0, 255, 133, 0.2);
+    border-radius: 3px;
+    outline: none;
+    -webkit-appearance: none;
+}
+
+.tempo-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 16px;
+    height: 16px;
+    background: #00ff85;
+    border-radius: 50%;
+    cursor: pointer;
+    box-shadow: 0 0 10px rgba(0, 255, 133, 0.6);
+}
+
+.tempo-value {
+    font-weight: bold;
+    color: #00ff85;
+    min-width: 40px;
+    text-align: right;
+    font-size: 11px;
+}
+
+.bpm-tap-btn {
+    padding: 6px 12px;
+    border: 1px solid #00ff85;
+    background: rgba(0, 255, 133, 0.1);
+    color: #00ff85;
+    font-family: inherit;
+    font-size: 10px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border-radius: 3px;
+}
+
+.bpm-tap-btn:hover {
+    background: rgba(0, 255, 133, 0.2);
+    box-shadow: 0 0 10px rgba(0, 255, 133, 0.4);
+}
+
+.bpm-tap-btn[data-state="on"] {
+    background: rgba(0, 255, 133, 0.3);
+    border-color: #00ff85;
+}
+
+/* ============================================================================
+   ANIMATION SYSTEM
+   ============================================================================ */
+
+.animation-grid {
+    display: grid;
+    gap: 12px;
+}
+
+.animation-system-controls {
+    display: flex;
+    gap: 8px;
+}
+
+.system-btn {
+    flex: 1;
+    padding: 10px;
+    border: 2px solid currentColor;
+    background: rgba(0, 0, 0, 0.4);
+    font-family: inherit;
+    font-weight: bold;
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border-radius: 4px;
+}
+
+.system-btn.enable {
+    color: #00ff85;
+    border-color: #00ff85;
+}
+
+.system-btn.disable {
+    color: #ffaa00;
+    border-color: #ffaa00;
+}
+
+.system-btn.kill {
+    color: #ff4444;
+    border-color: #ff4444;
+}
+
+.system-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    box-shadow: 0 0 15px currentColor;
+    transform: translateY(-2px);
+}
+
+.system-btn.active {
+    background: currentColor;
+    color: #000;
+    box-shadow: 0 0 25px currentColor;
+}
+
+.animation-triggers {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+}
+
+.anim-trigger-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 10px 8px;
+    border: 2px solid rgba(0, 170, 255, 0.5);
+    background: rgba(0, 0, 0, 0.4);
+    color: #00aaff;
+    font-family: inherit;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border-radius: 4px;
+}
+
+.anim-trigger-btn:hover {
+    background: rgba(0, 170, 255, 0.1);
+    border-color: #00aaff;
+    box-shadow: 0 0 15px rgba(0, 170, 255, 0.4);
+}
+
+.trigger-label {
+    font-size: 9px;
+    font-weight: bold;
+    text-transform: uppercase;
+    color: rgba(0, 170, 255, 0.8);
+}
+
+.trigger-desc {
+    font-size: 10px;
+    color: #00aaff;
+}
+
+/* ============================================================================
+   VISUAL EFFECTS & LAYERS
+   ============================================================================ */
+
+.effect-toggles,
+.layer-controls {
+    margin-bottom: 16px;
+}
+
+.effect-toggles h3,
+.layer-controls h3 {
+    margin: 0 0 10px 0;
+    font-size: 11px;
+    color: rgba(0, 255, 133, 0.8);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 1px solid rgba(0, 255, 133, 0.2);
+    padding-bottom: 5px;
+}
+
+.toggle-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 8px;
+}
+
+.toggle-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(0, 255, 133, 0.2);
+    border-radius: 4px;
+}
+
+.toggle-item label {
+    font-size: 10px;
+    color: rgba(0, 255, 133, 0.9);
+}
+
+.effect-toggle-btn,
+.layer-toggle-btn {
+    padding: 4px 10px;
+    border: 2px solid;
+    background: transparent;
+    font-family: inherit;
+    font-weight: bold;
+    font-size: 9px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border-radius: 3px;
+    min-width: 40px;
+}
+
+.effect-toggle-btn[data-state="on"],
+.layer-toggle-btn[data-state="on"] {
+    border-color: #00ff85;
+    color: #00ff85;
+    background: rgba(0, 255, 133, 0.1);
+}
+
+.effect-toggle-btn[data-state="off"],
+.layer-toggle-btn[data-state="off"] {
+    border-color: #666;
+    color: #666;
+}
+
+.effect-toggle-btn:hover,
+.layer-toggle-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    box-shadow: 0 0 10px currentColor;
+}
+
+.master-controls {
+    display: flex;
+    gap: 12px;
+    padding-top: 16px;
+    border-top: 1px solid rgba(0, 255, 133, 0.2);
+}
+
+.master-btn {
+    flex: 1;
+    padding: 12px;
+    border: 2px solid #00ff85;
+    background: rgba(0, 255, 133, 0.1);
+    color: #00ff85;
+    font-family: inherit;
+    font-weight: bold;
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border-radius: 4px;
+    text-transform: uppercase;
+}
+
+.master-btn:hover {
+    background: rgba(0, 255, 133, 0.2);
+    box-shadow: 0 0 20px rgba(0, 255, 133, 0.4);
+    transform: translateY(-2px);
+}
+
+/* ============================================================================
+   RESPONSIVE GRID LAYOUT - V1 Strategy
+   ============================================================================ */
+
+/* Default: Mobile - 1 column */
+.control-grid {
+    display: grid;
+    gap: 12px;
+    grid-auto-flow: row;
+    grid-template-columns: 1fr;
+}
+
+/* Small: ≥681px - 6 columns */
+@media (min-width: 681px) {
+    .control-grid {
+        grid-template-columns: repeat(6, minmax(0, 1fr));
+    }
+    
+    .scene-section { grid-column: span 6; }
+    .trigger-fx-section { grid-column: span 6; }
+    .animation-section { grid-column: span 6; }
+    .visual-effects-section { grid-column: span 6; }
+}
+
+/* Medium: ≥960px - 8 columns */
+@media (min-width: 960px) {
+    .control-grid {
+        grid-template-columns: repeat(8, minmax(0, 1fr));
+    }
+    
+    .scene-section { grid-column: span 5; }
+    .trigger-fx-section { grid-column: span 3; }
+    .animation-section { grid-column: span 5; }
+    .visual-effects-section { grid-column: span 8; }
+}
+
+/* Large: ≥1280px - 12 columns with explicit rows */
+@media (min-width: 1280px) {
+    .control-grid {
+        grid-template-columns: repeat(12, minmax(0, 1fr));
+        grid-template-rows: auto auto minmax(400px, 1fr);
+    }
+    
+    /* Row 1: Trigger FX (7 col) + Animation (5 col) */
+    .trigger-fx-section {
+        grid-column: span 7;
+        grid-row: 1;
+    }
+    
+    .animation-section {
+        grid-column: span 5;
+        grid-row: 1;
+        max-height: 400px;
+    }
+    
+    /* Row 2: Scene takes full width */
+    .scene-section {
+        grid-column: 1 / -1;
+        grid-row: 2;
+    }
+    
+    /* Row 3: Visual Effects full width with flex grow */
+    .visual-effects-section {
+        grid-column: 1 / -1;
+        grid-row: 3;
+        min-height: 400px;
+    }
+}
+
+/* ============================================================================
+   1080p VIEWPORT OPTIMIZATION
+   ============================================================================ */
+
+@media (min-width: 1600px) and (max-height: 1100px) {
+    html, body {
+        height: 100vh;
+        overflow: hidden;
+    }
+    
+    body {
+        font-size: 11px;
+    }
+    
+    .control-panel {
+        padding: 10px;
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+    }
+    
+    .matrix-header {
+        min-height: 150px;
+        padding: 14px;
+        margin-bottom: 14px;
+        flex-shrink: 0;
+    }
+    
+    .matrix-section {
+        min-height: 110px;
+        padding: 10px;
+    }
+    
+    .control-grid {
+        flex: 1;
+        display: grid;
+        gap: 10px;
+        height: calc(100vh - 180px);
+        overflow: hidden;
+        grid-template-rows: auto auto minmax(0, 1fr);
+    }
+    
+    .cp-section {
+        overflow-y: auto;
+        overflow-x: hidden;
+        padding: 12px;
+    }
+    
+    .cp-section__title {
+        font-size: 12px;
+        margin-bottom: 8px;
+    }
+    
+    .animation-triggers {
+        gap: 6px;
+    }
+    
+    button,
+    .tempo-slider {
+        min-height: 28px;
+        font-size: 10px;
+    }
+    
+    .scene-btn {
+        min-height: 32px;
+        padding: 6px 8px;
+    }
+}
+
+/* ============================================================================
+   ACCESSIBILITY & FOCUS STATES
+   ============================================================================ */
+
+button:focus-visible,
+.scene-btn:focus-visible,
+.trigger-btn:focus-visible,
+.anim-trigger-btn:focus-visible,
+.effect-toggle-btn:focus-visible,
+.layer-toggle-btn:focus-visible {
+    outline: 2px solid #00ff85;
+    outline-offset: 2px;
+}
+
+/* ============================================================================
+   UTILITY CLASSES
+   ============================================================================ */
+
+.hidden {
+    display: none !important;
+}
+
+/* ============================================================================
+   END OF CONTROL PANEL V3 PROFESSIONAL
+   ============================================================================ */

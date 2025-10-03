@@ -1,0 +1,252 @@
+{
+  "name": "APC40 mk2 Default Mapping",
+  "deviceMatchers": ["apc40", "apc 40"],
+  "version": "1.0.0",
+  "description": "Professional VJ mapping for APC40 mk2 - trigger FX on clip grid, intensities on faders, scenes on scene buttons",
+  "mappings": [
+    {
+      "id": "apc40_strobe",
+      "match": { "type": "note", "number": 0, "subtype": "on" },
+      "action": { "type": "trigger", "params": { "effect": "strobe" } },
+      "feedback": { "on": { "note": 0, "velocity": 3 }, "off": { "note": 0, "velocity": 0 } }
+    },
+    {
+      "id": "apc40_blackout", 
+      "match": { "type": "note", "number": 1, "subtype": "on" },
+      "action": { "type": "trigger", "params": { "effect": "blackout" } },
+      "feedback": { "on": { "note": 1, "velocity": 3 }, "off": { "note": 1, "velocity": 0 } }
+    },
+    {
+      "id": "apc40_whiteout",
+      "match": { "type": "note", "number": 2, "subtype": "on" },
+      "action": { "type": "trigger", "params": { "effect": "whiteout" } },
+      "feedback": { "on": { "note": 2, "velocity": 3 }, "off": { "note": 2, "velocity": 0 } }
+    },
+    {
+      "id": "apc40_rgbsplit",
+      "match": { "type": "note", "number": 3, "subtype": "on" },
+      "action": { "type": "trigger", "params": { "effect": "rgbsplit" } },
+      "feedback": { "on": { "note": 3, "velocity": 3 }, "off": { "note": 3, "velocity": 0 } }
+    },
+    {
+      "id": "apc40_ripple",
+      "match": { "type": "note", "number": 4, "subtype": "on" },
+      "action": { "type": "trigger", "params": { "effect": "ripple" } },
+      "feedback": { "on": { "note": 4, "velocity": 5 }, "off": { "note": 4, "velocity": 0 } }
+    },
+    {
+      "id": "apc40_pulse",
+      "match": { "type": "note", "number": 5, "subtype": "on" },
+      "action": { "type": "trigger", "params": { "effect": "pulse" } },
+      "feedback": { "on": { "note": 5, "velocity": 5 }, "off": { "note": 5, "velocity": 0 } }
+    },
+    {
+      "id": "apc40_matrix_rain",
+      "match": { "type": "note", "number": 6, "subtype": "on" },
+      "action": { "type": "trigger", "params": { "effect": "matrix-rain" } },
+      "feedback": { "on": { "note": 6, "velocity": 1 }, "off": { "note": 6, "velocity": 0 } }
+    },
+    {
+      "id": "apc40_cosmic",
+      "match": { "type": "note", "number": 7, "subtype": "on" },
+      "action": { "type": "trigger", "params": { "effect": "cosmic" } },
+      "feedback": { "on": { "note": 7, "velocity": 45 }, "off": { "note": 7, "velocity": 0 } }
+    },
+    {
+      "id": "apc40_vignette_pulse",
+      "match": { "type": "note", "number": 8, "subtype": "on" },
+      "action": { "type": "trigger", "params": { "effect": "vignette-pulse" } },
+      "feedback": { "on": { "note": 8, "velocity": 3 }, "off": { "note": 8, "velocity": 0 } }
+    },
+    {
+      "id": "apc40_scanlines_sweep",
+      "match": { "type": "note", "number": 9, "subtype": "on" },
+      "action": { "type": "trigger", "params": { "effect": "scanlines-sweep" } },
+      "feedback": { "on": { "note": 9, "velocity": 33 }, "off": { "note": 9, "velocity": 0 } }
+    },
+    {
+      "id": "apc40_chroma_pulse",
+      "match": { "type": "note", "number": 10, "subtype": "on" },
+      "action": { "type": "trigger", "params": { "effect": "chroma-pulse" } },
+      "feedback": { "on": { "note": 10, "velocity": 53 }, "off": { "note": 10, "velocity": 0 } }
+    },
+    {
+      "id": "apc40_noise_burst",
+      "match": { "type": "note", "number": 11, "subtype": "on" },
+      "action": { "type": "trigger", "params": { "effect": "noise-burst" } },
+      "feedback": { "on": { "note": 11, "velocity": 33 }, "off": { "note": 11, "velocity": 0 } }
+    },
+    {
+      "id": "apc40_grid_flash",
+      "match": { "type": "note", "number": 16, "subtype": "on" },
+      "action": { "type": "trigger", "params": { "effect": "grid-flash" } },
+      "feedback": { "on": { "note": 16, "velocity": 33 }, "off": { "note": 16, "velocity": 0 } }
+    },
+    {
+      "id": "apc40_lens_flare",
+      "match": { "type": "note", "number": 17, "subtype": "on" },
+      "action": { "type": "trigger", "params": { "effect": "lens-flare" } },
+      "feedback": { "on": { "note": 17, "velocity": 119 }, "off": { "note": 17, "velocity": 0 } }
+    },
+    {
+      "id": "apc40_zoom_blur",
+      "match": { "type": "note", "number": 18, "subtype": "on" },
+      "action": { "type": "trigger", "params": { "effect": "zoom-blur" } },
+      "feedback": { "on": { "note": 18, "velocity": 5 }, "off": { "note": 18, "velocity": 0 } }
+    },
+    {
+      "id": "apc40_invert_flicker",
+      "match": { "type": "note", "number": 19, "subtype": "on" },
+      "action": { "type": "trigger", "params": { "effect": "invert-flicker" } },
+      "feedback": { "on": { "note": 19, "velocity": 3 }, "off": { "note": 19, "velocity": 0 } }
+    },
+    {
+      "id": "apc40_spotlight_sweep",
+      "match": { "type": "note", "number": 24, "subtype": "on" },
+      "action": { "type": "trigger", "params": { "effect": "spotlight-sweep" } },
+      "feedback": { "on": { "note": 24, "velocity": 119 }, "off": { "note": 24, "velocity": 0 } }
+    },
+    {
+      "id": "apc40_heat_shimmer",
+      "match": { "type": "note", "number": 25, "subtype": "on" },
+      "action": { "type": "trigger", "params": { "effect": "heat-shimmer" } },
+      "feedback": { "on": { "note": 25, "velocity": 5 }, "off": { "note": 25, "velocity": 0 } }
+    },
+
+    {
+      "id": "apc40_glitch_intensity",
+      "match": { "type": "cc", "number": 7 },
+      "action": { "type": "intensity", "params": { "target": "glitch" } },
+      "transform": { "min": 0, "max": 1, "smoothMs": 50 }
+    },
+    {
+      "id": "apc40_particles_intensity",
+      "match": { "type": "cc", "number": 15 },
+      "action": { "type": "intensity", "params": { "target": "particles" } },
+      "transform": { "min": 0, "max": 1, "smoothMs": 50 }
+    },
+    {
+      "id": "apc40_noise_intensity",
+      "match": { "type": "cc", "number": 23 },
+      "action": { "type": "intensity", "params": { "target": "noise" } },
+      "transform": { "min": 0, "max": 1, "smoothMs": 50 }
+    },
+    {
+      "id": "apc40_plasma_intensity",
+      "match": { "type": "cc", "number": 31 },
+      "action": { "type": "intensity", "params": { "target": "plasma" } },
+      "transform": { "min": 0, "max": 1, "smoothMs": 50 }
+    },
+    {
+      "id": "apc40_strobe_intensity",
+      "match": { "type": "cc", "number": 39 },
+      "action": { "type": "intensity", "params": { "target": "strobe" } },
+      "transform": { "min": 0, "max": 1, "smoothMs": 50 }
+    },
+
+    {
+      "id": "apc40_hue_control",
+      "match": { "type": "cc", "number": 47 },
+      "action": { "type": "color", "params": { "property": "hue" } },
+      "transform": { "min": -180, "max": 180, "smoothMs": 30 }
+    },
+    {
+      "id": "apc40_saturation_control", 
+      "match": { "type": "cc", "number": 55 },
+      "action": { "type": "color", "params": { "property": "saturation" } },
+      "transform": { "min": 0, "max": 200, "smoothMs": 30 }
+    },
+    {
+      "id": "apc40_brightness_control",
+      "match": { "type": "cc", "number": 63 },
+      "action": { "type": "color", "params": { "property": "brightness" } },
+      "transform": { "min": 50, "max": 150, "smoothMs": 30 }
+    },
+
+    {
+      "id": "apc40_scene_intense",
+      "match": { "type": "note", "number": 82, "subtype": "on" },
+      "action": { "type": "scene", "params": { "scene": "intense" } },
+      "feedback": { "on": { "note": 82, "velocity": 1 }, "off": { "note": 82, "velocity": 0 } }
+    },
+    {
+      "id": "apc40_scene_calm",
+      "match": { "type": "note", "number": 83, "subtype": "on" },
+      "action": { "type": "scene", "params": { "scene": "calm" } },
+      "feedback": { "on": { "note": 83, "velocity": 1 }, "off": { "note": 83, "velocity": 0 } }
+    },
+    {
+      "id": "apc40_scene_glitch",
+      "match": { "type": "note", "number": 84, "subtype": "on" },
+      "action": { "type": "scene", "params": { "scene": "glitch" } },
+      "feedback": { "on": { "note": 84, "velocity": 1 }, "off": { "note": 84, "velocity": 0 } }
+    },
+    {
+      "id": "apc40_scene_techno",
+      "match": { "type": "note", "number": 85, "subtype": "on" },
+      "action": { "type": "scene", "params": { "scene": "techno" } },
+      "feedback": { "on": { "note": 85, "velocity": 1 }, "off": { "note": 85, "velocity": 0 } }
+    },
+    {
+      "id": "apc40_scene_matrix",
+      "match": { "type": "note", "number": 86, "subtype": "on" },
+      "action": { "type": "scene", "params": { "scene": "matrix" } },
+      "feedback": { "on": { "note": 86, "velocity": 1 }, "off": { "note": 86, "velocity": 0 } }
+    },
+    {
+      "id": "apc40_scene_cyberpunk",
+      "match": { "type": "note", "number": 87, "subtype": "on" },
+      "action": { "type": "scene", "params": { "scene": "cyberpunk" } },
+      "feedback": { "on": { "note": 87, "velocity": 1 }, "off": { "note": 87, "velocity": 0 } }
+    },
+    {
+      "id": "apc40_scene_neon",
+      "match": { "type": "note", "number": 88, "subtype": "on" },
+      "action": { "type": "scene", "params": { "scene": "neon" } },
+      "feedback": { "on": { "note": 88, "velocity": 1 }, "off": { "note": 88, "velocity": 0 } }
+    },
+    {
+      "id": "apc40_scene_auto",
+      "match": { "type": "note", "number": 89, "subtype": "on" },
+      "action": { "type": "scene", "params": { "scene": "auto" } },
+      "feedback": { "on": { "note": 89, "velocity": 1 }, "off": { "note": 89, "velocity": 0 } }
+    },
+
+    {
+      "id": "apc40_layer_background",
+      "match": { "type": "note", "number": 48, "subtype": "on" },
+      "action": { "type": "layer", "params": { "layer": "background" } },
+      "feedback": { "on": { "note": 48, "velocity": 33 }, "off": { "note": 48, "velocity": 0 } }
+    },
+    {
+      "id": "apc40_layer_matrix_rain",
+      "match": { "type": "note", "number": 49, "subtype": "on" },
+      "action": { "type": "layer", "params": { "layer": "matrix-rain" } },
+      "feedback": { "on": { "note": 49, "velocity": 33 }, "off": { "note": 49, "velocity": 0 } }
+    },
+    {
+      "id": "apc40_layer_logo",
+      "match": { "type": "note", "number": 50, "subtype": "on" },
+      "action": { "type": "layer", "params": { "layer": "logo" } },
+      "feedback": { "on": { "note": 50, "velocity": 33 }, "off": { "note": 50, "velocity": 0 } }
+    },
+    {
+      "id": "apc40_layer_particles",
+      "match": { "type": "note", "number": 51, "subtype": "on" },
+      "action": { "type": "layer", "params": { "layer": "particles" } },
+      "feedback": { "on": { "note": 51, "velocity": 33 }, "off": { "note": 51, "velocity": 0 } }
+    },
+    {
+      "id": "apc40_layer_animations",
+      "match": { "type": "note", "number": 52, "subtype": "on" },
+      "action": { "type": "layer", "params": { "layer": "animations" } },
+      "feedback": { "on": { "note": 52, "velocity": 33 }, "off": { "note": 52, "velocity": 0 } }
+    },
+    {
+      "id": "apc40_layer_overlay",
+      "match": { "type": "note", "number": 53, "subtype": "on" },
+      "action": { "type": "layer", "params": { "layer": "overlay" } },
+      "feedback": { "on": { "note": 53, "velocity": 33 }, "off": { "note": 53, "velocity": 0 } }
+    }
+  ]
+}

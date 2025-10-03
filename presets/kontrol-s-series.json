@@ -1,0 +1,180 @@
+{
+  "name": "Komplete Kontrol S-Series VJ Mapping",
+  "deviceMatchers": ["kontrol", "komplete", "s25", "s49", "s61", "s88", "mk2", "mk3"],
+  "version": "1.0.0",
+  "description": "S-Series mapping using Smart Strip for real-time control, encoders for intensity, and transport buttons for scenes",
+  "mappings": [
+    {
+      "id": "kontrol_trigger_strobe",
+      "match": { "type": "note", "number": 60, "subtype": "on" },
+      "action": { "type": "trigger", "params": { "effect": "strobe" } },
+      "feedback": { "on": { "note": 60, "velocity": 127 }, "off": { "note": 60, "velocity": 0 } }
+    },
+    {
+      "id": "kontrol_trigger_pulse",
+      "match": { "type": "note", "number": 62, "subtype": "on" },
+      "action": { "type": "trigger", "params": { "effect": "pulse" } },
+      "feedback": { "on": { "note": 62, "velocity": 100 }, "off": { "note": 62, "velocity": 0 } }
+    },
+    {
+      "id": "kontrol_trigger_ripple",
+      "match": { "type": "note", "number": 64, "subtype": "on" },
+      "action": { "type": "trigger", "params": { "effect": "ripple" } },
+      "feedback": { "on": { "note": 64, "velocity": 80 }, "off": { "note": 64, "velocity": 0 } }
+    },
+    {
+      "id": "kontrol_trigger_cosmic",
+      "match": { "type": "note", "number": 65, "subtype": "on" },
+      "action": { "type": "trigger", "params": { "effect": "cosmic" } },
+      "feedback": { "on": { "note": 65, "velocity": 60 }, "off": { "note": 65, "velocity": 0 } }
+    },
+    {
+      "id": "kontrol_trigger_blackout",
+      "match": { "type": "note", "number": 67, "subtype": "on" },
+      "action": { "type": "trigger", "params": { "effect": "blackout" } },
+      "feedback": { "on": { "note": 67, "velocity": 0 }, "off": { "note": 67, "velocity": 0 } }
+    },
+    {
+      "id": "kontrol_trigger_whiteout",
+      "match": { "type": "note", "number": 69, "subtype": "on" },
+      "action": { "type": "trigger", "params": { "effect": "whiteout" } },
+      "feedback": { "on": { "note": 69, "velocity": 127 }, "off": { "note": 69, "velocity": 0 } }
+    },
+    {
+      "id": "kontrol_trigger_matrix",
+      "match": { "type": "note", "number": 71, "subtype": "on" },
+      "action": { "type": "trigger", "params": { "effect": "matrix-rain" } },
+      "feedback": { "on": { "note": 71, "velocity": 90 }, "off": { "note": 71, "velocity": 0 } }
+    },
+    {
+      "id": "kontrol_trigger_rgb",
+      "match": { "type": "note", "number": 72, "subtype": "on" },
+      "action": { "type": "trigger", "params": { "effect": "rgbsplit" } },
+      "feedback": { "on": { "note": 72, "velocity": 70 }, "off": { "note": 72, "velocity": 0 } }
+    },
+
+    {
+      "id": "kontrol_encoder_1_glitch",
+      "match": { "type": "cc", "number": 1 },
+      "action": { "type": "intensity", "params": { "target": "glitch", "range": [0, 1] } }
+    },
+    {
+      "id": "kontrol_encoder_2_particles",
+      "match": { "type": "cc", "number": 2 },
+      "action": { "type": "intensity", "params": { "target": "particles", "range": [0, 1] } }
+    },
+    {
+      "id": "kontrol_encoder_3_noise",
+      "match": { "type": "cc", "number": 3 },
+      "action": { "type": "intensity", "params": { "target": "noise", "range": [0, 1] } }
+    },
+    {
+      "id": "kontrol_encoder_4_plasma",
+      "match": { "type": "cc", "number": 4 },
+      "action": { "type": "intensity", "params": { "target": "plasma", "range": [0, 1] } }
+    },
+    {
+      "id": "kontrol_encoder_5_strobe",
+      "match": { "type": "cc", "number": 5 },
+      "action": { "type": "intensity", "params": { "target": "strobe", "range": [0, 1] } }
+    },
+    {
+      "id": "kontrol_encoder_6_distortion",
+      "match": { "type": "cc", "number": 6 },
+      "action": { "type": "intensity", "params": { "target": "distortion", "range": [0, 1] } }
+    },
+    {
+      "id": "kontrol_encoder_7_blur",
+      "match": { "type": "cc", "number": 7 },
+      "action": { "type": "intensity", "params": { "target": "blur", "range": [0, 1] } }
+    },
+    {
+      "id": "kontrol_encoder_8_warp",
+      "match": { "type": "cc", "number": 8 },
+      "action": { "type": "intensity", "params": { "target": "warp", "range": [0, 1] } }
+    },
+
+    {
+      "id": "kontrol_smart_strip_speed",
+      "match": { "type": "cc", "number": 9 },
+      "action": { "type": "realtime", "params": { "target": "speed", "range": [0.1, 3.0] } }
+    },
+    {
+      "id": "kontrol_mod_wheel_master_hue",
+      "match": { "type": "cc", "number": 1 },
+      "action": { "type": "color", "params": { "component": "hue", "range": [0, 360] } }
+    },
+
+    {
+      "id": "kontrol_play_scene_intense",
+      "match": { "type": "cc", "number": 114, "value": 127 },
+      "action": { "type": "scene", "params": { "scene": "intense" } }
+    },
+    {
+      "id": "kontrol_record_scene_calm",
+      "match": { "type": "cc", "number": 115, "value": 127 },
+      "action": { "type": "scene", "params": { "scene": "calm" } }
+    },
+    {
+      "id": "kontrol_stop_scene_glitch",
+      "match": { "type": "cc", "number": 116, "value": 127 },
+      "action": { "type": "scene", "params": { "scene": "glitch" } }
+    },
+    {
+      "id": "kontrol_ff_scene_matrix",
+      "match": { "type": "cc", "number": 117, "value": 127 },
+      "action": { "type": "scene", "params": { "scene": "matrix" } }
+    },
+    {
+      "id": "kontrol_rew_scene_auto",
+      "match": { "type": "cc", "number": 118, "value": 127 },
+      "action": { "type": "scene", "params": { "scene": "auto" } }
+    },
+
+    {
+      "id": "kontrol_button_1_background",
+      "match": { "type": "cc", "number": 50, "value": 127 },
+      "action": { "type": "layer", "params": { "layer": "background" } }
+    },
+    {
+      "id": "kontrol_button_2_particles",
+      "match": { "type": "cc", "number": 51, "value": 127 },
+      "action": { "type": "layer", "params": { "layer": "particles" } }
+    },
+    {
+      "id": "kontrol_button_3_logo",
+      "match": { "type": "cc", "number": 52, "value": 127 },
+      "action": { "type": "layer", "params": { "layer": "logo" } }
+    },
+    {
+      "id": "kontrol_button_4_overlay",
+      "match": { "type": "cc", "number": 53, "value": 127 },
+      "action": { "type": "layer", "params": { "layer": "overlay" } }
+    },
+
+    {
+      "id": "kontrol_toggle_aurora",
+      "match": { "type": "note", "number": 48, "subtype": "on" },
+      "action": { "type": "toggle", "params": { "effect": "aurora" } },
+      "feedback": { "on": { "note": 48, "velocity": 80 }, "off": { "note": 48, "velocity": 0 } }
+    },
+    {
+      "id": "kontrol_toggle_scanlines",
+      "match": { "type": "note", "number": 50, "subtype": "on" },
+      "action": { "type": "toggle", "params": { "effect": "scanlines" } },
+      "feedback": { "on": { "note": 50, "velocity": 60 }, "off": { "note": 50, "velocity": 0 } }
+    },
+    {
+      "id": "kontrol_toggle_chromatic",
+      "match": { "type": "note", "number": 52, "subtype": "on" },
+      "action": { "type": "toggle", "params": { "effect": "chromatic" } },
+      "feedback": { "on": { "note": 52, "velocity": 100 }, "off": { "note": 52, "velocity": 0 } }
+    },
+    {
+      "id": "kontrol_toggle_vignette",
+      "match": { "type": "note", "number": 53, "subtype": "on" },
+      "action": { "type": "toggle", "params": { "effect": "vignette" } },
+      "feedback": { "on": { "note": 53, "velocity": 40 }, "off": { "note": 53, "velocity": 0 } }
+    }
+  ]
+}

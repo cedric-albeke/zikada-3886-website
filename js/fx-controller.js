@@ -7,6 +7,8 @@ class FXController {
       particles: 0.5,
       distortion: 0, // REMOVED from controls - only applies blur to logo elements
       noise: 0.25, // Fixed: Default to 25% to match control panel
+      plasma: 0, // New: Plasma effect intensity
+      strobe: 0, // New: Strobe effect intensity
     };
     this.globalMult = 1.0;
     // Registry for effect handlers provided by other modules (e.g., anime-enhanced-effects)
@@ -867,6 +869,47 @@ class FXController {
           // Completely remove background noise when set to 0%
           document.body.style.removeProperty('background-image');
         }
+      }
+    }
+    if (name === 'plasma') {
+      const plasmaOverlay = document.getElementById('plasma-overlay');
+      if (plasmaOverlay) {
+        // Adjust opacity and animation speed based on intensity
+        if (value === 0) {
+          plasmaOverlay.style.display = 'none';
+        } else {
+          plasmaOverlay.style.display = 'block';
+          plasmaOverlay.style.opacity = Math.min(0.6, value * 0.6).toFixed(3);
+          
+          const plasmaCanvas = document.getElementById('plasma-canvas');
+          if (plasmaCanvas) {
+            // Adjust animation duration based on intensity (faster = more intense)
+            const duration = Math.max(6, 15 - (value * 9)); // 6s to 15s range
+            plasmaCanvas.style.animationDuration = `${duration}s`;
+          }
+        }
+      } else if (value > 0) {
+        // Auto-enable plasma effect if intensity set but not enabled
+        this.applyPlasmaEffect(true);
+      }
+    }
+    if (name === 'strobe') {
+      const strobeOverlay = document.getElementById('strobe-circles-overlay');
+      if (strobeOverlay) {
+        // Adjust opacity and animation speed based on intensity
+        if (value === 0) {
+          strobeOverlay.style.display = 'none';
+        } else {
+          strobeOverlay.style.display = 'block';
+          strobeOverlay.style.opacity = Math.min(0.8, value * 0.8).toFixed(3);
+          
+          // Adjust animation duration based on intensity (faster = more intense)
+          const duration = Math.max(0.2, 0.6 - (value * 0.4)); // 0.2s to 0.6s range
+          strobeOverlay.style.animationDuration = `${duration}s`;
+        }
+      } else if (value > 0) {
+        // Auto-enable strobe effect if intensity set but not enabled
+        this.applyStrobeCirclesEffect(true);
       }
     }
   }

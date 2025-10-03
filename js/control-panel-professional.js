@@ -1321,36 +1321,10 @@ class ProfessionalVJControlPanel {
             });
         });
 
-        // Trigger theme + sliders
+        // Trigger theme + sliders - REMOVED
+        // Feature removed from control panel
+        // Default trigger settings without UI controls
         this.triggerSettings = { theme: 'green', intensity: 0.7, speed: 0.6 };
-        const themeWrap = document.getElementById('triggerTheme');
-        themeWrap?.querySelectorAll('.theme-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                themeWrap.querySelectorAll('.theme-btn').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                this.triggerSettings.theme = btn.dataset.theme || 'green';
-                this.sendMessage({ type: 'trigger_settings', settings: this.triggerSettings, timestamp: Date.now() });
-            });
-        });
-        const intSlider = document.getElementById('triggerIntensity');
-        const intVal = document.getElementById('triggerIntensityVal');
-        const spdSlider = document.getElementById('triggerSpeed');
-        const spdVal = document.getElementById('triggerSpeedVal');
-        const sendSettings = this._debounce(() => {
-            this.sendMessage({ type: 'trigger_settings', settings: this.triggerSettings, timestamp: Date.now() });
-        }, 64);
-        intSlider?.addEventListener('input', () => {
-            const raw = parseInt(intSlider.value || '70');
-            if (intVal) intVal.textContent = String(raw);
-            this.triggerSettings.intensity = Math.max(0, Math.min(1, raw / 100));
-            sendSettings();
-        });
-        spdSlider?.addEventListener('input', () => {
-            const raw = parseInt(spdSlider.value || '60');
-            if (spdVal) spdVal.textContent = String(raw);
-            this.triggerSettings.speed = Math.max(0.1, Math.min(1, raw / 100));
-            sendSettings();
-        });
 
         // Macro triggers
         document.querySelectorAll('.macro-btn').forEach(btn => {
@@ -1426,29 +1400,8 @@ class ProfessionalVJControlPanel {
             if (res) res.textContent = 'Running diagnostics...';
         });
 
-        // Color reset button
-        document.getElementById('resetColors')?.addEventListener('click', () => {
-            this.colorMatrix = { hue: 0, saturation: 100, brightness: 100, contrast: 100 };
-
-            // Reset all color sliders
-            ['hue', 'saturation', 'brightness', 'contrast'].forEach(prop => {
-                const slider = document.getElementById(prop + 'Slider');
-                if (slider) {
-                    slider.value = prop === 'hue' ? 0 : 100;
-                    const valueSpan = slider.parentElement.querySelector('.slider-value');
-                    if (valueSpan) {
-                        const unit = prop === 'hue' ? '°' : '%';
-                        valueSpan.textContent = slider.value + unit;
-                    }
-                }
-            });
-
-            this.sendMessage({
-                type: 'color_reset',
-                matrix: this.colorMatrix,
-                timestamp: Date.now()
-            });
-        });
+        // Color reset button - REMOVED
+        // Feature removed from control panel
 
         // Anime kill button (different from emergency stop)
         document.getElementById('animeKill')?.addEventListener('click', () => {
@@ -1494,6 +1447,10 @@ class ProfessionalVJControlPanel {
                     enabled: newState,
                     timestamp: Date.now()
                 });
+
+                // Update active effects counter and bars
+                this.updateActiveEffectsCount();
+                this.updatePerformanceBars();
 
                 console.log(`Effect ${effect} toggled to ${newState ? 'ON' : 'OFF'}`);
             });
@@ -1541,6 +1498,10 @@ class ProfessionalVJControlPanel {
                     timestamp: Date.now()
                 });
             });
+
+            // Update active effects counter and bars
+            this.updateActiveEffectsCount();
+            this.updatePerformanceBars();
 
             console.log(`All effects toggled to ${newState ? 'ON' : 'OFF'}`);
         });
@@ -1599,6 +1560,10 @@ class ProfessionalVJControlPanel {
                     timestamp: Date.now()
                 });
             });
+
+            // Update active effects counter and bars
+            this.updateActiveEffectsCount();
+            this.updatePerformanceBars();
 
             // Reset all layers to visible
             document.querySelectorAll('.layer-toggle-btn').forEach(btn => {
@@ -2140,6 +2105,18 @@ class ProfessionalVJControlPanel {
             const activeEffects = parseInt(document.getElementById('activeEffects')?.textContent) || 0;
             const fxPercent = Math.min((activeEffects / 10) * 100, 100);
             fxBar.style.width = fxPercent + '%';
+        }
+    }
+
+    /**
+     * Update active effects counter display
+     */
+    updateActiveEffectsCount() {
+        const effectBtns = document.querySelectorAll('.effect-toggle-btn[data-state="on"]');
+        const count = effectBtns.length;
+        const fxElement = document.getElementById('activeEffects');
+        if (fxElement) {
+            fxElement.textContent = count;
         }
     }
 

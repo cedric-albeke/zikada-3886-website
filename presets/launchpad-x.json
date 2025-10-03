@@ -1,0 +1,253 @@
+{
+  "name": "Launchpad X VJ Mapping",
+  "deviceMatchers": ["launchpad", "lpx", "launchpad x"],
+  "version": "1.0.0",
+  "description": "8x8 grid mapping for Launchpad X - triggers on main grid, scenes on top row, layers on right side",
+  "mappings": [
+    {
+      "id": "lpx_strobe",
+      "match": { "type": "note", "number": 11, "subtype": "on" },
+      "action": { "type": "trigger", "params": { "effect": "strobe" } },
+      "feedback": { "on": { "note": 11, "velocity": 5 }, "off": { "note": 11, "velocity": 0 } }
+    },
+    {
+      "id": "lpx_blackout",
+      "match": { "type": "note", "number": 12, "subtype": "on" },
+      "action": { "type": "trigger", "params": { "effect": "blackout" } },
+      "feedback": { "on": { "note": 12, "velocity": 0 }, "off": { "note": 12, "velocity": 0 } }
+    },
+    {
+      "id": "lpx_whiteout",
+      "match": { "type": "note", "number": 13, "subtype": "on" },
+      "action": { "type": "trigger", "params": { "effect": "whiteout" } },
+      "feedback": { "on": { "note": 13, "velocity": 3 }, "off": { "note": 13, "velocity": 0 } }
+    },
+    {
+      "id": "lpx_rgbsplit",
+      "match": { "type": "note", "number": 14, "subtype": "on" },
+      "action": { "type": "trigger", "params": { "effect": "rgbsplit" } },
+      "feedback": { "on": { "note": 14, "velocity": 53 }, "off": { "note": 14, "velocity": 0 } }
+    },
+    {
+      "id": "lpx_ripple",
+      "match": { "type": "note", "number": 15, "subtype": "on" },
+      "action": { "type": "trigger", "params": { "effect": "ripple" } },
+      "feedback": { "on": { "note": 15, "velocity": 37 }, "off": { "note": 15, "velocity": 0 } }
+    },
+    {
+      "id": "lpx_pulse",
+      "match": { "type": "note", "number": 16, "subtype": "on" },
+      "action": { "type": "trigger", "params": { "effect": "pulse" } },
+      "feedback": { "on": { "note": 16, "velocity": 21 }, "off": { "note": 16, "velocity": 0 } }
+    },
+    {
+      "id": "lpx_matrix_rain",
+      "match": { "type": "note", "number": 17, "subtype": "on" },
+      "action": { "type": "trigger", "params": { "effect": "matrix-rain" } },
+      "feedback": { "on": { "note": 17, "velocity": 21 }, "off": { "note": 17, "velocity": 0 } }
+    },
+    {
+      "id": "lpx_cosmic",
+      "match": { "type": "note", "number": 18, "subtype": "on" },
+      "action": { "type": "trigger", "params": { "effect": "cosmic" } },
+      "feedback": { "on": { "note": 18, "velocity": 45 }, "off": { "note": 18, "velocity": 0 } }
+    },
+
+    {
+      "id": "lpx_vignette_pulse",
+      "match": { "type": "note", "number": 21, "subtype": "on" },
+      "action": { "type": "trigger", "params": { "effect": "vignette-pulse" } },
+      "feedback": { "on": { "note": 21, "velocity": 5 }, "off": { "note": 21, "velocity": 0 } }
+    },
+    {
+      "id": "lpx_scanlines_sweep",
+      "match": { "type": "note", "number": 22, "subtype": "on" },
+      "action": { "type": "trigger", "params": { "effect": "scanlines-sweep" } },
+      "feedback": { "on": { "note": 22, "velocity": 37 }, "off": { "note": 22, "velocity": 0 } }
+    },
+    {
+      "id": "lpx_chroma_pulse",
+      "match": { "type": "note", "number": 23, "subtype": "on" },
+      "action": { "type": "trigger", "params": { "effect": "chroma-pulse" } },
+      "feedback": { "on": { "note": 23, "velocity": 53 }, "off": { "note": 23, "velocity": 0 } }
+    },
+    {
+      "id": "lpx_noise_burst",
+      "match": { "type": "note", "number": 24, "subtype": "on" },
+      "action": { "type": "trigger", "params": { "effect": "noise-burst" } },
+      "feedback": { "on": { "note": 24, "velocity": 37 }, "off": { "note": 24, "velocity": 0 } }
+    },
+    {
+      "id": "lpx_grid_flash",
+      "match": { "type": "note", "number": 25, "subtype": "on" },
+      "action": { "type": "trigger", "params": { "effect": "grid-flash" } },
+      "feedback": { "on": { "note": 25, "velocity": 37 }, "off": { "note": 25, "velocity": 0 } }
+    },
+    {
+      "id": "lpx_lens_flare",
+      "match": { "type": "note", "number": 26, "subtype": "on" },
+      "action": { "type": "trigger", "params": { "effect": "lens-flare" } },
+      "feedback": { "on": { "note": 26, "velocity": 3 }, "off": { "note": 26, "velocity": 0 } }
+    },
+    {
+      "id": "lpx_zoom_blur",
+      "match": { "type": "note", "number": 27, "subtype": "on" },
+      "action": { "type": "trigger", "params": { "effect": "zoom-blur" } },
+      "feedback": { "on": { "note": 27, "velocity": 13 }, "off": { "note": 27, "velocity": 0 } }
+    },
+    {
+      "id": "lpx_invert_flicker",
+      "match": { "type": "note", "number": 28, "subtype": "on" },
+      "action": { "type": "trigger", "params": { "effect": "invert-flicker" } },
+      "feedback": { "on": { "note": 28, "velocity": 5 }, "off": { "note": 28, "velocity": 0 } }
+    },
+
+    {
+      "id": "lpx_spotlight_sweep",
+      "match": { "type": "note", "number": 31, "subtype": "on" },
+      "action": { "type": "trigger", "params": { "effect": "spotlight-sweep" } },
+      "feedback": { "on": { "note": 31, "velocity": 3 }, "off": { "note": 31, "velocity": 0 } }
+    },
+    {
+      "id": "lpx_heat_shimmer",
+      "match": { "type": "note", "number": 32, "subtype": "on" },
+      "action": { "type": "trigger", "params": { "effect": "heat-shimmer" } },
+      "feedback": { "on": { "note": 32, "velocity": 13 }, "off": { "note": 32, "velocity": 0 } }
+    },
+
+    {
+      "id": "lpx_effect_glow",
+      "match": { "type": "note", "number": 41, "subtype": "on" },
+      "action": { "type": "toggle", "params": { "effect": "aurora" } },
+      "feedback": { "on": { "note": 41, "velocity": 21 }, "off": { "note": 41, "velocity": 0 } }
+    },
+    {
+      "id": "lpx_effect_blur",
+      "match": { "type": "note", "number": 42, "subtype": "on" },
+      "action": { "type": "intensity", "params": { "target": "distortion" } },
+      "feedback": { "on": { "note": 42, "velocity": 21 }, "off": { "note": 42, "velocity": 0 } }
+    },
+    {
+      "id": "lpx_effect_shake",
+      "match": { "type": "note", "number": 43, "subtype": "on" },
+      "action": { "type": "trigger", "params": { "effect": "ripple" } },
+      "feedback": { "on": { "note": 43, "velocity": 13 }, "off": { "note": 43, "velocity": 0 } }
+    },
+    {
+      "id": "lpx_effect_spin",
+      "match": { "type": "note", "number": 44, "subtype": "on" },
+      "action": { "type": "toggle", "params": { "effect": "spin" } },
+      "feedback": { "on": { "note": 44, "velocity": 13 }, "off": { "note": 44, "velocity": 0 } }
+    },
+    {
+      "id": "lpx_effect_rgb",
+      "match": { "type": "note", "number": 45, "subtype": "on" },
+      "action": { "type": "toggle", "params": { "effect": "rgbSplit" } },
+      "feedback": { "on": { "note": 45, "velocity": 53 }, "off": { "note": 45, "velocity": 0 } }
+    },
+    {
+      "id": "lpx_effect_chroma",
+      "match": { "type": "note", "number": 46, "subtype": "on" },
+      "action": { "type": "toggle", "params": { "effect": "chromatic" } },
+      "feedback": { "on": { "note": 46, "velocity": 53 }, "off": { "note": 46, "velocity": 0 } }
+    },
+    {
+      "id": "lpx_effect_scan",
+      "match": { "type": "note", "number": 47, "subtype": "on" },
+      "action": { "type": "toggle", "params": { "effect": "scanlines" } },
+      "feedback": { "on": { "note": 47, "velocity": 37 }, "off": { "note": 47, "velocity": 0 } }
+    },
+    {
+      "id": "lpx_effect_static",
+      "match": { "type": "note", "number": 48, "subtype": "on" },
+      "action": { "type": "toggle", "params": { "effect": "noise" } },
+      "feedback": { "on": { "note": 48, "velocity": 37 }, "off": { "note": 48, "velocity": 0 } }
+    },
+
+    {
+      "id": "lpx_scene_intense",
+      "match": { "type": "note", "number": 91, "subtype": "on" },
+      "action": { "type": "scene", "params": { "scene": "intense" } },
+      "feedback": { "on": { "note": 91, "velocity": 5 }, "off": { "note": 91, "velocity": 0 } }
+    },
+    {
+      "id": "lpx_scene_calm",
+      "match": { "type": "note", "number": 92, "subtype": "on" },
+      "action": { "type": "scene", "params": { "scene": "calm" } },
+      "feedback": { "on": { "note": 92, "velocity": 21 }, "off": { "note": 92, "velocity": 0 } }
+    },
+    {
+      "id": "lpx_scene_glitch",
+      "match": { "type": "note", "number": 93, "subtype": "on" },
+      "action": { "type": "scene", "params": { "scene": "glitch" } },
+      "feedback": { "on": { "note": 93, "velocity": 5 }, "off": { "note": 93, "velocity": 0 } }
+    },
+    {
+      "id": "lpx_scene_techno",
+      "match": { "type": "note", "number": 94, "subtype": "on" },
+      "action": { "type": "scene", "params": { "scene": "techno" } },
+      "feedback": { "on": { "note": 94, "velocity": 45 }, "off": { "note": 94, "velocity": 0 } }
+    },
+    {
+      "id": "lpx_scene_matrix",
+      "match": { "type": "note", "number": 95, "subtype": "on" },
+      "action": { "type": "scene", "params": { "scene": "matrix" } },
+      "feedback": { "on": { "note": 95, "velocity": 21 }, "off": { "note": 95, "velocity": 0 } }
+    },
+    {
+      "id": "lpx_scene_cyberpunk",
+      "match": { "type": "note", "number": 96, "subtype": "on" },
+      "action": { "type": "scene", "params": { "scene": "cyberpunk" } },
+      "feedback": { "on": { "note": 96, "velocity": 37 }, "off": { "note": 96, "velocity": 0 } }
+    },
+    {
+      "id": "lpx_scene_neon",
+      "match": { "type": "note", "number": 97, "subtype": "on" },
+      "action": { "type": "scene", "params": { "scene": "neon" } },
+      "feedback": { "on": { "note": 97, "velocity": 53 }, "off": { "note": 97, "velocity": 0 } }
+    },
+    {
+      "id": "lpx_scene_auto",
+      "match": { "type": "note", "number": 98, "subtype": "on" },
+      "action": { "type": "scene", "params": { "scene": "auto" } },
+      "feedback": { "on": { "note": 98, "velocity": 3 }, "off": { "note": 98, "velocity": 0 } }
+    },
+
+    {
+      "id": "lpx_layer_background",
+      "match": { "type": "note", "number": 19, "subtype": "on" },
+      "action": { "type": "layer", "params": { "layer": "background" } },
+      "feedback": { "on": { "note": 19, "velocity": 37 }, "off": { "note": 19, "velocity": 0 } }
+    },
+    {
+      "id": "lpx_layer_matrix_rain",
+      "match": { "type": "note", "number": 29, "subtype": "on" },
+      "action": { "type": "layer", "params": { "layer": "matrix-rain" } },
+      "feedback": { "on": { "note": 29, "velocity": 37 }, "off": { "note": 29, "velocity": 0 } }
+    },
+    {
+      "id": "lpx_layer_logo",
+      "match": { "type": "note", "number": 39, "subtype": "on" },
+      "action": { "type": "layer", "params": { "layer": "logo" } },
+      "feedback": { "on": { "note": 39, "velocity": 37 }, "off": { "note": 39, "velocity": 0 } }
+    },
+    {
+      "id": "lpx_layer_particles",
+      "match": { "type": "note", "number": 49, "subtype": "on" },
+      "action": { "type": "layer", "params": { "layer": "particles" } },
+      "feedback": { "on": { "note": 49, "velocity": 37 }, "off": { "note": 49, "velocity": 0 } }
+    },
+    {
+      "id": "lpx_layer_animations",
+      "match": { "type": "note", "number": 59, "subtype": "on" },
+      "action": { "type": "layer", "params": { "layer": "animations" } },
+      "feedback": { "on": { "note": 59, "velocity": 37 }, "off": { "note": 59, "velocity": 0 } }
+    },
+    {
+      "id": "lpx_layer_overlay",
+      "match": { "type": "note", "number": 69, "subtype": "on" },
+      "action": { "type": "layer", "params": { "layer": "overlay" } },
+      "feedback": { "on": { "note": 69, "velocity": 37 }, "off": { "note": 69, "velocity": 0 } }
+    }
+  ]
+}
