@@ -1,4 +1,6 @@
 // Lottie Animations Module - Cosmic visual effects system
+import intervalManager from './interval-manager.js';
+
 class LottieAnimations {
     constructor() {
         this.animations = {
@@ -16,6 +18,7 @@ class LottieAnimations {
 
         this.containers = {};
         this.isInitialized = false;
+        this.activeIntervals = []; // Track managed interval handles for cleanup
 
         // Animation configurations - centered and full-width circular animations
         this.config = {
@@ -493,25 +496,37 @@ class LottieAnimations {
         // Planet Logo - main animation
         setTimeout(() => {
             this.showAnimation('planetLogo');
-            setInterval(() => {
+            const handle = intervalManager.createInterval(() => {
                 this.showAnimation('planetLogo');
-            }, this.config.planetLogo.displayInterval);
+            }, this.config.planetLogo.displayInterval, 'lottie-planetLogo', {
+                category: 'animation',
+                maxAge: Infinity // Keep running until explicitly cleared
+            });
+            this.activeIntervals.push(handle);
         }, 15000); // Start after 15 seconds
 
         // Planet Ring - secondary animation
         setTimeout(() => {
             this.showAnimation('planetRing');
-            setInterval(() => {
+            const handle = intervalManager.createInterval(() => {
                 this.showAnimation('planetRing');
-            }, this.config.planetRing.displayInterval);
+            }, this.config.planetRing.displayInterval, 'lottie-planetRing', {
+                category: 'animation',
+                maxAge: Infinity
+            });
+            this.activeIntervals.push(handle);
         }, 45000); // Start after 45 seconds (increased gap)
 
         // Abstraction - with very low opacity
         setTimeout(() => {
             this.showAnimation('abstraction');
-            setInterval(() => {
+            const handle = intervalManager.createInterval(() => {
                 this.showAnimation('abstraction');
-            }, this.config.abstraction.displayInterval);
+            }, this.config.abstraction.displayInterval, 'lottie-abstraction', {
+                category: 'animation',
+                maxAge: Infinity
+            });
+            this.activeIntervals.push(handle);
         }, 75000); // Start after 75 seconds
 
         // REMOVED - hexagon animation disabled
@@ -527,9 +542,13 @@ class LottieAnimations {
         // Morphing Particle - reduced frequency
         setTimeout(() => {
             this.showAnimation('morphingParticle');
-            setInterval(() => {
+            const handle = intervalManager.createInterval(() => {
                 this.showAnimation('morphingParticle');
-            }, this.config.morphingParticle.displayInterval * 1.5); // Increase interval
+            }, this.config.morphingParticle.displayInterval * 1.5, 'lottie-morphingParticle', {
+                category: 'animation',
+                maxAge: Infinity
+            });
+            this.activeIntervals.push(handle);
         }, 135000); // Start after 135 seconds
 
         // Sacred Geometry is triggered by scroll
@@ -537,33 +556,49 @@ class LottieAnimations {
         // Transparent Diamond - reduced frequency
         setTimeout(() => {
             this.showAnimation('transparentDiamond');
-            setInterval(() => {
+            const handle = intervalManager.createInterval(() => {
                 this.showAnimation('transparentDiamond');
-            }, this.config.transparentDiamond.displayInterval * 2); // Double interval
+            }, this.config.transparentDiamond.displayInterval * 2, 'lottie-transparentDiamond', {
+                category: 'animation',
+                maxAge: Infinity
+            });
+            this.activeIntervals.push(handle);
         }, 165000); // Start after 165 seconds
 
         // Circuit Round animation
         setTimeout(() => {
             this.showAnimation('circuitRound');
-            setInterval(() => {
+            const handle = intervalManager.createInterval(() => {
                 this.showAnimation('circuitRound');
-            }, this.config.circuitRound.displayInterval);
+            }, this.config.circuitRound.displayInterval, 'lottie-circuitRound', {
+                category: 'animation',
+                maxAge: Infinity
+            });
+            this.activeIntervals.push(handle);
         }, 30000); // Start after 30 seconds
 
         // Geometrical Lines animation
         setTimeout(() => {
             this.showAnimation('geometricalLines');
-            setInterval(() => {
+            const handle = intervalManager.createInterval(() => {
                 this.showAnimation('geometricalLines');
-            }, this.config.geometricalLines.displayInterval);
+            }, this.config.geometricalLines.displayInterval, 'lottie-geometricalLines', {
+                category: 'animation',
+                maxAge: Infinity
+            });
+            this.activeIntervals.push(handle);
         }, 90000); // Start after 90 seconds
 
         // Circular Dots animation
         setTimeout(() => {
             this.showAnimation('circularDots');
-            setInterval(() => {
+            const handle = intervalManager.createInterval(() => {
                 this.showAnimation('circularDots');
-            }, this.config.circularDots.displayInterval);
+            }, this.config.circularDots.displayInterval, 'lottie-circularDots', {
+                category: 'animation',
+                maxAge: Infinity
+            });
+            this.activeIntervals.push(handle);
         }, 120000); // Start after 120 seconds
     }
 
@@ -616,7 +651,7 @@ class LottieAnimations {
         // Create reverse rotation scenes
         const createRotationReversal = () => {
             // Every 10-20 seconds, randomly reverse some animations
-            setInterval(() => {
+            const handle = intervalManager.createInterval(() => {
                 // Randomly select 2-3 animations to reverse
                 const animations = Object.keys(this.containers);
                 const numToReverse = Math.floor(Math.random() * 2) + 2;
@@ -634,7 +669,11 @@ class LottieAnimations {
                         }, 2000);
                     }
                 }
-            }, Math.random() * 10000 + 10000);  // 10-20 seconds
+            }, Math.random() * 10000 + 10000, 'lottie-rotationReversal', { // 10-20 seconds
+                category: 'animation',
+                maxAge: Infinity
+            });
+            this.activeIntervals.push(handle);
         };
 
         createRotationReversal();
@@ -880,13 +919,41 @@ class LottieAnimations {
     }
 
     destroy() {
+        console.log('🧿 LottieAnimations cleanup initiated');
+        
+        // Clear all managed intervals
+        if (this.activeIntervals && this.activeIntervals.length > 0) {
+            this.activeIntervals.forEach(handle => {
+                if (handle && typeof handle.clear === 'function') {
+                    handle.clear();
+                }
+            });
+            this.activeIntervals = [];
+            console.log('✅ Lottie intervals cleared');
+        }
+        
+        // Stop and destroy all animations
         Object.values(this.animations).forEach(player => {
-            if (player && player.destroy) player.destroy();
+            if (player) {
+                try {
+                    if (player.stop) player.stop();
+                    if (player.destroy) player.destroy();
+                } catch (e) {
+                    // Ignore errors during cleanup
+                }
+            }
         });
 
         // Remove containers
         const mainContainer = document.querySelector('.lottie-container');
         if (mainContainer) mainContainer.remove();
+        
+        // Reset state
+        this.isInitialized = false;
+        this.animations = {};
+        this.containers = {};
+        
+        console.log('✅ LottieAnimations cleanup complete');
     }
 }
 
