@@ -13,7 +13,7 @@
       - generic [ref=e15]:
         - generic [ref=e16]:
           - generic [ref=e17]: FPS
-          - generic [ref=e18]: "44"
+          - generic [ref=e18]: "5"
         - generic [ref=e21]:
           - generic [ref=e22]: MEM
           - generic [ref=e23]: 10MB
@@ -44,7 +44,7 @@
         - generic [ref=e59]: OFFLINE
         - generic [ref=e60]:
           - generic [ref=e61]: "UP:"
-          - generic [ref=e62]: 00:00:05
+          - generic [ref=e62]: 00:00:22
     - generic [ref=e63]:
       - generic [ref=e64]:
         - button "☠ KILL [ESC]" [ref=e65] [cursor=pointer]:
