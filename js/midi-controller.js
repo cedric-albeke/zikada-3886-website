@@ -43,6 +43,7 @@ class MIDIController {
         
         if (this.enabled) {
             console.log('🎹 MIDI Controller initializing...', { mode: this.mode });
+            this.initActionCatalog();
             this.init();
         } else {
             console.log('🎹 MIDI disabled by feature flag');
@@ -94,14 +95,22 @@ class MIDIController {
             this.scanDevices();
             
             this.isActive = true;
-            this.onReady();
-            return true;
-            
-        } catch (error) {
-            console.error('🎹 MIDI Access denied or failed:', error);
-            this.onError('PERMISSION_DENIED', error.message);
-            return false;
-        }
+        this.onReady();
+        return true;
+        
+    } catch (error) {
+        console.error('🎹 MIDI Access denied or failed:', error);
+        this.onError('PERMISSION_DENIED', error.message);
+        return false;
+    }
+}
+
+// Initialize action catalog integration
+initActionCatalog() {
+    if (window.MIDIActionCatalog && !window.midiActionCatalog) {
+        window.midiActionCatalog = new window.MIDIActionCatalog({ mode: this.mode });
+        console.log('✅ MIDI Action Catalog initialized');
+    }
     }
     
     scanDevices() {
@@ -426,6 +435,13 @@ class MIDIController {
     }
     
     executeDirectAction(action) {
+        // Try action catalog first for unified handling
+        if (window.midiActionCatalog) {
+            this.executeViaActionCatalog(action);
+            return;
+        }
+        
+        // Fallback to legacy direct actions
         const vj = window.vjReceiver;
         const fx = window.fxController;
         
@@ -479,6 +495,79 @@ class MIDIController {
             }
         } catch (error) {
             console.error('🎹 Error executing direct action:', error, action);
+        }
+    }
+    
+    // Route actions through the centralized action catalog
+    executeViaActionCatalog(action) {
+        const catalog = window.midiActionCatalog;
+        const value = action.processedValue;
+        const params = action.params;
+        
+        try {
+            switch (action.type) {
+                case 'trigger':
+                    catalog.triggerEffect(params.effect || params.target);
+                    break;
+                case 'intensity':
+                    catalog.setIntensity(params.target, value);
+                    break;
+                case 'toggle':
+                    catalog.toggleEffect(params.effect || params.target, value > 0.5);
+                    break;
+                case 'scene':
+                    catalog.changeScene(params.scene);
+                    break;
+                case 'color':
+                    // Map normalized value to appropriate color ranges
+                    let colorValue = value;
+                    if (params.property === 'hue') {
+                        colorValue = value * 360;
+                    } else {
+                        colorValue = value * 200;
+                    }
+                    catalog.updateColor(params.property, colorValue);
+                    break;
+                case 'layer':
+                    catalog.toggleLayer(params.layer, value > 0.5);
+                    break;
+                case 'bpm':
+                    const bpm = params.bpm || (60 + value * 140); // 60-200 BPM range
+                    catalog.updateBPM(bpm);
+                    break;
+                case 'realtime':
+                    if (params.target === 'speed') {
+                        const speed = 0.1 + value * 2.9; // 0.1-3.0 range
+                        catalog.setSpeed(speed);
+                    }
+                    break;
+                case 'matrix':
+                    // 4x4 effect matrix handling
+                    catalog.applyEffectMatrix(params.effect, value > 0.5);
+                    break;
+                case 'animation':
+                    if (value > 0.5) {
+                        catalog.triggerAnimation(params.id);
+                    }
+                    break;
+                case 'system':
+                    if (value > 0.5) {
+                        switch (params.action) {
+                            case 'anime_enable':
+                                catalog.setAnimeEnabled(true);
+                                break;
+                            case 'anime_disable':
+                                catalog.setAnimeEnabled(false);
+                                break;
+                            case 'diagnostics':
+                                catalog.runDiagnostics();
+                                break;
+                        }
+                    }
+                    break;
+            }
+        } catch (error) {
+            console.error('🎹 Error executing action via catalog:', error, action);
         }
     }
     

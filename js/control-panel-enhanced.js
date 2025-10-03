@@ -283,6 +283,56 @@ class EnhancedVJControlPanel {
                             </div>
                         </div>
                     </section>
+
+                    <!-- MIDI Control Section -->
+                    <section class="control-section midi-control">
+                        <h2>MIDI CONTROL</h2>
+                        <div class="midi-status">
+                            <div class="device-status">
+                                <span class="midi-dot" id="midiStatusDot"></span>
+                                <span id="midiStatusText">No Devices</span>
+                            </div>
+                            <div class="clock-status">
+                                <span class="clock-dot" id="clockStatusDot"></span>
+                                <span id="clockStatusText">Internal Clock</span>
+                            </div>
+                        </div>
+                        <div class="midi-controls">
+                            <div class="device-selector">
+                                <label>DEVICE</label>
+                                <select id="midiDeviceSelect" class="midi-dropdown">
+                                    <option value="">Select Device...</option>
+                                </select>
+                            </div>
+                            <div class="midi-actions">
+                                <button id="midiLearnBtn" class="midi-learn-btn">LEARN OFF</button>
+                                <button id="midiLoadPresetBtn" class="midi-action-btn">LOAD PRESET</button>
+                                <button id="midiClearBtn" class="midi-action-btn">CLEAR ALL</button>
+                            </div>
+                        </div>
+                        <div class="midi-activity" id="midiActivity">
+                            <div class="activity-header">
+                                <span>LAST EVENT</span>
+                                <button id="midiDebugBtn" class="debug-btn">DEBUG</button>
+                            </div>
+                            <div class="activity-display" id="activityDisplay">
+                                <span class="activity-text">No MIDI activity</span>
+                            </div>
+                        </div>
+                        <div class="midi-mappings" id="midiMappings">
+                            <div class="mappings-header">
+                                <span>MAPPINGS</span>
+                                <div class="mapping-actions">
+                                    <button id="exportMappingsBtn">EXPORT</button>
+                                    <button id="importMappingsBtn">IMPORT</button>
+                                </div>
+                            </div>
+                            <div class="mappings-list" id="mappingsList">
+                                <div class="no-mappings">No mappings configured</div>
+                            </div>
+                        </div>
+                        <input type="file" id="importMappingsFile" accept=".json" style="display: none;">
+                    </section>
                 </div>
 
                 <!-- Footer Controls -->
@@ -548,6 +598,210 @@ class EnhancedVJControlPanel {
                 0%, 100% { opacity: 1; }
                 50% { opacity: 0.5; }
             }
+
+            /* MIDI Control Styles */
+            .midi-control {
+                background: #1a1a2e;
+                border: 1px solid #00ff85;
+            }
+
+            .midi-status {
+                display: flex;
+                justify-content: space-between;
+                margin-bottom: 15px;
+                padding: 10px;
+                background: #0f0f23;
+                border: 1px solid #333;
+            }
+
+            .midi-dot, .clock-dot {
+                width: 8px;
+                height: 8px;
+                border-radius: 50%;
+                background: #666;
+                display: inline-block;
+                margin-right: 8px;
+            }
+
+            .midi-dot.connected {
+                background: #00ff85;
+                animation: pulse 2s infinite;
+            }
+
+            .clock-dot.locked {
+                background: #00ffff;
+                animation: pulse 1s infinite;
+            }
+
+            .midi-controls {
+                margin-bottom: 15px;
+            }
+
+            .device-selector {
+                margin-bottom: 10px;
+            }
+
+            .midi-dropdown {
+                width: 100%;
+                background: #2a2a2a;
+                color: #00ff85;
+                border: 1px solid #00ff85;
+                padding: 8px;
+                font-size: 12px;
+            }
+
+            .midi-actions {
+                display: flex;
+                gap: 10px;
+                flex-wrap: wrap;
+            }
+
+            .midi-learn-btn {
+                background: #ff6b35;
+                color: #fff;
+                border: none;
+                padding: 10px 15px;
+                cursor: pointer;
+                transition: all 0.3s;
+                font-size: 11px;
+                font-weight: bold;
+            }
+
+            .midi-learn-btn.learning {
+                background: #00ff85;
+                color: #000;
+                animation: pulse 1s infinite;
+            }
+
+            .midi-action-btn {
+                background: #333;
+                color: #00ff85;
+                border: 1px solid #00ff85;
+                padding: 8px 12px;
+                cursor: pointer;
+                transition: all 0.3s;
+                font-size: 10px;
+            }
+
+            .midi-action-btn:hover {
+                background: #00ff85;
+                color: #000;
+            }
+
+            .midi-activity {
+                margin-bottom: 15px;
+                background: #0f0f23;
+                border: 1px solid #333;
+                padding: 10px;
+            }
+
+            .activity-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 5px;
+                font-size: 10px;
+                color: #00ffff;
+            }
+
+            .debug-btn {
+                background: #444;
+                color: #fff;
+                border: none;
+                padding: 4px 8px;
+                cursor: pointer;
+                font-size: 8px;
+            }
+
+            .activity-display {
+                font-size: 10px;
+                color: #888;
+                min-height: 20px;
+            }
+
+            .activity-text {
+                font-family: monospace;
+            }
+
+            .midi-mappings {
+                background: #0f0f23;
+                border: 1px solid #333;
+                padding: 10px;
+            }
+
+            .mappings-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 10px;
+                font-size: 10px;
+                color: #00ffff;
+            }
+
+            .mapping-actions {
+                display: flex;
+                gap: 5px;
+            }
+
+            .mapping-actions button {
+                background: #444;
+                color: #fff;
+                border: none;
+                padding: 4px 8px;
+                cursor: pointer;
+                font-size: 8px;
+            }
+
+            .mappings-list {
+                max-height: 100px;
+                overflow-y: auto;
+                font-size: 10px;
+            }
+
+            .mapping-item {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 5px;
+                border-bottom: 1px solid #333;
+                color: #ccc;
+            }
+
+            .mapping-source {
+                color: #00ffff;
+                font-family: monospace;
+            }
+
+            .mapping-target {
+                color: #00ff85;
+            }
+
+            .mapping-remove {
+                background: #ff4444;
+                color: #fff;
+                border: none;
+                padding: 2px 6px;
+                cursor: pointer;
+                font-size: 8px;
+            }
+
+            .no-mappings {
+                color: #666;
+                font-style: italic;
+                text-align: center;
+                padding: 20px;
+            }
+
+            .learn-target-indicator {
+                background: rgba(0, 255, 133, 0.2);
+                border: 2px solid #00ff85;
+                animation: learn-pulse 1s infinite;
+            }
+
+            @keyframes learn-pulse {
+                0%, 100% { border-color: #00ff85; }
+                50% { border-color: #00ffff; }
+            }
         `;
 
         document.head.appendChild(styles);
@@ -566,8 +820,759 @@ class EnhancedVJControlPanel {
         };
     }
 
-    // Continue with remaining methods...
-    // (All the other init methods and functionality would continue here)
+    // ==================== MIDI SUPPORT ====================
+    
+    async initMIDISupport() {
+        console.log('🎹 Initializing MIDI support...');
+        
+        // Initialize MIDI controller in broadcast mode for control panel
+        if (window.midiController) {
+            this.midiController = window.midiController;
+            this.midiController.setMode('broadcast');
+        } else {
+            console.warn('🎹 MIDI Controller not available');
+            this.hideMIDIControls();
+            return;
+        }
+        
+        // MIDI Learn state
+        this.midiLearnActive = false;
+        this.midiLearnTarget = null;
+        this.midiLearnTimeout = null;
+        this.debugMode = false;
+        
+        // Bind UI events
+        this.bindMIDIEvents();
+        
+        // Load existing mappings
+        this.loadMIDIMappings();
+        
+        // Listen for MIDI events
+        window.addEventListener('midiready', (e) => this.onMIDIReady(e));
+        window.addEventListener('midierror', (e) => this.onMIDIError(e));
+        window.addEventListener('mididevicechange', (e) => this.onMIDIDeviceChange(e));
+        window.addEventListener('midimappinglearned', (e) => this.onMIDIMappingLearned(e));
+        
+        // Start activity monitoring
+        this.startMIDIActivityMonitoring();
+        
+        // Load presets
+        this.loadMIDIPresets();
+        
+        console.log('✅ MIDI support initialized');
+    }
+    
+    bindMIDIEvents() {
+        const learnBtn = document.getElementById('midiLearnBtn');
+        const deviceSelect = document.getElementById('midiDeviceSelect');
+        const loadPresetBtn = document.getElementById('midiLoadPresetBtn');
+        const clearBtn = document.getElementById('midiClearBtn');
+        const debugBtn = document.getElementById('midiDebugBtn');
+        const exportBtn = document.getElementById('exportMappingsBtn');
+        const importBtn = document.getElementById('importMappingsBtn');
+        const importFile = document.getElementById('importMappingsFile');
+        
+        // MIDI Learn toggle
+        learnBtn?.addEventListener('click', () => this.toggleMIDILearn());
+        
+        // Device selection
+        deviceSelect?.addEventListener('change', (e) => this.selectMIDIDevice(e.target.value));
+        
+        // Preset loading
+        loadPresetBtn?.addEventListener('click', () => this.loadMIDIPreset());
+        
+        // Clear all mappings
+        clearBtn?.addEventListener('click', () => this.clearAllMappings());
+        
+        // Debug mode toggle
+        debugBtn?.addEventListener('click', () => this.toggleMIDIDebug());
+        
+        // Export mappings
+        exportBtn?.addEventListener('click', () => this.exportMIDIMappings());
+        
+        // Import mappings
+        importBtn?.addEventListener('click', () => importFile.click());
+        importFile?.addEventListener('change', (e) => this.importMIDIMappings(e));
+        
+        // Make all controls learnable
+        this.makeControlsLearnable();
+    }
+    
+    makeControlsLearnable() {
+        // Scene buttons
+        document.querySelectorAll('.scene-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                if (this.midiLearnActive) {
+                    this.setLearnTarget({
+                        element: btn,
+                        action: {
+                            type: 'scene',
+                            params: { scene: btn.dataset.scene }
+                        },
+                        name: `Scene: ${btn.dataset.scene.toUpperCase()}`
+                    });
+                    e.preventDefault();
+                    e.stopPropagation();
+                }
+            });
+        });
+        
+        // Effect matrix buttons
+        document.querySelectorAll('.matrix-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                if (this.midiLearnActive) {
+                    this.setLearnTarget({
+                        element: btn,
+                        action: {
+                            type: 'matrix',
+                            params: { effect: btn.dataset.effect }
+                        },
+                        name: `Effect: ${btn.dataset.effect.toUpperCase()}`
+                    });
+                    e.preventDefault();
+                    e.stopPropagation();
+                }
+            });
+        });
+        
+        // Intensity sliders
+        const intensitySliders = {
+            'glitchSlider': 'glitch',
+            'particlesSlider': 'particles',
+            'noiseSlider': 'noise',
+            'plasmaSlider': 'plasma',
+            'strobeSlider': 'strobe'
+        };
+        
+        Object.entries(intensitySliders).forEach(([sliderId, target]) => {
+            const slider = document.getElementById(sliderId);
+            slider?.addEventListener('mousedown', (e) => {
+                if (this.midiLearnActive) {
+                    this.setLearnTarget({
+                        element: slider,
+                        action: {
+                            type: 'intensity',
+                            params: { target }
+                        },
+                        transform: { min: 0, max: 1 },
+                        name: `${target.toUpperCase()} Intensity`
+                    });
+                    e.preventDefault();
+                    e.stopPropagation();
+                }
+            });
+        });
+        
+        // Color sliders
+        const colorSliders = {
+            'hueShift': { component: 'hue', range: [-180, 180] },
+            'saturation': { component: 'saturation', range: [0, 200] },
+            'brightness': { component: 'brightness', range: [0, 200] }
+        };
+        
+        Object.entries(colorSliders).forEach(([sliderId, config]) => {
+            const slider = document.getElementById(sliderId);
+            slider?.addEventListener('mousedown', (e) => {
+                if (this.midiLearnActive) {
+                    this.setLearnTarget({
+                        element: slider,
+                        action: {
+                            type: 'color',
+                            params: { property: config.component }
+                        },
+                        transform: { 
+                            min: config.range[0], 
+                            max: config.range[1] 
+                        },
+                        name: `${config.component.toUpperCase()}`
+                    });
+                    e.preventDefault();
+                    e.stopPropagation();
+                }
+            });
+        });
+        
+        // Trigger buttons
+        document.querySelectorAll('.trigger-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                if (this.midiLearnActive) {
+                    const triggerMap = {
+                        'glitch': 'rgbsplit',
+                        'flash': 'strobe',
+                        'matrix': 'matrix-rain',
+                        'dice': 'cosmic',
+                        'warp': 'zoom-blur',
+                        'shake': 'ripple',
+                        'pulse': 'pulse',
+                        'reset': 'blackout'
+                    };
+                    
+                    this.setLearnTarget({
+                        element: btn,
+                        action: {
+                            type: 'trigger',
+                            params: { effect: triggerMap[btn.dataset.trigger] || btn.dataset.trigger }
+                        },
+                        name: `Trigger: ${btn.dataset.trigger.toUpperCase()}`
+                    });
+                    e.preventDefault();
+                    e.stopPropagation();
+                }
+            });
+        });
+    }
+    
+    toggleMIDILearn() {
+        const learnBtn = document.getElementById('midiLearnBtn');
+        
+        if (this.midiLearnActive) {
+            // Stop learning
+            this.stopMIDILearn();
+            learnBtn.textContent = 'LEARN OFF';
+            learnBtn.classList.remove('learning');
+        } else {
+            // Start learning
+            this.startMIDILearn();
+            learnBtn.textContent = 'LEARN ON';
+            learnBtn.classList.add('learning');
+        }
+    }
+    
+    startMIDILearn() {
+        this.midiLearnActive = true;
+        
+        // Show learn instructions
+        this.showToast('MIDI Learn active - Click any control, then move a MIDI controller', 'info', 5000);
+        
+        // Set timeout to auto-disable learn mode
+        this.midiLearnTimeout = setTimeout(() => {
+            this.stopMIDILearn();
+            this.showToast('MIDI Learn timed out', 'warning');
+        }, 30000); // 30 second timeout
+    }
+    
+    stopMIDILearn() {
+        this.midiLearnActive = false;
+        this.clearLearnTarget();
+        
+        if (this.midiLearnTimeout) {
+            clearTimeout(this.midiLearnTimeout);
+            this.midiLearnTimeout = null;
+        }
+        
+        const learnBtn = document.getElementById('midiLearnBtn');
+        learnBtn.textContent = 'LEARN OFF';
+        learnBtn.classList.remove('learning');
+    }
+    
+    setLearnTarget(target) {
+        this.clearLearnTarget();
+        
+        this.midiLearnTarget = target;
+        
+        // Visual indicator
+        target.element.classList.add('learn-target-indicator');
+        
+        // Prepare for MIDI input
+        if (this.midiController) {
+            this.midiController.startLearn(target);
+        }
+        
+        this.showToast(`Learning target: ${target.name}`, 'info', 3000);
+    }
+    
+    clearLearnTarget() {
+        if (this.midiLearnTarget) {
+            this.midiLearnTarget.element.classList.remove('learn-target-indicator');
+            this.midiLearnTarget = null;
+        }
+        
+        if (this.midiController) {
+            this.midiController.stopLearn();
+        }
+    }
+    
+    onMIDIReady(event) {
+        console.log('🎹 MIDI Ready:', event.detail);
+        this.updateMIDIStatus('connected');
+        this.updateDeviceList();
+    }
+    
+    onMIDIError(event) {
+        console.error('🎹 MIDI Error:', event.detail);
+        this.updateMIDIStatus('error');
+        this.showToast(`MIDI Error: ${event.detail.message}`, 'error');
+    }
+    
+    onMIDIDeviceChange(event) {
+        console.log('🎹 MIDI Device Change:', event.detail);
+        this.updateDeviceList();
+        
+        if (event.detail.action === 'connected') {
+            this.showToast(`Connected: ${event.detail.device.name}`, 'success');
+            this.offerPresetForDevice(event.detail.device);
+        } else {
+            this.showToast(`Disconnected: ${event.detail.device.name}`, 'warning');
+        }
+    }
+    
+    onMIDIMappingLearned(event) {
+        const { mapping, target } = event.detail;
+        
+        this.showToast(`Learned: ${target.name}`, 'success');
+        this.addMappingToUI(mapping, target);
+        this.stopMIDILearn();
+    }
+    
+    updateMIDIStatus(status) {
+        const statusDot = document.getElementById('midiStatusDot');
+        const statusText = document.getElementById('midiStatusText');
+        
+        statusDot?.classList.remove('connected');
+        
+        switch (status) {
+            case 'connected':
+                statusDot?.classList.add('connected');
+                statusText.textContent = 'Connected';
+                break;
+            case 'error':
+                statusText.textContent = 'Error';
+                break;
+            default:
+                statusText.textContent = 'No Devices';
+        }
+    }
+    
+    updateDeviceList() {
+        const deviceSelect = document.getElementById('midiDeviceSelect');
+        if (!deviceSelect || !this.midiController) return;
+        
+        const devices = this.midiController.getDevices();
+        
+        // Clear existing options
+        deviceSelect.innerHTML = '<option value="">Select Device...</option>';
+        
+        // Add input devices
+        devices.inputs.forEach(device => {
+            const option = document.createElement('option');
+            option.value = device.id;
+            option.textContent = `${device.name} (${device.manufacturer})`;
+            deviceSelect.appendChild(option);
+        });
+        
+        // Update status
+        const statusText = document.getElementById('midiStatusText');
+        if (devices.inputs.length > 0) {
+            statusText.textContent = `${devices.inputs.length} device(s)`;
+            this.updateMIDIStatus('connected');
+        } else {
+            this.updateMIDIStatus('disconnected');
+        }
+    }
+    
+    startMIDIActivityMonitoring() {
+        // Listen for raw MIDI events for activity display
+        if (this.midiController) {
+            // Override the controller's debug mode to capture events
+            const originalOnMessage = this.midiController.onMIDIMessage;
+            this.midiController.onMIDIMessage = (event, deviceInfo) => {
+                this.updateMIDIActivity(event, deviceInfo);
+                return originalOnMessage.call(this.midiController, event, deviceInfo);
+            };
+        }
+    }
+    
+    updateMIDIActivity(event, deviceInfo) {
+        const activityDisplay = document.getElementById('activityDisplay');
+        if (!activityDisplay) return;
+        
+        const data = event.data;
+        const [status, data1, data2] = data;
+        
+        // Create activity text
+        let activityText = `${deviceInfo.name}: `;
+        
+        // Parse message type
+        const command = status & 0xF0;
+        const channel = (status & 0x0F) + 1;
+        
+        switch (command) {
+            case 0x90:
+                if (data2 > 0) {
+                    activityText += `Note On Ch${channel} Note${data1} Vel${data2}`;
+                } else {
+                    activityText += `Note Off Ch${channel} Note${data1}`;
+                }
+                break;
+            case 0x80:
+                activityText += `Note Off Ch${channel} Note${data1} Vel${data2}`;
+                break;
+            case 0xB0:
+                activityText += `CC Ch${channel} CC${data1} Val${data2}`;
+                break;
+            case 0xF0:
+                if (status === 0xF8) {
+                    activityText += `Clock`;
+                } else {
+                    activityText += `System: 0x${status.toString(16)}`;
+                }
+                break;
+            default:
+                activityText += `Unknown: 0x${status.toString(16)}`;
+        }
+        
+        // Update display
+        activityDisplay.innerHTML = `<span class="activity-text">${activityText}</span>`;
+        
+        // Debug mode console output
+        if (this.debugMode) {
+            console.log('🎹 MIDI:', {
+                device: deviceInfo.name,
+                raw: Array.from(data),
+                parsed: activityText
+            });
+        }
+    }
+    
+    addMappingToUI(mapping, target) {
+        const mappingsList = document.getElementById('mappingsList');
+        if (!mappingsList) return;
+        
+        // Remove "no mappings" message
+        const noMappings = mappingsList.querySelector('.no-mappings');
+        if (noMappings) {
+            noMappings.remove();
+        }
+        
+        // Create mapping item
+        const mappingItem = document.createElement('div');
+        mappingItem.className = 'mapping-item';
+        mappingItem.dataset.mappingId = mapping.id;
+        
+        const sourceText = this.formatMappingSource(mapping.match);
+        const targetText = target.name;
+        
+        mappingItem.innerHTML = `
+            <div>
+                <div class="mapping-source">${sourceText}</div>
+                <div class="mapping-target">${targetText}</div>
+            </div>
+            <button class="mapping-remove" data-mapping-id="${mapping.id}">✕</button>
+        `;
+        
+        // Add remove functionality
+        const removeBtn = mappingItem.querySelector('.mapping-remove');
+        removeBtn.addEventListener('click', () => this.removeMapping(mapping.id));
+        
+        mappingsList.appendChild(mappingItem);
+    }
+    
+    formatMappingSource(match) {
+        let source = '';
+        
+        if (match.type === 'note') {
+            source = `Note ${match.number}`;
+            if (match.subtype) {
+                source += ` (${match.subtype})`;
+            }
+        } else if (match.type === 'cc') {
+            source = `CC ${match.number}`;
+        }
+        
+        if (match.channel) {
+            source += ` Ch${match.channel}`;
+        }
+        
+        return source;
+    }
+    
+    removeMapping(mappingId) {
+        if (this.midiController) {
+            // Remove from controller
+            this.midiController.mappings.delete(mappingId);
+            this.midiController.saveMappings();
+        }
+        
+        // Remove from UI
+        const mappingItem = document.querySelector(`[data-mapping-id="${mappingId}"]`);
+        if (mappingItem) {
+            mappingItem.remove();
+        }
+        
+        // Show "no mappings" if empty
+        const mappingsList = document.getElementById('mappingsList');
+        if (mappingsList && mappingsList.children.length === 0) {
+            mappingsList.innerHTML = '<div class="no-mappings">No mappings configured</div>';
+        }
+        
+        this.showToast('Mapping removed', 'success');
+    }
+    
+    loadMIDIMappings() {
+        if (!this.midiController) return;
+        
+        const mappings = this.midiController.getMappings();
+        const mappingsList = document.getElementById('mappingsList');
+        
+        if (mappings.length === 0) {
+            mappingsList.innerHTML = '<div class="no-mappings">No mappings configured</div>';
+            return;
+        }
+        
+        mappingsList.innerHTML = '';
+        
+        mappings.forEach(mapping => {
+            // Try to reconstruct target info
+            const target = {
+                name: this.getTargetDisplayName(mapping.action)
+            };
+            this.addMappingToUI(mapping, target);
+        });
+    }
+    
+    getTargetDisplayName(action) {
+        switch (action.type) {
+            case 'scene':
+                return `Scene: ${(action.params.scene || '').toUpperCase()}`;
+            case 'intensity':
+                return `${(action.params.target || '').toUpperCase()} Intensity`;
+            case 'trigger':
+                return `Trigger: ${(action.params.effect || '').toUpperCase()}`;
+            case 'matrix':
+                return `Effect: ${(action.params.effect || '').toUpperCase()}`;
+            case 'color':
+                return `${(action.params.property || '').toUpperCase()}`;
+            default:
+                return 'Unknown';
+        }
+    }
+    
+    clearAllMappings() {
+        if (!confirm('Clear all MIDI mappings?')) return;
+        
+        if (this.midiController) {
+            this.midiController.clearMappings();
+        }
+        
+        const mappingsList = document.getElementById('mappingsList');
+        mappingsList.innerHTML = '<div class="no-mappings">No mappings configured</div>';
+        
+        this.showToast('All mappings cleared', 'success');
+    }
+    
+    toggleMIDIDebug() {
+        this.debugMode = !this.debugMode;
+        const debugBtn = document.getElementById('midiDebugBtn');
+        debugBtn.textContent = this.debugMode ? 'DEBUG ON' : 'DEBUG';
+        debugBtn.style.background = this.debugMode ? '#00ff85' : '#444';
+        debugBtn.style.color = this.debugMode ? '#000' : '#fff';
+        
+        this.showToast(`Debug mode: ${this.debugMode ? 'ON' : 'OFF'}`, 'info');
+    }
+    
+    exportMIDIMappings() {
+        if (!this.midiController) return;
+        
+        const mappingsJSON = this.midiController.exportMappings();
+        
+        // Create download
+        const blob = new Blob([mappingsJSON], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `zikada-midi-mappings-${new Date().toISOString().slice(0, 10)}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+        
+        this.showToast('Mappings exported', 'success');
+    }
+    
+    importMIDIMappings(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const success = this.midiController.importMappings(e.target.result);
+                if (success) {
+                    this.loadMIDIMappings();
+                    this.showToast('Mappings imported successfully', 'success');
+                } else {
+                    this.showToast('Failed to import mappings', 'error');
+                }
+            } catch (error) {
+                this.showToast('Invalid mapping file', 'error');
+            }
+        };
+        reader.readAsText(file);
+        
+        // Clear file input
+        event.target.value = '';
+    }
+    
+    loadMIDIPresets() {
+        // This could load presets from files or hardcoded presets
+        this.midiPresets = {
+            'apc40-mk2': '/presets/apc40-mk2.json',
+            'launchpad-x': '/presets/launchpad-x.json',
+            'push2': '/presets/push2.json',
+            'kontrol-s-series': '/presets/kontrol-s-series.json'
+        };
+    }
+    
+    async loadMIDIPreset() {
+        const deviceSelect = document.getElementById('midiDeviceSelect');
+        const selectedDevice = deviceSelect.value;
+        
+        if (!selectedDevice) {
+            this.showToast('Select a device first', 'warning');
+            return;
+        }
+        
+        // Get device info
+        const devices = this.midiController.getDevices();
+        const device = devices.inputs.find(d => d.id === selectedDevice);
+        
+        if (!device) {
+            this.showToast('Device not found', 'error');
+            return;
+        }
+        
+        // Try to find matching preset
+        const preset = this.findPresetForDevice(device);
+        if (!preset) {
+            this.showToast('No preset found for this device', 'warning');
+            return;
+        }
+        
+        try {
+            const response = await fetch(preset.path);
+            const presetData = await response.json();
+            
+            // Apply preset mappings
+            this.applyMIDIPreset(presetData, device);
+            
+            this.showToast(`Loaded preset: ${preset.name}`, 'success');
+        } catch (error) {
+            this.showToast('Failed to load preset', 'error');
+        }
+    }
+    
+    findPresetForDevice(device) {
+        const deviceName = device.name.toLowerCase();
+        
+        if (deviceName.includes('apc40')) {
+            return { name: 'APC40 mk2', path: this.midiPresets['apc40-mk2'] };
+        } else if (deviceName.includes('launchpad')) {
+            return { name: 'Launchpad X', path: this.midiPresets['launchpad-x'] };
+        } else if (deviceName.includes('push')) {
+            return { name: 'Push 2', path: this.midiPresets['push2'] };
+        } else if (deviceName.includes('kontrol')) {
+            return { name: 'Kontrol S-Series', path: this.midiPresets['kontrol-s-series'] };
+        }
+        
+        return null;
+    }
+    
+    applyMIDIPreset(presetData, device) {
+        if (!presetData.mappings) {
+            throw new Error('Invalid preset format');
+        }
+        
+        // Clear existing mappings for this device
+        const existingMappings = this.midiController.getMappings();
+        existingMappings.forEach(mapping => {
+            if (mapping.deviceId === device.id) {
+                this.midiController.mappings.delete(mapping.id);
+            }
+        });
+        
+        // Add preset mappings
+        presetData.mappings.forEach(mapping => {
+            const fullMapping = {
+                ...mapping,
+                id: `${device.id}_${mapping.match.type}_${mapping.match.channel || 0}_${mapping.match.number || 0}`,
+                deviceId: device.id
+            };
+            
+            this.midiController.setMapping(fullMapping);
+        });
+        
+        // Refresh UI
+        this.loadMIDIMappings();
+    }
+    
+    offerPresetForDevice(device) {
+        const preset = this.findPresetForDevice(device);
+        if (preset) {
+            const load = confirm(`Load ${preset.name} preset for ${device.name}?`);
+            if (load) {
+                this.loadMIDIPreset();
+            }
+        }
+    }
+    
+    hideMIDIControls() {
+        const midiSection = document.querySelector('.midi-control');
+        if (midiSection) {
+            midiSection.style.display = 'none';
+        }
+    }
+    
+    showToast(message, type = 'info', duration = 3000) {
+        // Create toast notification
+        const toast = document.createElement('div');
+        toast.className = `toast toast-${type}`;
+        toast.textContent = message;
+        
+        // Style toast
+        Object.assign(toast.style, {
+            position: 'fixed',
+            top: '20px',
+            right: '20px',
+            padding: '10px 15px',
+            borderRadius: '4px',
+            color: '#fff',
+            fontSize: '12px',
+            zIndex: '10000',
+            transform: 'translateX(100%)',
+            transition: 'transform 0.3s ease'
+        });
+        
+        // Type-specific styling
+        switch (type) {
+            case 'success':
+                toast.style.background = '#00ff85';
+                toast.style.color = '#000';
+                break;
+            case 'error':
+                toast.style.background = '#ff4444';
+                break;
+            case 'warning':
+                toast.style.background = '#ff9900';
+                break;
+            default:
+                toast.style.background = '#333';
+        }
+        
+        document.body.appendChild(toast);
+        
+        // Animate in
+        requestAnimationFrame(() => {
+            toast.style.transform = 'translateX(0)';
+        });
+        
+        // Auto remove
+        setTimeout(() => {
+            toast.style.transform = 'translateX(100%)';
+            setTimeout(() => {
+                if (toast.parentNode) {
+                    toast.parentNode.removeChild(toast);
+                }
+            }, 300);
+        }, duration);
+    }
 }
 
 // Export enhanced control panel

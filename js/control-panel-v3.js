@@ -141,15 +141,8 @@ class ControlPanelV3 {
             });
         }
 
-        // Add active state feedback for toggle buttons
-        document.querySelectorAll('.effect-toggle-btn, .layer-toggle-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const currentState = btn.getAttribute('data-state');
-                const newState = currentState === 'on' ? 'off' : 'on';
-                btn.setAttribute('data-state', newState);
-                btn.textContent = newState.toUpperCase();
-            });
-        });
+        // Note: Toggle buttons are handled by control-panel-professional.js
+        // which uses event delegation and sends messages to the main page
     }
 
     /**
