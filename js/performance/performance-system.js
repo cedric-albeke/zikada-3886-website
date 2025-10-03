@@ -32,14 +32,14 @@ export class PerformanceSystem {
         this.enabled = true;
         this.panicMode = false;
         
-        // Feature flags
+        // Feature flags - DISABLED BY DEFAULT to prevent interference
         this.features = {
-            fpsStabilizer: true,
-            qualityScaler: true,
-            webglOptimizer: true,
-            animationBatcher: true,
-            domScheduler: true,
-            gpuCompute: true
+            fpsStabilizer: false,
+            qualityScaler: false,
+            webglOptimizer: false,
+            animationBatcher: false,
+            domScheduler: false,
+            gpuCompute: false
         };
         
         // Integrated metrics
@@ -60,15 +60,15 @@ export class PerformanceSystem {
      * Initialize feature flag configuration
      */
     initializeFeatureFlags() {
-        // Global configuration
+        // Global configuration - DISABLED BY DEFAULT to prevent interference
         window.ZIKADA_PERF_CONFIG = {
             features: {
-                fpsStabilizer: true,
-                qualityScaler: true,
-                webglOptimizer: true,
-                animationBatcher: true,
-                domScheduler: true,
-                gpuCompute: true
+                fpsStabilizer: false,
+                qualityScaler: false,
+                webglOptimizer: false,
+                animationBatcher: false,
+                domScheduler: false,
+                gpuCompute: false
             },
             safety: {
                 panicMode: false,

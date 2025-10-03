@@ -13,7 +13,7 @@ export class DOMScheduler {
         this.writeOperations = [];
         this.scheduledFrame = null;
         
-        this.enabled = true;
+        this.enabled = false; // DISABLED BY DEFAULT
         this.metrics = {
             readOperations: 0,
             writeOperations: 0,

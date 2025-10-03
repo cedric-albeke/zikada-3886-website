@@ -10,7 +10,7 @@
 export class GPUCompute {
     constructor(gl = null) {
         this.gl = gl;
-        this.enabled = true;
+        this.enabled = false; // DISABLED BY DEFAULT
         this.supportsCompute = false; // WebGL2 compute shaders not widely supported yet
         
         this.metrics = {

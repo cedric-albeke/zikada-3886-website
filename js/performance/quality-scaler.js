@@ -106,7 +106,7 @@ export class QualityScaler {
         };
         
         // Feature flags
-        this.enabled = true;
+        this.enabled = false; // DISABLED BY DEFAULT
         this.debug = false;
         this.smoothTransitions = true;
         

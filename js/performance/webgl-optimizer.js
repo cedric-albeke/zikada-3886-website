@@ -60,7 +60,7 @@ export class WebGLOptimizer {
         };
         
         // Feature flags
-        this.enabled = true;
+        this.enabled = false; // DISABLED BY DEFAULT
         this.useInstancing = true;
         this.useFrustumCulling = true;
         this.useLOD = true;

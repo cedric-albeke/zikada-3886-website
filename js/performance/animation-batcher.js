@@ -17,7 +17,7 @@ export class AnimationBatcher {
             low: []
         };
         
-        this.enabled = true;
+        this.enabled = false; // DISABLED BY DEFAULT
         this.frameRequestId = null;
         this.lastFrameTime = 0;
         

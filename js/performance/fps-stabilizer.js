@@ -58,7 +58,7 @@ export class FPSStabilizer {
             p99FrameTime: 16.67
         };
         
-        this.enabled = true;
+        this.enabled = false; // DISABLED BY DEFAULT
         this.debug = false;
         
         // Initialize feature flag support
