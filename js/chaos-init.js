@@ -2321,6 +2321,15 @@ class ChaosInitializer {
             this.managedIntervals = [];
         }
         
+        // Clear localStorage polling interval
+        if (window.chaosStoragePollingHandle) {
+            if (typeof window.chaosStoragePollingHandle.clear === 'function') {
+                window.chaosStoragePollingHandle.clear();
+                console.log('🗑️ Chaos localStorage polling interval cleared');
+            }
+            window.chaosStoragePollingHandle = null;
+        }
+        
         // Emergency cleanup of all performance systems
         if (this.performanceElementManager) {
             this.performanceElementManager.emergencyCleanup();
@@ -2628,30 +2637,71 @@ window.addEventListener('storage', (e) => {
     }
 });
 
-// Also poll localStorage for same-tab communication
+// Also poll localStorage for same-tab communication (using interval-manager)
 let lastStrobeMessageId = null;
-setInterval(() => {
-    const messageData = localStorage.getItem('3886_vj_message');
-    if (messageData) {
-        try {
-            const parsed = JSON.parse(messageData);
-            if (parsed._id && parsed._id !== lastStrobeMessageId) {
-                lastStrobeMessageId = parsed._id;
-                if (parsed.type === 'trigger_effect' && parsed.effect === 'strobe') {
-                    console.log('🔴 Strobe trigger received from control panel (polling)');
-                    if (window.animeEnhancedEffects && typeof window.animeEnhancedEffects.createStrobeCircles === 'function') {
-                        if (window.animeEnhancedEffects.activeStrobeCircles) {
-                            window.animeEnhancedEffects.removeStrobeCircles();
-                            console.log('🔴 Strobe circles disabled');
-                        } else {
-                            window.animeEnhancedEffects.createStrobeCircles();
-                            console.log('🟢 Strobe circles enabled');
+let chaosStoragePollingHandle = null;
+
+// Use dynamic import to avoid circular dependencies
+import('./interval-manager.js').then(module => {
+    const intervalManager = module.default;
+    
+    chaosStoragePollingHandle = intervalManager.createInterval(() => {
+        const messageData = localStorage.getItem('3886_vj_message');
+        if (messageData) {
+            try {
+                const parsed = JSON.parse(messageData);
+                if (parsed._id && parsed._id !== lastStrobeMessageId) {
+                    lastStrobeMessageId = parsed._id;
+                    if (parsed.type === 'trigger_effect' && parsed.effect === 'strobe') {
+                        console.log('🔴 Strobe trigger received from control panel (polling)');
+                        if (window.animeEnhancedEffects && typeof window.animeEnhancedEffects.createStrobeCircles === 'function') {
+                            if (window.animeEnhancedEffects.activeStrobeCircles) {
+                                window.animeEnhancedEffects.removeStrobeCircles();
+                                console.log('🔴 Strobe circles disabled');
+                            } else {
+                                window.animeEnhancedEffects.createStrobeCircles();
+                                console.log('🟢 Strobe circles enabled');
+                            }
                         }
                     }
                 }
+            } catch (e) {
+                // Ignore JSON parse errors
             }
-        } catch (e) {
-            // Ignore JSON parse errors
         }
-    }
-}, 200);
+    }, 200, 'chaos-localStorage-poll', {
+        category: 'system',
+        maxAge: Infinity // Keep running until explicitly cleared
+    });
+    
+    // Store handle globally for cleanup
+    window.chaosStoragePollingHandle = chaosStoragePollingHandle;
+}).catch(err => {
+    console.warn('Failed to load interval-manager for chaos localStorage polling, falling back to raw setInterval:', err);
+    // Fallback to raw interval
+    setInterval(() => {
+        const messageData = localStorage.getItem('3886_vj_message');
+        if (messageData) {
+            try {
+                const parsed = JSON.parse(messageData);
+                if (parsed._id && parsed._id !== lastStrobeMessageId) {
+                    lastStrobeMessageId = parsed._id;
+                    if (parsed.type === 'trigger_effect' && parsed.effect === 'strobe') {
+                        console.log('🔴 Strobe trigger received from control panel (polling)');
+                        if (window.animeEnhancedEffects && typeof window.animeEnhancedEffects.createStrobeCircles === 'function') {
+                            if (window.animeEnhancedEffects.activeStrobeCircles) {
+                                window.animeEnhancedEffects.removeStrobeCircles();
+                                console.log('🔴 Strobe circles disabled');
+                            } else {
+                                window.animeEnhancedEffects.createStrobeCircles();
+                                console.log('🟢 Strobe circles enabled');
+                            }
+                        }
+                    }
+                }
+            } catch (e) {
+                // Ignore JSON parse errors
+            }
+        }
+    }, 200);
+});

@@ -2,6 +2,7 @@
 // Integrates with existing chaos engine
 
 import gsap from 'gsap';
+import intervalManager from './interval-manager.js';
 const VJ_DEBUG = false;
 import filterManager from './filter-manager.js';
 import fxController from './fx-controller.js';
@@ -51,6 +52,7 @@ class VJReceiver {
         this.animeEnabled = false;
         this.activeFx = 0;
         this.fpsMonitor = null;
+        this.localStoragePollingHandle = null; // Track localStorage polling interval
 
         this.init();
     }
@@ -137,7 +139,13 @@ class VJReceiver {
     }
 
     startLocalStoragePolling() {
-        setInterval(() => {
+        // Guard against duplicate polling intervals
+        if (this.localStoragePollingHandle) {
+            console.warn('⚠️ localStorage polling already active, skipping duplicate');
+            return;
+        }
+        
+        this.localStoragePollingHandle = intervalManager.createInterval(() => {
             const messageData = localStorage.getItem('3886_vj_message');
             if (messageData) {
                 try {
@@ -151,7 +159,10 @@ class VJReceiver {
                     // Ignore JSON parse errors
                 }
             }
-        }, 1500); // Reduced polling to 1.5s when using LS fallback
+        }, 1500, 'vj-localStorage-poll', {
+            category: 'system',
+            maxAge: Infinity // Keep running until explicitly cleared
+        });
     }
 
     sendMessage(data) {
@@ -2945,6 +2956,54 @@ class VJReceiver {
         this.fpsFrames.push(now);
         this.fpsFrames = this.fpsFrames.filter(t => t > now - 1000);
         return this.fpsFrames.length;
+    }
+    
+    destroy() {
+        console.log('🗑️ VJ Receiver cleanup initiated');
+        
+        // Clear localStorage polling interval
+        if (this.localStoragePollingHandle) {
+            this.localStoragePollingHandle.clear();
+            this.localStoragePollingHandle = null;
+            console.log('✅ localStorage polling interval cleared');
+        }
+        
+        // Clear BPM ripple interval
+        if (this.bpmRippleInterval) {
+            clearInterval(this.bpmRippleInterval);
+            this.bpmRippleInterval = null;
+        }
+        
+        // Clear debug interval
+        if (this.debugInterval) {
+            clearInterval(this.debugInterval);
+            this.debugInterval = null;
+        }
+        
+        // Clear fallback timeout
+        if (this._fallbackArmTimeout) {
+            clearTimeout(this._fallbackArmTimeout);
+            this._fallbackArmTimeout = null;
+        }
+        
+        // Cancel FPS monitor RAF
+        if (this.fpsMonitorRAF) {
+            cancelAnimationFrame(this.fpsMonitorRAF);
+            this.fpsMonitorRAF = null;
+        }
+        
+        // Close broadcast channel
+        if (this.channel) {
+            try {
+                this.channel.close();
+            } catch (e) {
+                // Ignore close errors
+            }
+            this.channel = null;
+        }
+        
+        this.isConnected = false;
+        console.log('✅ VJ Receiver cleanup complete');
     }
 }
 
