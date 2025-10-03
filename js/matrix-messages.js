@@ -990,12 +990,26 @@ class MatrixMessages {
     }
 
     destroy() {
+        // Clean up scramble interval
         if (this.scrambleInterval) {
             clearInterval(this.scrambleInterval);
+            this.scrambleInterval = null;
         }
+        
+        // Clean up failsafe timeout
         if (this.failsafeTimeout) {
             clearTimeout(this.failsafeTimeout);
+            this.failsafeTimeout = null;
         }
+        
+        // Disable autonomous dice mode (cleans up subscription)
+        this.disableAutonomousDiceMode();
+        
+        // Stop the shared 1Hz ticker if this is the last instance
+        if (window.__oneHzTicker) {
+            window.__oneHzTicker._stop();
+        }
+        
         this.isActive = false;
     }
 }
@@ -1006,12 +1020,38 @@ export default new MatrixMessages();
 (function ensureOneHzTicker(){
     if (window.__oneHzTicker) return;
     const subs = new Set();
-    const interval = setInterval(() => {
-        subs.forEach(fn => { try { fn(); } catch(_) {} });
-    }, 1000);
+    
+    // Import interval-manager dynamically for managed intervals
+    let intervalHandle = null;
+    import('./interval-manager.js').then(module => {
+        const intervalManager = module.default;
+        
+        intervalHandle = intervalManager.createInterval(() => {
+            subs.forEach(fn => { try { fn(); } catch(_) {} });
+        }, 1000, 'matrix-oneHz-ticker', {
+            category: 'system',
+            maxAge: Infinity // Keep running indefinitely
+        });
+    }).catch(err => {
+        console.warn('Failed to load interval-manager, falling back to raw setInterval:', err);
+        // Fallback to raw interval if interval-manager is not available
+        intervalHandle = { nativeId: setInterval(() => {
+            subs.forEach(fn => { try { fn(); } catch(_) {} });
+        }, 1000) };
+    });
+    
     window.__oneHzTicker = {
         subscribe(fn){ subs.add(fn); return () => subs.delete(fn); },
-        _stop(){ clearInterval(interval); }
+        _stop(){ 
+            if (intervalHandle) {
+                if (typeof intervalHandle.clear === 'function') {
+                    intervalHandle.clear();
+                } else if (intervalHandle.nativeId) {
+                    clearInterval(intervalHandle.nativeId);
+                }
+                intervalHandle = null;
+            }
+        }
     };
 })();
 
