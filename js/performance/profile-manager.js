@@ -192,7 +192,7 @@ export class PerformanceProfileManager {
 
       // Particles: scale relative to engine.particleCount if available
       try {
-        const baseCount = (this.engine && typeof this.engine.particleCount === 'number') ? this.engine.particleCount : 2000;
+        const baseCount = (this.engine && typeof this.engine.particleCount === 'number') ? this.engine.particleCount : 800;
         const count = Math.max(200, Math.round(baseCount * cfg.particleScale));
         window.dispatchEvent(new CustomEvent('adjustParticles', { detail: { count } }));
       } catch (_) {}
@@ -248,7 +248,6 @@ export class PerformanceProfileManager {
         console.warn('[ProfileManager] Failed to apply profile', profile, error);
       }
     }
-  }
   }
 
   // Lock/unlock API for control panel

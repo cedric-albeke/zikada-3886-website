@@ -107,12 +107,15 @@ class SafeTextEffects {
             let iterations = 0;
             const maxIterations = Math.min(originalText.length * 3, 60); // Cap iterations
             
+            // Store reference to TextEffects instance for accessing class properties
+            const self = this;
+            
             // Use GSAP timeline instead of setInterval for better performance
             const tl = gsap.timeline({
                 onComplete: () => {
                     element.textContent = originalText;
                     state.isScrambling = false;
-                    this.activeScrambleCount--;
+                    self.activeScrambleCount--;
                     
                     // Schedule next scramble
                     if (!state.destroyed) {
@@ -128,14 +131,19 @@ class SafeTextEffects {
             state.timeline = tl;
             
             // Create scramble animation using GSAP
+            // Use regular function (not arrow) so 'this' refers to the GSAP tween
             tl.to({}, {
                 duration: maxIterations * 0.03, // 30ms per iteration converted to seconds
                 ease: "none",
                 onUpdate: function() {
                     if (state.destroyed) return;
                     
+                    // 'this' is the GSAP tween, so this.progress() is valid
                     const progress = this.progress();
                     iterations = Math.floor(progress * maxIterations);
+                    
+                    // Access scrambleChars via 'self' (TextEffects instance)
+                    const chars = self.scrambleChars;
                     
                     const scrambledText = originalText
                         .split('')
@@ -144,13 +152,13 @@ class SafeTextEffects {
                                 return originalText[index];
                             }
                             return state.originalText.includes(char) ? 
-                                this.scrambleChars[Math.floor(Math.random() * this.scrambleChars.length)] : 
+                                chars[Math.floor(Math.random() * chars.length)] : 
                                 char;
                         })
                         .join('');
                     
                     element.textContent = scrambledText;
-                }.bind(this)
+                }
             });
         };
 

@@ -1293,22 +1293,57 @@ class ProfessionalVJControlPanel {
         }
 
         // BPM Tap
-        document.getElementById('tapBPM')?.addEventListener('click', () => {
-            const now = Date.now();
-            if (this.lastTap && (now - this.lastTap) < 3000) {
-                const bpm = Math.round(60000 / (now - this.lastTap));
-                this.currentBPM = bpm;
-                const bpmDisplay = document.querySelector('.bpm-value');
-                if (bpmDisplay) bpmDisplay.textContent = bpm;
+        const tapBPMBtn = document.getElementById('tapBPM');
+        const bpmInput = document.getElementById('bpmInput');
+        const bpmDisplay = document.getElementById('bpmValue');
+        
+        if (tapBPMBtn) {
+            tapBPMBtn.addEventListener('click', () => {
+                const now = Date.now();
+                if (this.lastTap && (now - this.lastTap) < 3000) {
+                    const bpm = Math.round(60000 / (now - this.lastTap));
+                    this.currentBPM = bpm;
+                    
+                    // Update all displays
+                    if (bpmDisplay) bpmDisplay.textContent = bpm;
+                    if (bpmInput) bpmInput.value = bpm;
 
-                this.sendMessage({
-                    type: 'bpm_change',
-                    bpm: bpm,
-                    timestamp: now
-                });
-            }
-            this.lastTap = now;
-        });
+                    this.sendMessage({
+                        type: 'bpm_change',
+                        bpm: bpm,
+                        timestamp: now
+                    });
+                }
+                this.lastTap = now;
+            });
+        }
+        
+        // Manual BPM Input
+        if (bpmInput) {
+            bpmInput.addEventListener('change', () => {
+                const bpm = parseInt(bpmInput.value);
+                if (bpm >= 20 && bpm <= 300) {
+                    this.currentBPM = bpm;
+                    if (bpmDisplay) bpmDisplay.textContent = bpm;
+                    
+                    this.sendMessage({
+                        type: 'bpm_change',
+                        bpm: bpm,
+                        timestamp: Date.now()
+                    });
+                } else {
+                    // Reset to current BPM if invalid
+                    bpmInput.value = this.currentBPM || 120;
+                }
+            });
+            
+            // Allow Enter key to apply
+            bpmInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    bpmInput.blur(); // Trigger change event
+                }
+            });
+        }
 
         // FX Intensity sliders (glitch, particles, noise)
         ['glitch', 'particles', 'noise'].forEach(effect => {

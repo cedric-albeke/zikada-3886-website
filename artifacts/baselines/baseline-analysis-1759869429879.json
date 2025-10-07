@@ -1,0 +1,95 @@
+{
+  "baseline": {
+    "metadata": {
+      "file": "artifacts/baseline/perf-20251007-223455.jsonl",
+      "dataPoints": 120,
+      "duration": 119,
+      "timestamp": "2025-10-07T20:37:09.879Z"
+    },
+    "fps": {
+      "count": 120,
+      "min": 60,
+      "max": 60,
+      "mean": 60,
+      "stdDev": 0,
+      "p50": 60,
+      "p95": 60,
+      "p99": 60,
+      "stability": "excellent",
+      "coefficientOfVariation": 0,
+      "droppedFramePercent": 0,
+      "belowThreshold": 0,
+      "assessment": "good"
+    },
+    "memory": {
+      "count": 120,
+      "min": 29.75,
+      "max": 29.75,
+      "mean": 29.75,
+      "stdDev": 0,
+      "growthRateMBPerHour": 0,
+      "projected24hGrowthMB": 0,
+      "assessment": "excellent"
+    },
+    "dom": {
+      "count": 120,
+      "min": 79,
+      "max": 173,
+      "mean": 168.03,
+      "stdDev": 9.01,
+      "initialNodes": 170,
+      "finalNodes": 171,
+      "totalGrowth": 1,
+      "growthPercent": 0.59,
+      "assessment": "excellent"
+    },
+    "effects": {
+      "overlays": {
+        "count": 120,
+        "min": 0,
+        "max": 1,
+        "mean": 0.96,
+        "stdDev": 0.2
+      },
+      "controlFx": {
+        "count": 120,
+        "min": 0,
+        "max": 6,
+        "mean": 5.7,
+        "stdDev": 1.31
+      }
+    },
+    "performance": {
+      "score": 90,
+      "rating": "excellent",
+      "issues": [
+        "FPS below optimal (< 80)"
+      ],
+      "summary": "1 issue(s) found"
+    }
+  },
+  "generated": "2025-10-07T20:37:09.879Z",
+  "summary": {
+    "fps": {
+      "mean": 60,
+      "p95": 60,
+      "assessment": "good"
+    },
+    "memory": {
+      "growthRateMBPerHour": 0,
+      "projected24hGrowthMB": 0,
+      "assessment": "excellent"
+    },
+    "dom": {
+      "totalGrowth": 1,
+      "assessment": "excellent"
+    },
+    "performance": {
+      "score": 90,
+      "rating": "excellent",
+      "issues": [
+        "FPS below optimal (< 80)"
+      ]
+    }
+  }
+}

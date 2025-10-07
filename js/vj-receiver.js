@@ -23,7 +23,7 @@ class VJReceiver {
         // Ripple feature flags
         this.bpmRippleEnabled = false;
         this.bpmRippleInterval = null;
-        this.clickRippleEnabled = true;
+        this.clickRippleEnabled = false; // disable click-based ripple by default to avoid on-click animations
         this.currentSettings = {
             colors: {
                 hue: 0,
@@ -626,6 +626,15 @@ class VJReceiver {
 
         this.currentSettings.scene = scene;
 
+        // Log and expose current scene for diagnostics
+        try {
+            console.log(`[VJ] Scene -> ${String(scene).toUpperCase()}`);
+            // Provide a getter on ChaosControl when available (non-destructive)
+            if (window.ChaosControl && typeof window.ChaosControl.getScene !== 'function') {
+                window.ChaosControl.getScene = () => this.currentSettings.scene;
+            }
+        } catch (_) {}
+
         // Send confirmation
         this.sendMessage({
             type: 'scene_changed',
@@ -1172,6 +1181,13 @@ class VJReceiver {
     }
 
     setupClickRipple() {
+        // Always remove any previously attached handlers (HMR safe)
+        if (this._clickRippleHandler) {
+            try { window.removeEventListener('click', this._clickRippleHandler); } catch (_) {}
+            try { window.removeEventListener('touchstart', this._clickRippleHandler); } catch (_) {}
+            this._clickRippleHandler = null;
+        }
+        // Respect flag: if disabled, do not attach click/touch handlers
         if (!this.clickRippleEnabled) return;
         const handler = (ev) => {
             try {
@@ -2663,6 +2679,11 @@ class VJReceiver {
         this.sendMessage(data);
     }
 
+    // Expose current scene via method for external checks/testing
+    getCurrentScene() {
+        return this.currentSettings.scene;
+    }
+
     sendDetailedPerformanceData() {
         // Gather detailed performance data from all systems
         const detailedData = {
@@ -2692,6 +2713,15 @@ class VJReceiver {
 
                 // Add VJ control to window for debugging
                 window.vjReceiver = this;
+
+                // Provide simple accessors for scene on ChaosControl if not present
+                try {
+                    if (window.ChaosControl) {
+                        if (typeof window.ChaosControl.getScene !== 'function') {
+                            window.ChaosControl.getScene = () => this.currentSettings.scene;
+                        }
+                    }
+                } catch (_) {}
             }
         }, 100);
     }

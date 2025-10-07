@@ -93,8 +93,8 @@ class ChaosInitializer {
         this.animeStackLoaded = false;
         this.animeStackPromise = null;
         this.animeEnableListener = null;
-        // AUTO phase cadence (default 30s)
-        this.phaseDurationMs = 30000;
+        // AUTO phase cadence (default 50s)
+        this.phaseDurationMs = 50000;
         this.phaseTimer = null;
         this.currentPhase = null;
         
@@ -426,8 +426,8 @@ class ChaosInitializer {
             }
             
             // 3. Clear expired intervals
-            if (window.intervalManager) {
-                window.intervalManager.cleanup();
+            if (window.intervalManager && typeof window.intervalManager.performAutoCleanup === 'function') {
+                window.intervalManager.performAutoCleanup();
             }
             
             // 4. Clear cached GSAP transforms

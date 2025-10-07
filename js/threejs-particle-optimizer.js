@@ -21,6 +21,9 @@ export class ThreeJSParticleOptimizer {
         this.optimizedShaders = new Map();
         this.bufferPools = new Map();
         
+        // Debugging flag (set true to see verbose logs)
+        this.debug = false;
+        
         // Performance metrics
         this.metrics = {
             instancedParticles: 0,
@@ -145,7 +148,7 @@ export class ThreeJSParticleOptimizer {
      */
     optimizeParticleSystem(originalPoints, maxParticles = 10000) {
         if (!this.enabled || !this.features.instancing) {
-            console.log('⚠️ Particle optimization disabled or not supported');
+            if (this.debug) console.debug('⚠️ Particle optimization disabled or not supported');
             return originalPoints;
         }
         

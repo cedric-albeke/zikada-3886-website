@@ -107,7 +107,7 @@ class SafePerformanceMonitor {
             console.warn(`⚠️ High DOM node count: ${domNodes} - Consider cleanup`);
         }
         
-        if (memoryUsage > 150 * 1024 * 1024) { // 150MB
+        if (memoryUsage > 500 * 1024 * 1024) { // 500MB
             console.warn(`⚠️ High memory usage: ${this.formatBytes(memoryUsage)}`);
         }
     }

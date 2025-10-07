@@ -23,6 +23,16 @@ class ControlPanelV3 {
         this.enhanceButtonFeedback();
         this.startUptimeCounter();
         this.initMIDIIntegration();
+
+        // Ensure the Scene Select section is in view so scene buttons are interactable
+        try {
+            const sceneSection = document.querySelector('.scene-section');
+            if (sceneSection) {
+                // Delay slightly to allow layout to stabilize
+                setTimeout(() => sceneSection.scrollIntoView({ behavior: 'smooth', block: 'center' }), 150);
+            }
+        } catch (_) {}
+
         console.log('🎹️ Control Panel V3 enhancements loaded');
     }
 

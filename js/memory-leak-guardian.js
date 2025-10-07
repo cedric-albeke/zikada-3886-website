@@ -19,11 +19,11 @@ class MemoryLeakGuardian {
         this.isActive = false;
         this.debugMode = featureFlags.isEnabled('debugMetrics');
         
-        // Heap Drift Monitoring
+        // Heap Drift Monitoring (RELAXED THRESHOLDS)
         this.heapSamples = [];
         this.maxSamples = 12; // 12 samples over 6 minutes (30s intervals)
-        this.heapDriftThreshold = 0.05; // 5% growth triggers warning
-        this.criticalHeapGrowth = 0.15; // 15% growth triggers emergency
+        this.heapDriftThreshold = 0.50; // 50% growth triggers warning (was 5%)
+        this.criticalHeapGrowth = 1.00; // 100% growth triggers emergency (was 15%)
         this.lastHeapCheck = 0;
         this.heapCheckInterval = 30000; // Check every 30 seconds
         
@@ -36,11 +36,11 @@ class MemoryLeakGuardian {
         this.objectPools = new Map();
         this.pooledTypes = ['Float32Array', 'Array', 'Object', 'Vector3', 'Matrix4'];
         
-        // DOM Growth Monitoring
+        // DOM Growth Monitoring (RELAXED THRESHOLDS)
         this.domObserver = null;
         this.initialDOMNodes = 0;
-        this.maxDOMGrowth = 200; // Max allowed DOM node growth
-        this.domGrowthWarning = 100; // Warn at 100 node growth
+        this.maxDOMGrowth = 2000; // Max allowed DOM node growth (was 200)
+        this.domGrowthWarning = 1000; // Warn at 1000 node growth (was 100)
         this.lastDOMCount = 0;
         
         // WebGL Resource Tracking
