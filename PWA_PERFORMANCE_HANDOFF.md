@@ -2,14 +2,14 @@
 
 **Branch**: `feat/pwa-perf-hardening`  
 **Date**: 2025-10-07  
-**Status**: Steps 0-5 Complete, Steps 6-22 Remaining  
-**Target**: 80+ FPS sustained with PWA features under 100KB gzipped  
+**Status**: Steps 0-6 Complete, Steps 7-22 Remaining  
+**Target**: 80+ FPS sustained with PWA features under 100KB gzipped
 
 ## 🎯 Project Overview
 
 The ZIKADA 3886 autonomous animation project is being enhanced with Progressive Web App (PWA) capabilities while maintaining high-performance 80+ FPS animation display. The implementation follows a 22-step performance hardening plan with strict resource budgets and comprehensive monitoring systems.
 
-## ✅ Completed Implementation (Steps 0-5)
+## ✅ Completed Implementation (Steps 0-6)
 
 ### Step 0: Foundation & Budgets ✓
 - **Branch**: `feat/pwa-perf-hardening` created and active
@@ -48,7 +48,7 @@ The ZIKADA 3886 autonomous animation project is being enhanced with Progressive 
 - **Integration**: Automatic detection and conversion of particle systems
 - **Quality Levels**: High/medium/low shader variants with frame throttling
 
-### Step 5: WebGL Resource Management ✓
+### Step 5: WebGL Resource Management ✅
 - **Resource Manager**: `js/webgl-resource-manager.js`
 - **Shader Precompilation**: Queued processing for hot scenes via `renderer.compile()`
 - **Periodic Cleanup**: 30s renderer.renderLists.dispose() cycles
@@ -56,16 +56,27 @@ The ZIKADA 3886 autonomous animation project is being enhanced with Progressive 
 - **Pixel Ratio**: Configurable 1.25 ceiling with performance-based adjustment
 - **Render Target Pooling**: Automatic recycling to prevent VRAM leaks
 
+### Step 6: Progressive Performance Degradation Ladder ✅
+- **Performance States**: `js/performance-degradation-ladder.js` with S0-S5 degradation levels
+- **FPS Monitoring**: EWMA + 10s trailing window with 30+ sample minimum
+- **Hysteresis System**: 15s delay for recovery, 3s confirmation for degradation
+- **Recovery Threshold**: 95+ FPS sustained for 15s to prevent oscillation
+- **Adaptive Rendering**: Automatic pixel ratio, shadow, post-processing, particle adjustments
+- **System Integration**: Event-driven coordination with watchdog and memory systems
+- **Testing Framework**: Comprehensive test suite with `js/performance-ladder-test.js`
+
 ## 🏗️ Current System Architecture
 
 ### Core Systems Integration
 ```
 chaos-init.js (Main Orchestrator)
 ├── feature-flags.js (Runtime Configuration)
-├── enhanced-watchdog.js (RAF/WebGL/Error Monitoring)
-├── memory-leak-guardian.js (Heap/DOM/Event Protection) 
+├── enhanced-watchdog.js (RAF/WebGL/Error Monitoring + FPS Reporting)
+├── memory-leak-guardian.js (Heap/DOM/Event Protection)
+├── performance-degradation-ladder.js (S0-S5 States + EWMA FPS)
 ├── threejs-particle-optimizer.js (Instanced Rendering)
 ├── webgl-resource-manager.js (Resource Lifecycle)
+├── performance-ladder-test.js (Testing Framework)
 └── chaos-engine.js (Updated with Optimizations)
 ```
 
@@ -73,6 +84,7 @@ chaos-init.js (Main Orchestrator)
 - **Memory Events**: `memory:warning`, `memory:critical`, `dom:excessive-growth`
 - **WebGL Events**: `webgl:resource-leak`, `webgl:context-lost`
 - **Performance Events**: `performance:emergency`, `performance:reduce`, `performance:restore`
+- **Performance Ladder Events**: `performance:state:changed`, `performance:recovery:started`, `performance:recovery:cancelled`, `particles:quality:set`
 - **Watchdog Events**: `raf:restart`, `app:soft-restart`, `component:quarantine`
 
 ### Performance Metrics Tracking
@@ -82,36 +94,35 @@ chaos-init.js (Main Orchestrator)
 - **DOM**: Node count stability monitoring
 - **Particles**: Instanced rendering performance gains
 
-## 🚧 Remaining Work (Steps 6-22)
+## 😧 Remaining Work (Steps 7-22)
 
-### IMMEDIATE NEXT STEP: Step 6 - Progressive Performance Degradation Ladder
+### IMMEDIATE NEXT STEP: Step 7 - Smart Preloading System
 
-**Priority**: HIGH - Core performance system  
+**Priority**: HIGH - Performance optimization  
 **Complexity**: Medium  
-**Dependencies**: Completed foundation systems  
+**Dependencies**: Performance ladder (Step 6)  
 
 **Requirements**:
-- Implement S0-S5 degradation states with FPS EWMA thresholds
-- 10s trailing FPS monitoring with 15s recovery hysteresis
-- States: S0 (Full) → S1 (Less post-processing) → S2 (Fewer particles) → S3 (Lower pixel ratio) → S4 (No shadows) → S5 (Minimal)
-- Recovery only when 95+ FPS sustained for 15s
-- Smooth transitions without oscillation
+- Implement smart preloading with `requestIdleCallback` and Network Information API
+- Preload critical resources during idle time without blocking main thread
+- Network-aware loading strategies (4G vs WiFi vs slow connections)
+- Coordinate with performance ladder states for adaptive preloading
+- Cache management to stay within 100KB budget
 
 **Implementation Approach**:
 ```javascript
-// Create: js/performance-degradation-ladder.js
-class PerformanceLadder {
+// Create: js/smart-preloader.js
+class SmartPreloader {
     constructor() {
-        this.currentState = 'S0';
-        this.fpsHistory = [];
-        this.stateChangeTimestamp = 0;
-        this.hysteresisDelay = 15000; // 15s
+        this.networkInfo = navigator.connection;
+        this.preloadQueue = [];
+        this.isPreloading = false;
     }
     
-    updateFPS(fps) {
-        // EWMA calculation with 10s trailing window
-        // State transition logic with hysteresis
-        // Coordinate with existing systems
+    schedulePreload(resource, priority = 'low') {
+        // Use requestIdleCallback for non-critical resources
+        // Respect performance ladder state for timing
+        // Network-aware resource prioritization
     }
 }
 ```
@@ -166,8 +177,11 @@ cat js/feature-flags.js
 
 ### Testing Integration
 - **E2E Tests**: `e2e/performance-baseline.spec.js`
+- **Performance Ladder Tests**: `js/performance-ladder-test.js` with comprehensive scenarios
+- **Manual Testing**: Browser console commands (`window.testPerformanceLadder()`, `window.getPerformanceStats()`)
 - **ChromeMCP**: Available via rule for browser verification
 - **Performance Monitoring**: Built-in dashboard accessible via debug flags
+- **Debug Mode**: Enable via `?debugMetrics=1` for performance testing tools
 
 ## 📊 Current Performance Status
 
