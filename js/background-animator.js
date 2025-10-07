@@ -35,13 +35,14 @@ class BackgroundAnimator {
     }
 
     centerBackground() {
-        // Ensure background is centered
+        // Ensure background is centered while preserving original scale
         gsap.set(this.bgElement, {
             position: 'fixed',
             top: '50%',
             left: '50%',
             xPercent: -50,
             yPercent: -50,
+            scale: 3, // Preserve original CSS scale
             transformOrigin: 'center center'
         });
     }

@@ -60,18 +60,18 @@ class IntroAnimations {
             );
         }
 
-        // Animate cicada image - scale and fade in
+        // Animate cicada image - scale and fade in smoothly without flashing
         if (imageWrapper) {
             gsap.fromTo(imageWrapper,
                 {
                     scale: 0.9,
                     opacity: 0,
-                    filter: 'brightness(0%)'
+                    filter: 'brightness(60%)' // Start dimmed instead of black to avoid flash
                 },
                 {
                     scale: 1,
                     opacity: 1,
-                    filter: 'brightness(100%)',
+                    filter: 'brightness(60%)', // Keep same brightness to avoid bright flash
                     duration: 1.5,
                     ease: 'power3.out',
                     delay: 0.4
@@ -79,7 +79,7 @@ class IntroAnimations {
             );
         }
 
-        // Animate background
+        // Animate background - preserve proper scale of 3
         const bg = document.querySelector('.bg');
         if (bg) {
             gsap.fromTo(bg,
@@ -89,8 +89,8 @@ class IntroAnimations {
                     rotateX: 0
                 },
                 {
-                    scale: 1,
-                    opacity: 0.5,
+                    scale: 3, // Preserve correct scale for circular grid effect
+                    opacity: 0.07, // Match original CSS opacity
                     rotateX: 0,
                     duration: 2,
                     ease: 'power3.out',
