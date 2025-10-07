@@ -10,10 +10,26 @@ class ExtendedAnimations {
         this.container = null;
         this._effectHandle = null;
         this._budgetDisposer = null;
+        
+        // Rate limiting to prevent DOM growth
+        this.lastEffectTime = {};
+        this.minEffectInterval = 2000; // Min 2 seconds between same effect
     }
 
     _installPools() {
         // Placeholder for future pooling of repeaters
+    }
+    
+    _canRunEffect(effectName) {
+        const now = Date.now();
+        const lastRun = this.lastEffectTime[effectName] || 0;
+        
+        if (now - lastRun < this.minEffectInterval) {
+            return false; // Too soon
+        }
+        
+        this.lastEffectTime[effectName] = now;
+        return true;
     }
 
     init() {
@@ -222,8 +238,11 @@ class ExtendedAnimations {
     }
 
     dataCorruption() {
-        // Create corrupted data blocks (clamped)
-        const blocks = Math.min(Math.floor(Math.random() * 6 + 4), 10);
+        // Rate limit check
+        if (!this._canRunEffect('dataCorruption')) return;
+        
+        // Create corrupted data blocks (heavily reduced)
+        const blocks = Math.min(Math.floor(Math.random() * 3 + 2), 5); // Reduced from 10 to 5 max
 
         for (let i = 0; i < blocks; i++) {
             const block = document.createElement('div');
@@ -445,8 +464,11 @@ class ExtendedAnimations {
     }
 
     matrixRainVariation() {
-        // Different style of matrix rain (clamped columns)
-        const columns = Math.min(Math.floor(window.innerWidth / 30), 25);
+        // Rate limit check
+        if (!this._canRunEffect('matrixRainVariation')) return;
+        
+        // Different style of matrix rain (heavily reduced columns)
+        const columns = Math.min(Math.floor(window.innerWidth / 60), 12); // Reduced from 25 to 12 max, wider spacing
 
         for (let i = 0; i < columns; i++) {
             const drop = document.createElement('div');
