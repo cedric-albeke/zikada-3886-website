@@ -21,6 +21,7 @@ import directLogoAnimation from './direct-logo-animation.js';
 import vjReceiver from './vj-receiver.js';
 import performanceOptimizer from './performance-optimizer.js';
 import VisualEffectsController from './visual-effects-complete.js';
+import featureFlags from './feature-flags.js';
 import gsap from 'gsap';
 
 // Ensure GSAP is globally available
@@ -63,9 +64,94 @@ class ChaosInitializer {
         this.currentBodyFilter = 'none';
         this.filterTransitionInProgress = false;
         
+        // PWA and performance-aware features
+        this.pwaEnabled = featureFlags.isEnabled('pwaEnabled');
+        this.debugMetrics = featureFlags.isEnabled('debugMetrics');
+        
         console.log('🚀 ChaosInitializer created with performance management');
+        if (this.pwaEnabled) {
+            console.log('📱 PWA features enabled');
+            this.initializePWAFeatures();
+        }
 
         this.setupAnimeIntegration();
+    }
+
+    /**
+     * Initialize PWA features when enabled
+     */
+    async initializePWAFeatures() {
+        try {
+            // Only proceed if service worker flag is enabled
+            if (!featureFlags.isEnabled('serviceWorkerEnabled')) {
+                console.log('💤 Service Worker disabled by feature flag');
+                return;
+            }
+
+            // Check if service worker is supported
+            if (!('serviceWorker' in navigator)) {
+                console.warn('⚠️ Service Worker not supported in this browser');
+                return;
+            }
+
+            // Register service worker (will be created in later steps)
+            const registration = await navigator.serviceWorker.register('/service-worker.js', {
+                scope: '/'
+            });
+
+            console.log('✅ Service Worker registered:', registration.scope);
+
+            // Listen for service worker updates
+            registration.addEventListener('updatefound', () => {
+                console.log('🔄 Service Worker update found');
+                const newWorker = registration.installing;
+                if (newWorker) {
+                    newWorker.addEventListener('statechange', () => {
+                        if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                            console.log('🆕 New Service Worker installed');
+                        }
+                    });
+                }
+            });
+
+            // Initialize PWA install prompt if enabled
+            if (featureFlags.isEnabled('installPrompt')) {
+                this.initializeInstallPrompt();
+            }
+
+        } catch (error) {
+            console.error('❌ PWA initialization failed:', error);
+            // Don't let PWA failures break the animation system
+        }
+    }
+
+    /**
+     * Initialize PWA install prompt handling
+     */
+    initializeInstallPrompt() {
+        let deferredPrompt = null;
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            console.log('💾 PWA install prompt ready');
+            
+            // For debugging - expose install function
+            if (this.debugMetrics) {
+                window.installPWA = async () => {
+                    if (deferredPrompt) {
+                        const choiceResult = await deferredPrompt.prompt();
+                        console.log('Install choice:', choiceResult.outcome);
+                        deferredPrompt = null;
+                    }
+                };
+            }
+        });
+
+        window.addEventListener('appinstalled', () => {
+            console.log('✅ PWA installed successfully');
+            deferredPrompt = null;
+        });
     }
 
     setupAnimeIntegration() {
@@ -789,20 +875,8 @@ class ChaosInitializer {
                     inset 0 0 30px rgba(0, 255, 255, 0.4);
             }
 
-            .glow {
-                animation: glowPulse 2s infinite;
-            }
-
-            @keyframes glowPulse {
-                0%, 100% {
-                    opacity: 0.5;
-                    transform: scale(1);
-                }
-                50% {
-                    opacity: 1;
-                    transform: scale(1.02);  /* Reduced from 1.1 */
-                }
-            }
+            /* Removed .glow animation that was causing unwanted green bar
+               The .glow element should remain opacity: 0 as set in chaos-effects.css */
         `;
         document.head.appendChild(style);
     }

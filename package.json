@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "ZIKADA 3886 Records - Psy & Techno Website",
   "main": "index.html",
+  "type": "module",
   "scripts": {
     "dev": "npm run kill-servers && npm run clear-cache && vite --port 3886 --host 127.0.0.1 --force",
     "dev-clean": "npm run kill-servers && npm run clear-cache && vite --port 3886 --host 127.0.0.1 --force",
@@ -20,7 +21,11 @@
     "screenshots:triggers": "playwright test tests/e2e/triggers-gallery.spec.ts --project=chromium",
     "check:hover-translate": "rg -n \"hover[^\\{]*\\{[\\s\\S]*?transform:.*translate\" css styles || echo 'No :hover translate violations found'",
     "check:filters": "rg -n \"document\\.body\\.style\\.filter\" js || echo 'No direct body filter writes found'",
-    "check:guardrails": "npm run -s check:hover-translate && npm run -s check:filters"
+    "check:guardrails": "npm run -s check:hover-translate && npm run -s check:filters",
+    "check:budgets": "node scripts/check-budgets.js",
+    "budget:report": "npm run check:budgets && echo Budget reports available in artifacts/budgets/",
+    "analyze:baseline": "node scripts/analyze-baseline.js",
+    "baseline:analyze": "npm run baseline && node scripts/analyze-baseline.js artifacts/baseline/perf-$(date +%Y%m%d-*)*.jsonl || echo 'Run baseline first'"
   },
   "keywords": [
     "webflow",

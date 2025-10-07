@@ -1,0 +1,95 @@
+{
+  "baseline": {
+    "metadata": {
+      "file": "/home/zady/Development/zikada-3886-website/artifacts/baseline/perf-20251007-175121.jsonl",
+      "dataPoints": 120,
+      "duration": 120,
+      "timestamp": "2025-10-07T15:55:03.263Z"
+    },
+    "fps": {
+      "count": 120,
+      "min": 7,
+      "max": 25,
+      "mean": 18.06,
+      "stdDev": 4.17,
+      "p50": 19,
+      "p95": 24,
+      "p99": 24,
+      "stability": "good",
+      "coefficientOfVariation": 0.23,
+      "droppedFramePercent": 100,
+      "belowThreshold": 120,
+      "assessment": "poor"
+    },
+    "memory": {
+      "count": 120,
+      "min": 40.15,
+      "max": 40.15,
+      "mean": 40.15,
+      "stdDev": 0,
+      "growthRateMBPerHour": 0,
+      "projected24hGrowthMB": 0,
+      "assessment": "excellent"
+    },
+    "dom": {
+      "count": 120,
+      "min": 85,
+      "max": 674,
+      "mean": 277.47,
+      "stdDev": 114.19,
+      "initialNodes": 166,
+      "finalNodes": 221,
+      "totalGrowth": 55,
+      "growthPercent": 33.13,
+      "assessment": "fair"
+    },
+    "effects": {
+      "overlays": {
+        "count": 120,
+        "min": 0,
+        "max": 1,
+        "mean": 0.74,
+        "stdDev": 0.44
+      },
+      "controlFx": {
+        "count": 120,
+        "min": 6,
+        "max": 6,
+        "mean": 6,
+        "stdDev": 0
+      }
+    },
+    "performance": {
+      "score": 60,
+      "rating": "fair",
+      "issues": [
+        "FPS critically low (< 30)"
+      ],
+      "summary": "1 issue(s) found"
+    }
+  },
+  "generated": "2025-10-07T15:55:03.263Z",
+  "summary": {
+    "fps": {
+      "mean": 18.06,
+      "p95": 24,
+      "assessment": "poor"
+    },
+    "memory": {
+      "growthRateMBPerHour": 0,
+      "projected24hGrowthMB": 0,
+      "assessment": "excellent"
+    },
+    "dom": {
+      "totalGrowth": 55,
+      "assessment": "fair"
+    },
+    "performance": {
+      "score": 60,
+      "rating": "fair",
+      "issues": [
+        "FPS critically low (< 30)"
+      ]
+    }
+  }
+}

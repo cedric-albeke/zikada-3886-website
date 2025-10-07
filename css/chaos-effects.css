@@ -206,7 +206,7 @@
 
 .glow {
     mix-blend-mode: screen;
-    opacity: 0.6 !important;
+    opacity: 0 !important; /* Initially hidden, shown via animations when needed */
 }
 
 /* Ensure text stays readable */

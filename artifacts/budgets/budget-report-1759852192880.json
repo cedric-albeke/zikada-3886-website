@@ -1,0 +1,14 @@
+{
+  "passed": true,
+  "violations": [],
+  "report": {
+    "timestamp": "2025-10-07T15:49:52.879Z",
+    "files": {},
+    "summary": {
+      "totalPWASize": 0,
+      "budget": 102400,
+      "passed": true,
+      "utilizationPercent": 0
+    }
+  }
+}

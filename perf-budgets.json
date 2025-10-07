@@ -1,0 +1,51 @@
+{
+  "version": "1.0.0",
+  "description": "Performance budgets for ZIKADA 3886 PWA hardening",
+  "budgets": {
+    "pwa": {
+      "description": "PWA feature additions must stay under total budget",
+      "maxSizeGzipped": 102400,
+      "components": {
+        "serviceWorker": {
+          "file": "service-worker.js",
+          "maxSizeGzipped": 6144,
+          "description": "Minimal, event-driven SW with no timers"
+        },
+        "manifest": {
+          "file": "manifest.webmanifest", 
+          "maxSizeGzipped": 2048,
+          "description": "Web app manifest for installability"
+        },
+        "icons": {
+          "directory": "icons/",
+          "maxSizeTotal": 92160,
+          "description": "All PWA icons (maskable 192px, 512px)"
+        }
+      }
+    },
+    "performance": {
+      "description": "Performance thresholds that cannot regress",
+      "fps": {
+        "baseline": 80,
+        "target": 120,
+        "emergencyThreshold": 30,
+        "description": "FPS must not drop below baseline on reference hardware"
+      },
+      "memory": {
+        "maxHeapGrowth": "5%",
+        "maxDOMNodes": 500,
+        "description": "Memory and DOM hygiene over 24h soak"
+      },
+      "webgl": {
+        "maxPrograms": 50,
+        "maxTextures": 100,
+        "description": "WebGL resource accumulation limits"
+      }
+    }
+  },
+  "enforcement": {
+    "ciFailOnBudgetBreach": true,
+    "generateSizeReports": true,
+    "artifactsDirectory": "artifacts/budgets/"
+  }
+}

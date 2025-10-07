@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>ZIKADA 3886 - Performance Budget Report</title>
+    <style>
+        body { font-family: 'SF Mono', Monaco, monospace; margin: 20px; background: #000; color: #0f0; }
+        .header { text-align: center; margin-bottom: 30px; }
+        .summary { background: #111; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
+        table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #333; }
+        th { background: #222; color: #0f0; }
+        .violation { background: #300; color: #f88; }
+        .passed { color: #8f8; }
+        .failed { color: #f88; }
+        .no-violations { text-align: center; color: #8f8; font-weight: bold; }
+        code { background: #222; padding: 2px 6px; border-radius: 3px; }
+        .timestamp { color: #888; font-size: 0.9em; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🎧 ZIKADA 3886 Performance Budget Report</h1>
+        <div class="timestamp">Generated: 2025-10-07T15:49:52.879Z</div>
+    </div>
+    
+    <div class="summary">
+        <h2>📊 Summary</h2>
+        <p><strong>Status:</strong> ✅ PASSED</p>
+        <p><strong>Total PWA Size:</strong> 0 B</p>
+        <p><strong>Budget Utilization:</strong> 0%</p>
+        <p><strong>Violations:</strong> 0</p>
+    </div>
+    
+    <h2>❌ Budget Violations</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Component</th>
+                <th>Actual Size</th>
+                <th>Budget</th>
+                <th>Overage</th>
+                <th>Path</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr><td colspan="5" class="no-violations">✅ No budget violations</td></tr>
+        </tbody>
+    </table>
+    
+    <h2>📁 File Details</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>File</th>
+                <th>Size</th>
+                <th>Budget</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            
+        </tbody>
+    </table>
+    
+    <div class="summary">
+        <h3>💡 Budget Configuration</h3>
+        <pre>{
+  "pwa": {
+    "description": "PWA feature additions must stay under total budget",
+    "maxSizeGzipped": 102400,
+    "components": {
+      "serviceWorker": {
+        "file": "service-worker.js",
+        "maxSizeGzipped": 6144,
+        "description": "Minimal, event-driven SW with no timers"
+      },
+      "manifest": {
+        "file": "manifest.webmanifest",
+        "maxSizeGzipped": 2048,
+        "description": "Web app manifest for installability"
+      },
+      "icons": {
+        "directory": "icons/",
+        "maxSizeTotal": 92160,
+        "description": "All PWA icons (maskable 192px, 512px)"
+      }
+    }
+  },
+  "performance": {
+    "description": "Performance thresholds that cannot regress",
+    "fps": {
+      "baseline": 80,
+      "target": 120,
+      "emergencyThreshold": 30,
+      "description": "FPS must not drop below baseline on reference hardware"
+    },
+    "memory": {
+      "maxHeapGrowth": "5%",
+      "maxDOMNodes": 500,
+      "description": "Memory and DOM hygiene over 24h soak"
+    },
+    "webgl": {
+      "maxPrograms": 50,
+      "maxTextures": 100,
+      "description": "WebGL resource accumulation limits"
+    }
+  }
+}</pre>
+    </div>
+</body>
+</html>
