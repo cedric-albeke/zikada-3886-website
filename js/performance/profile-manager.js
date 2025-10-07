@@ -17,6 +17,9 @@ export class PerformanceProfileManager {
     this._demoteStreak = 0;
     this._promoteStreak = 0;
 
+    // Lock mode: when set, ignore FPS updates and keep the locked profile
+    this._lockProfile = null; // 'high' | 'medium' | 'low' | null
+
     this.thresholds = {
       demoteHighToMedFPS: 45,
       demoteMedToLowFPS: 33,
@@ -78,13 +81,28 @@ export class PerformanceProfileManager {
     // Seed base DPR
     this._basePixelRatio = Math.min(window.devicePixelRatio || 1, 2);
 
-    // Apply initial profile based on a quick capability probe (optional conservative seeding)
+    // Respect persisted lock or last settled profile
+    let bootProfile = null;
+    try {
+      const lock = localStorage.getItem('3886_profile_lock');
+      if (lock && this.profiles[lock]) {
+        this._lockProfile = lock;
+        bootProfile = lock;
+      } else {
+        const last = localStorage.getItem('3886_profile_last');
+        if (last && this.profiles[last]) bootProfile = last;
+      }
+    } catch (_) {}
+
+    // Apply initial profile based on lock/last or a quick capability probe
     try {
       const gl = document.createElement('canvas')?.getContext('webgl') || document.createElement('canvas')?.getContext('experimental-webgl');
       const vendor = gl?.getExtension('WEBGL_debug_renderer_info') ? gl.getParameter(gl.getExtension('WEBGL_debug_renderer_info').UNMASKED_RENDERER_WEBGL) : '';
       const cores = navigator?.hardwareConcurrency || 4;
       // Very conservative: if integrated / low cores, start medium; else high
-      if (/intel|iris|uhd|radeon\s*vega/i.test(String(vendor)) || cores <= 4) {
+      if (bootProfile && this.profiles[bootProfile]) {
+        this.applyProfile(bootProfile, { reason: 'boot-persist' });
+      } else if (/intel|iris|uhd|radeon\s*vega/i.test(String(vendor)) || cores <= 4) {
         this.applyProfile('medium', { reason: 'seed' });
       } else {
         this.applyProfile('high', { reason: 'seed' });
@@ -102,6 +120,9 @@ export class PerformanceProfileManager {
   }
 
   _onMetric(avgFPS) {
+    // Ignore metrics when locked
+    if (this._lockProfile && this.profiles[this._lockProfile]) return;
+
     const t = this.thresholds;
     const cur = this.currentProfile;
 
@@ -209,8 +230,12 @@ export class PerformanceProfileManager {
 
       this.currentProfile = profile;
       this._lastApplied = profile;
+
+      // Persist last settled profile
+      try { localStorage.setItem('3886_profile_last', profile); } catch (_) {}
+
       try {
-        window.dispatchEvent(new CustomEvent('profile:changed', { detail: { profile, ...meta } }));
+        window.dispatchEvent(new CustomEvent('profile:changed', { detail: { profile, locked: !!this._lockProfile, ...meta } }));
       } catch (_) {}
       if (typeof window !== 'undefined') {
         window.performanceProfile = profile;
@@ -222,6 +247,22 @@ export class PerformanceProfileManager {
       if (typeof console !== 'undefined') {
         console.warn('[ProfileManager] Failed to apply profile', profile, error);
       }
+    }
+  }
+  }
+
+  // Lock/unlock API for control panel
+  setLockProfile(profileOrNull) {
+    if (profileOrNull && !this.profiles[profileOrNull]) return;
+    this._lockProfile = profileOrNull || null;
+    try {
+      if (this._lockProfile) localStorage.setItem('3886_profile_lock', this._lockProfile);
+      else localStorage.removeItem('3886_profile_lock');
+    } catch (_) {}
+    if (this._lockProfile) {
+      this.applyProfile(this._lockProfile, { reason: 'lock' });
+    } else {
+      try { window.dispatchEvent(new CustomEvent('profile:changed', { detail: { profile: this.currentProfile, locked: false } })); } catch(_) {}
     }
   }
 }
