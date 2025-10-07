@@ -34,6 +34,7 @@ import directLogoAnimation from './direct-logo-animation.js';
 import vjReceiver from './vj-receiver.js';
 import performanceOptimizer from './performance-optimizer.js';
 import VisualEffectsController from './visual-effects-complete.js';
+import createPerformanceProfileManager from './performance/profile-manager.js';
 
 // Use safe feature flags system
 const featureFlags = window.SAFE_FEATURE_FLAGS || {
@@ -450,12 +451,12 @@ class ChaosInitializer {
             
             // Clear all cached elements
             if (window.performanceElementManager) {
-                window.performanceElementManager.dispose();
+                window.performanceElementManager.emergencyCleanup();
             }
             
             // Clear all intervals
             if (window.intervalManager) {
-                window.intervalManager.disposeAll();
+                window.intervalManager.emergencyStop();
             }
             
             // Clear all timers managed by this class
@@ -497,7 +498,7 @@ class ChaosInitializer {
             // DOM-specific cleanup
             if (window.performanceElementManager) {
                 // Force DOM cleanup with stricter limits
-                window.performanceElementManager.purge(true);
+                window.performanceElementManager.purge();
             }
             
             // Remove orphaned elements
@@ -524,17 +525,22 @@ class ChaosInitializer {
             });
             
             // Clean up detached DOM nodes (common memory leak source)
-            const detachedElements = document.querySelectorAll('*:not(:connected)');
-            detachedElements.forEach(el => {
-                try {
-                    if (el.parentNode) {
-                        el.parentNode.removeChild(el);
-                        removedCount++;
+            // Note: '*:not(:connected)' is an invalid selector, so we use a different approach
+            try {
+                const allElements = document.querySelectorAll('*');
+                allElements.forEach(el => {
+                    if (!el.isConnected && el.parentNode) {
+                        try {
+                            el.parentNode.removeChild(el);
+                            removedCount++;
+                        } catch (e) {
+                            // Element may have been removed already
+                        }
                     }
-                } catch (e) {
-                    // Element may have been removed already
-                }
-            });
+                });
+            } catch (e) {
+                console.warn('Could not perform detached element cleanup:', e);
+            }
             
             console.log(`🗑️ DOM cleanup completed, removed ${removedCount} elements`);
             
@@ -1093,6 +1099,20 @@ class ChaosInitializer {
         this.initBackgroundAnimator();
         this.initLogoAnimator();  // Initialize logo animator early
         this.initChaosEngine();
+
+        // Start centralized profile manager (adaptive DPR, post-processing, particles, Lottie)
+        try {
+            const mgr = createPerformanceProfileManager({
+                engine: window.chaosEngine,
+                lottie: lottieAnimations,
+                effects: window.fxController || null
+            });
+            mgr.start();
+            console.log('🧭 PerformanceProfileManager started');
+        } catch (e) {
+            console.warn('⚠️ Failed to start PerformanceProfileManager:', e);
+        }
+
         this.initTextEffects();
         this.initAdditionalEffects();
         // RE-ENABLED: Random animations (CSS blur will fix rectangular elements)
