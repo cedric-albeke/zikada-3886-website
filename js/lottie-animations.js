@@ -187,6 +187,11 @@ class LottieAnimations {
     }
 
     async init() {
+        // Prevent DOM bloat on re-initialization
+        if (this.isInitialized) {
+            console.warn('⚠️ LottieAnimations.init() called while already initialized — performing safe destroy to prevent DOM growth');
+            try { this.destroy(); } catch (_) {}
+        }
         console.log('🌟 Initializing Lottie animations...');
 
         try {

@@ -2501,6 +2501,7 @@ class VJReceiver {
         }
         
         if (window.lottieAnimations && window.lottieAnimations.init) {
+            try { window.lottieAnimations.destroy?.(); } catch (_) {}
             window.lottieAnimations.init();
         }
         

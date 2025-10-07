@@ -1318,31 +1318,36 @@ class ProfessionalVJControlPanel {
             });
         }
         
-        // Manual BPM Input
+        // Manual BPM Input + steppers
         if (bpmInput) {
-            bpmInput.addEventListener('change', () => {
-                const bpm = parseInt(bpmInput.value);
-                if (bpm >= 20 && bpm <= 300) {
-                    this.currentBPM = bpm;
-                    if (bpmDisplay) bpmDisplay.textContent = bpm;
-                    
-                    this.sendMessage({
-                        type: 'bpm_change',
-                        bpm: bpm,
-                        timestamp: Date.now()
-                    });
-                } else {
-                    // Reset to current BPM if invalid
-                    bpmInput.value = this.currentBPM || 120;
-                }
-            });
+            const applyBpm = (val) => {
+                const bpm = Math.max(20, Math.min(300, parseInt(val)));
+                if (!Number.isFinite(bpm)) return;
+                this.currentBPM = bpm;
+                bpmInput.value = String(bpm);
+                if (bpmDisplay) bpmDisplay.textContent = bpm;
+                this.sendMessage({ type: 'bpm_change', bpm, timestamp: Date.now() });
+            };
+
+            bpmInput.addEventListener('change', () => applyBpm(bpmInput.value));
             
             // Allow Enter key to apply
             bpmInput.addEventListener('keypress', (e) => {
                 if (e.key === 'Enter') {
-                    bpmInput.blur(); // Trigger change event
+                    e.preventDefault();
+                    applyBpm(bpmInput.value);
+                    bpmInput.blur();
                 }
             });
+
+            // Stepper buttons
+            const bump = (delta, shift) => {
+                const current = parseInt(bpmInput.value || this.currentBPM || 120) || 120;
+                const step = shift ? 5 : 1;
+                applyBpm(current + delta * step);
+            };
+            document.getElementById('bpmUp')?.addEventListener('click', (e) => { e.preventDefault(); bump(1, e.shiftKey); });
+            document.getElementById('bpmDown')?.addEventListener('click', (e) => { e.preventDefault(); bump(-1, e.shiftKey); });
         }
 
         // FX Intensity sliders (glitch, particles, noise)
