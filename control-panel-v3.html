@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3886 VJ Control Panel V3 - Professional</title>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <!-- V3 PROFESSIONAL CSS - Restored V1 Features -->
+    <link href="css/control-panel-v3-professional.css?v=3.3.6" rel="stylesheet">
+</head>
+<body>
+    <div class="control-panel">
+        
+        <!-- ============================================
+             MATRIX ENTERPRISE HEADER - V1 Professional Design
+             ============================================ -->
+        <header class="matrix-header" id="mainHeader">
+            <!-- Matrix decorative elements -->
+            <div class="matrix-grid-bg"></div>
+            <div class="matrix-scan-line"></div>
+            
+            <!-- Live Preview Section -->
+            <div class="matrix-section matrix-identity">
+                <div class="live-preview">
+                    <div class="preview-header">
+                        <span class="preview-title">LIVE PREVIEW</span>
+                        <span class="preview-hint">Tab capture</span>
+                    </div>
+                    <div class="preview-frame-wrap">
+                        <video id="livePreviewVideo" class="preview-video" autoplay muted playsinline></video>
+                        <div class="preview-overlay" id="previewOverlay">
+                            <button id="startPreviewBtn" class="preview-btn">Start</button>
+                            <button id="stopPreviewBtn" class="preview-btn hidden">Stop</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Combined Performance & Status Grid -->
+            <div class="matrix-section matrix-perf-status">
+                <div class="metrics-title">PERFORMANCE.STATUS</div>
+                <div class="perf-status-grid">
+                    <!-- Performance Metrics Column -->
+                    <div class="metrics-column" data-role="perf-metrics">
+                        <div class="metrics-grid">
+                            <div class="metric-cell">
+                                <div class="metric-label">FPS</div>
+                                <div id="fpsCounter" class="metric-value">60</div>
+                                <div class="metric-bar"><span class="bar-fill fps-bar"></span></div>
+                            </div>
+                            <div class="metric-cell">
+                                <div class="metric-label">MEM</div>
+                                <div id="memoryUsage" class="metric-value">--MB</div>
+                                <div class="metric-bar"><span class="bar-fill mem-bar"></span></div>
+                            </div>
+                            <div class="metric-cell">
+                                <div class="metric-label">DOM</div>
+                                <div id="domNodes" class="metric-value">--</div>
+                                <div class="metric-bar"><span class="bar-fill dom-bar"></span></div>
+                            </div>
+                            <div class="metric-cell">
+                                <div class="metric-label">FX</div>
+                                <div id="activeEffects" class="metric-value">0</div>
+                                <div class="metric-bar"><span class="bar-fill fx-bar"></span></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Connection Status Column -->
+                    <div class="connection-column" data-role="link-status">
+                        <div class="connection-container" id="connectionStatus">
+                            <div class="connection-indicator">
+                                <span class="status-dot"></span>
+                                <span class="status-wave"></span>
+                            </div>
+                            <div class="connection-text">
+                                <span class="status-text">OFFLINE</span>
+                                <div class="uptime-display">
+                                    <span class="uptime-label">UP:</span>
+                                    <span id="systemUptime">00:00:00</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Matrix Dice System -->
+            <div class="matrix-section matrix-dice">
+                <div class="dice-title">MATRIX.DICE.SYSTEM</div>
+                <div class="dice-container">
+                    <div class="dice-countdown-ring">
+                        <svg class="countdown-svg" width="60" height="60">
+                            <circle cx="30" cy="30" r="28" stroke="#003311" stroke-width="2" fill="none"/>
+                            <circle id="countdownCircle" cx="30" cy="30" r="28" stroke="#00ff85" stroke-width="2" fill="none"
+                                stroke-dasharray="176" stroke-dashoffset="0"
+                                transform="rotate(-90 30 30)"/>
+                        </svg>
+                        <div class="countdown-text" id="diceCountdown">15</div>
+                    </div>
+                    <div class="dice-info">
+                        <div class="dice-stats">
+                            <div class="dice-threshold">THRESHOLD ≥ 90</div>
+                            <div class="dice-last">
+                                <span class="last-label">LAST:</span>
+                                <span id="lastDiceRoll" class="last-value">--/100</span>
+                            </div>
+                        </div>
+                        <div class="dice-message">
+                            <div class="message-label">LAST MSG:</div>
+                            <div id="lastMatrixMessage" class="message-text">STANDBY</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- System Controls -->
+            <div class="matrix-section matrix-controls">
+                <div class="controls-grid">
+                    <button class="matrix-control-btn kill-btn" id="emergencyStop" title="Emergency Kill">
+                        <span class="btn-glyph">☠</span>
+                        <span class="btn-label">KILL</span>
+                        <span class="btn-code">[ESC]</span>
+                    </button>
+                    <button class="matrix-control-btn reset-btn" id="systemReset" title="System Reset">
+                        <span class="btn-glyph">↻</span>
+                        <span class="btn-label">RESET</span>
+                        <span class="btn-code">[RST]</span>
+                    </button>
+                    <button class="matrix-control-btn reload-btn" id="systemReload" title="Full Reload">
+                        <span class="btn-glyph">⟳</span>
+                        <span class="btn-label">RELOAD</span>
+                        <span class="btn-code">[RLD]</span>
+                    </button>
+                </div>
+                <div class="performance-modes">
+                    <button class="mode-btn" data-mode="low" id="perfLow" title="Low Performance">[L]</button>
+                    <button class="mode-btn active" data-mode="auto" id="perfAuto" title="Auto Performance">[A]</button>
+                    <button class="mode-btn" data-mode="high" id="perfHigh" title="High Performance">[H]</button>
+                </div>
+            </div>
+            
+            <!-- MIDI Control Section -->
+            <div class="matrix-section matrix-midi">
+                <div class="midi-title">MIDI.CONTROL.SYSTEM</div>
+                <div class="midi-compact-container">
+                    <!-- Status Row -->
+                    <div class="midi-status-row">
+                        <div class="device-status-compact">
+                            <span class="midi-dot" id="midiStatusDot"></span>
+                            <span class="status-text" id="midiStatusText">NO.DEV</span>
+                        </div>
+                        <div class="clock-status-compact">
+                            <span class="clock-dot" id="clockStatusDot"></span>
+                            <span class="clock-text" id="clockStatusText">INT.CLK</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Device & Learn Row -->
+                    <div class="midi-device-row">
+                        <select id="midiDeviceSelect" class="midi-device-dropdown">
+                            <option value="">SELECT.DEVICE</option>
+                        </select>
+                        <button id="midiLearnBtn" class="midi-learn-compact">LEARN.OFF</button>
+                    </div>
+                    
+                    <!-- Actions Row -->
+                    <div class="midi-actions-row">
+                        <button id="midiLoadPresetBtn" class="midi-action-compact">PRESET</button>
+                        <button id="midiClearBtn" class="midi-action-compact">CLEAR</button>
+                        <button id="midiDebugBtn" class="midi-action-compact">DEBUG</button>
+                    </div>
+                    
+                    <!-- Activity Display -->
+                    <div class="midi-activity-compact" id="midiActivity">
+                        <div class="activity-display-compact" id="activityDisplay">
+                            <span class="activity-text-compact">NO.MIDI.ACTIVITY</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Hidden elements for full functionality -->
+                <div style="display: none;">
+                    <div class="midi-mappings" id="midiMappings">
+                        <div class="mappings-list" id="mappingsList">
+                            <div class="no-mappings">No mappings configured</div>
+                        </div>
+                    </div>
+                    <input type="file" id="importMappingsFile" accept=".json">
+                </div>
+            </div>
+        </header>
+
+        <!-- ============================================
+             MAIN CONTROL GRID
+             ============================================ -->
+        <div class="control-grid">
+
+            <!-- ============================================
+                 TRIGGER FX - PRIMARY PERFORMANCE CONTROL
+                 ============================================ -->
+            <section class="cp-section trigger-fx-section">
+                <h2 class="cp-section__title" id="trigger-fx-title">Trigger FX</h2>
+                
+                <!-- Hidden accessibility status for screen readers -->
+                <div id="effect-status" class="sr-announcement" aria-live="polite" role="status"></div>
+                
+                <div class="cp-section__content">
+                    <div class="trigger-fx-grid">
+                        <!-- Instant Effects -->
+                        <div class="trigger-effects trigger-effects-container" 
+                             role="group" 
+                             aria-labelledby="trigger-fx-title"
+                             aria-describedby="effect-status">
+                            <button class="trigger-btn" data-effect="strobe">STROBE</button>
+                            <button class="trigger-btn" data-effect="blackout">BLACKOUT</button>
+                            <button class="trigger-btn" data-effect="whiteout">WHITEOUT</button>
+                            <button class="trigger-btn" data-effect="rgbsplit">RGB SPLIT</button>
+                            <button class="trigger-btn" data-effect="shake">RIPPLE</button>
+                            
+                            <button class="trigger-btn" data-effect="pulse">LOGO PULSE</button>
+                            <button class="trigger-btn" data-effect="matrix-rain">DIGITAL WAVE</button>
+                            <button class="trigger-btn" data-effect="cosmic">COSMIC</button>
+                            <button class="trigger-btn" data-effect="vignette-pulse">VIGNETTE</button>
+                            <button class="trigger-btn" data-effect="scanlines-sweep">SCANLINE</button>
+                            
+                            <button class="trigger-btn" 
+                                    data-effect="chroma-pulse" 
+                                    aria-label="Trigger chromatic aberration pulse effect"
+                                    aria-pressed="false"
+                                    title="Chromatic Aberration Pulse - Creates RGB color separation effect">CHROMA</button>
+                            <button class="trigger-btn" data-effect="noise-burst">NOISE</button>
+                            <button class="trigger-btn" data-effect="grid-flash">GRID FLASH</button>
+                            <button class="trigger-btn" data-effect="lens-flare">LENS FLARE</button>
+                            <button class="trigger-btn" data-effect="zoom-blur">ZOOM BLUR</button>
+                            
+                            <button class="trigger-btn" data-effect="invert-flicker">INVERT</button>
+                            <button class="trigger-btn" 
+                                    data-effect="spotlight-sweep" 
+                                    aria-label="Trigger spotlight sweep effect"
+                                    aria-pressed="false"
+                                    title="Spotlight Sweep - Creates moving light beam effect">SPOTLIGHT</button>
+                            <button class="trigger-btn" 
+                                    data-effect="heat-shimmer" 
+                                    aria-label="Trigger heat shimmer effect"
+                                    aria-pressed="false"
+                                    title="Heat Shimmer - Creates diagonal light sweep effect">SHIMMER</button>
+                        </div>
+
+                        <!-- Macro Buttons -->
+                        <div class="trigger-macros">
+                            <button class="macro-btn" data-macro="impact">MACRO: IMPACT</button>
+                            <button class="macro-btn" data-macro="glitch">MACRO: GLITCH</button>
+                            <button class="macro-btn" data-macro="wave">MACRO: WAVE</button>
+                        </div>
+
+                        <!-- Tempo Controls (Inline) -->
+                        <div class="trigger-tempo">
+                            <div class="tempo-control">
+                                <span class="tempo-label">SPEED</span>
+                                <input type="range" 
+                                       class="tempo-slider" 
+                                       id="speedSlider" 
+                                       min="10" 
+                                       max="200" 
+                                       value="100"
+                                       aria-label="Global Speed">
+                                <span class="tempo-value" id="speedValue">100%</span>
+                            </div>
+                            <div class="tempo-control">
+                                <span class="tempo-label">PHASE</span>
+                                <input type="range"
+                                       class="tempo-slider"
+                                       id="phaseDurationSlider"
+                                       min="5"
+                                       max="60"
+                                       value="30"
+                                       aria-label="Phase Duration (seconds)">
+                                <span class="tempo-value" id="phaseValue">30s</span>
+                            </div>
+                            <div class="tempo-bpm">
+                                <span class="tempo-label">BPM</span>
+                                <button class="bpm-tap-btn" id="tapBPM" aria-label="Tap BPM">TAP</button>
+                                <span class="tempo-value" id="bpmValue">120</span>
+                                <button class="bpm-tap-btn" id="toggleBpmRipple" data-state="off" aria-pressed="false" aria-label="Toggle BPM Ripple">OFF</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ============================================
+                 ANIMATION SYSTEM
+                 ============================================ -->
+            <section class="cp-section animation-section">
+                <h2 class="cp-section__title">Animation System</h2>
+                <div class="cp-section__content">
+                    <div class="animation-grid">
+                        <!-- System Controls - Toggle Style -->
+                        <div class="animation-system-controls">
+                            <button class="system-toggle-btn" id="animeToggle" data-state="disabled">
+                                <span class="toggle-status">DISABLED</span>
+                                <span class="toggle-indicator"></span>
+                            </button>
+                        </div>
+
+                        <!-- Animation Triggers -->
+                        <div class="animation-triggers">
+                            <button class="anim-trigger-btn" data-anime="logo-pulse">
+                                <span class="trigger-label">LOGO</span>
+                                <span class="trigger-desc">Pulse Effect</span>
+                            </button>
+                            <button class="anim-trigger-btn" data-anime="logo-spin">
+                                <span class="trigger-label">LOGO</span>
+                                <span class="trigger-desc">Spin 360°</span>
+                            </button>
+                            <button class="anim-trigger-btn" data-anime="logo-glow">
+                                <span class="trigger-label">LOGO</span>
+                                <span class="trigger-desc">Glow Burst</span>
+                            </button>
+                            <button class="anim-trigger-btn" data-anime="matrix-flash">
+                                <span class="trigger-label">MATRIX</span>
+                                <span class="trigger-desc">Flash Effect</span>
+                            </button>
+                            
+                            <button class="anim-trigger-btn" data-anime="matrix-rain">
+                                <span class="trigger-label">MATRIX</span>
+                                <span class="trigger-desc">Rain Effect</span>
+                            </button>
+                            <button class="anim-trigger-btn" data-anime="matrix-glitch">
+                                <span class="trigger-label">MATRIX</span>
+                                <span class="trigger-desc">Glitch Wave</span>
+                            </button>
+                            <button class="anim-trigger-btn" data-anime="bg-warp">
+                                <span class="trigger-label">BACKGROUND</span>
+                                <span class="trigger-desc">Warp Effect</span>
+                            </button>
+                            <button class="anim-trigger-btn" data-anime="bg-shake">
+                                <span class="trigger-label">BACKGROUND</span>
+                                <span class="trigger-desc">Shake</span>
+                            </button>
+                            
+                            <button class="anim-trigger-btn" data-anime="bg-zoom">
+                                <span class="trigger-label">BACKGROUND</span>
+                                <span class="trigger-desc">Zoom Burst</span>
+                            </button>
+                            <button class="anim-trigger-btn" data-anime="text-scramble">
+                                <span class="trigger-label">TEXT</span>
+                                <span class="trigger-desc">Scramble</span>
+                            </button>
+                            <button class="anim-trigger-btn" data-anime="text-wave">
+                                <span class="trigger-label">TEXT</span>
+                                <span class="trigger-desc">Wave Motion</span>
+                            </button>
+                            <button class="anim-trigger-btn" data-anime="full-chaos">
+                                <span class="trigger-label">CHAOS</span>
+                                <span class="trigger-desc">Full Chaos</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ============================================
+                 SCENE SELECT
+                 ============================================ -->
+            <section class="cp-section scene-section">
+                <h2 class="cp-section__title">Scene Select</h2>
+                <div class="cp-section__content">
+                    <div class="scene-grid">
+                        <button class="scene-btn" data-scene="intense">INTENSE</button>
+                        <button class="scene-btn" data-scene="calm">CALM</button>
+                        <button class="scene-btn" data-scene="glitch">GLITCH</button>
+                        <button class="scene-btn" data-scene="techno">TECHNO</button>
+                        <button class="scene-btn" data-scene="matrix">MATRIX</button>
+                        <button class="scene-btn" data-scene="minimal">MINIMAL</button>
+                        
+                        <button class="scene-btn" data-scene="chaotic">CHAOTIC</button>
+                        <button class="scene-btn" data-scene="retro">RETRO</button>
+                        <button class="scene-btn" data-scene="vaporwave">VAPORWAVE</button>
+                        <button class="scene-btn" data-scene="cyberpunk">CYBERPUNK</button>
+                        <button class="scene-btn" data-scene="neon">NEON</button>
+                        <button class="scene-btn" data-scene="aurora">AURORA</button>
+                        
+                        <button class="scene-btn" data-scene="sunset">SUNSET</button>
+                        <button class="scene-btn" data-scene="ocean">OCEAN</button>
+                        <button class="scene-btn" data-scene="forest">FOREST</button>
+                        <button class="scene-btn" data-scene="fire">FIRE</button>
+                        <button class="scene-btn" data-scene="ice">ICE</button>
+                        <button class="scene-btn" data-scene="galaxy">GALAXY</button>
+                        
+                        <button class="scene-btn scene-auto active" data-scene="auto">AUTO MODE</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ============================================
+                 VISUAL EFFECTS & LAYERS (Collapsible)
+                 ============================================ -->
+            <section class="cp-section visual-effects-section">
+                <h2 class="cp-section__title">Visual Effects & Layers</h2>
+                <div class="cp-section__content">
+                    
+                    <!-- Effect Toggles -->
+                    <div class="effect-toggles">
+                        <div class="toggle-grid">
+                            <div class="toggle-item">
+                                <label>Holographic Scan</label>
+                                <button class="effect-toggle-btn" data-effect="holographic" data-state="on">ON</button>
+                            </div>
+                            <div class="toggle-item">
+                                <label>Data Streams</label>
+                                <button class="effect-toggle-btn" data-effect="dataStreams" data-state="on">ON</button>
+                            </div>
+                            <div class="toggle-item">
+                                <label>Strobe Circles</label>
+                                <button class="effect-toggle-btn" data-effect="strobeCircles" data-state="off">OFF</button>
+                            </div>
+                            <div class="toggle-item">
+                                <label>Plasma Field</label>
+                                <button class="effect-toggle-btn" data-effect="plasma" data-state="on">ON</button>
+                            </div>
+                            
+                            <div class="toggle-item">
+                                <label>Particle System</label>
+                                <button class="effect-toggle-btn" data-effect="particles" data-state="on">ON</button>
+                            </div>
+                            <div class="toggle-item">
+                                <label>Digital Noise</label>
+                                <button class="effect-toggle-btn" data-effect="noise" data-state="on">ON</button>
+                            </div>
+                            <div class="toggle-item">
+                                <label>Cyber Grid</label>
+                                <button class="effect-toggle-btn" data-effect="cyberGrid" data-state="on">ON</button>
+                            </div>
+                            <div class="toggle-item">
+                                <label>RGB Split</label>
+                                <button class="effect-toggle-btn" data-effect="rgbSplit" data-state="off">OFF</button>
+                            </div>
+                            
+                            <div class="toggle-item">
+                                <label>Chromatic Aberration</label>
+                                <button class="effect-toggle-btn" data-effect="chromatic" data-state="off">OFF</button>
+                            </div>
+                            <div class="toggle-item">
+                                <label>Scan Lines</label>
+                                <button class="effect-toggle-btn" data-effect="scanlines" data-state="off">OFF</button>
+                            </div>
+                            <div class="toggle-item">
+                                <label>Vignette</label>
+                                <button class="effect-toggle-btn" data-effect="vignette" data-state="on">ON</button>
+                            </div>
+                            <div class="toggle-item">
+                                <label>Film Grain</label>
+                                <button class="effect-toggle-btn" data-effect="filmgrain" data-state="off">OFF</button>
+                            </div>
+                            
+                            <div class="toggle-item">
+                                <label>Aurora</label>
+                                <button class="effect-toggle-btn" data-effect="aurora" data-state="off">OFF</button>
+                            </div>
+                            <div class="toggle-item">
+                                <label>Neon Rings</label>
+                                <button class="effect-toggle-btn" data-effect="neonRings" data-state="off">OFF</button>
+                            </div>
+                            <div class="toggle-item">
+                                <label>Circuit Grid</label>
+                                <button class="effect-toggle-btn" data-effect="circuitGrid" data-state="off">OFF</button>
+                            </div>
+                            <div class="toggle-item">
+                                <label>Chromatic Pulse</label>
+                                <button class="effect-toggle-btn" data-effect="chromaticPulse" data-state="off">OFF</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Layer Controls -->
+                    <div class="layer-controls">
+                        <h3>Layer Visibility</h3>
+                        <div class="toggle-grid">
+                            <div class="toggle-item">
+                                <label>Background Layer</label>
+                                <button class="layer-toggle-btn" data-layer="background" data-state="on">ON</button>
+                            </div>
+                            <div class="toggle-item">
+                                <label>Matrix Rain</label>
+                                <button class="layer-toggle-btn" data-layer="matrix-rain" data-state="on">ON</button>
+                            </div>
+                            <div class="toggle-item">
+                                <label>Logo Layer</label>
+                                <button class="layer-toggle-btn" data-layer="logo" data-state="on">ON</button>
+                            </div>
+                            <div class="toggle-item">
+                                <label>Text Elements</label>
+                                <button class="layer-toggle-btn" data-layer="text" data-state="on">ON</button>
+                            </div>
+                            
+                            <div class="toggle-item">
+                                <label>Overlay Effects</label>
+                                <button class="layer-toggle-btn" data-layer="overlay" data-state="on">ON</button>
+                            </div>
+                            <div class="toggle-item">
+                                <label>Debug Info</label>
+                                <button class="layer-toggle-btn" data-layer="debug" data-state="off">OFF</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Master Controls -->
+                    <div class="master-controls">
+                        <button class="master-btn" id="toggleAllEffects">TOGGLE ALL EFFECTS</button>
+                        <button class="master-btn" id="toggleAllLayers">TOGGLE ALL LAYERS</button>
+                        <button class="master-btn" id="resetVisuals">RESET VISUALS</button>
+                    </div>
+                </div>
+            </section>
+
+
+        </div>
+    </div>
+
+    <!-- ============================================
+         JAVASCRIPT - Control Panel Logic
+         ============================================ -->
+    <!-- MIDI Support Scripts -->
+    <script src="./js/midi-controller.js"></script>
+    <script src="./js/midi-action-catalog.js"></script>
+    <script src="./js/midi-feedback.js"></script>
+    
+    <script type="module">
+        // Import performance stats controller
+        import performanceStatsController from './js/performance-stats-controller.js';
+        
+        // Import V3 enhancements (keyboard shortcuts, toggles, animations)
+        import './js/control-panel-v3.js';
+        
+        // Import control panel professional (handles communication with main page)
+        import './js/control-panel-professional.js';
+        
+        // Import preview client for live preview feature
+        import './js/preview-client.js';
+        
+        // Import trigger effects diagnostic tool
+        import './js/trigger-effects-diagnostic.js';
+        
+        // Import trigger effect orchestrator for CHROMA, SPOTLIGHT, SHIMMER
+        import './js/trigger-effect-orchestrator.js';
+        
+        // Initialize MIDI support
+        window.addEventListener('DOMContentLoaded', () => {
+            // Enable MIDI by default in control panel
+            localStorage.setItem('3886_midi_enabled', '1');
+            
+            // Initialize MIDI Controller globally
+            if (window.MIDIController && !window.midiController) {
+                window.midiController = new window.MIDIController({ 
+                    mode: 'broadcast',
+                    debug: localStorage.getItem('3886_midi_debug') === '1'
+                });
+                console.log('🎹 Global MIDI Controller initialized');
+            }
+        });
+    </script>
+</body>
+</html>

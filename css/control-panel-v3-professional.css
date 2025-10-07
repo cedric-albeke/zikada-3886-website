@@ -1,0 +1,1313 @@
+/**
+ * ============================================================================
+ * CONTROL PANEL V3 PROFESSIONAL - Complete Overhaul
+ * ============================================================================
+ * 
+ * Restores all V1 professional features + modern improvements
+ * Version: 3.1.0
+ * Date: 2025-10-03
+ */
+
+/* Import V1 base styles for matrix header and core components */
+@import url('control-panel.css');
+
+/* Import trigger effects module */
+@import url('trigger-effects.css');
+
+/* ============================================================================
+   OVERRIDES & ENHANCEMENTS
+   ============================================================================ */
+
+/* Ensure control panel uses V1 layout strategy */
+.control-panel {
+    width: 100%;
+    min-height: 100vh;
+    background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%);
+    padding: 12px;
+    position: relative;
+    max-width: 1920px;
+    margin-inline: auto;
+}
+
+/* V3-specific section styling - align with V1 */
+.cp-section {
+    background: rgba(0, 0, 0, 0.9);
+    border: 1px solid rgba(0, 255, 133, 0.3);
+    border-radius: 8px;
+    padding: 14px;
+    min-width: 0;
+}
+
+.cp-section__title {
+    margin: 0 0 10px 0;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: #00ff85;
+}
+
+.cp-section__content {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+/* ============================================================================
+   MATRIX HEADER - V1 Professional Design
+   ============================================================================ */
+
+/* Matrix header already styled by imported control-panel.css */
+/* Additional V3-specific enhancements */
+
+.matrix-section h3,
+.metrics-title,
+.dice-title,
+.connection-title {
+    font-size: 9px;
+    color: rgba(0, 255, 133, 0.7);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 8px;
+    padding-bottom: 2px;
+    border-bottom: 1px solid rgba(0, 255, 133, 0.1);
+}
+
+/* ============================================================================
+   PERFORMANCE METRICS - Visual Bars & Animations
+   ============================================================================ */
+
+.metric-bar {
+    width: 100%;
+    height: 4px;
+    background: rgba(0, 255, 133, 0.1);
+    border-radius: 2px;
+    overflow: hidden;
+    margin-top: 4px;
+}
+
+.bar-fill {
+    display: block;
+    height: 100%;
+    background: #00ff85;
+    border-radius: 2px;
+    transition: width 0.3s ease;
+    box-shadow: 0 0 8px rgba(0, 255, 133, 0.6);
+}
+
+.fps-bar { width: 90%; background: linear-gradient(90deg, #00ff85, #00cc6a); }
+.mem-bar { width: 45%; background: linear-gradient(90deg, #00ff85, #ffaa00); }
+.dom-bar { width: 60%; background: linear-gradient(90deg, #00ff85, #00aaff); }
+.fx-bar  { width: 0%; background: linear-gradient(90deg, #ff6600, #ff0066); }
+
+/* Pulsing animation for status indicators */
+@keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.7; transform: scale(1.1); }
+}
+
+.status-dot {
+    animation: pulse 2s infinite;
+}
+
+/* Connection wave effect */
+.status-wave {
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    border: 2px solid #00ff85;
+    opacity: 0;
+    animation: waveExpand 2s infinite;
+}
+
+@keyframes waveExpand {
+    0% { transform: scale(1); opacity: 0.8; }
+    100% { transform: scale(2.5); opacity: 0; }
+}
+
+/* ============================================================================
+   SYSTEM CONTROLS - Professional Button Design
+   ============================================================================ */
+
+.matrix-control-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 8px 12px;
+    border: 2px solid currentColor;
+    background: rgba(0, 0, 0, 0.6);
+    font-family: 'Space Mono', monospace;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border-radius: 4px;
+}
+
+.matrix-control-btn:hover {
+    background: rgba(0, 255, 133, 0.1);
+    box-shadow: 0 0 15px currentColor;
+    transform: translateY(-2px);
+}
+
+.btn-glyph {
+    font-size: 18px;
+    line-height: 1;
+}
+
+.btn-label {
+    font-size: 10px;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+.btn-code {
+    font-size: 8px;
+    opacity: 0.6;
+}
+
+.kill-btn {
+    color: #ff4444;
+}
+
+.reset-btn {
+    color: #ffaa00;
+}
+
+.reload-btn {
+    color: #00aaff;
+}
+
+/* Performance mode buttons */
+.performance-modes {
+    display: flex;
+    gap: 6px;
+    margin-top: 8px;
+}
+
+.mode-btn {
+    flex: 1;
+    padding: 6px 8px;
+    border: 1px solid rgba(0, 255, 133, 0.3);
+    background: rgba(0, 0, 0, 0.4);
+    color: rgba(0, 255, 133, 0.6);
+    font-family: inherit;
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border-radius: 3px;
+}
+
+.mode-btn:hover {
+    background: rgba(0, 255, 133, 0.1);
+    border-color: #00ff85;
+}
+
+.mode-btn.active {
+    background: rgba(0, 255, 133, 0.2);
+    border-color: #00ff85;
+    color: #00ff85;
+    box-shadow: 0 0 10px rgba(0, 255, 133, 0.3);
+}
+
+/* ============================================================================
+   SCENE SELECTION
+   ============================================================================ */
+
+.scene-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+    gap: 8px;
+}
+
+.scene-btn {
+    padding: 12px 8px;
+    border: 2px solid rgba(0, 255, 133, 0.4);
+    background: rgba(0, 0, 0, 0.4);
+    color: #00ff85;
+    font-family: inherit;
+    font-size: 11px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border-radius: 4px;
+    position: relative;
+    overflow: hidden;
+}
+
+.scene-btn:hover {
+    background: rgba(0, 255, 133, 0.1);
+    border-color: #00ff85;
+    box-shadow: 0 0 15px rgba(0, 255, 133, 0.3);
+    transform: scale(1.05);
+}
+
+.scene-btn.active {
+    background: rgba(0, 255, 133, 0.2);
+    border-color: #00ff85;
+    color: #ffffff;
+    box-shadow: 0 0 20px rgba(0, 255, 133, 0.5);
+}
+
+.scene-auto {
+    grid-column: 1 / -1;
+    background: linear-gradient(135deg, rgba(255, 170, 0, 0.2), rgba(255, 102, 0, 0.2));
+    border-color: #ffaa00;
+    color: #ffaa00;
+}
+
+.scene-auto.active {
+    background: linear-gradient(135deg, rgba(255, 170, 0, 0.3), rgba(255, 102, 0, 0.3));
+    box-shadow: 0 0 25px rgba(255, 170, 0, 0.6);
+}
+
+/* ============================================================================
+   TRIGGER FX SECTION
+   ============================================================================ */
+
+.trigger-fx-grid {
+    display: grid;
+    gap: 8px;
+}
+
+.trigger-effects {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+}
+
+.trigger-btn {
+    padding: 8px 6px;
+    border: 2px solid #ff6600;
+    background: rgba(255, 102, 0, 0.1);
+    color: #ff6600;
+    font-family: inherit;
+    font-weight: bold;
+    font-size: 9px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border-radius: 4px;
+    text-transform: uppercase;
+    min-height: 32px;
+}
+
+.trigger-btn:hover {
+    background: rgba(255, 102, 0, 0.3);
+    box-shadow: 0 0 15px rgba(255, 102, 0, 0.5);
+    transform: translateY(-2px);
+}
+
+.trigger-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 0 25px rgba(255, 102, 0, 0.8);
+}
+
+.trigger-macros {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+}
+
+.macro-btn {
+    padding: 8px 6px;
+    border: 2px solid #00aaff;
+    background: rgba(0, 170, 255, 0.1);
+    color: #00aaff;
+    font-family: inherit;
+    font-weight: bold;
+    font-size: 9px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border-radius: 4px;
+    min-height: 32px;
+}
+
+.macro-btn:hover {
+    background: rgba(0, 170, 255, 0.2);
+    box-shadow: 0 0 20px rgba(0, 170, 255, 0.5);
+}
+
+/* Tempo controls */
+.trigger-tempo {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1.2fr;
+    gap: 12px;
+    padding: 12px;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(0, 255, 133, 0.2);
+    border-radius: 4px;
+}
+
+.tempo-control,
+.tempo-bpm {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.tempo-label {
+    font-size: 10px;
+    font-weight: bold;
+    color: rgba(0, 255, 133, 0.8);
+    min-width: 50px;
+}
+
+.tempo-slider {
+    flex: 1;
+    height: 6px;
+    background: rgba(0, 255, 133, 0.2);
+    border-radius: 3px;
+    outline: none;
+    -webkit-appearance: none;
+}
+
+.tempo-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 16px;
+    height: 16px;
+    background: #00ff85;
+    border-radius: 50%;
+    cursor: pointer;
+    box-shadow: 0 0 10px rgba(0, 255, 133, 0.6);
+}
+
+.tempo-value {
+    font-weight: bold;
+    color: #00ff85;
+    min-width: 40px;
+    text-align: right;
+    font-size: 11px;
+}
+
+.bpm-tap-btn {
+    padding: 6px 12px;
+    border: 1px solid #00ff85;
+    background: rgba(0, 255, 133, 0.1);
+    color: #00ff85;
+    font-family: inherit;
+    font-size: 10px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border-radius: 3px;
+}
+
+.bpm-tap-btn:hover {
+    background: rgba(0, 255, 133, 0.2);
+    box-shadow: 0 0 10px rgba(0, 255, 133, 0.4);
+}
+
+.bpm-tap-btn[data-state="on"] {
+    background: rgba(0, 255, 133, 0.3);
+    border-color: #00ff85;
+}
+
+/* ============================================================================
+   ANIMATION SYSTEM
+   ============================================================================ */
+
+.animation-grid {
+    display: grid;
+    gap: 12px;
+}
+
+.animation-system-controls {
+    display: flex;
+    justify-content: stretch;
+    margin-bottom: 16px;
+}
+
+.system-toggle-btn {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 24px;
+    border: 2px solid rgba(255, 170, 0, 0.5);
+    background: rgba(0, 0, 0, 0.4);
+    color: rgba(255, 170, 0, 0.8);
+    font-family: inherit;
+    font-weight: bold;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border-radius: 6px;
+    width: 100%; /* Fill container width */
+    justify-content: space-between;
+}
+
+.system-toggle-btn .toggle-status {
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.system-toggle-btn .toggle-indicator {
+    width: 40px;
+    height: 20px;
+    border-radius: 10px;
+    background: rgba(255, 170, 0, 0.3);
+    position: relative;
+    transition: all 0.3s ease;
+}
+
+.system-toggle-btn .toggle-indicator::after {
+    content: '';
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #ffaa00;
+    top: 2px;
+    left: 2px;
+    transition: all 0.3s ease;
+    box-shadow: 0 0 10px rgba(255, 170, 0, 0.6);
+}
+
+.system-toggle-btn.active {
+    border-color: rgba(0, 255, 133, 0.8);
+    color: #00ff85;
+    background: rgba(0, 255, 133, 0.1);
+}
+
+.system-toggle-btn.active .toggle-indicator {
+    background: rgba(0, 255, 133, 0.3);
+}
+
+.system-toggle-btn.active .toggle-indicator::after {
+    background: #00ff85;
+    left: 22px;
+    box-shadow: 0 0 15px rgba(0, 255, 133, 0.8);
+}
+
+.system-toggle-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 0 20px currentColor;
+}
+
+.animation-triggers {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+}
+
+.anim-trigger-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 10px 8px;
+    border: 2px solid rgba(0, 170, 255, 0.5);
+    background: rgba(0, 0, 0, 0.4);
+    color: #00aaff;
+    font-family: inherit;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border-radius: 4px;
+}
+
+.anim-trigger-btn:hover {
+    background: rgba(0, 170, 255, 0.1);
+    border-color: #00aaff;
+    box-shadow: 0 0 15px rgba(0, 170, 255, 0.4);
+}
+
+.trigger-label {
+    font-size: 9px;
+    font-weight: bold;
+    text-transform: uppercase;
+    color: rgba(0, 170, 255, 0.8);
+}
+
+.trigger-desc {
+    font-size: 10px;
+    color: #00aaff;
+}
+
+/* ============================================================================
+   VISUAL EFFECTS & LAYERS
+   ============================================================================ */
+
+.effect-toggles,
+.layer-controls {
+    margin-bottom: 16px;
+}
+
+.effect-toggles h3,
+.layer-controls h3 {
+    margin: 0 0 10px 0;
+    font-size: 11px;
+    color: rgba(0, 255, 133, 0.8);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 1px solid rgba(0, 255, 133, 0.2);
+    padding-bottom: 5px;
+}
+
+.toggle-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 8px;
+}
+
+.toggle-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(0, 255, 133, 0.2);
+    border-radius: 4px;
+}
+
+.toggle-item label {
+    font-size: 10px;
+    color: rgba(0, 255, 133, 0.9);
+}
+
+.effect-toggle-btn,
+.layer-toggle-btn {
+    padding: 4px 10px;
+    border: 2px solid;
+    background: transparent;
+    font-family: inherit;
+    font-weight: bold;
+    font-size: 9px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border-radius: 3px;
+    min-width: 40px;
+}
+
+.effect-toggle-btn[data-state="on"],
+.layer-toggle-btn[data-state="on"] {
+    border-color: #00ff85;
+    color: #00ff85;
+    background: rgba(0, 255, 133, 0.1);
+}
+
+.effect-toggle-btn[data-state="off"],
+.layer-toggle-btn[data-state="off"] {
+    border-color: #666;
+    color: #666;
+}
+
+.effect-toggle-btn:hover,
+.layer-toggle-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    box-shadow: 0 0 10px currentColor;
+}
+
+.master-controls {
+    display: flex;
+    gap: 12px;
+    padding-top: 16px;
+    border-top: 1px solid rgba(0, 255, 133, 0.2);
+}
+
+.master-btn {
+    flex: 1;
+    padding: 12px;
+    border: 2px solid #00ff85;
+    background: rgba(0, 255, 133, 0.1);
+    color: #00ff85;
+    font-family: inherit;
+    font-weight: bold;
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border-radius: 4px;
+    text-transform: uppercase;
+}
+
+.master-btn:hover {
+    background: rgba(0, 255, 133, 0.2);
+    box-shadow: 0 0 20px rgba(0, 255, 133, 0.4);
+    transform: translateY(-2px);
+}
+
+/* ============================================================================
+   RESPONSIVE GRID LAYOUT - Simplified
+   ============================================================================ */
+
+/* Default: Mobile - Simple vertical flow */
+.control-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+/* Ensure all main sections take full width by default */
+.cp-section {
+    width: 100%;
+    min-width: 0;
+}
+
+/* Medium: ≥960px - Start using grid for larger sections */
+@media (min-width: 960px) {
+    .control-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+    
+    /* All sections span full width */
+    .trigger-fx-section,
+    .animation-section,
+    .scene-section,
+    .visual-effects-section {
+        grid-column: 1 / -1;
+    }
+}
+
+/* Large: ≥1280px - Advanced multi-column layout */
+@media (min-width: 1280px) {
+    .control-grid {
+        display: grid;
+        grid-template-columns: repeat(10, minmax(0, 1fr));
+        grid-template-rows: auto auto;
+        gap: 12px;
+    }
+    
+    /* Trigger FX spans row 1 only, taking columns 1-7 */
+    .trigger-fx-section {
+        grid-column: 1 / 8;
+        grid-row: 1;
+    }
+    
+    /* Visual Effects spans both rows for full height, columns 8-10 */
+    .visual-effects-section {
+        grid-column: 8 / 11;
+        grid-row: 1 / 3;
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .visual-effects-section .cp-section__content {
+        flex: 1;
+        overflow-y: auto;
+        overflow-x: hidden;
+    }
+    
+    /* Row 2: Scene (3/10 = 30%) + Animation System (4/10 = 40%) */
+    .scene-section {
+        grid-column: 1 / 4;
+        grid-row: 2;
+    }
+    
+    .animation-section {
+        grid-column: 4 / 8;
+        grid-row: 2;
+    }
+}
+
+/* ============================================================================
+   1080p VIEWPORT OPTIMIZATION
+   ============================================================================ */
+
+@media (min-width: 1600px) and (max-height: 1100px) {
+    html, body {
+        height: 100vh;
+        overflow: hidden;
+    }
+    
+    body {
+        font-size: 11px;
+    }
+    
+    .control-panel {
+        padding: 10px;
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+    }
+    
+    .matrix-header {
+        min-height: 150px;
+        padding: 14px;
+        margin-bottom: 14px;
+        flex-shrink: 0;
+    }
+    
+    .matrix-section {
+        min-height: 110px;
+        padding: 10px;
+    }
+    
+    .control-grid {
+        flex: 1;
+        display: grid;
+        grid-template-columns: repeat(10, minmax(0, 1fr));
+        grid-template-rows: auto minmax(0, 1fr);
+        gap: 10px;
+        height: calc(100vh - 180px);
+        overflow: hidden;
+    }
+    
+    /* Maintain row structure for 1080p */
+    .trigger-fx-section {
+        grid-column: 1 / 8;
+        grid-row: 1;
+    }
+    
+    .visual-effects-section {
+        grid-column: 8 / -1;
+        grid-row: 1 / 3;
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .visual-effects-section .cp-section__content {
+        flex: 1;
+        overflow-y: auto;
+        overflow-x: hidden;
+    }
+    
+    .scene-section {
+        grid-column: 1 / 4;
+        grid-row: 2;
+    }
+    
+    .animation-section {
+        grid-column: 4 / 8;
+        grid-row: 2;
+    }
+    
+    .cp-section {
+        overflow-y: auto;
+        overflow-x: hidden;
+        padding: 12px;
+    }
+    
+    .cp-section__title {
+        font-size: 12px;
+        margin-bottom: 8px;
+    }
+    
+    .animation-triggers {
+        gap: 6px;
+    }
+    
+    button,
+    .tempo-slider {
+        min-height: 28px;
+        font-size: 10px;
+    }
+    
+    .scene-btn {
+        min-height: 32px;
+        padding: 6px 8px;
+    }
+}
+
+/* ============================================================================
+   ACCESSIBILITY & FOCUS STATES
+   ============================================================================ */
+
+button:focus-visible,
+.scene-btn:focus-visible,
+.trigger-btn:focus-visible,
+.anim-trigger-btn:focus-visible,
+.effect-toggle-btn:focus-visible,
+.layer-toggle-btn:focus-visible {
+    outline: 2px solid #00ff85;
+    outline-offset: 2px;
+}
+
+/* ============================================================================
+   UTILITY CLASSES
+   ============================================================================ */
+
+.hidden {
+    display: none !important;
+}
+
+/* ============================================================================
+   MIDI CONTROL SYSTEM - COMPACT HEADER INTEGRATION
+   ============================================================================ */
+
+.matrix-midi {
+    flex-direction: column;
+    align-items: center;
+    min-width: 180px;
+    padding: 12px;
+    background: rgba(0, 20, 40, 0.4);
+    border: 1px solid rgba(0, 255, 133, 0.3);
+}
+
+.midi-title {
+    color: #00ff85;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+    text-align: center;
+    text-transform: uppercase;
+}
+
+.midi-compact-container {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 9px;
+}
+
+/* Status Row */
+.midi-status-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 4px 0;
+}
+
+.device-status-compact,
+.clock-status-compact {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 8px;
+    color: #666;
+}
+
+.midi-dot,
+.clock-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #333;
+    display: inline-block;
+}
+
+.midi-dot.connected {
+    background: #00ff85;
+    animation: midi-pulse 2s infinite;
+}
+
+.clock-dot.locked {
+    background: #00ffff;
+    animation: midi-pulse 1s infinite;
+}
+
+@keyframes midi-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+}
+
+.status-text,
+.clock-text {
+    color: #888;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+/* Device & Learn Row */
+.midi-device-row {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+}
+
+.midi-device-dropdown {
+    flex: 1;
+    background: #1a1a2e;
+    color: #00ff85;
+    border: 1px solid #333;
+    padding: 3px 6px;
+    font-size: 8px;
+    height: 20px;
+    text-transform: uppercase;
+}
+
+.midi-device-dropdown:focus {
+    border-color: #00ff85;
+    outline: none;
+}
+
+.midi-learn-compact {
+    background: #ff6b35;
+    color: #fff;
+    border: none;
+    padding: 3px 8px;
+    font-size: 8px;
+    font-weight: 700;
+    height: 20px;
+    cursor: pointer;
+    transition: all 0.3s;
+    text-transform: uppercase;
+}
+
+.midi-learn-compact.learning {
+    background: #00ff85;
+    color: #000;
+    animation: midi-pulse 1s infinite;
+}
+
+.midi-learn-compact:hover {
+    background: #ff8555;
+}
+
+.midi-learn-compact.learning:hover {
+    background: #20ff95;
+}
+
+/* Actions Row */
+.midi-actions-row {
+    display: flex;
+    gap: 2px;
+    justify-content: space-between;
+}
+
+.midi-action-compact {
+    background: #333;
+    color: #00ff85;
+    border: 1px solid #555;
+    padding: 2px 6px;
+    font-size: 7px;
+    font-weight: 700;
+    height: 18px;
+    cursor: pointer;
+    transition: all 0.3s;
+    text-transform: uppercase;
+    flex: 1;
+}
+
+.midi-action-compact:hover {
+    background: #00ff85;
+    color: #000;
+    border-color: #00ff85;
+}
+
+.midi-action-compact:active {
+    transform: scale(0.95);
+}
+
+/* Activity Display */
+.midi-activity-compact {
+    margin-top: 2px;
+}
+
+.activity-display-compact {
+    background: #0f0f23;
+    border: 1px solid #333;
+    padding: 4px 6px;
+    min-height: 16px;
+    border-radius: 2px;
+}
+
+.activity-text-compact {
+    color: #666;
+    font-family: 'JetBrains Mono', 'Space Mono', monospace;
+    font-size: 7px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    display: block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Active MIDI activity */
+.activity-text-compact.active {
+    color: #00ff85;
+    animation: midi-pulse 0.5s ease-in-out;
+}
+
+/* Learn target indicator */
+.learn-target-indicator {
+    background: rgba(0, 255, 133, 0.2) !important;
+    border: 2px solid #00ff85 !important;
+    animation: learn-pulse 1s infinite;
+}
+
+@keyframes learn-pulse {
+    0%, 100% { border-color: #00ff85; }
+    50% { border-color: #00ffff; }
+}
+
+/* Responsive adjustments for MIDI section */
+@media (max-width: 768px) {
+    .matrix-midi {
+        min-width: 140px;
+        padding: 8px;
+    }
+    
+    .midi-title {
+        font-size: 9px;
+        margin-bottom: 6px;
+    }
+    
+    .midi-compact-container {
+        gap: 4px;
+    }
+    
+    .midi-device-dropdown,
+    .midi-learn-compact {
+        height: 18px;
+        font-size: 7px;
+    }
+    
+    .midi-action-compact {
+        height: 16px;
+        font-size: 6px;
+        padding: 1px 4px;
+    }
+    
+    .activity-text-compact {
+        font-size: 6px;
+    }
+}
+
+/* ============================================================================
+   LIVE PREVIEW PANEL - FULL SIZE FIX
+   ============================================================================ */
+
+/* Override the base live-preview styles to use full available space */
+.matrix-identity .live-preview {
+    height: 100% !important;
+    min-height: 120px;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Ensure the preview frame wrapper takes full available space */
+.matrix-identity .live-preview .preview-frame-wrap {
+    position: relative;
+    flex: 1;
+    min-height: 80px;
+    inset: unset;
+}
+
+/* Make the video fill the entire frame */
+.matrix-identity .live-preview .preview-video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    filter: saturate(1.05) contrast(1.05);
+    border-radius: 2px;
+}
+
+/* Position the header at the top */
+.matrix-identity .live-preview .preview-header {
+    position: relative;
+    top: unset;
+    left: unset;
+    z-index: 2;
+    margin-bottom: 8px;
+    padding: 4px 8px;
+    background: rgba(0, 0, 0, 0.7);
+    border-radius: 2px;
+}
+
+/* Adjust overlay to work with flexbox layout */
+.matrix-identity .live-preview .preview-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    background: linear-gradient(0deg, rgba(0,0,0,0.55), rgba(0,0,0,0.35));
+    z-index: 3;
+    transition: opacity 150ms ease;
+    border-radius: 2px;
+}
+
+/* Ensure matrix-identity section accommodates the larger preview - moderate size */
+.matrix-identity {
+    flex: 1.3 !important; /* Moderate increase - not too much space */
+    min-height: 140px;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Override the base live-preview with more reasonable height */
+.matrix-identity .live-preview {
+    min-height: 100px !important; /* Reasonable minimum - bigger than 80px but not huge */
+    max-height: 150px; /* Cap the maximum height */
+}
+
+/* Responsive adjustments for different screen sizes - more conservative */
+@media (min-width: 1280px) {
+    .matrix-identity {
+        flex: 1.4 !important; /* Less aggressive scaling */
+        min-height: 160px;
+    }
+    
+    .matrix-identity .live-preview {
+        min-height: 120px;
+        max-height: 180px;
+    }
+}
+
+@media (min-width: 1600px) {
+    .matrix-identity {
+        flex: 1.6 !important; /* Much more conservative than before */
+        min-height: 180px;
+    }
+    
+    .matrix-identity .live-preview {
+        min-height: 140px;
+        max-height: 200px;
+    }
+}
+
+/* ============================================================================
+   COMBINED PERFORMANCE & STATUS CONTAINER
+   ============================================================================ */
+
+/* Combined container styling */
+.matrix-perf-status {
+    flex: 1.3; /* Reduced width for compact metrics */
+}
+
+/* Reduce matrix-controls width */
+.matrix-controls {
+    flex: 0.9 !important; /* Smaller than default 1.1 */
+}
+
+/* Increase MIDI section width with saved space */
+.matrix-midi {
+    flex: 1.4 !important; /* Increased from default to use saved space */
+}
+
+/* Vertical layout - metrics on top, connection below */
+.perf-status-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    height: 100%;
+}
+
+.metrics-column {
+    flex: 0 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+/* 2x2 grid layout for compact display */
+.metrics-column .metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+}
+
+.metric-cell {
+    flex: 1;
+    min-width: 60px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.metric-label {
+    font-size: 8px;
+    color: rgba(0, 255, 133, 0.6);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 600;
+}
+
+.metric-value {
+    font-size: 16px;
+    color: #00ff85;
+    font-weight: 700;
+    line-height: 1;
+    font-family: 'Space Mono', monospace;
+}
+
+.connection-column {
+    flex: 0 0 auto;
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-start;
+    align-items: center;
+    padding-top: 8px;
+    border-top: 1px solid rgba(0, 255, 133, 0.2);
+}
+
+.connection-container {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.connection-indicator {
+    position: relative;
+    width: 12px;
+    height: 12px;
+}
+
+.status-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #666;
+    position: relative;
+    z-index: 2;
+}
+
+.connection-container.connected .status-dot {
+    background: #00ff85;
+}
+
+.connection-text {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 2px;
+}
+
+.status-text {
+    font-size: 10px;
+    color: #666;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.connection-container.connected .status-text {
+    color: #00ff85;
+}
+
+.uptime-display {
+    font-size: 8px;
+    color: rgba(0, 255, 133, 0.5);
+    font-family: 'Space Mono', monospace;
+}
+
+.uptime-label {
+    color: rgba(0, 255, 133, 0.4);
+    margin-right: 2px;
+}
+
+/* Responsive: stack on smaller screens */
+@media (max-width: 1200px) {
+    .perf-status-grid {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 12px;
+    }
+    
+    .metrics-column .metrics-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+    }
+    
+    .connection-column {
+        align-items: flex-start;
+    }
+    
+    .connection-text {
+        align-items: flex-start;
+    }
+}
+
+/* Unused grid section styles removed - using simpler layout */
+
+/* ============================================================================
+   END OF CONTROL PANEL V3 PROFESSIONAL
+   ============================================================================ */

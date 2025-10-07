@@ -1,0 +1,199 @@
+{
+  "name": "Ableton Push 2 VJ Mapping",
+  "deviceMatchers": ["push", "push 2", "ableton push"],
+  "version": "1.0.0", 
+  "description": "Push 2 mapping utilizing pads for triggers, encoders for intensity, and touch strips for real-time control",
+  "mappings": [
+    {
+      "id": "push2_strobe",
+      "match": { "type": "note", "number": 36, "subtype": "on" },
+      "action": { "type": "trigger", "params": { "effect": "strobe" } },
+      "feedback": { "on": { "note": 36, "velocity": 120 }, "off": { "note": 36, "velocity": 0 } }
+    },
+    {
+      "id": "push2_blackout",
+      "match": { "type": "note", "number": 37, "subtype": "on" },
+      "action": { "type": "trigger", "params": { "effect": "blackout" } },
+      "feedback": { "on": { "note": 37, "velocity": 0 }, "off": { "note": 37, "velocity": 0 } }
+    },
+    {
+      "id": "push2_whiteout",
+      "match": { "type": "note", "number": 38, "subtype": "on" },
+      "action": { "type": "trigger", "params": { "effect": "whiteout" } },
+      "feedback": { "on": { "note": 38, "velocity": 100 }, "off": { "note": 38, "velocity": 0 } }
+    },
+    {
+      "id": "push2_rgb_split",
+      "match": { "type": "note", "number": 39, "subtype": "on" },
+      "action": { "type": "trigger", "params": { "effect": "rgbsplit" } },
+      "feedback": { "on": { "note": 39, "velocity": 80 }, "off": { "note": 39, "velocity": 0 } }
+    },
+    {
+      "id": "push2_ripple",
+      "match": { "type": "note", "number": 44, "subtype": "on" },
+      "action": { "type": "trigger", "params": { "effect": "ripple" } },
+      "feedback": { "on": { "note": 44, "velocity": 60 }, "off": { "note": 44, "velocity": 0 } }
+    },
+    {
+      "id": "push2_pulse",
+      "match": { "type": "note", "number": 45, "subtype": "on" },
+      "action": { "type": "trigger", "params": { "effect": "pulse" } },
+      "feedback": { "on": { "note": 45, "velocity": 40 }, "off": { "note": 45, "velocity": 0 } }
+    },
+    {
+      "id": "push2_cosmic",
+      "match": { "type": "note", "number": 46, "subtype": "on" },
+      "action": { "type": "trigger", "params": { "effect": "cosmic" } },
+      "feedback": { "on": { "note": 46, "velocity": 90 }, "off": { "note": 46, "velocity": 0 } }
+    },
+    {
+      "id": "push2_matrix_rain",
+      "match": { "type": "note", "number": 47, "subtype": "on" },
+      "action": { "type": "trigger", "params": { "effect": "matrix-rain" } },
+      "feedback": { "on": { "note": 47, "velocity": 70 }, "off": { "note": 47, "velocity": 0 } }
+    },
+
+    {
+      "id": "push2_noise_burst",
+      "match": { "type": "note", "number": 52, "subtype": "on" },
+      "action": { "type": "trigger", "params": { "effect": "noise-burst" } },
+      "feedback": { "on": { "note": 52, "velocity": 100 }, "off": { "note": 52, "velocity": 0 } }
+    },
+    {
+      "id": "push2_vignette",
+      "match": { "type": "note", "number": 53, "subtype": "on" },
+      "action": { "type": "trigger", "params": { "effect": "vignette-pulse" } },
+      "feedback": { "on": { "note": 53, "velocity": 50 }, "off": { "note": 53, "velocity": 0 } }
+    },
+    {
+      "id": "push2_scanlines",
+      "match": { "type": "note", "number": 54, "subtype": "on" },
+      "action": { "type": "trigger", "params": { "effect": "scanlines-sweep" } },
+      "feedback": { "on": { "note": 54, "velocity": 60 }, "off": { "note": 54, "velocity": 0 } }
+    },
+    {
+      "id": "push2_chroma_pulse",
+      "match": { "type": "note", "number": 55, "subtype": "on" },
+      "action": { "type": "trigger", "params": { "effect": "chroma-pulse" } },
+      "feedback": { "on": { "note": 55, "velocity": 80 }, "off": { "note": 55, "velocity": 0 } }
+    },
+
+    {
+      "id": "push2_glitch_intensity",
+      "match": { "type": "cc", "number": 71 },
+      "action": { "type": "intensity", "params": { "target": "glitch", "range": [0, 1] } }
+    },
+    {
+      "id": "push2_particles_intensity", 
+      "match": { "type": "cc", "number": 72 },
+      "action": { "type": "intensity", "params": { "target": "particles", "range": [0, 1] } }
+    },
+    {
+      "id": "push2_noise_intensity",
+      "match": { "type": "cc", "number": 73 },
+      "action": { "type": "intensity", "params": { "target": "noise", "range": [0, 1] } }
+    },
+    {
+      "id": "push2_plasma_intensity",
+      "match": { "type": "cc", "number": 74 },
+      "action": { "type": "intensity", "params": { "target": "plasma", "range": [0, 1] } }
+    },
+    {
+      "id": "push2_strobe_intensity",
+      "match": { "type": "cc", "number": 75 },
+      "action": { "type": "intensity", "params": { "target": "strobe", "range": [0, 1] } }
+    },
+    {
+      "id": "push2_distortion_intensity",
+      "match": { "type": "cc", "number": 76 },
+      "action": { "type": "intensity", "params": { "target": "distortion", "range": [0, 1] } }
+    },
+    {
+      "id": "push2_warp_intensity",
+      "match": { "type": "cc", "number": 77 },
+      "action": { "type": "intensity", "params": { "target": "warp", "range": [0, 1] } }
+    },
+    {
+      "id": "push2_blur_intensity",
+      "match": { "type": "cc", "number": 78 },
+      "action": { "type": "intensity", "params": { "target": "blur", "range": [0, 1] } }
+    },
+
+    {
+      "id": "push2_master_hue",
+      "match": { "type": "cc", "number": 14 },
+      "action": { "type": "color", "params": { "component": "hue", "range": [0, 360] } }
+    },
+    {
+      "id": "push2_master_saturation", 
+      "match": { "type": "cc", "number": 15 },
+      "action": { "type": "color", "params": { "component": "saturation", "range": [0, 100] } }
+    },
+    {
+      "id": "push2_master_brightness",
+      "match": { "type": "cc", "number": 16 },
+      "action": { "type": "color", "params": { "component": "brightness", "range": [0, 100] } }
+    },
+    {
+      "id": "push2_master_contrast",
+      "match": { "type": "cc", "number": 17 },
+      "action": { "type": "color", "params": { "component": "contrast", "range": [0, 200] } }
+    },
+
+    {
+      "id": "push2_touch_strip_left",
+      "match": { "type": "pitchbend" },
+      "action": { "type": "realtime", "params": { "target": "speed", "range": [0.1, 3.0] } }
+    },
+
+    {
+      "id": "push2_scene_1",
+      "match": { "type": "note", "number": 20, "subtype": "on" },
+      "action": { "type": "scene", "params": { "scene": "intense" } },
+      "feedback": { "on": { "note": 20, "velocity": 120 }, "off": { "note": 20, "velocity": 0 } }
+    },
+    {
+      "id": "push2_scene_2",
+      "match": { "type": "note", "number": 21, "subtype": "on" },
+      "action": { "type": "scene", "params": { "scene": "calm" } },
+      "feedback": { "on": { "note": 21, "velocity": 60 }, "off": { "note": 21, "velocity": 0 } }
+    },
+    {
+      "id": "push2_scene_3", 
+      "match": { "type": "note", "number": 22, "subtype": "on" },
+      "action": { "type": "scene", "params": { "scene": "glitch" } },
+      "feedback": { "on": { "note": 22, "velocity": 80 }, "off": { "note": 22, "velocity": 0 } }
+    },
+    {
+      "id": "push2_scene_4",
+      "match": { "type": "note", "number": 23, "subtype": "on" },
+      "action": { "type": "scene", "params": { "scene": "matrix" } },
+      "feedback": { "on": { "note": 23, "velocity": 100 }, "off": { "note": 23, "velocity": 0 } }
+    },
+
+    {
+      "id": "push2_layer_background",
+      "match": { "type": "note", "number": 102, "subtype": "on" },
+      "action": { "type": "layer", "params": { "layer": "background" } },
+      "feedback": { "on": { "note": 102, "velocity": 50 }, "off": { "note": 102, "velocity": 0 } }
+    },
+    {
+      "id": "push2_layer_particles",
+      "match": { "type": "note", "number": 103, "subtype": "on" },
+      "action": { "type": "layer", "params": { "layer": "particles" } },
+      "feedback": { "on": { "note": 103, "velocity": 70 }, "off": { "note": 103, "velocity": 0 } }
+    },
+    {
+      "id": "push2_layer_overlay",
+      "match": { "type": "note", "number": 104, "subtype": "on" },
+      "action": { "type": "layer", "params": { "layer": "overlay" } },
+      "feedback": { "on": { "note": 104, "velocity": 40 }, "off": { "note": 104, "velocity": 0 } }
+    },
+    {
+      "id": "push2_layer_logo",
+      "match": { "type": "note", "number": 105, "subtype": "on" },
+      "action": { "type": "layer", "params": { "layer": "logo" } },
+      "feedback": { "on": { "note": 105, "velocity": 30 }, "off": { "note": 105, "velocity": 0 } }
+    }
+  ]
+}

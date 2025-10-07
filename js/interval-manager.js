@@ -314,6 +314,53 @@ class IntervalManager {
     }
 
     /**
+     * Legacy compatibility method - alias for createInterval
+     * @param {string} name - Name for the interval
+     * @param {Function} callback - Function to execute
+     * @param {number} delay - Delay in milliseconds
+     * @param {Object} options - Additional options
+     * @returns {string} Interval ID for clearing
+     */
+    set(name, callback, delay, options = {}) {
+        const intervalHandle = this.createInterval(callback, delay, name, options);
+        
+        // Store the handle for the legacy clear method
+        this.legacyHandles = this.legacyHandles || new Map();
+        this.legacyHandles.set(intervalHandle.id, intervalHandle);
+        
+        // Return the ID for legacy clear() calls
+        return intervalHandle.id;
+    }
+    
+    /**
+     * Legacy compatibility method - clear by ID or name
+     * @param {string|number} identifier - Interval ID or name
+     * @returns {boolean} Success status
+     */
+    clear(identifier) {
+        // Try to clear by ID first
+        if (typeof identifier === 'number' || !isNaN(identifier)) {
+            const id = parseInt(identifier);
+            const handle = this.legacyHandles?.get(id);
+            if (handle) {
+                const success = handle.clear();
+                this.legacyHandles?.delete(id);
+                return success;
+            }
+            return this.clearInterval(id);
+        }
+        
+        // Try to clear by name
+        for (const [id, data] of this.intervals.entries()) {
+            if (data.name.includes(identifier)) {
+                return this.clearInterval(id);
+            }
+        }
+        
+        return false;
+    }
+    
+    /**
      * Destroy the interval manager
      */
     destroy() {
@@ -321,6 +368,11 @@ class IntervalManager {
         
         if (this.autoCleanupInterval) {
             this.autoCleanupInterval.clear();
+        }
+        
+        // Clear legacy handles
+        if (this.legacyHandles) {
+            this.legacyHandles.clear();
         }
         
         console.log('💀 Interval Manager destroyed');

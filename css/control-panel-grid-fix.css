@@ -1,0 +1,229 @@
+/*
+ * Control Panel Grid Fix
+ * Comprehensive layout fix to restore proper grid arrangement
+ * Priority: Loads LAST to override all conflicting rules
+ */
+
+/* ============================================
+   RESET CONFLICTING GRID RULES
+   ============================================ */
+
+/* Override compact.css grid that's causing issues */
+@media (min-width: 1280px) {
+  .control-grid {
+    display: grid !important;
+    grid-template-columns: 280px 1fr !important;
+    grid-template-rows: auto auto auto !important;
+    gap: 16px !important;
+    padding: 16px !important;
+    max-width: 100% !important;
+    grid-auto-flow: dense !important;
+  }
+  
+  /* ============================================
+     COLUMN 1 (LEFT): TEMPO + SCENE SELECT
+     ============================================ */
+  
+  .section--tempo {
+    grid-column: 1 !important;
+    grid-row: 1 !important;
+    max-width: 280px !important;
+    width: 280px !important;
+  }
+  
+  .section--scenes {
+    grid-column: 1 !important;
+    grid-row: 2 !important;
+    max-width: 280px !important;
+    width: 280px !important;
+  }
+  
+  /* ============================================
+     COLUMN 2 (RIGHT): MAIN CONTENT AREA
+     ============================================ */
+  
+  /* TRIGGER FX - Top right, spanning full width */
+  .section--triggers {
+    grid-column: 2 !important;
+    grid-row: 1 !important;
+    width: 100% !important;
+    max-width: none !important;
+    min-width: 0 !important;
+  }
+  
+  /* ANIMATION SYSTEM - Middle right */
+  .section--animation {
+    grid-column: 2 !important;
+    grid-row: 2 !important;
+    width: 100% !important;
+    max-width: none !important;
+    min-width: 0 !important;
+  }
+  
+  /* VISUAL EFFECTS - Bottom, spans both columns */
+  .section--ve-layers {
+    grid-column: 1 / -1 !important;
+    grid-row: 3 !important;
+    width: 100% !important;
+    max-width: none !important;
+    min-width: 0 !important;
+  }
+}
+
+/* ============================================
+   TRIGGER FX FIXES
+   ============================================ */
+
+.trigger-grid {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)) !important;
+  gap: 8px !important;
+  width: 100% !important;
+}
+
+.trigger-btn {
+  min-width: 0 !important;
+  width: 100% !important;
+}
+
+.macro-grid {
+  display: grid !important;
+  grid-template-columns: repeat(3, 1fr) !important;
+  gap: 8px !important;
+  margin-top: 12px !important;
+  width: 100% !important;
+}
+
+.macro-btn {
+  min-width: 0 !important;
+  width: 100% !important;
+}
+
+/* ============================================
+   ANIMATION SYSTEM FIXES
+   ============================================ */
+
+.animation-grid {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 12px !important;
+  width: 100% !important;
+}
+
+.trigger-control-grid {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)) !important;
+  gap: 8px !important;
+  width: 100% !important;
+}
+
+.anim-trigger-btn {
+  min-width: 0 !important;
+  width: 100% !important;
+}
+
+/* ============================================
+   VISUAL EFFECTS FIXES
+   ============================================ */
+
+.effect-toggles .toggle-grid,
+.layer-controls .toggle-grid {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)) !important;
+  gap: 8px !important;
+  width: 100% !important;
+}
+
+.toggle-item {
+  min-width: 0 !important;
+  width: 100% !important;
+}
+
+/* ============================================
+   RESPONSIVE: SMALLER SCREENS
+   ============================================ */
+
+@media (min-width: 1280px) and (max-width: 1599px) {
+  .control-grid {
+    grid-template-columns: 260px 1fr !important;
+  }
+  
+  .section--tempo,
+  .section--scenes {
+    max-width: 260px !important;
+    width: 260px !important;
+  }
+  
+  .trigger-grid {
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)) !important;
+  }
+  
+  .trigger-control-grid {
+    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)) !important;
+  }
+}
+
+/* Single column for very small screens */
+@media (max-width: 1279px) {
+  .control-grid {
+    grid-template-columns: 1fr !important;
+    grid-template-rows: auto !important;
+  }
+  
+  .section--tempo,
+  .section--scenes,
+  .section--triggers,
+  .section--animation,
+  .section--ve-layers {
+    grid-column: 1 !important;
+    grid-row: auto !important;
+    max-width: 100% !important;
+    width: 100% !important;
+  }
+}
+
+/* ============================================
+   ENSURE PROPER STACKING
+   ============================================ */
+
+.control-section {
+  position: relative !important;
+  z-index: 1 !important;
+}
+
+/* Make sure sections don't overlap */
+.section--tempo { z-index: 10 !important; }
+.section--scenes { z-index: 9 !important; }
+.section--triggers { z-index: 8 !important; }
+.section--animation { z-index: 7 !important; }
+.section--ve-layers { z-index: 6 !important; }
+
+/* ============================================
+   FIX SECTION SPACING
+   ============================================ */
+
+.control-section {
+  margin-bottom: 0 !important;
+}
+
+/* Ensure sections have proper internal padding */
+.section--triggers,
+.section--animation,
+.section--ve-layers {
+  padding: 16px !important;
+}
+
+.section--tempo,
+.section--scenes {
+  padding: 12px !important;
+}
+
+/* ============================================
+   DEBUGGING HELPERS (Remove after fixing)
+   ============================================ */
+
+/* Uncomment these to visualize grid cells
+.control-grid > * {
+  outline: 1px solid rgba(255, 0, 0, 0.3) !important;
+}
+*/

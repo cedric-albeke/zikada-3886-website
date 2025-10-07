@@ -1,0 +1,933 @@
+/*
+ * Control Panel Optimized V2
+ * Priority-based 3-column layout for 1920x1080
+ * Maximizes space for TRIGGER FX, ANIMATION SYSTEM, and VISUAL EFFECTS
+ */
+
+/* ============================================
+   CSS VARIABLES - Design Tokens
+   ============================================ */
+:root {
+  /* Priority scales */
+  --priority-critical-scale: 1.15;
+  --priority-high-scale: 1.05;
+  --priority-medium-scale: 1.0;
+  --priority-low-scale: 0.92;
+  
+  /* Column widths */
+  --col1-width: 240px;  /* Secondary controls */
+  --col2-width: 620px;  /* Primary triggers */
+  --col3-width: 550px;  /* Animation system */
+  
+  /* Functional colors */
+  --color-trigger-primary: #00ff85;
+  --color-system: #00e5ff;
+  --color-toggle: #ffaa00;
+  --color-macro: #ff00ff;
+  --color-danger: #ff3366;
+  
+  /* Spacing */
+  --gap-section: 16px;
+  --gap-button: 8px;
+  --gap-compact: 6px;
+  
+  /* Button heights */
+  --btn-height-primary: 38px;
+  --btn-height-secondary: 36px;
+  --btn-height-compact: 32px;
+  --btn-height-mini: 20px;
+}
+
+/* ============================================
+   MAIN GRID LAYOUT - 3 Columns (DISABLED - CONFLICTS WITH EXISTING LAYOUT)
+   ============================================ */
+/* .control-panel .control-grid {
+  display: grid;
+  grid-template-columns: var(--col1-width) var(--col2-width) var(--col3-width);
+  gap: var(--gap-section);
+  padding: var(--gap-section);
+  max-width: 1440px;
+  margin: 0 auto;
+} */
+
+/* ============================================
+   HEADER OPTIMIZATION - Compact 120px
+   ============================================ */
+.matrix-header {
+  height: 120px !important;
+  padding: 8px 12px !important;
+}
+
+/* Compact performance metrics */
+.matrix-performance .metric-cell {
+  padding: 6px 8px !important;
+}
+
+.matrix-performance .metric-label {
+  font-size: 9px !important;
+  margin-bottom: 2px;
+}
+
+.matrix-performance .metric-value {
+  font-size: 16px !important;
+}
+
+.matrix-performance .metric-bar {
+  height: 4px !important;
+  margin-top: 4px;
+}
+
+/* Compact dice system */
+.matrix-dice .dice-countdown-ring {
+  width: 50px !important;
+  height: 50px !important;
+}
+
+.matrix-dice .dice-countdown-ring svg {
+  width: 50px !important;
+  height: 50px !important;
+}
+
+.matrix-dice .countdown-text {
+  font-size: 16px !important;
+}
+
+.matrix-dice .dice-info {
+  font-size: 9px !important;
+}
+
+.matrix-dice .dice-threshold,
+.matrix-dice .dice-last {
+  font-size: 9px !important;
+}
+
+/* Compact system controls */
+.matrix-controls .matrix-control-btn {
+  width: 70px !important;
+  height: 48px !important;
+  font-size: 11px !important;
+}
+
+.matrix-controls .btn-glyph {
+  font-size: 18px !important;
+}
+
+.matrix-controls .btn-label {
+  font-size: 9px !important;
+}
+
+.matrix-controls .btn-code {
+  font-size: 7px !important;
+}
+
+.matrix-controls .performance-modes .mode-btn {
+  width: 28px !important;
+  height: 22px !important;
+  font-size: 8px !important;
+}
+
+/* ============================================
+   COLUMN 1: SECONDARY CONTROLS (240px)
+   ============================================ */
+
+/* Force column 1 sections to 240px width */
+.section--scenes,
+.section--color,
+.section--tempo,
+.section--intensity {
+  width: var(--col1-width) !important;
+  max-width: var(--col1-width) !important;
+}
+
+/* ============================================
+   SCENE SELECT - Compact/Collapsed
+   ============================================ */
+.scene-control {
+  width: 100% !important;
+}
+
+.scene-control h2 {
+  font-size: calc(14px * var(--priority-low-scale)) !important;
+  font-weight: 600;
+  opacity: 0.85;
+  margin-bottom: 8px;
+}
+
+.scene-grid {
+  display: grid !important;
+  grid-template-columns: repeat(2, 1fr) !important;
+  gap: 6px !important;
+  max-height: 240px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 4px;
+}
+
+.scene-btn {
+  height: 28px !important;
+  font-size: 9px !important;
+  font-weight: 600;
+  padding: 0 6px !important;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.scene-auto {
+  grid-column: 1 / -1;
+  height: 32px !important;
+  font-size: 10px !important;
+  font-weight: 700;
+}
+
+/* Custom scrollbar for scene grid */
+.scene-grid::-webkit-scrollbar {
+  width: 6px;
+}
+
+.scene-grid::-webkit-scrollbar-track {
+  background: rgba(0, 255, 133, 0.05);
+  border-radius: 3px;
+}
+
+.scene-grid::-webkit-scrollbar-thumb {
+  background: rgba(0, 255, 133, 0.3);
+  border-radius: 3px;
+}
+
+.scene-grid::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 255, 133, 0.5);
+}
+
+/* ============================================
+   COLOR MATRIX - Compact
+   ============================================ */
+.color-control {
+  width: 100% !important;
+}
+
+.color-control h2 {
+  font-size: calc(14px * var(--priority-low-scale)) !important;
+  font-weight: 600;
+  opacity: 0.85;
+  margin-bottom: 8px;
+}
+
+.color-control .slider-container {
+  margin-bottom: 8px !important;
+}
+
+.color-control .slider-container label {
+  font-size: 9px !important;
+  margin-bottom: 2px;
+  display: block;
+}
+
+.color-control .control-slider {
+  width: 100% !important;
+  height: 20px !important;
+}
+
+.color-control .slider-value {
+  font-size: 9px !important;
+  margin-top: 2px;
+}
+
+.color-control .reset-btn {
+  width: 100%;
+  height: 28px !important;
+  font-size: 9px !important;
+  margin-top: 8px;
+}
+
+/* ============================================
+   TEMPO - Compact
+   ============================================ */
+.speed-control {
+  width: 100% !important;
+}
+
+.speed-control h2 {
+  font-size: calc(14px * var(--priority-low-scale)) !important;
+  font-weight: 600;
+  opacity: 0.85;
+  margin-bottom: 8px;
+}
+
+.speed-control .slider-container {
+  margin-bottom: 8px !important;
+}
+
+.speed-control .slider-container label {
+  font-size: 9px !important;
+  margin-bottom: 2px;
+  display: block;
+}
+
+.speed-control .control-slider {
+  width: 100% !important;
+  height: 20px !important;
+}
+
+.speed-control .slider-value {
+  font-size: 9px !important;
+}
+
+.speed-control .bpm-display {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  margin-bottom: 8px;
+}
+
+.speed-control .bpm-display label {
+  font-size: 9px !important;
+  flex-shrink: 0;
+}
+
+.speed-control .tap-btn {
+  flex: 1;
+  height: 32px !important;
+  font-size: 10px !important;
+  font-weight: 700;
+}
+
+.speed-control .bpm-value {
+  font-size: 14px !important;
+  font-weight: 700;
+  color: var(--color-trigger-primary);
+  flex-shrink: 0;
+  min-width: 40px;
+  text-align: center;
+}
+
+.speed-control .bpm-options {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.speed-control .bpm-options label {
+  font-size: 9px !important;
+  flex-shrink: 0;
+}
+
+.speed-control .bpm-toggle-btn {
+  flex: 1;
+  height: 28px !important;
+  font-size: 9px !important;
+}
+
+/* ============================================
+   FX INTENSITY - Compact
+   ============================================ */
+.effects-control {
+  width: 100% !important;
+}
+
+.effects-control h2 {
+  font-size: calc(14px * var(--priority-low-scale)) !important;
+  font-weight: 600;
+  opacity: 0.85;
+  margin-bottom: 8px;
+}
+
+.effects-control .slider-container {
+  margin-bottom: 8px !important;
+}
+
+.effects-control .slider-container label {
+  font-size: 9px !important;
+  margin-bottom: 2px;
+  display: block;
+}
+
+.effects-control .control-slider {
+  width: 100% !important;
+  height: 20px !important;
+}
+
+.effects-control .slider-value {
+  font-size: 9px !important;
+}
+
+/* ============================================
+   COLUMN 2: PRIMARY TRIGGERS (620px)
+   ============================================ */
+
+/* Force column 2 sections to 620px width */
+.section--triggers,
+.section--ve-layers {
+  width: var(--col2-width) !important;
+  max-width: var(--col2-width) !important;
+}
+
+/* ============================================
+   TRIGGER FX - EXPANDED (Priority #1)
+   ============================================ */
+/* .trigger-control {
+  width: 100% !important;
+  grid-column: 2;
+  grid-row: 1;
+} */
+
+.trigger-control h2 {
+  font-size: calc(14px * var(--priority-critical-scale)) !important;
+  font-weight: 800;
+  color: var(--color-trigger-primary);
+  text-shadow: 0 0 8px rgba(0, 255, 133, 0.6);
+  margin-bottom: 12px;
+  letter-spacing: 0.5px;
+}
+
+/* Enhanced border for critical sections */
+.section--triggers {
+  border: 2px solid rgba(0, 255, 133, 0.3) !important;
+  box-shadow: 0 0 12px rgba(0, 255, 133, 0.2) !important;
+  background: rgba(0, 0, 0, 0.8) !important;
+}
+
+/* Trigger toolbar - compact horizontal layout */
+.trigger-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.trigger-toolbar .theme-group {
+  display: flex;
+  gap: 6px;
+}
+
+.trigger-toolbar .theme-btn {
+  width: 60px;
+  height: 24px;
+  font-size: 8px;
+  font-weight: 700;
+  padding: 0;
+}
+
+.trigger-toolbar .mini-sliders {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  max-width: 300px;
+}
+
+.trigger-toolbar .mini-sliders label {
+  font-size: 8px;
+  font-weight: 700;
+  color: rgba(0, 255, 133, 0.8);
+  min-width: 24px;
+}
+
+.trigger-toolbar .mini-sliders input[type="range"] {
+  flex: 1;
+  height: 18px;
+}
+
+.trigger-toolbar .mini-value {
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--color-trigger-primary);
+  min-width: 24px;
+  text-align: center;
+}
+
+/* Trigger grid - 4 columns for better spacing */
+.trigger-grid {
+  display: grid !important;
+  grid-template-columns: repeat(4, 1fr) !important;
+  gap: var(--gap-button) !important;
+  margin-bottom: 12px;
+}
+
+.trigger-btn {
+  height: var(--btn-height-primary) !important;
+  font-size: 11px !important;
+  font-weight: 600;
+  padding: 0 8px !important;
+  border-color: var(--color-trigger-primary) !important;
+  transition: all 0.15s ease;
+}
+
+.trigger-btn:hover {
+  background: rgba(0, 255, 133, 0.15) !important;
+  box-shadow: 0 0 12px rgba(0, 255, 133, 0.4) !important;
+  transform: translateY(-1px);
+}
+
+.trigger-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 0 8px rgba(0, 255, 133, 0.6) !important;
+}
+
+/* Macro buttons - 3 columns */
+.macro-grid {
+  display: grid !important;
+  grid-template-columns: repeat(3, 1fr) !important;
+  gap: var(--gap-button) !important;
+}
+
+.macro-btn {
+  height: var(--btn-height-secondary) !important;
+  font-size: 10px !important;
+  font-weight: 700;
+  border-color: var(--color-macro) !important;
+  background: rgba(255, 0, 255, 0.05) !important;
+}
+
+.macro-btn:hover {
+  background: rgba(255, 0, 255, 0.15) !important;
+  box-shadow: 0 0 12px rgba(255, 0, 255, 0.4) !important;
+}
+
+/* ============================================
+   VISUAL EFFECTS & LAYERS - Reorganized
+   ============================================ */
+.effects-layers-control {
+  /* width: 100% !important; */
+  /* grid-column: 2;
+  grid-row: 2; */
+  /* margin-top: 0 !important; */
+}
+
+.effects-layers-control h2 {
+  font-size: calc(14px * var(--priority-high-scale)) !important;
+  font-weight: 700;
+  color: var(--color-trigger-primary);
+  text-shadow: 0 0 6px rgba(0, 255, 133, 0.4);
+  margin-bottom: 12px;
+}
+
+.section--ve-layers {
+  border: 1px solid rgba(0, 255, 133, 0.2) !important;
+  box-shadow: 0 0 8px rgba(0, 255, 133, 0.15) !important;
+}
+
+/* Effect toggles - 2 column compact grid */
+.effect-toggles {
+  margin-bottom: 16px;
+}
+
+.effect-toggles h3 {
+  font-size: 11px;
+  font-weight: 700;
+  color: rgba(0, 255, 133, 0.9);
+  margin-bottom: 8px;
+  letter-spacing: 0.3px;
+}
+
+.effect-toggles .toggle-grid {
+  display: grid !important;
+  grid-template-columns: repeat(2, 1fr) !important;
+  gap: var(--gap-compact) 10px !important;
+}
+
+.effect-toggles .toggle-item {
+  display: flex !important;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 8px !important;
+  background: rgba(0, 255, 133, 0.03) !important;
+  border: 1px solid rgba(0, 255, 133, 0.1);
+  border-radius: 3px;
+  transition: background 0.15s ease;
+}
+
+.effect-toggles .toggle-item:hover {
+  background: rgba(0, 255, 133, 0.06) !important;
+  border-color: rgba(0, 255, 133, 0.2);
+}
+
+.effect-toggles .toggle-item label {
+  font-size: 9px !important;
+  font-weight: 600;
+  flex: 1;
+  margin: 0;
+}
+
+.effect-toggle-btn,
+.layer-toggle-btn {
+  width: 38px !important;
+  height: var(--btn-height-mini) !important;
+  font-size: 9px !important;
+  font-weight: 700;
+  border-color: var(--color-toggle) !important;
+  flex-shrink: 0;
+  transition: all 0.15s ease;
+}
+
+.effect-toggle-btn[data-state="on"],
+.layer-toggle-btn[data-state="on"] {
+  background: rgba(255, 170, 0, 0.2) !important;
+  border-color: var(--color-toggle) !important;
+  box-shadow: 0 0 6px rgba(255, 170, 0, 0.3);
+}
+
+.effect-toggle-btn:hover,
+.layer-toggle-btn:hover {
+  box-shadow: 0 0 8px rgba(255, 170, 0, 0.4) !important;
+}
+
+/* Layer controls - same 2 column layout */
+.layer-controls {
+  margin-bottom: 12px;
+}
+
+.layer-controls h3 {
+  font-size: 11px;
+  font-weight: 700;
+  color: rgba(0, 255, 133, 0.9);
+  margin-bottom: 8px;
+  letter-spacing: 0.3px;
+}
+
+.layer-controls .toggle-grid {
+  display: grid !important;
+  grid-template-columns: repeat(2, 1fr) !important;
+  gap: var(--gap-compact) 10px !important;
+}
+
+.layer-controls .toggle-item {
+  display: flex !important;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 8px !important;
+  background: rgba(0, 255, 133, 0.03) !important;
+  border: 1px solid rgba(0, 255, 133, 0.1);
+  border-radius: 3px;
+}
+
+.layer-controls .toggle-item:hover {
+  background: rgba(0, 255, 133, 0.06) !important;
+  border-color: rgba(0, 255, 133, 0.2);
+}
+
+.layer-controls .toggle-item label {
+  font-size: 9px !important;
+  font-weight: 600;
+  flex: 1;
+  margin: 0;
+}
+
+/* Master controls - horizontal layout */
+.master-controls {
+  display: flex !important;
+  gap: var(--gap-button);
+  margin-top: 12px;
+}
+
+.master-btn {
+  flex: 1 !important;
+  height: var(--btn-height-compact) !important;
+  font-size: 9px !important;
+  font-weight: 700;
+  border-color: var(--color-system) !important;
+}
+
+.master-btn:hover {
+  background: rgba(0, 229, 255, 0.15) !important;
+  box-shadow: 0 0 10px rgba(0, 229, 255, 0.4) !important;
+}
+
+/* ============================================
+   COLUMN 3: ANIMATION SYSTEM (550px)
+   ============================================ */
+
+/* Force column 3 to 550px width (DISABLED) */
+/* .section--animation {
+  width: var(--col3-width) !important;
+  max-width: var(--col3-width) !important;
+  grid-column: 3;
+  grid-row: 1 / span 2;
+} */
+
+/* ============================================
+   ANIMATION SYSTEM - Optimized (Priority #2)
+   ============================================ */
+.section--animation {
+  border: 2px solid rgba(0, 255, 133, 0.3) !important;
+  box-shadow: 0 0 12px rgba(0, 255, 133, 0.2) !important;
+  background: rgba(0, 0, 0, 0.8) !important;
+}
+
+.section--animation > h2 {
+  font-size: calc(14px * var(--priority-critical-scale)) !important;
+  font-weight: 800;
+  color: var(--color-trigger-primary);
+  text-shadow: 0 0 8px rgba(0, 255, 133, 0.6);
+  margin-bottom: 12px;
+  letter-spacing: 0.5px;
+}
+
+/* Animation grid - vertical layout */
+.animation-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Status panel - compact */
+.anime-status-panel {
+  padding: 12px !important;
+  background: rgba(0, 255, 133, 0.05) !important;
+  border: 1px solid rgba(0, 255, 133, 0.2);
+  border-radius: 4px;
+}
+
+.anime-status-panel .monitor-stat {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.anime-status-panel label {
+  font-size: 10px !important;
+  font-weight: 700;
+  color: rgba(0, 255, 133, 0.8);
+}
+
+.anime-status-panel .status-display {
+  font-size: 16px !important;
+  font-weight: 700;
+  color: var(--color-trigger-primary);
+  text-shadow: 0 0 6px rgba(0, 255, 133, 0.5);
+}
+
+/* System controls - 3 column grid */
+.anime-system-controls h3 {
+  font-size: 11px;
+  font-weight: 700;
+  color: rgba(0, 255, 133, 0.9);
+  margin-bottom: 8px;
+  letter-spacing: 0.3px;
+}
+
+.system-control-grid {
+  display: grid !important;
+  grid-template-columns: repeat(3, 1fr) !important;
+  gap: var(--gap-button) !important;
+}
+
+.system-btn {
+  height: var(--btn-height-secondary) !important;
+  font-size: 10px !important;
+  font-weight: 700;
+  border-color: var(--color-system) !important;
+}
+
+.system-btn.enable {
+  border-color: var(--color-trigger-primary) !important;
+}
+
+.system-btn.enable:hover {
+  background: rgba(0, 255, 133, 0.15) !important;
+  box-shadow: 0 0 10px rgba(0, 255, 133, 0.4) !important;
+}
+
+.system-btn.disable:hover {
+  background: rgba(255, 170, 0, 0.15) !important;
+  box-shadow: 0 0 10px rgba(255, 170, 0, 0.4) !important;
+}
+
+.system-btn.kill {
+  border-color: var(--color-danger) !important;
+}
+
+.system-btn.kill:hover {
+  background: rgba(255, 51, 102, 0.15) !important;
+  box-shadow: 0 0 10px rgba(255, 51, 102, 0.4) !important;
+}
+
+/* Animation triggers - 3 column grid */
+.anime-triggers h3 {
+  font-size: 11px;
+  font-weight: 700;
+  color: rgba(0, 255, 133, 0.9);
+  margin-bottom: 8px;
+  letter-spacing: 0.3px;
+}
+
+.trigger-control-grid {
+  display: grid !important;
+  grid-template-columns: repeat(3, 1fr) !important;
+  gap: var(--gap-button) !important;
+}
+
+.anim-trigger-btn {
+  height: 52px !important;
+  display: flex !important;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 6px !important;
+  border-color: var(--color-trigger-primary) !important;
+  transition: all 0.15s ease;
+}
+
+.anim-trigger-btn .trigger-label {
+  font-size: 9px !important;
+  font-weight: 700;
+  margin-bottom: 2px;
+  letter-spacing: 0.3px;
+}
+
+.anim-trigger-btn .trigger-desc {
+  font-size: 8px !important;
+  opacity: 0.7;
+  text-align: center;
+}
+
+.anim-trigger-btn:hover {
+  background: rgba(0, 255, 133, 0.15) !important;
+  box-shadow: 0 0 12px rgba(0, 255, 133, 0.4) !important;
+  transform: translateY(-1px);
+}
+
+.anim-trigger-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 0 8px rgba(0, 255, 133, 0.6) !important;
+}
+
+/* ============================================
+   GRID POSITIONING (DISABLED - Using existing compact layout)
+   ============================================ */
+
+/* Column 1: Stack vertically */
+/* .section--scenes { grid-column: 1; grid-row: 1; }
+.section--color { grid-column: 1; grid-row: 2; }
+.section--tempo { grid-column: 1; grid-row: 3; }
+.section--intensity { grid-column: 1; grid-row: 4; } */
+
+/* Column 2: Triggers + Visual FX stacked */
+/* .section--triggers { grid-column: 2; grid-row: 1; }
+.section--ve-layers { grid-column: 2; grid-row: 2; } */
+
+/* Column 3: Animation spans full height */
+/* .section--animation { grid-column: 3; grid-row: 1 / span 4; } */
+
+/* ============================================
+   RESPONSIVE BREAKPOINTS (DISABLED - Using existing responsive rules)
+   ============================================ */
+
+/* Compact layout: 1600-1919px */
+/* @media (min-width: 1600px) and (max-width: 1919px) {
+  :root {
+    --col1-width: 220px;
+    --col2-width: 580px;
+    --col3-width: 520px;
+  }
+  
+  .control-panel .control-grid {
+    grid-template-columns: var(--col1-width) var(--col2-width) var(--col3-width);
+    max-width: 1340px;
+  }
+  
+  .trigger-btn {
+    height: 36px !important;
+    font-size: 10px !important;
+  }
+  
+  .anim-trigger-btn {
+    height: 48px !important;
+  }
+} */
+
+/* Two-column layout: 1366-1599px */
+/* @media (min-width: 1366px) and (max-width: 1599px) {
+  .control-panel .control-grid {
+    grid-template-columns: 240px 1fr;
+    max-width: 100%;
+  }
+  
+  .section--scenes { grid-column: 1; grid-row: 1; }
+  .section--color { grid-column: 1; grid-row: 2; }
+  .section--tempo { grid-column: 1; grid-row: 3; }
+  .section--intensity { grid-column: 1; grid-row: 4; }
+  
+  .section--triggers { grid-column: 2; grid-row: 1; width: 100% !important; max-width: none !important; }
+  .section--animation { grid-column: 2; grid-row: 2; width: 100% !important; max-width: none !important; }
+  .section--ve-layers { grid-column: 2; grid-row: 3; width: 100% !important; max-width: none !important; }
+} */
+
+/* Single column: <1366px */
+/* @media (max-width: 1365px) {
+  .control-panel .control-grid {
+    grid-template-columns: 1fr;
+    max-width: 100%;
+  }
+  
+  .section--scenes,
+  .section--color,
+  .section--tempo,
+  .section--intensity,
+  .section--triggers,
+  .section--animation,
+  .section--ve-layers {
+    grid-column: 1 !important;
+    grid-row: auto !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+} */
+
+/* ============================================
+   ACCESSIBILITY & MOTION
+   ============================================ */
+
+/* Focus indicators */
+button:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline: 2px solid var(--color-trigger-primary);
+  outline-offset: 2px;
+}
+
+/* Reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  
+  .trigger-btn:hover,
+  .anim-trigger-btn:hover,
+  .macro-btn:hover {
+    transform: none !important;
+  }
+}
+
+/* ============================================
+   PERFORMANCE OPTIMIZATIONS
+   ============================================ */
+
+/* Prevent unnecessary repaints */
+.trigger-btn,
+.anim-trigger-btn,
+.macro-btn,
+.system-btn,
+.effect-toggle-btn,
+.layer-toggle-btn,
+.master-btn {
+  will-change: auto;
+  backface-visibility: hidden;
+  -webkit-font-smoothing: subpixel-antialiased;
+}
+
+/* GPU acceleration for hover effects */
+.trigger-btn:hover,
+.anim-trigger-btn:hover {
+  will-change: transform, box-shadow;
+}
+
+.trigger-btn:not(:hover),
+.anim-trigger-btn:not(:hover) {
+  will-change: auto;
+}

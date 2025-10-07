@@ -51,9 +51,14 @@ class EmergencyCleanup {
             window.gc();
         }
 
-        // 5. Reset CSS filters
+        // 5. Reset CSS filters via filter-manager
         console.log('🗑️ Resetting CSS filters...');
-        document.body.style.filter = 'none';
+        if (window.filterManager) {
+            window.filterManager.reset();
+        } else {
+            // Fallback if filter-manager not available
+            document.body.style.filter = 'none';
+        }
         document.body.style.transform = 'none';
 
         // 6. Restart with conservative settings

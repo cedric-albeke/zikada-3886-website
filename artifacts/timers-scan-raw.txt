@@ -1,0 +1,315 @@
+js/beehive-effect.js:115:        setTimeout(() => {
+js/beehive-effect.js:120:        this.intervalId = setInterval(() => {
+js/beehive-effect.js:175:        setTimeout(() => this.hide(), this.settings.duration);
+js/beehive-effect.js:269:                        setTimeout(flicker, Math.random() * 500 + 100);
+js/beehive-background.js:119:            setTimeout(() => {
+js/beehive-background.js:150:                setTimeout(() => {
+js/beehive-background.js:159:        setInterval(() => {
+js/background-animator.js:160:        setInterval(shiftGlow, 4000);
+js/background-animator.js:226:        setInterval(() => {
+js/aaa-shaders.js:379:        setTimeout(() => {
+js/midi-action-catalog.js:390:        this.triggerIntervals[effect] = setInterval(() => {
+js/midi-action-catalog.js:426:                requestAnimationFrame(drawTrail);
+js/performance-optimizer.js:28:        this.cleanupInterval = setInterval(() => {
+js/midi-feedback.js:364:                requestAnimationFrame(processBatch);
+js/midi-feedback.js:378:            requestAnimationFrame(processBatch);
+js/midi-feedback.js:381:        requestAnimationFrame(processBatch);
+js/midi-feedback.js:463:                    setTimeout(() => {
+js/midi-feedback.js:467:                        setTimeout(() => {
+js/performance-manager.js:82:            requestAnimationFrame(monitor);
+js/performance-manager.js:85:        requestAnimationFrame(monitor);
+js/performance-manager.js:312:            timeoutId = setTimeout(() => func.apply(this, args), delay);
+js/performance-manager.js:325:                requestAnimationFrame(execute);
+js/performance-manager.js:328:        requestAnimationFrame(execute);
+js/performance-inspector.js:12:        setTimeout(() => {
+js/performance-inspector.js:27:        this.intervalId = setInterval(() => {
+js/lottie-animations.js:448:            setTimeout(() => {
+js/lottie-animations.js:494:        setTimeout(() => {
+js/lottie-animations.js:496:            setInterval(() => {
+js/lottie-animations.js:502:        setTimeout(() => {
+js/lottie-animations.js:504:            setInterval(() => {
+js/lottie-animations.js:510:        setTimeout(() => {
+js/lottie-animations.js:512:            setInterval(() => {
+js/lottie-animations.js:519:        setTimeout(() => {
+js/lottie-animations.js:521:            setInterval(() => {
+js/lottie-animations.js:528:        setTimeout(() => {
+js/lottie-animations.js:530:            setInterval(() => {
+js/lottie-animations.js:538:        setTimeout(() => {
+js/lottie-animations.js:540:            setInterval(() => {
+js/lottie-animations.js:546:        setTimeout(() => {
+js/lottie-animations.js:548:            setInterval(() => {
+js/lottie-animations.js:554:        setTimeout(() => {
+js/lottie-animations.js:556:            setInterval(() => {
+js/lottie-animations.js:562:        setTimeout(() => {
+js/lottie-animations.js:564:            setInterval(() => {
+js/lottie-animations.js:595:        setTimeout(() => {
+js/lottie-animations.js:598:            setTimeout(() => {
+js/lottie-animations.js:619:            setInterval(() => {
+js/lottie-animations.js:632:                        setTimeout(() => {
+js/lottie-animations.js:769:        setTimeout(() => sparkle.remove(), 800);
+js/lottie-animations.js:819:        setTimeout(() => burst.remove(), 1000);
+js/lottie-animations.js:825:                setTimeout(() => player.setAttribute('speed', '1'), 2000);
+js/lottie-animations.js:848:        setTimeout(() => glow.remove(), 5000);
+js/matrix-messages.js:181:        this.scrambleInterval = setInterval(() => {
+js/matrix-messages.js:201:                setTimeout(() => {
+js/matrix-messages.js:273:        this.failsafeTimeout = setTimeout(() => {
+js/matrix-messages.js:306:        setTimeout(() => {
+js/matrix-messages.js:322:                setTimeout(() => {
+js/matrix-messages.js:415:        setTimeout(() => this._releaseDiv(rgbSplit), 300);
+js/matrix-messages.js:984:            setTimeout(() => {
+js/matrix-messages.js:1009:    const interval = setInterval(() => {
+js/gsap-patch-early.js:43:                    setTimeout(() => {
+js/gsap-patch-early.js:188:            setTimeout(() => {
+js/gsap-patch-early.js:220:        setInterval(() => {
+js/lottie-effect-loader.js:117:          requestAnimationFrame(() => {
+js/lottie-effect-loader.js:135:          setTimeout(() => { try { el.remove(); } catch {} }, 240);
+js/gsap-animation-registry.js:265:                setTimeout(() => this.killAnimation(animationId), 100);
+js/gsap-animation-registry.js:607:        this.cleanupInterval = setInterval(() => {
+js/interval-manager.js:1:// Interval Manager - Tracks and manages all setInterval calls to prevent memory leaks
+js/interval-manager.js:31:        const nativeIntervalId = setInterval(() => {
+js/interval-manager.js:124:        intervalData.nativeId = setInterval(() => {
+js/preview-bridge.js:33:  setTimeout(applyLightFX, 1500);
+js/emergency-fix.js:115:    const highestId = setTimeout(() => {}, 0);
+js/emergency-fix.js:289:setTimeout(() => {
+js/emergency-fix.js:296:    setInterval(() => {
+js/emergency-cleanup.js:61:        setTimeout(() => {
+js/emergency-cleanup.js:221:        setInterval(() => {
+js/text-effects.js:33:                scrambleInterval = setInterval(() => {
+js/text-effects.js:56:                setTimeout(triggerRandomly, Math.random() * 5000 + 5000);
+js/text-effects.js:59:            setTimeout(triggerRandomly, Math.random() * 3000);
+js/text-effects.js:120:            requestAnimationFrame(loop);
+js/text-effects.js:122:        requestAnimationFrame(loop);
+js/text-effects.js:150:            setTimeout(() => {
+js/text-effects.js:156:        setInterval(() => {
+js/text-effects.js:247:            setTimeout(() => {
+js/text-effects.js:253:        setInterval(() => {
+js/text-effects.js:259:                    setTimeout(() => createCorruptionBlock(), i * 50);
+js/text-effects.js:263:                setTimeout(() => {
+js/visual-effects-complete.js:356:            requestAnimationFrame(animateGrain);
+js/control-panel.js:100:        setInterval(() => {
+js/control-panel.js:293:        this.autoModeInterval = setInterval(() => {
+js/control-panel.js:497:        this.tapTimeout = setTimeout(() => {
+js/control-panel.js:747:                setTimeout(() => {
+js/control-panel.js:959:            setTimeout(() => {
+js/control-panel.js:996:                setTimeout(() => {
+js/control-panel.js:1132:        setInterval(() => {
+js/control-panel.js:1181:        setTimeout(() => {
+js/control-panel.js:1260:                setTimeout(() => {
+js/control-panel.js:1281:        setInterval(() => {
+js/control-panel.js:1317:                        setTimeout(() => {
+js/control-panel.js:1337:        setInterval(() => {
+js/control-panel.js:1351:            setInterval(() => {
+js/control-panel.js:1434:        setInterval(() => {
+js/subtle-effects.js:55:        setInterval(() => {
+js/subtle-effects.js:139:            requestAnimationFrame(animateFloat);
+js/subtle-effects.js:180:        setInterval(checkTime, 60000); // Check every minute
+js/subtle-effects.js:262:            setTimeout(() => {
+js/subtle-effects.js:329:        setInterval(() => {
+js/subtle-effects.js:390:                setTimeout(glitchZikada, Math.random() * 15000 + 10000);
+js/subtle-effects.js:392:            setTimeout(glitchZikada, Math.random() * 5000);
+js/subtle-effects.js:451:                setTimeout(pulse3886, Math.random() * 20000 + 15000);
+js/subtle-effects.js:453:            setTimeout(pulse3886, Math.random() * 10000);
+js/subtle-effects.js:509:                setTimeout(syncGlitch, Math.random() * 25000 + 20000);
+js/subtle-effects.js:511:            setTimeout(syncGlitch, Math.random() * 10000 + 5000);
+js/control-panel-v3.js:178:        setTimeout(() => ripple.remove(), 600);
+js/control-panel-v3.js:190:        setInterval(() => {
+js/control-panel-enhanced.js:835:                    setTimeout(() => {
+js/control-panel-enhanced.js:1066:        this.midiLearnTimeout = setTimeout(() => {
+js/control-panel-enhanced.js:1580:        requestAnimationFrame(() => {
+js/control-panel-enhanced.js:1585:        setTimeout(() => {
+js/control-panel-enhanced.js:1587:            setTimeout(() => {
+js/performance-stats-controller.js:61:            requestAnimationFrame(measureFPS);
+js/performance-stats-controller.js:64:        requestAnimationFrame(measureFPS);
+js/performance-stats-controller.js:93:        setInterval(() => {
+js/performance-stats-controller.js:126:        setInterval(() => {
+js/vj-receiver.js:74:        this._fallbackArmTimeout = setTimeout(() => {
+js/vj-receiver.js:140:        setInterval(() => {
+js/vj-receiver.js:395:                        setTimeout(() => { el.style.filter = prev; }, 1000);
+js/vj-receiver.js:462:                        setTimeout(() => window.chaosInit.init(), 100);
+js/vj-receiver.js:845:        setTimeout(() => {
+js/vj-receiver.js:870:        const delay = (ms) => new Promise(r => setTimeout(r, ms));
+js/vj-receiver.js:928:        setTimeout(() => { document.body.style.filter = prev; }, 250);
+js/vj-receiver.js:937:                setTimeout(() => window.fxController.setIntensity({ noise: current }), 300);
+js/vj-receiver.js:958:                setTimeout(() => fx.setEffectEnabled('cyberGrid', wasOn), 500);
+js/vj-receiver.js:995:        setTimeout(() => { document.body.style.filter = prev; }, 400);
+js/vj-receiver.js:1001:        setTimeout(() => { document.documentElement.style.filter = prev; }, 120);
+js/vj-receiver.js:1117:        setTimeout(() => {
+js/vj-receiver.js:1119:            setTimeout(() => {
+js/vj-receiver.js:1144:        this.bpmRippleInterval = setInterval(() => {
+js/vj-receiver.js:1215:            setTimeout(() => {
+js/vj-receiver.js:1406:                    const iv = setInterval(() => {
+js/vj-receiver.js:1520:                            setTimeout(() => {
+js/vj-receiver.js:1533:                        setTimeout(() => {
+js/vj-receiver.js:1550:                        setTimeout(() => {
+js/vj-receiver.js:1590:                        setTimeout(() => {
+js/vj-receiver.js:1600:                        setTimeout(() => {
+js/vj-receiver.js:1616:                        setTimeout(() => {
+js/vj-receiver.js:1655:                        setTimeout(() => {
+js/vj-receiver.js:1685:                        setTimeout(() => {
+js/vj-receiver.js:1698:                        const interval = setInterval(() => {
+js/vj-receiver.js:1740:                    setTimeout(() => {
+js/vj-receiver.js:1956:        setTimeout(() => {
+js/vj-receiver.js:1961:            setTimeout(() => {
+js/vj-receiver.js:2059:        setTimeout(() => {
+js/vj-receiver.js:2303:        setTimeout(() => {
+js/vj-receiver.js:2476:            setTimeout(() => {
+js/vj-receiver.js:2534:                await new Promise(r => setTimeout(r, 200));
+js/vj-receiver.js:2545:                await new Promise(r => setTimeout(r, 200));
+js/vj-receiver.js:2617:            this.fpsMonitorRAF = requestAnimationFrame(measureFPS);
+js/vj-receiver.js:2620:        this.fpsMonitorRAF = requestAnimationFrame(measureFPS);
+js/vj-receiver.js:2661:        const checkChaosEngine = setInterval(() => {
+js/vj-receiver.js:2906:            this.debugInterval = setInterval(() => {
+js/fx-controller.js:30:      requestAnimationFrame(() => { el.style.transition = 'opacity 300ms ease'; el.style.opacity = '1'; });
+js/fx-controller.js:42:        setTimeout(() => { try { el.remove(); } catch {} }, 220);
+js/fx-controller.js:205:        this.dataStreamsInterval = setInterval(() => {
+js/fx-controller.js:238:          setTimeout(() => {
+js/fx-controller.js:269:          this.dataStreamsKeepAlive = setInterval(() => {
+js/fx-controller.js:415:        this.plasmaKeepAlive = setInterval(() => {
+js/random-animations.js:62:        setTimeout(() => this.triggerRandomAnimation(), nextDelay);
+js/random-animations.js:67:        setTimeout(() => this.triggerRandomAnimation(), 2000);
+js/random-animations.js:594:        setInterval(() => {
+js/random-animations.js:614:            setTimeout(pulse, Math.random() * 10000 + 5000);
+js/random-animations.js:617:        setTimeout(pulse, 3000);
+js/random-animations.js:638:            setTimeout(distort, Math.random() * 8000 + 4000);
+js/random-animations.js:641:        setTimeout(distort, 5000);
+js/random-animations.js:837:        setTimeout(() => container.remove(), 1000);
+js/filter-manager.js:57:    this.applyTimeout = setTimeout(() => {
+js/animation-test.js:30:setTimeout(() => {
+js/control-panel-professional.js:69:            t = setTimeout(() => fn.apply(this, args), wait);
+js/control-panel-professional.js:118:        const pollInterval = setInterval(() => {
+js/control-panel-professional.js:1315:                setTimeout(() => btn.classList.remove('active'), 500);
+js/control-panel-professional.js:1320:                setTimeout(() => { btn.disabled = false; btn.classList.remove('cooldown'); }, 600);
+js/control-panel-professional.js:1335:                setTimeout(() => { btn.disabled = false; btn.classList.remove('cooldown'); }, 1200);
+js/control-panel-professional.js:1354:                setTimeout(() => btn.classList.remove('active'), 500);
+js/control-panel-professional.js:1717:                    setTimeout(() => {
+js/control-panel-professional.js:1853:        this.connectionInterval = setInterval(() => {
+js/control-panel-professional.js:1938:                const interval = setInterval(() => { subs.forEach(fn => { try { fn(); } catch(_) {} }); }, 1000);
+js/control-panel-professional.js:1968:            setTimeout(() => {
+js/control-panel-professional.js:2139:                setTimeout(() => {
+js/control-panel-professional.js:2149:        setInterval(() => {
+js/control-panel-professional.js:2210:                requestAnimationFrame(measureFPS);
+js/control-panel-professional.js:2212:            requestAnimationFrame(measureFPS);
+js/control-panel-professional.js:2216:        setInterval(() => {
+js/control-panel-professional.js:2257:        setInterval(() => {
+js/performance-monitor.js:112:            this.fpsMonitorId = requestAnimationFrame(measureFPS);
+js/performance-monitor.js:122:        this.systemMonitorInterval = setInterval(() => {
+js/logo-animator.js:60:            setTimeout(() => {
+js/logo-animator.js:62:                setTimeout(() => this.triggerPump(), 500);
+js/logo-animator.js:102:        setTimeout(() => {
+js/logo-animator.js:119:            setTimeout(() => {
+js/logo-animator.js:125:            setTimeout(() => {
+js/logo-animator.js:136:            setTimeout(() => this.triggerPump(), 1000);
+js/logo-animator.js:137:            setTimeout(() => this.triggerSquish(), 2000);
+js/logo-animator.js:696:            this.animationFrameId = requestAnimationFrame(protectLogo);
+js/chaos-init-minimal.js:189:            requestAnimationFrame(monitor);
+js/chaos-init-minimal.js:191:        requestAnimationFrame(monitor);
+js/chaos-init-minimal.js:296:    setTimeout(() => minimalChaos.init(), 1000);
+js/timing-controller.js:46:        this.intervals.set(id, setInterval(callback, delay));
+js/timing-controller.js:53:        this.timeouts.set(id, setTimeout(callback, delay));
+js/performance-element-manager.js:182:        this.cleanupInterval = setInterval(() => {
+js/simple-logo-animation.js:17:            setTimeout(() => this.init(), 1000);
+js/simple-logo-animation.js:230:        setTimeout(() => {
+js/simple-logo-animation.js:264:        setTimeout(() => this.testPump(), 1500);
+js/simple-logo-animation.js:265:        setTimeout(() => this.testGlitch(), 3000);
+js/simple-logo-animation.js:266:        setTimeout(() => this.testPulse(), 4500);
+js/sonar-effect.js:25:        setTimeout(() => {
+js/sonar-effect.js:29:            setInterval(() => {
+js/sonar-effect.js:249:            setTimeout(() => {
+js/sonar-effect.js:265:            setTimeout(() => createBlip(), i * 500);
+js/sonar-effect.js:269:        setInterval(() => {
+js/sonar-effect.js:370:        setTimeout(() => {
+js/balanced-fix.js:62:    setInterval(resetCounts, 2000);
+js/balanced-fix.js:326:    setInterval(monitorDOM, 3000);
+js/balanced-fix.js:359:                        setTimeout(breathe, 1000);
+js/balanced-fix.js:365:        setTimeout(breathe, 2000);
+js/balanced-fix.js:376:    setTimeout(() => {
+js/extended-animations.js:48:            setTimeout(() => this.runRandomEffect(), Math.random() * 6000 + 3000);
+js/extended-animations.js:51:        setTimeout(() => this.runRandomEffect(), 3000);
+js/extended-animations.js:133:        setTimeout(() => container.remove(), 1000);
+js/extended-animations.js:337:                setTimeout(typeMessage, 200);
+js/extended-animations.js:618:        setTimeout(() => gridContainer.remove(), 2000);
+js/extended-animations.js:720:            setTimeout(() => {
+js/extended-animations.js:725:        setTimeout(() => flicker.remove(), 1000);  // Longer duration
+js/extended-animations.js:779:            setTimeout(pulseBackground, Math.random() * 10000 + 5000);
+js/extended-animations.js:782:        setTimeout(pulseBackground, 2000);
+js/extended-animations.js:822:            setTimeout(retroWave, Math.random() * 15000 + 10000);
+js/extended-animations.js:825:        setTimeout(retroWave, 5000);
+js/chaos-init-fixed.js:100:        setTimeout(() => {
+js/chaos-init-fixed.js:153:            requestAnimationFrame(monitorFPS);
+js/chaos-init-fixed.js:156:        requestAnimationFrame(monitorFPS);
+js/chaos-init-fixed.js:306:            const intervalId = setTimeout(nextPhase, duration);
+js/chaos-init-fixed.js:319:        const watchdog = setInterval(() => {
+js/chaos-init-fixed.js:420:    setTimeout(() => chaosInit.init(), 1000);
+js/chaos-init.js:244:        const greyFlashPreventionId = setInterval(() => {
+js/chaos-init.js:288:                    setTimeout(() => {
+js/chaos-init.js:362:        setTimeout(() => {
+js/chaos-init.js:432:            requestAnimationFrame(monitorFPS);
+js/chaos-init.js:435:        requestAnimationFrame(monitorFPS);
+js/chaos-init.js:759:            requestAnimationFrame(animateGrid);
+js/chaos-init.js:815:        setTimeout(() => {
+js/chaos-init.js:847:                setTimeout(typeMessage, 800);
+js/chaos-init.js:859:        setTimeout(typeMessage, 500);
+js/chaos-init.js:1001:            this._noiseRAF = requestAnimationFrame(loop);
+js/chaos-init.js:1003:        this._noiseRAF = requestAnimationFrame(loop);
+js/chaos-init.js:1126:                setTimeout(() => {
+js/chaos-init.js:1139:            this.phaseTimer = setTimeout(runRandomPhase, Math.max(5000, Number(this.phaseDurationMs) || 30000));
+js/chaos-init.js:1198:        // Use regular setInterval with proper cleanup tracking
+js/chaos-init.js:1199:        const watchdogIntervalId = setInterval(() => {
+js/chaos-init.js:1379:            setTimeout(() => {
+js/chaos-init.js:1389:            setTimeout(glitchBurst, i * 800);  // Slower interval (was 300ms)
+js/chaos-init.js:1530:                    setTimeout(createGlitchLine, 75); // Increased delay from 50 to 75ms
+js/chaos-init.js:1833:                    setTimeout(createWave, 150);
+js/chaos-init.js:1975:            setTimeout(chaos, i * 300);  // Slower spacing
+js/chaos-init.js:1979:        setTimeout(() => {
+js/chaos-init.js:2050:        setTimeout(() => {
+js/chaos-init.js:2088:        setTimeout(() => {
+js/chaos-init.js:2128:        setTimeout(() => {
+js/chaos-init.js:2170:        setTimeout(() => {
+js/chaos-init.js:2395:        setTimeout(() => {
+js/chaos-init.js:2411:        setTimeout(() => {
+js/chaos-init.js:2427:        setTimeout(() => {
+js/chaos-init.js:2443:        setTimeout(() => {
+js/chaos-init.js:2459:        setTimeout(() => {
+js/chaos-init.js:2475:        setTimeout(() => {
+js/chaos-init.js:2562:        setTimeout(() => chaosInit.init(), 100);
+js/chaos-init.js:2633:setInterval(() => {
+js/anime-svg-logo.js:149:  requestAnimationFrame(() => {
+js/anime-svg-logo.js:299:setInterval(() => {
+js/animation-manager.js:489:            const interval = setInterval(() => {
+js/animation-manager.js:700:        return new Promise(resolve => setTimeout(resolve, ms));
+js/enhanced-logo-animator.js:328:                        setTimeout(microMove, Math.random() * 3000 + 2000);
+js/enhanced-logo-animator.js:804:                setTimeout(() => {
+js/enhanced-logo-animator.js:855:            setTimeout(analyzeAndAdapt, 5000);
+js/anime-enhanced-effects.js:62:            setInterval(() => {
+js/anime-enhanced-effects.js:335:                    setTimeout(triggerHolographicScan, 30000 + Math.random() * 15000);
+js/anime-enhanced-effects.js:346:        setTimeout(triggerHolographicScan, 10000 + Math.random() * 10000);
+js/anime-enhanced-effects.js:710:        setTimeout(() => {
+js/anime-enhanced-effects.js:851:        this.autoModeTimer = setInterval(() => {
+js/anime-enhanced-effects.js:857:                setTimeout(() => {
+js/anime-enhanced-effects.js:1000:            animationId = requestAnimationFrame(drawPlasma);
+js/anime-enhanced-effects.js:1041:        const keepAlive = setInterval(() => {
+js/anime-enhanced-effects.js:1063:        setTimeout(() => {
+js/anime-enhanced-effects.js:1177:        setInterval(() => {
+js/anime-enhanced-effects.js:1257:        setTimeout(() => animeEnhancedEffects.init(), 1000);
+js/anime-enhanced-effects.js:1260:    setTimeout(() => animeEnhancedEffects.init(), 1000);
+js/perf-sampler.js:33:  setInterval(() => {
+js/chaos-engine.js:379:                    setTimeout(() => {
+js/chaos-engine.js:389:                    setTimeout(() => {
+js/chaos-engine.js:422:        requestAnimationFrame(() => this.animate());
+js/performance-bus.js:38:      this._rafId = requestAnimationFrame(loop);
+js/performance-bus.js:40:    this._rafId = requestAnimationFrame(loop);
+js/debug-console.js:139:        setTimeout(() => {
+js/centerpiece-logo.js:756:            setTimeout(runNextAnimation, delay);
+js/centerpiece-logo.js:760:        setTimeout(runNextAnimation, 2000);
+js/centerpiece-logo.js:816:            setTimeout(() => {
+js/simple-restore.js:16:const highestId = setTimeout(() => {}, 0);
+js/direct-logo-animation.js:19:            setTimeout(() => this.init(), 1000);
+js/direct-logo-animation.js:254:        setTimeout(() => this.pump(), 1500);
+js/direct-logo-animation.js:255:        setTimeout(() => this.glitch(), 3000);
+js/direct-logo-animation.js:256:        setTimeout(() => this.pulse(), 4500);
+js/direct-logo-animation.js:257:        setTimeout(() => this.bigBounce(), 6000);
+js/safe-performance-monitor.js:61:            requestAnimationFrame(measureFPS);
+js/safe-performance-monitor.js:69:        setInterval(() => {
+js/beehive-logo-blend.js:139:        setTimeout(() => {
+js/beehive-logo-blend.js:143:            this.intervalId = setInterval(() => {
+js/beehive-logo-blend.js:221:        setTimeout(() => this.hide(), this.settings.duration);

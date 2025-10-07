@@ -1,0 +1,170 @@
+/*
+ * Control Panel Cleanup CSS
+ * Removes styling for deleted panels and adds compact animation controls
+ */
+
+/* ============================================
+   HIDE REMOVED PANELS (Failsafe)
+   ============================================ */
+.section--color,
+.color-control,
+.section--intensity,
+.effects-control,
+.bpm-options,
+.anime-status-panel {
+  display: none !important;
+}
+
+/* ============================================
+   COMPACT ANIMATION SYSTEM CONTROLS
+   ============================================ */
+
+/* Remove the System Control h3 entirely */
+.anime-system-controls h3 {
+  display: none;
+}
+
+/* Compact system control grid */
+.system-control-grid--compact {
+  display: flex !important;
+  gap: 8px !important;
+  justify-content: flex-start !important;
+  margin-bottom: 16px !important;
+}
+
+/* Compact system buttons */
+.system-btn--compact {
+  height: 28px !important;
+  min-height: 28px !important;
+  font-size: 9px !important;
+  padding: 0 12px !important;
+  letter-spacing: 0.5px;
+  font-weight: 700;
+  flex: 0 0 auto !important;
+  width: auto !important;
+  min-width: 75px;
+}
+
+.system-btn--compact.enable {
+  border-color: #00ff85 !important;
+  min-width: 70px;
+}
+
+.system-btn--compact.disable {
+  border-color: #ffaa00 !important;
+  min-width: 75px;
+}
+
+.system-btn--compact.kill {
+  border-color: #ff3366 !important;
+  min-width: 60px;
+}
+
+.system-btn--compact:hover {
+  transform: translateY(-1px);
+}
+
+.system-btn--compact:active {
+  transform: translateY(0);
+}
+
+/* Animation grid adjustments */
+.section--animation .animation-grid {
+  gap: 12px !important;
+}
+
+/* Move animation triggers closer to control buttons */
+.anime-triggers {
+  margin-top: 0 !important;
+}
+
+.anime-triggers h3 {
+  font-size: 11px;
+  font-weight: 700;
+  color: rgba(0, 255, 133, 0.9);
+  margin-bottom: 10px;
+  letter-spacing: 0.3px;
+}
+
+/* ============================================
+   GRID LAYOUT ADJUSTMENTS
+   ============================================ */
+
+/* Since COLOR MATRIX and FX INTENSITY are removed, 
+   adjust the grid to redistribute space */
+@media (min-width: 1280px) {
+  /* TEMPO section can be slightly wider now */
+  .section--tempo {
+    max-width: 420px;
+  }
+  
+  /* Scene Select can expand a bit */
+  .section--scenes {
+    max-width: 450px;
+  }
+  
+  /* Animation System gets more prominence */
+  .section--animation {
+    /* Grid will auto-adjust */
+  }
+}
+
+/* ============================================
+   TEMPO SECTION ADJUSTMENTS
+   ============================================ */
+
+/* Remove bottom margin from bpm-display since bpm-options is gone */
+.speed-control .bpm-display {
+  margin-bottom: 0 !important;
+}
+
+/* ============================================
+   VISUAL CLEANUP
+   ============================================ */
+
+/* Remove any lingering references */
+#hueSlider,
+#saturationSlider,
+#brightnessSlider,
+#contrastSlider,
+#resetColors,
+#glitchSlider,
+#particlesSlider,
+#noiseSlider,
+#toggleBpmRipple,
+#animeStatus,
+.trigger-toolbar,
+#triggerTheme,
+#triggerIntensity,
+#triggerSpeed,
+#triggerIntensityVal,
+#triggerSpeedVal {
+  display: none !important;
+}
+
+/* ============================================
+   RESPONSIVE ADJUSTMENTS
+   ============================================ */
+
+@media (max-width: 1599px) {
+  .system-btn--compact {
+    font-size: 8px !important;
+    padding: 0 10px !important;
+    min-width: 65px;
+  }
+  
+  .system-btn--compact.kill {
+    min-width: 55px;
+  }
+}
+
+@media (max-width: 1365px) {
+  .system-control-grid--compact {
+    flex-wrap: wrap;
+  }
+  
+  .system-btn--compact {
+    flex: 1 1 auto;
+    min-width: 80px;
+  }
+}

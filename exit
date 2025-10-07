@@ -1,0 +1,5 @@
+[33m4a06845[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mfeature/control-panel-compact-layout[m[33m)[m docs: add control panel improvements summary and final screenshots
+[33m7836397[m fix: merge stashed changes with compact layout improvements
+[33m6fa6f46[m feat: save current compact layout changes
+[33med5e3ab[m feat: add compact layout CSS and verification tools
+[33m91c1c00[m[33m ([m[1;31morigin/dev[m[33m)[m docs: add 2025-09-23 status update to VJ debug report; summarize M1–M7 status, tasks, and insights
