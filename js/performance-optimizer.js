@@ -200,11 +200,8 @@ class PerformanceOptimizer {
             }
         });
 
-        // Reduce scanline opacity
-        const scanlines = document.querySelector('.scanlines');
-        if (scanlines) {
-            gsap.set(scanlines, { opacity: 0.0005 });
-        }
+        // Preserve scanlines opacity — do not force-hide
+        // (Intentionally left unchanged to keep subtle film/scanline aesthetics)
     }
 
     applyMediumOptimization() {
@@ -233,11 +230,7 @@ class PerformanceOptimizer {
             }
         });
 
-        // Disable heavy effects
-        const staticNoise = document.getElementById('static-noise');
-        if (staticNoise) {
-            staticNoise.style.display = 'none';
-        }
+        // Preserve static noise — do not hide
     }
 
     applyHeavyOptimization() {
@@ -250,7 +243,10 @@ class PerformanceOptimizer {
             '.logo-text',
             '.image-wrapper',
             '.text-3886',
-            '.bg'
+            '.bg',
+            '.scanlines',
+            '#static-noise',
+            '#viz-blackout'
         ];
 
         gsap.globalTimeline.getChildren().forEach(tween => {

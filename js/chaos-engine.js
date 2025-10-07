@@ -705,20 +705,46 @@ class ChaosEngine {
             case 'low':
                 if (this.glitchPass) this.glitchPass.enabled = false;
                 this.chromaticAberrationPass.uniforms.amount.value = 0.0005;
-                if (this.filmPass) this.filmPass.enabled = false;
+                // Keep film grain on but at a lower intensity
+                if (!this.filmPass) {
+                    const fp = new FilmPass(0.12, 0.01, 648, false);
+                    fp.enabled = true; this.composer.addPass(fp); this.filmPass = fp;
+                } else {
+                    this.filmPass.enabled = true;
+                    if (this.filmPass.uniforms) {
+                        this.filmPass.uniforms.nIntensity.value = 0.12;
+                        this.filmPass.uniforms.sIntensity.value = 0.01;
+                    }
+                }
                 break;
             case 'medium':
                 if (!this.glitchPass) { this.glitchPass = new GlitchPass(); this.glitchPass.enabled = true; this.composer.addPass(this.glitchPass); }
                 else this.glitchPass.enabled = true;
                 this.chromaticAberrationPass.uniforms.amount.value = 0.002;
-                if (this.filmPass) this.filmPass.enabled = false;
+                // Keep film grain on with moderate intensity
+                if (!this.filmPass) {
+                    const fp = new FilmPass(0.2, 0.015, 648, false);
+                    fp.enabled = true; this.composer.addPass(fp); this.filmPass = fp;
+                } else {
+                    this.filmPass.enabled = true;
+                    if (this.filmPass.uniforms) {
+                        this.filmPass.uniforms.nIntensity.value = 0.2;
+                        this.filmPass.uniforms.sIntensity.value = 0.015;
+                    }
+                }
                 break;
             case 'high':
                 if (!this.glitchPass) { this.glitchPass = new GlitchPass(); this.glitchPass.enabled = true; this.composer.addPass(this.glitchPass); }
                 else this.glitchPass.enabled = true;
                 this.chromaticAberrationPass.uniforms.amount.value = 0.005;
                 if (!this.filmPass) { const fp = new FilmPass(0.35, 0.025, 648, false); fp.enabled = true; this.composer.addPass(fp); this.filmPass = fp; }
-                else this.filmPass.enabled = true;
+                else {
+                    this.filmPass.enabled = true;
+                    if (this.filmPass.uniforms) {
+                        this.filmPass.uniforms.nIntensity.value = 0.35;
+                        this.filmPass.uniforms.sIntensity.value = 0.025;
+                    }
+                }
                 break;
         }
         

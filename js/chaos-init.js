@@ -1588,7 +1588,10 @@ class ChaosInitializer {
     
     enablePlasmaEffect() {
         if (this.activeVisualEffects.plasma) return; // Already enabled
-        
+        // Reduce overall probability of enabling plasma
+        if (Math.random() > 0.5) { // 50% chance to skip
+            return;
+        }
         try {
             let plasmaCanvas = document.getElementById('plasma-field-canvas');
             
@@ -1600,6 +1603,12 @@ class ChaosInitializer {
             
             if (plasmaCanvas && typeof plasmaCanvas.startEffect === 'function') {
                 plasmaCanvas.startEffect();
+                // Reduce opacity by 15% from current
+                try {
+                    const cs = getComputedStyle(plasmaCanvas);
+                    const cur = parseFloat(plasmaCanvas.style.opacity || cs.opacity || '1');
+                    plasmaCanvas.style.opacity = String(Math.max(0, (cur * 0.85).toFixed(3)));
+                } catch(_) {}
                 this.activeVisualEffects.plasma = true;
                 console.log('🌊 Plasma field enabled for current phase');
             }
@@ -2272,7 +2281,12 @@ class ChaosInitializer {
         const temporaryElements = document.querySelectorAll('.vhs-overlay, .flash-overlay, .warp-effect, .phase-overlay, .glitch-overlay, div[style*="z-index: 999"]');
         temporaryElements.forEach(el => {
             // Skip essential elements
-            if (el.classList.contains('matrix-messages') || el.classList.contains('matrix-blackout')) {
+            if (
+                el.classList.contains('matrix-messages') ||
+                el.classList.contains('matrix-blackout') ||
+                el.classList.contains('scanlines') ||
+                el.id === 'static-noise'
+            ) {
                 return;
             }
             // Cancel any running animations on the element

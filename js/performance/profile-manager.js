@@ -53,7 +53,7 @@ export class PerformanceProfileManager {
         particleScale: 0.4,
         lottieSpeed: 0.75,
         lottiePaused: true,
-        overlays: { rgbSplit: false, chromatic: false, scanlines: false }
+        overlays: { rgbSplit: false, chromatic: false, scanlines: true }
       }
     };
 
