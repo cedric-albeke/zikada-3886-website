@@ -1117,7 +1117,8 @@ body {
         grid-template-rows: auto auto 1fr;
     }
 */
-    
+
+@media (min-width: 1280px) {
     /* Row 1: Color(3) + Tempo(2) + Intensity(2) + Triggers(5) = 12 */
     .section--color     { 
         grid-column: span 3; 
