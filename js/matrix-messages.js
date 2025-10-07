@@ -20,15 +20,10 @@ class MatrixMessages {
     }
 
     createBlackoutElement() {
-        // Prefer the shared blackout overlay if available
-        const shared = document.getElementById('viz-blackout');
-        if (shared) {
-            this.blackoutElement = shared;
-            return;
-        }
-        // Fallback: create a single shared overlay with the same id
+        // Use a dedicated matrix blackout overlay to avoid z-index conflicts with viz-blackout
         this.blackoutElement = document.createElement('div');
-        this.blackoutElement.id = 'viz-blackout';
+        this.blackoutElement.className = 'matrix-blackout';
+        // Style mirrors styleMessages() but we ensure presence even if CSS hasn’t loaded yet
         this.blackoutElement.style.cssText = `
             position: fixed !important;
             top: 0 !important;
@@ -39,7 +34,8 @@ class MatrixMessages {
             opacity: 0;
             pointer-events: none !important;
             z-index: 9998 !important;
-            transition: opacity 180ms linear;
+            transition: opacity 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+            display: none;
         `;
         document.body.appendChild(this.blackoutElement);
     }
@@ -282,14 +278,20 @@ class MatrixMessages {
             this.createBlackoutElement();
         }
 
+        // Ensure message sits above the blackout
+        if (this.messageElement && this.blackoutElement) {
+            const z = parseInt(getComputedStyle(this.blackoutElement).zIndex || '9998', 10);
+            this.messageElement.style.zIndex = String(Math.max(z + 1, 9999));
+        }
+
         // Trigger reactive effects on other elements
         this.triggerReactiveEffects('start');
 
-        // Activate blackout with semi-transparent overlay (shared overlay friendly)
+        // Activate blackout with semi-transparent overlay
         if (this.blackoutElement) {
             try { gsap.killTweensOf(this.blackoutElement); } catch(_) {}
             this.blackoutElement.style.display = 'block';
-            gsap.to(this.blackoutElement, { opacity: 0.85, duration: 0.4, ease: 'power2.inOut' });
+            gsap.to(this.blackoutElement, { opacity: 0.85, duration: 0.6, ease: 'power2.inOut' });
             this.blackoutElement.style.background = 'rgba(0, 0, 0, 0.95)';
         }
 

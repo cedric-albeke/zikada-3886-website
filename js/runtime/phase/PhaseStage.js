@@ -7,7 +7,7 @@ function ensureStyle() {
   const s = document.createElement('style');
   s.id = 'phase-stage-style';
   s.textContent = `
-    :root { --phase-xfade-ms: 450; --phase-xfade-ease: cubic-bezier(0.2,0,0,1); }
+    :root { --phase-xfade-ms: 1200; --phase-xfade-ease: cubic-bezier(0.4, 0, 0.2, 1); }
     #phase-stage { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; }
     #phase-stage .slot { position: absolute; inset: 0; opacity: 0; transition: opacity calc(var(--phase-xfade-ms) * 1ms) var(--phase-xfade-ease); will-change: opacity; }
     #phase-stage .slot.active { opacity: 1; }
@@ -50,7 +50,7 @@ export async function crossfade({ prev, next, signal, mountNext, ready }) {
   });
   from.classList.remove('active');
   to.classList.add('active');
-  if (!signal?.aborted) await Promise.race([done, new Promise((r)=>setTimeout(r, 600))]);
+  if (!signal?.aborted) await Promise.race([done, new Promise((r)=>setTimeout(r, 1600))]);
   from.innerHTML = '';
   _active = _active === 'A' ? 'B' : 'A';
 }

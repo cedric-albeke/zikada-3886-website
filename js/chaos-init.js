@@ -2159,9 +2159,9 @@ class ChaosInitializer {
         this.phaseController.setTransitionExecutor(async ({ prev, next, signal }) => {
             // Guard against missing next
             if (!next || !this._phaseMap.has(next)) return;
-            // Fade to black
+            // Fade to black (longer, smoother)
             try { this.showBlackout(1); } catch(_) {}
-            await new Promise(r => setTimeout(r, 200));
+            await new Promise(r => setTimeout(r, 550));
             if (signal?.aborted) return;
             // Cleanup previous overlays
             this.transitionOut();
@@ -2171,8 +2171,8 @@ class ChaosInitializer {
             // Notify
             try { window.vjReceiver?.sendMessage?.({ type: 'scene_changed', scene: next, timestamp: Date.now() }); } catch(_) {}
             if (signal?.aborted) return;
-            // Fade in
-            await new Promise(r => setTimeout(r, 300));
+            // Fade in (longer, smoother)
+            await new Promise(r => setTimeout(r, 700));
             try { this.hideBlackout(); } catch(_) {}
         });
     }
@@ -3364,7 +3364,7 @@ class ChaosInitializer {
         el.style.opacity = '0';
         el.style.pointerEvents = 'none';
         el.style.zIndex = '2147483647';
-        el.style.transition = 'opacity 180ms linear';
+        el.style.transition = 'opacity 700ms cubic-bezier(0.4, 0, 0.2, 1)';
         document.body.appendChild(el);
         this.blackoutEl = el;
     }
