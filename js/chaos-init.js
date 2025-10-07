@@ -26,6 +26,8 @@ import enhancedWatchdog from './enhanced-watchdog.js';
 import memoryLeakGuardian from './memory-leak-guardian.js';
 import performanceLadder from './performance-degradation-ladder.js';
 import performanceLadderTest from './performance-ladder-test.js';
+import smartPreloader from './smart-preloader.js';
+import smartPreloaderTest from './smart-preloader-test.js';
 import { threeJSParticleOptimizer } from './threejs-particle-optimizer.js';
 import { webglResourceManager } from './webgl-resource-manager.js';
 import gsap from 'gsap';
@@ -235,6 +237,33 @@ class ChaosInitializer {
         window.addEventListener('performance:adjust-pixel-ratio', (event) => {
             console.log('📱 Pixel ratio adjustment requested');
             this.handlePixelRatioAdjustment(event.detail);
+        });
+        
+        // Listen for Smart Preloader events
+        window.addEventListener('preloader:started', (event) => {
+            if (this.debugMetrics) {
+                console.log('🚀 Preloader started:', event.detail);
+            }
+        });
+        
+        window.addEventListener('preloader:loaded', (event) => {
+            if (this.debugMetrics) {
+                console.log(`✅ Resource preloaded: ${event.detail.url} (${event.detail.size} bytes)`);
+            }
+        });
+        
+        window.addEventListener('preloader:failed', (event) => {
+            if (this.debugMetrics) {
+                console.log(`❌ Resource preload failed: ${event.detail.url} - ${event.detail.error}`);
+            }
+        });
+        
+        window.addEventListener('preloader:paused', (event) => {
+            console.log(`⏸️ Preloader paused: ${event.detail.reason}`);
+        });
+        
+        window.addEventListener('preloader:cache-cleared', (event) => {
+            console.log(`🗑️ Preloader cache cleared: ${event.detail.resourcesCleared} resources (${event.detail.bytesCleared} bytes)`);
         });
     }
     
@@ -981,6 +1010,28 @@ class ChaosInitializer {
             }
         } catch (error) {
             console.warn('⚠️ Performance Degradation Ladder failed to start:', error);
+        }
+        
+        // Initialize Smart Preloader
+        try {
+            console.log('🚀 Starting Smart Preloader...');
+            
+            // Only start if PWA features are enabled or in development mode
+            if (this.pwaEnabled || this.debugMetrics) {
+                smartPreloader.start();
+                console.log('✅ Smart Preloader active');
+                
+                // Expose for debugging if enabled
+                if (this.debugMetrics) {
+                    window.smartPreloader = smartPreloader;
+                    window.smartPreloaderTest = smartPreloaderTest;
+                    console.log('🧪 Debug mode: Preloader testing available via window.testSmartPreloader()');
+                }
+            } else {
+                console.log('💤 Smart Preloader disabled (PWA features not enabled)');
+            }
+        } catch (error) {
+            console.warn('⚠️ Smart Preloader failed to start:', error);
         }
         this.initBackgroundAnimator();
         this.initLogoAnimator();  // Initialize logo animator early
@@ -3011,6 +3062,12 @@ class ChaosInitializer {
             this.opacityObserver.disconnect();
         }
 
+        // Destroy Smart Preloader
+        if (window.smartPreloader && typeof window.smartPreloader.destroy === 'function') {
+            window.smartPreloader.destroy();
+            console.log('✅ Smart Preloader destroyed');
+        }
+        
         // Enhanced element cleanup using performance selectors
         const elementsToRemove = [
             '.scanlines', '#cyber-grid', '#static-noise', '.data-streams', 
