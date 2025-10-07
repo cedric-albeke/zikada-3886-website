@@ -90,6 +90,7 @@ class ChaosInitializer {
         this.fps = 120;
         this.fpsHistory = [];
         this.lastFrameTime = performance.now();
+        this.bootTs = performance.now(); // Prevent plasma for first 120s
         this.animeStackLoaded = false;
         this.animeStackPromise = null;
         this.animeEnableListener = null;
@@ -1588,8 +1589,16 @@ class ChaosInitializer {
     
     enablePlasmaEffect() {
         if (this.activeVisualEffects.plasma) return; // Already enabled
-        // Reduce overall probability of enabling plasma
-        if (Math.random() > 0.5) { // 50% chance to skip
+        
+        // Safety gate: never show plasma in the first 120s after boot
+        if (performance.now() - this.bootTs < 120000) {
+            if (this.debugMetrics) console.log('⏳ Plasma suppressed: within first 120s');
+            return;
+        }
+        
+        // Default: skip plasma 80% of the time. Allow runtime override via SAFE_FLAGS for tuning.
+        const skipProb = (window.SAFE_FLAGS?.PLASMA_SKIP_PROBABILITY ?? 0.8);
+        if (Math.random() < skipProb) {
             return;
         }
         try {
@@ -1603,11 +1612,11 @@ class ChaosInitializer {
             
             if (plasmaCanvas && typeof plasmaCanvas.startEffect === 'function') {
                 plasmaCanvas.startEffect();
-                // Reduce opacity by 15% from current
+                // Reduce opacity by 40% from current
                 try {
                     const cs = getComputedStyle(plasmaCanvas);
                     const cur = parseFloat(plasmaCanvas.style.opacity || cs.opacity || '1');
-                    plasmaCanvas.style.opacity = String(Math.max(0, (cur * 0.85).toFixed(3)));
+                    plasmaCanvas.style.opacity = String(Math.max(0, (cur * 0.6).toFixed(3)));
                 } catch(_) {}
                 this.activeVisualEffects.plasma = true;
                 console.log('🌊 Plasma field enabled for current phase');

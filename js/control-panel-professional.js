@@ -62,6 +62,64 @@ class ProfessionalVJControlPanel {
         this.init();
     }
 
+    // Phase transition orchestrator for smooth cross-fades
+    async transitionPhase(nextPhaseId) {
+        if (this.isTransitioning) {
+            console.log('Phase transition already in progress, skipping');
+            return;
+        }
+        
+        this.isTransitioning = true;
+        try {
+            const current = document.querySelector('[data-phase].active, .phase-container.active');
+            const next = document.querySelector(`[data-phase="${nextPhaseId}"], .phase-container[data-phase="${nextPhaseId}"]`);
+            
+            console.log('Phase transition:', current?.dataset?.phase, '->', nextPhaseId);
+            
+            // Fade out current phase
+            if (current && current.dataset.phase !== nextPhaseId) {
+                current.classList.add('phase-fade-out');
+                await this.waitForAnimation(current, 650); // match --phase-fade-ms
+                current.classList.remove('active', 'phase-fade-out');
+            }
+            
+            // Fade in next phase
+            if (next) {
+                next.classList.add('active', 'phase-fade-in');
+                await this.waitForAnimation(next, 650);
+                next.classList.remove('phase-fade-in');
+            }
+        } finally {
+            this.isTransitioning = false;
+        }
+    }
+    
+    // Animation helper that waits for CSS animation to complete or timeout
+    waitForAnimation(element, timeoutMs) {
+        return new Promise(resolve => {
+            if (!element) return resolve();
+            
+            let done = false;
+            const timeout = setTimeout(() => {
+                if (!done) {
+                    done = true;
+                    resolve();
+                }
+            }, timeoutMs);
+            
+            const handler = () => {
+                if (!done) {
+                    done = true;
+                    clearTimeout(timeout);
+                    resolve();
+                }
+            };
+            
+            element.addEventListener('animationend', handler, { once: true });
+            element.addEventListener('transitionend', handler, { once: true });
+        });
+    }
+
     // Lightweight debounce for high-frequency UI events
     _debounce(fn, wait = 32) {
         let t;
@@ -1020,17 +1078,27 @@ class ProfessionalVJControlPanel {
     }
 
     initEventListeners() {
-        // Scene buttons
+        // Scene buttons - with smooth phase transitions
         document.querySelectorAll('.scene-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
+            btn.addEventListener('click', async () => {
+                const newScene = btn.dataset.scene;
+                if (newScene === this.currentScene) return; // Skip if already active
+                
+                // Use phase transition orchestrator for smooth cross-fade
+                await this.transitionPhase(newScene);
+                
+                // Update UI state
                 document.querySelectorAll('.scene-btn').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
-                this.currentScene = btn.dataset.scene;
+                this.currentScene = newScene;
+                
+                // Send control message
                 this.sendMessage({
                     type: 'scene_change',
                     scene: this.currentScene,
                     timestamp: Date.now()
                 });
+                
                 // Auto-scroll the scenes container to center the selected scene
                 this.scrollScenesTo(this.currentScene);
             });

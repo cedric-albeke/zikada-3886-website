@@ -23,6 +23,7 @@ class ControlPanelV3 {
         this.enhanceButtonFeedback();
         this.startUptimeCounter();
         this.initMIDIIntegration();
+        this.initMatrixControls();
 
         // Ensure the Scene Select section is in view so scene buttons are interactable
         try {
@@ -35,6 +36,149 @@ class ControlPanelV3 {
 
         console.log('🎹️ Control Panel V3 enhancements loaded');
     }
+    
+    /**
+     * Initialize matrix control buttons and VJ messaging
+     */
+    initMatrixControls() {
+        // Wait for VJ messaging to be available
+        const vjMessaging = window.vjMessaging;
+        if (!vjMessaging) {
+            setTimeout(() => this.initMatrixControls(), 100);
+            return;
+        }
+        
+        // Emergency Kill button
+        const emergencyBtn = document.getElementById('emergencyStop');
+        if (emergencyBtn) {
+            emergencyBtn.addEventListener('click', () => {
+                vjMessaging.emergencyKill();
+                this.showButtonFeedback(emergencyBtn, 'KILL ACTIVATED');
+            });
+        }
+        
+        // System Reset button
+        const resetBtn = document.getElementById('systemReset');
+        if (resetBtn) {
+            resetBtn.addEventListener('click', () => {
+                vjMessaging.systemReset();
+                this.showButtonFeedback(resetBtn, 'SYSTEM RESET');
+            });
+        }
+        
+        // System Reload button
+        const reloadBtn = document.getElementById('systemReload');
+        if (reloadBtn) {
+            reloadBtn.addEventListener('click', () => {
+                if (confirm('Reload the entire system? This will restart everything.')) {
+                    vjMessaging.systemReload();
+                }
+            });
+        }
+        
+        // Performance mode buttons
+        const perfLowBtn = document.getElementById('perfLow');
+        const perfAutoBtn = document.getElementById('perfAuto');
+        const perfHighBtn = document.getElementById('perfHigh');
+        
+        if (perfLowBtn) {
+            perfLowBtn.addEventListener('click', () => {
+                vjMessaging.setPerformanceMode('low');
+                this.updatePerformanceModeUI('low');
+                this.showButtonFeedback(perfLowBtn, 'LOW MODE');
+            });
+        }
+        
+        if (perfAutoBtn) {
+            perfAutoBtn.addEventListener('click', () => {
+                vjMessaging.setPerformanceMode('auto');
+                this.updatePerformanceModeUI('auto');
+                this.showButtonFeedback(perfAutoBtn, 'AUTO MODE');
+            });
+        }
+        
+        if (perfHighBtn) {
+            perfHighBtn.addEventListener('click', () => {
+                vjMessaging.setPerformanceMode('high');
+                this.updatePerformanceModeUI('high');
+                this.showButtonFeedback(perfHighBtn, 'HIGH MODE');
+            });
+        }
+        
+        // Set up connection status handling
+        vjMessaging.onConnectionChange = (connected) => {
+            this.updateControlsState(connected);
+        };
+        
+        console.log('⚡ Matrix controls initialized with VJ messaging');
+    }
+    
+    /**
+     * Update the state of control buttons based on connection status
+     */
+    updateControlsState(connected) {
+        const controls = [
+            'emergencyStop', 'systemReset', 'systemReload',
+            'perfLow', 'perfAuto', 'perfHigh'
+        ];
+        
+        controls.forEach(id => {
+            const btn = document.getElementById(id);
+            if (btn) {
+                if (connected) {
+                    btn.disabled = false;
+                    btn.title = btn.title.replace(' (Offline)', '');
+                    btn.style.opacity = '';
+                } else {
+                    btn.disabled = true;
+                    btn.title = (btn.title.includes('(Offline)') ? btn.title : btn.title + ' (Offline)');
+                    btn.style.opacity = '0.5';
+                }
+            }
+        });
+        
+        // Update connection indicator if it exists
+        const connectionStatus = document.getElementById('connectionStatus');
+        if (connectionStatus) {
+            const statusText = connectionStatus.querySelector('.status-text');
+            if (statusText) {
+                statusText.textContent = connected ? 'ONLINE' : 'OFFLINE';
+            }
+            connectionStatus.classList.toggle('connected', connected);
+        }
+    }
+    
+    /**
+     * Update performance mode UI
+     */
+    updatePerformanceModeUI(mode) {
+        const modes = ['perfLow', 'perfAuto', 'perfHigh'];
+        modes.forEach(id => {
+            const btn = document.getElementById(id);
+            if (btn) {
+                btn.classList.remove('active');
+            }
+        });
+        
+        const activeBtn = document.getElementById('perf' + mode.charAt(0).toUpperCase() + mode.slice(1));
+        if (activeBtn) {
+            activeBtn.classList.add('active');
+        }
+    }
+    
+    /**
+     * Show visual feedback for button presses
+     */
+    showButtonFeedback(button, message) {
+        const originalText = button.textContent;
+        button.textContent = message;
+        button.classList.add('active');
+        
+        setTimeout(() => {
+            button.textContent = originalText;
+            button.classList.remove('active');
+        }, 800);
+    }
 
     /**
      * Setup keyboard shortcuts for quick access
@@ -46,7 +190,14 @@ class ControlPanelV3 {
 
             // ESC - Emergency stop
             if (e.key === 'Escape') {
-                document.getElementById('emergencyStop')?.click();
+                e.preventDefault();
+                const vjMessaging = window.vjMessaging;
+                if (vjMessaging) {
+                    vjMessaging.emergencyKill();
+                    this.showButtonFeedback(document.getElementById('emergencyStop'), 'ESC KILL');
+                } else {
+                    document.getElementById('emergencyStop')?.click();
+                }
                 return;
             }
 
@@ -55,7 +206,13 @@ class ControlPanelV3 {
                 switch(e.key.toLowerCase()) {
                     case 'r':
                         e.preventDefault();
-                        document.getElementById('systemReset')?.click();
+                        const vjMessaging = window.vjMessaging;
+                        if (vjMessaging && confirm('Reset the system? This will restore defaults.')) {
+                            vjMessaging.systemReset();
+                            this.showButtonFeedback(document.getElementById('systemReset'), 'CTRL+R RESET');
+                        } else {
+                            document.getElementById('systemReset')?.click();
+                        }
                         break;
                     case 'e':
                         e.preventDefault();
