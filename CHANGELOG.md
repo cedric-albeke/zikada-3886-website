@@ -1,5 +1,28 @@
 # Changelog
 
+## [2025-10-07] - Control Panel scene auto-scroll + DOM growth headroom
+
+### Changed
+- Control Panel: auto-scroll Scene section to center the active/selected scene on load and after selection; also centers on `scene_changed` acknowledgment from the main page for consistency.
+- Performance flags: raised `MAX_DOM_NODES_GROWTH` default to 300 (from 200) in `js/feature-flags-safe.js`.
+
+### Files Modified
+- `js/control-panel-professional.js`
+- `js/feature-flags-safe.js`
+
+## [2025-10-07] - Particle optimizer init order + text effects default
+
+### Changed
+- Initialize Three.js Particle Optimizer immediately after renderer creation in `js/chaos-engine.js` so the instancing path (on capable hardware) is selected before any particle systems are created.
+- Guard optimizer initialization in `js/chaos-init.js` to avoid double-init and safely re-optimize an existing particle system only when present.
+
+### Enabled
+- Text scramble effect is now enabled by default via `js/feature-flags-safe.js` (`TEXT_SCRAMBLE_ENABLED = true`).
+
+### Files Modified
+- `js/chaos-engine.js`
+- `js/chaos-init.js`
+- `js/feature-flags-safe.js`
 ## [2025-01-16] - Animation Fixes and Performance Improvements
 
 ### Fixed

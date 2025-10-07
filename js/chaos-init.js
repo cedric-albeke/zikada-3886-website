@@ -64,6 +64,8 @@ import predictiveAlertingTestSuite from './predictive-alerting-tests.js';
 import { threeJSParticleOptimizer } from './threejs-particle-optimizer.js';
 import { webglResourceManager } from './webgl-resource-manager.js';
 import { registerMonitor } from './monitor/dashboard.js';
+import { teardownAll } from './runtime/teardown.js';
+import { getPhaseController } from './runtime/phase/PhaseController.js';
 import gsap from 'gsap';
 
 // Ensure GSAP is globally available
@@ -129,6 +131,10 @@ class ChaosInitializer {
         this.setupWatchdogEventHandlers();
 
         this.setupAnimeIntegration();
+
+        // Phase controller for coordinated transitions
+        this.phaseController = getPhaseController();
+        this._installPhaseController();
     }
 
     /**
@@ -782,29 +788,10 @@ class ChaosInitializer {
     }
 
     /**
-     * Safe filter application to prevent grey screens with atomic replacement
+     * Disabled safe filter feature: apply requested filter directly
      */
     safeApplyFilter(target, filterValue, duration = 2) {
-        if (target === document.body) {
-            // ATOMIC REPLACEMENT: Kill and immediately apply without gap
-            gsap.killTweensOf(document.body, 'filter');
-            
-            // Immediately set a safe intermediate filter to prevent grey flash
-            const safeFilter = this.validateFilter(filterValue);
-            
-            // Set intermediate safe state immediately (prevents gap)
-            const currentFilter = window.getComputedStyle(document.body).filter;
-            if (currentFilter !== 'none' && currentFilter !== safeFilter) {
-                // Create safe intermediate filter (blend current with target)
-                const intermediateFilter = this.createIntermediateFilter(currentFilter, safeFilter);
-                gsap.set(document.body, { filter: intermediateFilter });
-            }
-            
-            // Then apply final filter smoothly
-            this.applyFilterNow(target, filterValue, duration);
-        } else {
-            this.applyFilterNow(target, filterValue, duration);
-        }
+        this.applyFilterNow(target, filterValue, duration);
     }
 
     /**
@@ -826,20 +813,16 @@ class ChaosInitializer {
     }
 
     applyFilterNow(target, filterValue, duration) {
-        // Validate filter to prevent problematic values
-        const safeFilter = this.validateFilter(filterValue);
-        
+        const finalFilter = filterValue || 'none';
         if (target === document.body) {
-            this.filterTransitionInProgress = true;
-            this.currentBodyFilter = safeFilter;
-            console.log(`🎨 Applying safe filter: ${safeFilter}`);
-            // Route through centralized filter manager for body
-            filterManager.applyImmediate(safeFilter, duration);
-            this.filterTransitionInProgress = false;
+            gsap.to(document.body, {
+                filter: finalFilter,
+                duration: duration,
+                ease: 'power2.inOut'
+            });
         } else {
-            // Non-body targets still animate locally
             gsap.to(target, {
-                filter: safeFilter,
+                filter: finalFilter,
                 duration: duration,
                 ease: 'power2.inOut'
             });
@@ -850,106 +833,16 @@ class ChaosInitializer {
      * Validate and sanitize filter values to prevent grey screens
      */
     validateFilter(filterValue) {
-        if (!filterValue || filterValue === 'none') return 'none';
-        
-        // Fix problematic filter values aggressively
-        let safeFilter = filterValue;
-        
-        // Ensure brightness NEVER goes below 0.95 (very conservative to prevent any grey)
-        safeFilter = safeFilter.replace(/brightness\(0\.[0-9][0-4]?\)/g, 'brightness(0.95)');
-        safeFilter = safeFilter.replace(/brightness\(0\.8\d*\)/g, 'brightness(0.95)');
-        safeFilter = safeFilter.replace(/brightness\(0\.9[0-4]\)/g, 'brightness(0.95)');
-        
-        // Ensure saturation NEVER goes below 0.9 (prevents any desaturation grey)
-        safeFilter = safeFilter.replace(/saturate\(0(\.\d+)?\)/g, 'saturate(0.9)');
-        safeFilter = safeFilter.replace(/saturate\(0\.[0-8]\d*\)/g, 'saturate(0.9)');
-        
-        // Remove ALL sepia and grayscale filters (major grey causers)
-        safeFilter = safeFilter.replace(/sepia\([^)]*\)/g, '');
-        safeFilter = safeFilter.replace(/grayscale\([^)]*\)/g, '');
-        
-        // Ensure contrast doesn't go too low (can cause washed out grey look)
-        safeFilter = safeFilter.replace(/contrast\(0\.[0-7]\d*\)/g, 'contrast(1.0)');
-        
-        // Clean up multiple spaces and empty parentheses
-        safeFilter = safeFilter.replace(/\s+/g, ' ').replace(/\(\s*\)/g, '').trim();
-        
-        // Final safety check - if filter looks problematic, return 'none'
-        if (safeFilter.includes('brightness(0.') && !safeFilter.includes('brightness(0.9')) {
-            console.warn('⚠️ Rejecting potentially problematic filter, using none instead:', filterValue);
-            return 'none';
-        }
-        
-        return safeFilter;
+        // Safe filter feature removed: return the requested value as-is
+        return filterValue || 'none';
     }
 
     /**
      * Start grey flash prevention system - real-time monitoring
      */
     startGreyFlashPrevention() {
-        // Monitor document.body filter changes in real-time
-        const greyFlashPreventionId = setInterval(() => {
-            const bodyStyle = window.getComputedStyle(document.body);
-            const currentFilter = bodyStyle.filter;
-            
-            // Check for problematic filter values that cause grey
-            if (currentFilter && currentFilter !== 'none') {
-                let needsFix = false;
-                let fixReason = '';
-                
-                // Check for grey-causing conditions
-                if (currentFilter.includes('saturate(0') || currentFilter.includes('saturate(0.')) {
-                    const satMatch = currentFilter.match(/saturate\((0\.?\d*)\)/);
-                    if (satMatch && parseFloat(satMatch[1]) < 0.9) {
-                        needsFix = true;
-                        fixReason = 'low saturation';
-                    }
-                }
-                
-                if (currentFilter.includes('brightness(0.')) {
-                    const brightMatch = currentFilter.match(/brightness\((0\.\d+)\)/);
-                    if (brightMatch && parseFloat(brightMatch[1]) < 0.95) {
-                        needsFix = true;
-                        fixReason = 'low brightness';
-                    }
-                }
-                
-                if (currentFilter.includes('sepia') || currentFilter.includes('grayscale')) {
-                    needsFix = true;
-                    fixReason = 'sepia/grayscale';
-                }
-                
-                // Apply immediate fix if needed
-                if (needsFix) {
-                    console.warn(`🚨 GREY FLASH DETECTED - Immediate correction: ${fixReason} in filter: ${currentFilter}`);
-                    
-                    // FORCE immediate safe filter (no transition to prevent flash)
-                    gsap.set(document.body, { 
-                        filter: 'brightness(1) contrast(1) saturate(1) hue-rotate(0deg)' 
-                    });
-                    
-                    // Kill any problematic ongoing animations on body
-                    gsap.killTweensOf(document.body, 'filter');
-                    
-                    // Brief pause then apply corrected filter
-                    setTimeout(() => {
-                        const correctedFilter = this.validateFilter(currentFilter);
-                        if (correctedFilter !== 'none') {
-                            gsap.to(document.body, { 
-                                filter: correctedFilter, 
-                                duration: 0.5, 
-                                ease: 'power2.inOut' 
-                            });
-                        }
-                    }, 100);
-                }
-            }
-        }, 100); // Check every 100ms for real-time protection
-        
-        // Store interval ID for cleanup
-        this.greyFlashPreventionId = greyFlashPreventionId;
-        
-        console.log('🛡️ Grey flash prevention system started');
+        // Safe filter/grey-flash prevention feature removed
+        return;
     }
 
     init(forceRestart = false) {
@@ -1023,37 +916,31 @@ class ChaosInitializer {
             console.warn('⚠️ Enhanced Watchdog failed to start:', error);
         }
         
-        // Initialize Three.js Particle Optimizer
-        try {
-            console.log('🌌 Initializing Three.js Particle Optimizer...');
-            // Initialize with renderer if chaos engine is available
-            if (window.chaosEngine && window.chaosEngine.renderer) {
-                threeJSParticleOptimizer.initialize(window.chaosEngine.renderer);
-            }
-            console.log('✅ Three.js Particle Optimizer ready');
-        } catch (error) {
-            console.warn('⚠️ Three.js Particle Optimizer failed to initialize:', error);
-        }
+        // Defer WebGL-related initializations until after Chaos Engine is initialized
+        // (renderer must exist)
         
-        // Initialize WebGL Resource Manager
+        // Initialize Performance Degradation Ladder
         try {
-            console.log('🔧 Initializing WebGL Resource Manager...');
-            // Initialize with renderer if chaos engine is available
-            if (window.chaosEngine && window.chaosEngine.renderer) {
-                webglResourceManager.initialize(window.chaosEngine.renderer);
-                
-                // Precompile shaders for the main scene
-                if (window.chaosEngine.scene && window.chaosEngine.camera) {
-                    webglResourceManager.queueShaderPrecompilation(
-                        window.chaosEngine.scene,
-                        window.chaosEngine.camera,
-                        'high'
-                    );
-                }
+            console.log('📊 Starting Performance Degradation Ladder...');
+            // Initialize with Three.js objects if available
+            let renderer = null, scene = null, composer = null;
+            if (window.chaosEngine) {
+                renderer = window.chaosEngine.renderer;
+                scene = window.chaosEngine.scene;
+                composer = window.chaosEngine.composer;
             }
-            console.log('✅ WebGL Resource Manager active');
+            
+            performanceLadder.start(renderer, scene, composer);
+            console.log('✅ Performance Degradation Ladder active');
+            
+            // Expose for debugging if enabled
+            if (this.debugMetrics) {
+                window.performanceLadder = performanceLadder;
+                window.performanceLadderTest = performanceLadderTest;
+                console.log('🧪 Debug mode: Performance testing available via window.testPerformanceLadder()');
+            }
         } catch (error) {
-            console.warn('⚠️ WebGL Resource Manager failed to initialize:', error);
+            console.warn('⚠️ Performance Degradation Ladder failed to start:', error);
         }
         
         // Initialize Performance Degradation Ladder
@@ -1112,6 +999,53 @@ class ChaosInitializer {
         this.initLogoAnimator();  // Initialize logo animator early
         this.initChaosEngine();
 
+        // Now that Chaos Engine is initialized, set up GPU optimizers/managers that need the renderer
+        try {
+            if (window.chaosEngine && window.chaosEngine.renderer) {
+                if (!window.THREEJS_PARTICLE_OPTIMIZER?.enabled) {
+                    console.log('🌌 Initializing Three.js Particle Optimizer...');
+                    threeJSParticleOptimizer.initialize(window.chaosEngine.renderer);
+                } else {
+                    console.debug('Three.js Particle Optimizer already initialized');
+                }
+                // Attempt live re-optimization of existing particle system
+                if (window.chaosEngine.particles) {
+                    const prev = window.chaosEngine.particles;
+                    const optimized = threeJSParticleOptimizer.optimizeParticleSystem(prev, window.chaosEngine.particleCount || 2000);
+                    if (optimized && optimized !== prev && window.chaosEngine.scene) {
+                        try { window.chaosEngine.scene.remove(prev); } catch (_) {}
+                        window.chaosEngine.scene.add(optimized);
+                        window.chaosEngine.particles = optimized;
+                        console.log('✅ Switched to optimized instanced particle system');
+                    }
+                }
+                console.log('✅ Three.js Particle Optimizer ready');
+            } else {
+                console.warn('⚠️ Three.js Particle Optimizer: renderer not available yet');
+            }
+        } catch (error) {
+            console.warn('⚠️ Three.js Particle Optimizer failed to initialize:', error);
+        }
+
+        try {
+            if (window.chaosEngine && window.chaosEngine.renderer) {
+                console.log('🔧 Initializing WebGL Resource Manager...');
+                webglResourceManager.initialize(window.chaosEngine.renderer);
+                if (window.chaosEngine.scene && window.chaosEngine.camera) {
+                    webglResourceManager.queueShaderPrecompilation(
+                        window.chaosEngine.scene,
+                        window.chaosEngine.camera,
+                        'high'
+                    );
+                }
+                console.log('✅ WebGL Resource Manager active');
+            } else {
+                console.warn('⚠️ WebGL Resource Manager: renderer not available yet');
+            }
+        } catch (error) {
+            console.warn('⚠️ WebGL Resource Manager failed to initialize:', error);
+        }
+
         // Start centralized profile manager (adaptive DPR, post-processing, particles, Lottie)
         try {
             const mgr = createPerformanceProfileManager({
@@ -1129,6 +1063,10 @@ class ChaosInitializer {
         this.initAdditionalEffects();
         // RE-ENABLED: Random animations (CSS blur will fix rectangular elements)
         this.initRandomAnimations();
+        
+        // Auto-enable visual effects (particles and plasma) for continuous animation
+        this.initVisualEffects();
+        
         this.handleResize();
 
         // Listen for animation phase changes
@@ -1537,11 +1475,23 @@ class ChaosInitializer {
 
     initRandomAnimations() {
         try {
-            // RE-ENABLED: Rectangular elements will be blurred by CSS
-            randomAnimations.init();
-            extendedAnimations.init();
-            console.log('🎲 Random animations initialized (rectangular elements blurred via CSS)');
-            console.log('🎬 Extended animations initialized (rectangular elements blurred via CSS)');
+            const flags = (window.SAFE_FLAGS || window.safeFeatureFlags || {});
+            const allowRandom = !!flags.RANDOM_ANIMATIONS_ENABLED;
+            const allowExtended = !!flags.EXTENDED_ANIMATIONS_ENABLED;
+
+            if (allowRandom) {
+                randomAnimations.init();
+                console.log('🎲 Random animations initialized (flag RANDOM_ANIMATIONS_ENABLED)');
+            } else {
+                console.log('💤 Random animations disabled by feature flag');
+            }
+
+            if (allowExtended) {
+                extendedAnimations.init();
+                console.log('🎬 Extended animations initialized (flag EXTENDED_ANIMATIONS_ENABLED)');
+            } else {
+                console.log('💤 Extended animations disabled by feature flag');
+            }
 
             // Initialize beehive logo blend effect
             beehiveLogoBlend.init();
@@ -1594,6 +1544,83 @@ class ChaosInitializer {
 
         // Add subtle color variations
         this.addSubtleColorVariations();
+    }
+
+    initVisualEffects() {
+        // Visual effects (particles and plasma) are now integrated into specific animation phases
+        // They will be enabled/disabled dynamically based on the current scene
+        console.log('🎨 Visual effects will be managed by animation phase system');
+        
+        // Track active visual effects for cleanup
+        this.activeVisualEffects = {
+            particles: false,
+            plasma: false
+        };
+    }
+    
+    enableParticleEffect() {
+        if (this.activeVisualEffects.particles) return; // Already enabled
+        
+        try {
+            if (window.visualEffectsController) {
+                window.visualEffectsController.enableParticles();
+                this.activeVisualEffects.particles = true;
+                console.log('✨ Particles enabled for current phase');
+            }
+        } catch (error) {
+            console.warn('Failed to enable particles:', error);
+        }
+    }
+    
+    disableParticleEffect() {
+        if (!this.activeVisualEffects.particles) return; // Already disabled
+        
+        try {
+            if (window.visualEffectsController) {
+                window.visualEffectsController.disableParticles();
+                this.activeVisualEffects.particles = false;
+                console.log('✨ Particles disabled');
+            }
+        } catch (error) {
+            console.warn('Failed to disable particles:', error);
+        }
+    }
+    
+    enablePlasmaEffect() {
+        if (this.activeVisualEffects.plasma) return; // Already enabled
+        
+        try {
+            let plasmaCanvas = document.getElementById('plasma-field-canvas');
+            
+            // Create plasma field if it doesn't exist
+            if (!plasmaCanvas && window.animeEnhancedEffects?.createPlasmaField) {
+                window.animeEnhancedEffects.createPlasmaField();
+                plasmaCanvas = document.getElementById('plasma-field-canvas');
+            }
+            
+            if (plasmaCanvas && typeof plasmaCanvas.startEffect === 'function') {
+                plasmaCanvas.startEffect();
+                this.activeVisualEffects.plasma = true;
+                console.log('🌊 Plasma field enabled for current phase');
+            }
+        } catch (error) {
+            console.warn('Failed to enable plasma:', error);
+        }
+    }
+    
+    disablePlasmaEffect() {
+        if (!this.activeVisualEffects.plasma) return; // Already disabled
+        
+        try {
+            const plasmaCanvas = document.getElementById('plasma-field-canvas');
+            if (plasmaCanvas && typeof plasmaCanvas.stopEffect === 'function') {
+                plasmaCanvas.stopEffect();
+                this.activeVisualEffects.plasma = false;
+                console.log('🌊 Plasma field disabled');
+            }
+        } catch (error) {
+            console.warn('Failed to disable plasma:', error);
+        }
     }
 
     addScanlines() {
@@ -2096,6 +2123,51 @@ class ChaosInitializer {
         });
     }
 
+    _installPhaseController() {
+        // Map phase name to runner
+        this._phaseMap = new Map([
+            ['intense', () => this.phaseIntense()],
+            ['calm', () => this.phaseCalm()],
+            ['glitch', () => this.phaseGlitch()],
+            ['techno', () => this.phaseTechno?.()],
+            ['matrix', () => this.phaseMatrix?.()],
+            ['minimal', () => this.phaseMinimal?.()],
+            ['chaotic', () => this.phaseChaotic?.()],
+            ['retro', () => this.phaseRetro?.()],
+            ['vaporwave', () => this.phaseVaporwave?.()],
+            ['cyberpunk', () => this.phaseCyberpunk?.()],
+            ['neon', () => this.phaseNeon()],
+            ['aurora', () => this.phaseAurora()],
+            ['sunset', () => this.phaseSunset()],
+            ['ocean', () => this.phaseOcean()],
+            ['forest', () => this.phaseForest()],
+            ['fire', () => this.phaseFire()],
+            ['ice', () => this.phaseIce()],
+            ['galaxy', () => this.phaseGalaxy()]
+        ]);
+
+        // Install transition executor that uses our blackout and cleanup
+        this.phaseController.setTransitionExecutor(async ({ prev, next, signal }) => {
+            // Guard against missing next
+            if (!next || !this._phaseMap.has(next)) return;
+            // Fade to black
+            try { this.showBlackout(1); } catch(_) {}
+            await new Promise(r => setTimeout(r, 200));
+            if (signal?.aborted) return;
+            // Cleanup previous overlays
+            this.transitionOut();
+            if (signal?.aborted) return;
+            // Run target phase
+            try { this._phaseMap.get(next)?.(); } catch (e) { console.warn('Phase runner error', next, e); }
+            // Notify
+            try { window.vjReceiver?.sendMessage?.({ type: 'scene_changed', scene: next, timestamp: Date.now() }); } catch(_) {}
+            if (signal?.aborted) return;
+            // Fade in
+            await new Promise(r => setTimeout(r, 300));
+            try { this.hideBlackout(); } catch(_) {}
+        });
+    }
+
     startAnimationPhases() {
         // Prevent duplicate phase runners
         if (this.phaseRunning && this.phaseTimer) {
@@ -2138,23 +2210,19 @@ class ChaosInitializer {
 
         const runRandomPhase = () => {
             if (!this.phaseRunning) return;
+            if (this._phaseTransitioning) return; // guard against overlapping transitions
 
             const availablePhases = phases.filter(p => p.name !== lastPhaseName);
             const choice = availablePhases[Math.floor(Math.random() * availablePhases.length)];
             lastPhaseName = choice.name;
 
-            if (this.currentPhase) {
-                this.transitionOut();
-                setTimeout(() => {
-                    choice.run();
-                    this.currentPhase = choice.name;
-                    notifyScene(choice.name);
-                }, 500);
-            } else {
-                choice.run();
+            // Use PhaseController to coordinate transition (cancellable)
+            this._phaseTransitioning = true;
+            this.phaseController.setPhase(choice.name).finally(() => {
                 this.currentPhase = choice.name;
                 notifyScene(choice.name);
-            }
+                this._phaseTransitioning = false;
+            });
 
             // schedule next based on configured phaseDurationMs
             this.clearPhaseTimer();
@@ -2179,6 +2247,10 @@ class ChaosInitializer {
     transitionOut() {
         // SIMPLIFIED: No filter reset during transitions to prevent grey flashes
         // Let new phase handle its own filter without resetting first
+        
+        // Disable visual effects during transition
+        this.disableParticleEffect();
+        this.disablePlasmaEffect();
         
         // Kill previous phase animations if GSAP registry is available
         if (this.currentPhase && window.gsapAnimationRegistry) {
@@ -3090,6 +3162,9 @@ class ChaosInitializer {
         // Phase: Vaporwave
         window.dispatchEvent(new CustomEvent('animationPhase', { detail: { phase: 'vaporwave' } }));
 
+        // Enable plasma for dreamy aesthetic atmosphere
+        this.enablePlasmaEffect();
+
         // Apply vaporwave color filter safely
         this.safeApplyFilter(document.body, 'hue-rotate(45deg) saturate(1.2) contrast(0.95)', 2);
 
@@ -3123,12 +3198,16 @@ class ChaosInitializer {
                 onComplete: () => overlay.remove()
             });
             this.safeApplyFilter(document.body, 'none', 2);
+            // Plasma will be disabled during next phase transition
         }, 10000);
     }
 
     phaseCyberpunk() {
         // Phase: Cyberpunk
         window.dispatchEvent(new CustomEvent('animationPhase', { detail: { phase: 'cyberpunk' } }));
+
+        // Enable particles for digital rain effect
+        this.enableParticleEffect();
 
         // Yellow/cyan color scheme safely
         this.safeApplyFilter(document.body, 'contrast(1.1) saturate(1.1)', 2);
@@ -3163,6 +3242,7 @@ class ChaosInitializer {
                 onComplete: () => grid.remove()
             });
             this.safeApplyFilter(document.body, 'none', 2);
+            // Particles will be disabled during next phase transition
         }, 10000);
     }
 
@@ -3208,6 +3288,9 @@ class ChaosInitializer {
         // Phase: Aurora
         window.dispatchEvent(new CustomEvent('animationPhase', { detail: { phase: 'aurora' } }));
 
+        // Enable particles for magical sparkle effect
+        this.enableParticleEffect();
+
         // Northern lights gradient
         const aurora = document.createElement('div');
         aurora.style.cssText = `
@@ -3247,7 +3330,10 @@ class ChaosInitializer {
                 y: '100%',
                 opacity: 0,
                 duration: 3,
-                onComplete: () => aurora.remove()
+                onComplete: () => {
+                    aurora.remove();
+                    // Particles will be disabled during next phase transition
+                }
             });
     }
 
@@ -3451,6 +3537,9 @@ class ChaosInitializer {
         // Phase: Ocean
         window.dispatchEvent(new CustomEvent('animationPhase', { detail: { phase: 'ocean' } }));
 
+        // Enable plasma effect for oceanic atmosphere
+        this.enablePlasmaEffect();
+
         // Deep blue/teal theme safely
         this.safeApplyFilter(document.body, 'hue-rotate(-45deg) saturate(1.2) brightness(0.95)', 2.5);
 
@@ -3460,6 +3549,7 @@ class ChaosInitializer {
                 duration: 2,
                 ease: 'power2.inOut'
             });
+            // Plasma will be disabled during next phase transition
         }, 8000);
     }
 
@@ -3515,6 +3605,11 @@ class ChaosInitializer {
         // Phase: Galaxy
         window.dispatchEvent(new CustomEvent('animationPhase', { detail: { phase: 'galaxy' } }));
 
+        // Enable particles for cosmic star field effect
+        this.enableParticleEffect();
+        // Enable plasma for nebula-like atmosphere
+        this.enablePlasmaEffect();
+
         // Deep purple/violet cosmic theme safely
         this.safeApplyFilter(document.body, 'hue-rotate(90deg) saturate(1.3) brightness(0.95) contrast(1.1)', 2.5);
 
@@ -3524,6 +3619,7 @@ class ChaosInitializer {
                 duration: 2,
                 ease: 'power2.inOut'
             });
+            // Particles and plasma will be disabled during next phase transition
         }, 8000);
     }
 
@@ -3742,3 +3838,13 @@ import('./interval-manager.js').then(module => {
         }
     }, 200);
 });
+
+// HMR teardown safety for dev
+if (import.meta && import.meta.hot) {
+    import.meta.hot.dispose(() => {
+        try { if (window.chaosEngine && typeof window.chaosEngine.destroy === 'function') window.chaosEngine.destroy(); } catch (_) {}
+        try { if (window.WEBGL_RESOURCE_MANAGER && typeof window.WEBGL_RESOURCE_MANAGER.dispose === 'function') window.WEBGL_RESOURCE_MANAGER.dispose(); } catch (_) {}
+        try { teardownAll(); } catch (_) {}
+    });
+    import.meta.hot.accept();
+}

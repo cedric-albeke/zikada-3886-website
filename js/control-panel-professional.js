@@ -80,6 +80,8 @@ class ProfessionalVJControlPanel {
         this.startSystemMonitoring();
         this.startDiceRollCountdown();
         this.startPerformanceMonitoring();
+        // Ensure the scenes section centers the active button on load
+        this.scheduleInitialSceneScroll();
 
         console.log('🎛️ Professional VJ Control Panel initialized with original HTML');
     }
@@ -1029,6 +1031,8 @@ class ProfessionalVJControlPanel {
                     scene: this.currentScene,
                     timestamp: Date.now()
                 });
+                // Auto-scroll the scenes container to center the selected scene
+                this.scrollScenesTo(this.currentScene);
             });
         });
 
@@ -1651,6 +1655,28 @@ class ProfessionalVJControlPanel {
         if (autoBtn) autoBtn.classList.add('active');
     }
 
+    // Smoothly center the given scene button or the currently active one
+    scrollScenesTo(scene) {
+        try {
+            const grid = document.querySelector('.scene-section .scene-grid');
+            if (!grid) return;
+            const target = scene
+                ? grid.querySelector(`.scene-btn[data-scene="${scene}"]`)
+                : (grid.querySelector('.scene-btn.active') || grid.querySelector('.scene-btn[data-scene="auto"]'));
+            if (target && typeof target.scrollIntoView === 'function') {
+                target.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
+            } else {
+                grid.scrollIntoView({ behavior: 'smooth', block: 'start', inline: 'nearest' });
+            }
+        } catch (_) {}
+    }
+
+    // Schedule initial scroll after layout is ready
+    scheduleInitialSceneScroll() {
+        // Two RAFs to ensure layout calculations are settled
+        requestAnimationFrame(() => requestAnimationFrame(() => this.scrollScenesTo()));
+    }
+
     resetAllControls() {
         // Reset all controls to default values
         this.effects = {
@@ -1783,6 +1809,8 @@ class ProfessionalVJControlPanel {
             case 'scene_changed': {
                 const scene = (data.scene || '').toLowerCase();
                 this.updateAutoSceneHighlight(scene);
+                // Also center the scene button in view
+                this.scrollScenesTo(scene);
                 break;
             }
             case 'performance_mode_updated': {

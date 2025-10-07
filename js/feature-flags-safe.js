@@ -8,7 +8,7 @@ class SafeFeatureFlags {
         
         // Primary safety flags - default to safer values during development
         this.FX_ENABLED = this.getFlag(urlParams, 'fx', 'FX_ENABLED', true);
-        this.TEXT_EFFECTS_ENABLED = this.getFlag(urlParams, 'text', 'TEXT_EFFECTS_ENABLED', false); // DISABLED by default
+        this.TEXT_EFFECTS_ENABLED = this.getFlag(urlParams, 'text', 'TEXT_EFFECTS_ENABLED', true); // ENABLED by default
         this.PERF_SAFE_MODE = this.getFlag(urlParams, 'safe', 'PERF_SAFE_MODE', false);
         this.DOM_MONITORING = this.getFlag(urlParams, 'dom', 'DOM_MONITORING', true);
         
@@ -16,14 +16,17 @@ class SafeFeatureFlags {
         this.CHROMA_ENABLED = this.getFlag(urlParams, 'chroma', 'CHROMA_ENABLED', true);
         this.SPOTLIGHT_ENABLED = this.getFlag(urlParams, 'spotlight', 'SPOTLIGHT_ENABLED', true);
         this.SHIMMER_ENABLED = this.getFlag(urlParams, 'shimmer', 'SHIMMER_ENABLED', true);
-        this.MATRIX_RAIN_ENABLED = this.getFlag(urlParams, 'matrix', 'MATRIX_RAIN_ENABLED', false); // Can cause canvas issues
-        this.TEXT_SCRAMBLE_ENABLED = this.getFlag(urlParams, 'scramble', 'TEXT_SCRAMBLE_ENABLED', false); // Memory leak source
+        this.MATRIX_RAIN_ENABLED = this.getFlag(urlParams, 'matrix', 'MATRIX_RAIN_ENABLED', true); // Enable by default for visual parity
+        this.TEXT_SCRAMBLE_ENABLED = this.getFlag(urlParams, 'scramble', 'TEXT_SCRAMBLE_ENABLED', true); // Enabled by default
         this.DATA_CORRUPTION_ENABLED = this.getFlag(urlParams, 'corruption', 'DATA_CORRUPTION_ENABLED', false); // DOM bloat
+        // Animation group switches (gate heavy DOM effects)
+        this.EXTENDED_ANIMATIONS_ENABLED = this.getFlag(urlParams, 'extanim', 'EXTENDED_ANIMATIONS_ENABLED', true);
+        this.RANDOM_ANIMATIONS_ENABLED = this.getFlag(urlParams, 'randanim', 'RANDOM_ANIMATIONS_ENABLED', true);
         
         // Performance limits
-        this.MAX_CONCURRENT_FX = parseInt(urlParams.get('maxfx') || localStorage.getItem('MAX_CONCURRENT_FX') || '3');
-        this.MAX_DOM_NODES_GROWTH = parseInt(urlParams.get('maxdom') || localStorage.getItem('MAX_DOM_NODES_GROWTH') || '50');
-        this.MEMORY_WARNING_MB = parseInt(urlParams.get('maxmem') || localStorage.getItem('MEMORY_WARNING_MB') || '100');
+        this.MAX_CONCURRENT_FX = parseInt(urlParams.get('maxfx') || localStorage.getItem('MAX_CONCURRENT_FX') || '6');
+        this.MAX_DOM_NODES_GROWTH = parseInt(urlParams.get('maxdom') || localStorage.getItem('MAX_DOM_NODES_GROWTH') || '300');
+        this.MEMORY_WARNING_MB = parseInt(urlParams.get('maxmem') || localStorage.getItem('MEMORY_WARNING_MB') || '500');
         
         // Debug flags
         this.DEBUG_FX = this.getFlag(urlParams, 'debugfx', 'DEBUG_FX', false);
@@ -66,6 +69,8 @@ class SafeFeatureFlags {
         console.log(`    MATRIX_RAIN_ENABLED: ${this.MATRIX_RAIN_ENABLED}`);
         console.log(`    TEXT_SCRAMBLE_ENABLED: ${this.TEXT_SCRAMBLE_ENABLED}`);
         console.log(`    DATA_CORRUPTION_ENABLED: ${this.DATA_CORRUPTION_ENABLED}`);
+        console.log(`    EXTENDED_ANIMATIONS_ENABLED: ${this.EXTENDED_ANIMATIONS_ENABLED}`);
+        console.log(`    RANDOM_ANIMATIONS_ENABLED: ${this.RANDOM_ANIMATIONS_ENABLED}`);
         console.log('  Performance Limits:');
         console.log(`    MAX_CONCURRENT_FX: ${this.MAX_CONCURRENT_FX}`);
         console.log(`    MAX_DOM_NODES_GROWTH: ${this.MAX_DOM_NODES_GROWTH}`);

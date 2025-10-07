@@ -47,7 +47,7 @@ class ChaosEngine {
         this.isInitialized = false;
 
         // Performance optimizations
-        this.particleCount = 2000;
+        this.particleCount = 800; // Reduced from 2000 for better performance
         this.frameCounter = 0;
         this.updateFrequency = 2; // Update particles every N frames
         this.performanceMode = 'high';
@@ -141,6 +141,15 @@ class ChaosEngine {
         }
 
         this.setupRenderer();
+
+        // Initialize Three.js Particle Optimizer early with renderer before creating particles
+        try {
+            const opt = window.THREEJS_PARTICLE_OPTIMIZER;
+            if (opt && typeof opt.initialize === 'function' && !opt.enabled) {
+                opt.initialize(this.renderer);
+            }
+        } catch (_) {}
+
         this.setupScene();
         this.setupCamera();
         this.setupLights();
@@ -389,7 +398,7 @@ class ChaosEngine {
                     console.log('✅ Using optimized instanced particle system');
                     this.particles = optimizedParticles;
                 } else {
-                    console.log('⚠️ Using fallback Points particle system');
+                    console.debug('Using fallback Points particle system');
                 }
             } catch (error) {
                 console.error('Particle optimization failed, using fallback:', error);
