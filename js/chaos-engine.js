@@ -691,6 +691,24 @@ class ChaosEngine {
             window.THREEJS_PARTICLE_OPTIMIZER.setQualityLevel(quality);
         }
         
+        // Adjust pixel ratio based on quality level
+        if (window.WEBGL_RESOURCE_MANAGER) {
+            let targetPixelRatio;
+            switch (quality) {
+                case 'low':
+                    targetPixelRatio = 0.75;
+                    break;
+                case 'medium':
+                    targetPixelRatio = 1.0;
+                    break;
+                case 'high':
+                default:
+                    targetPixelRatio = window.WEBGL_RESOURCE_MANAGER.basePixelRatio;
+                    break;
+            }
+            window.WEBGL_RESOURCE_MANAGER.setPixelRatio(targetPixelRatio);
+        }
+        
         this.performanceMode = quality;
     }
 
@@ -778,6 +796,15 @@ class ChaosEngine {
                 window.THREEJS_PARTICLE_OPTIMIZER.dispose();
             } catch (error) {
                 console.warn('Particle optimizer cleanup failed:', error);
+            }
+        }
+        
+        // Cleanup WebGL resource manager
+        if (window.WEBGL_RESOURCE_MANAGER) {
+            try {
+                window.WEBGL_RESOURCE_MANAGER.dispose();
+            } catch (error) {
+                console.warn('WebGL resource manager cleanup failed:', error);
             }
         }
 

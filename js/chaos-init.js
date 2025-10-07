@@ -25,6 +25,7 @@ import featureFlags from './feature-flags.js';
 import enhancedWatchdog from './enhanced-watchdog.js';
 import memoryLeakGuardian from './memory-leak-guardian.js';
 import { threeJSParticleOptimizer } from './threejs-particle-optimizer.js';
+import { webglResourceManager } from './webgl-resource-manager.js';
 import gsap from 'gsap';
 
 // Ensure GSAP is globally available
@@ -220,6 +221,18 @@ class ChaosInitializer {
         window.addEventListener('dom:excessive-growth', (event) => {
             console.log('🌳 Excessive DOM growth detected');
             this.handleDOMGrowth(event.detail);
+        });
+        
+        // Listen for WebGL resource leak warnings
+        window.addEventListener('webgl:resource-leak', (event) => {
+            console.log('🗺️ WebGL resource leak detected');
+            this.handleWebGLResourceLeak(event.detail);
+        });
+        
+        // Listen for performance adjustments that need pixel ratio changes
+        window.addEventListener('performance:adjust-pixel-ratio', (event) => {
+            console.log('📱 Pixel ratio adjustment requested');
+            this.handlePixelRatioAdjustment(event.detail);
         });
     }
     
@@ -454,6 +467,58 @@ class ChaosInitializer {
             
         } catch (error) {
             console.error('DOM growth cleanup failed:', error);
+        }
+    }
+    
+    /**
+     * Handle WebGL resource leak detection from resource manager
+     */
+    handleWebGLResourceLeak(details) {
+        console.log('🗺️ WebGL resource leak details:', details);
+        
+        try {
+            // Trigger intensive cleanup
+            if (window.WEBGL_RESOURCE_MANAGER) {
+                window.WEBGL_RESOURCE_MANAGER.performRendererCleanup();
+            }
+            
+            // Force GSAP cleanup
+            if (typeof gsap !== 'undefined') {
+                gsap.killTweensOf('*');
+            }
+            
+            // Clear animation registry
+            if (window.animationRegistry) {
+                window.animationRegistry.cleanup();
+            }
+            
+            // Reduce quality temporarily to prevent further leaks
+            this.handlePerformanceEmergency({ level: 'warning' });
+            
+            console.log('✅ WebGL resource leak cleanup completed');
+            
+        } catch (error) {
+            console.error('WebGL resource leak cleanup failed:', error);
+        }
+    }
+    
+    /**
+     * Handle pixel ratio adjustment requests
+     */
+    handlePixelRatioAdjustment(details) {
+        console.log('📱 Pixel ratio adjustment details:', details);
+        
+        try {
+            const { ratio, reason } = details;
+            
+            // Apply pixel ratio adjustment via WebGL Resource Manager
+            if (window.WEBGL_RESOURCE_MANAGER) {
+                window.WEBGL_RESOURCE_MANAGER.setPixelRatio(ratio);
+                console.log(`🎆 Pixel ratio adjusted to ${ratio} (${reason})`);
+            }
+            
+        } catch (error) {
+            console.error('Pixel ratio adjustment failed:', error);
         }
     }
     
@@ -869,6 +934,27 @@ class ChaosInitializer {
             console.log('✅ Three.js Particle Optimizer ready');
         } catch (error) {
             console.warn('⚠️ Three.js Particle Optimizer failed to initialize:', error);
+        }
+        
+        // Initialize WebGL Resource Manager
+        try {
+            console.log('🔧 Initializing WebGL Resource Manager...');
+            // Initialize with renderer if chaos engine is available
+            if (window.chaosEngine && window.chaosEngine.renderer) {
+                webglResourceManager.initialize(window.chaosEngine.renderer);
+                
+                // Precompile shaders for the main scene
+                if (window.chaosEngine.scene && window.chaosEngine.camera) {
+                    webglResourceManager.queueShaderPrecompilation(
+                        window.chaosEngine.scene,
+                        window.chaosEngine.camera,
+                        'high'
+                    );
+                }
+            }
+            console.log('✅ WebGL Resource Manager active');
+        } catch (error) {
+            console.warn('⚠️ WebGL Resource Manager failed to initialize:', error);
         }
         this.initBackgroundAnimator();
         this.initLogoAnimator();  // Initialize logo animator early
