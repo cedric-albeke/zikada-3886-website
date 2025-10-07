@@ -24,6 +24,8 @@ import VisualEffectsController from './visual-effects-complete.js';
 import featureFlags from './feature-flags.js';
 import enhancedWatchdog from './enhanced-watchdog.js';
 import memoryLeakGuardian from './memory-leak-guardian.js';
+import performanceLadder from './performance-degradation-ladder.js';
+import performanceLadderTest from './performance-ladder-test.js';
 import { threeJSParticleOptimizer } from './threejs-particle-optimizer.js';
 import { webglResourceManager } from './webgl-resource-manager.js';
 import gsap from 'gsap';
@@ -955,6 +957,30 @@ class ChaosInitializer {
             console.log('✅ WebGL Resource Manager active');
         } catch (error) {
             console.warn('⚠️ WebGL Resource Manager failed to initialize:', error);
+        }
+        
+        // Initialize Performance Degradation Ladder
+        try {
+            console.log('📊 Starting Performance Degradation Ladder...');
+            // Initialize with Three.js objects if available
+            let renderer = null, scene = null, composer = null;
+            if (window.chaosEngine) {
+                renderer = window.chaosEngine.renderer;
+                scene = window.chaosEngine.scene;
+                composer = window.chaosEngine.composer;
+            }
+            
+            performanceLadder.start(renderer, scene, composer);
+            console.log('✅ Performance Degradation Ladder active');
+            
+            // Expose for debugging if enabled
+            if (this.debugMetrics) {
+                window.performanceLadder = performanceLadder;
+                window.performanceLadderTest = performanceLadderTest;
+                console.log('🧪 Debug mode: Performance testing available via window.testPerformanceLadder()');
+            }
+        } catch (error) {
+            console.warn('⚠️ Performance Degradation Ladder failed to start:', error);
         }
         this.initBackgroundAnimator();
         this.initLogoAnimator();  // Initialize logo animator early

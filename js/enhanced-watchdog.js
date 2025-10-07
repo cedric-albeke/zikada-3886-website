@@ -10,6 +10,7 @@
  */
 
 import featureFlags from './feature-flags.js';
+import performanceLadder from './performance-degradation-ladder.js';
 
 class EnhancedWatchdog {
     constructor() {
@@ -46,6 +47,7 @@ class EnhancedWatchdog {
         this.performanceState = 'S0'; // S0-S5 degradation levels
         this.stateTransitionHistory = [];
         this.recoveryTimer = null;
+        this.isRecoveringPerformance = false;
         
         console.log('🔧 Enhanced Watchdog initialized');
     }
@@ -69,6 +71,9 @@ class EnhancedWatchdog {
         
         // Install global error boundary
         this.installGlobalErrorHandler();
+        
+        // Coordinate with performance ladder
+        this.coordinateWithPerformanceLadder();
         
         console.log('🔧 Enhanced Watchdog systems active');
     }
@@ -444,6 +449,114 @@ class EnhancedWatchdog {
         }
         
         console.log('🔧 Enhanced Watchdog stopped');
+    }
+    
+    /**
+     * Coordinate with Performance Degradation Ladder
+     */
+    coordinateWithPerformanceLadder() {
+        // Listen for performance events from the ladder
+        window.addEventListener('performance:state:changed', (event) => {
+            const { from, to, type, fps } = event.detail;
+            
+            if (this.debugMode) {
+                console.log(`🔧 Watchdog: Performance state changed ${from} → ${to} (${fps?.toFixed(1)} FPS)`);
+            }
+            
+            // Update internal performance state tracking
+            this.performanceState = to;
+            
+            // Adjust watchdog sensitivity based on performance state
+            this.adjustWatchdogSensitivity(to);
+        });
+        
+        // Listen for recovery events
+        window.addEventListener('performance:recovery:started', (event) => {
+            if (this.debugMode) {
+                console.log('🔧 Watchdog: Performance recovery started - reducing monitoring sensitivity');
+            }
+            this.isRecoveringPerformance = true;
+        });
+        
+        window.addEventListener('performance:recovery:cancelled', (event) => {
+            if (this.debugMode) {
+                console.log('🔧 Watchdog: Performance recovery cancelled - resuming normal monitoring');
+            }
+            this.isRecoveringPerformance = false;
+        });
+        
+        // Send FPS data to performance ladder
+        this.setupFPSReporting();
+    }
+    
+    /**
+     * Adjust watchdog sensitivity based on performance state
+     */
+    adjustWatchdogSensitivity(performanceState) {
+        // In degraded states, be more lenient with RAF stalls and event loop lag
+        // to avoid cascading performance issues
+        
+        const baseSensitivity = {
+            S0: { rafStallTime: 250, eventLoopThreshold: 50 },  // Normal sensitivity
+            S1: { rafStallTime: 300, eventLoopThreshold: 60 },  // Slightly more lenient
+            S2: { rafStallTime: 400, eventLoopThreshold: 80 },  // More lenient
+            S3: { rafStallTime: 500, eventLoopThreshold: 100 }, // Very lenient
+            S4: { rafStallTime: 750, eventLoopThreshold: 150 }, // Emergency mode
+            S5: { rafStallTime: 1000, eventLoopThreshold: 200 } // Survival mode
+        };
+        
+        const sensitivity = baseSensitivity[performanceState] || baseSensitivity.S0;
+        
+        this.maxRAFStallTime = sensitivity.rafStallTime;
+        this.eventLoopLagThreshold = sensitivity.eventLoopThreshold;
+        
+        if (this.debugMode) {
+            console.log(`🔧 Watchdog sensitivity adjusted for ${performanceState}: RAF=${sensitivity.rafStallTime}ms, EventLoop=${sensitivity.eventLoopThreshold}ms`);
+        }
+    }
+    
+    /**
+     * Set up FPS reporting to performance ladder
+     */
+    setupFPSReporting() {
+        let lastFPSReport = 0;
+        const fpsReportInterval = 100; // Report every 100ms
+        
+        // Track FPS using requestAnimationFrame timing
+        let frameCount = 0;
+        let lastTime = performance.now();
+        
+        const reportFPS = () => {
+            if (!this.isActive) return;
+            
+            const now = performance.now();
+            frameCount++;
+            
+            // Report FPS every 100ms
+            if (now - lastFPSReport >= fpsReportInterval) {
+                const deltaTime = now - lastTime;
+                const fps = frameCount * (1000 / deltaTime);
+                
+                // Send to performance ladder
+                if (performanceLadder && performanceLadder.updateFPS) {
+                    performanceLadder.updateFPS(Math.min(fps, 120)); // Cap at 120 FPS for sanity
+                }
+                
+                // Reset counters
+                frameCount = 0;
+                lastTime = now;
+                lastFPSReport = now;
+            }
+            
+            requestAnimationFrame(reportFPS);
+        };
+        
+        // Start FPS reporting
+        requestAnimationFrame(reportFPS);
+        
+        if (this.debugMode) {
+            console.log('🔧 FPS reporting to performance ladder started');
+        }
     }
     
     /**
