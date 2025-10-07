@@ -43,6 +43,7 @@
       background: #000 url('posters/index-hero.png') center/cover no-repeat;
       z-index: 0;
       opacity: 1;
+      pointer-events: none; /* Never block interactions */
       transition: opacity 500ms ease;
     }
   </style>
@@ -65,6 +66,18 @@
   <!-- Timer Instrumentation - Dev-only (load early to catch all timers) -->
   <!-- Enable with ?debug=timers or ?timers=1 -->
   <script type="module" src="/js/dev/timer-instrumentation.js"></script>
+  <!-- Optional Dev Helpers: overlay and effects cycle -->
+  <script type="module">
+    try {
+      const qp = new URLSearchParams(window.location.search);
+      if (qp.get('overlay') === '1') {
+        import('/js/telemetry-overlay.js');
+      }
+      if (qp.get('cycle') === '1') {
+        import('/js/effects-cycle-harness.js');
+      }
+    } catch {}
+  </script>
   <!-- Centralized Performance Mode Manager -->
   <script type="module" src="/js/performance-mode-manager.js"></script>
   <!-- GSAP Global Exposer - MUST LOAD FIRST -->
@@ -72,12 +85,6 @@
   <!-- Optional Lottie FX loader (safe if no assets) -->
   <script type="module" src="/js/lottie-effect-loader.js"></script>
   <!-- Chaos Engine Modules -->
-  <script type="module" src="/js/vj-receiver.js"></script>
-  <!-- Preview bridge: reduces load when running as control panel live preview -->
-  <script type="module" src="/js/preview-bridge.js"></script>
-  <script type="module" src="/js/chaos-init.js"></script>
-  <!-- Diagnostics (read-only) -->
-  <script type="module" src="/js/diagnostics.js"></script>
   <script type="module" src="/js/vj-receiver.js"></script>
   <!-- Preview bridge: reduces load when running as control panel live preview -->
   <script type="module" src="/js/preview-bridge.js"></script>
