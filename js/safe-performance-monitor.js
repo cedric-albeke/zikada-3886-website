@@ -1,6 +1,11 @@
 // Safe Performance Monitor - Non-intrusive monitoring only
 // Does NOT patch GSAP or interfere with animations
 
+import { createLogger } from './utils/logger.js';
+
+// Create namespaced logger
+const log = createLogger('monitor');
+
 class SafePerformanceMonitor {
     constructor() {
         this.metrics = {
@@ -15,7 +20,9 @@ class SafePerformanceMonitor {
         this.frameCount = 0;
         this.isMonitoring = false;
         
-        console.log('📊 Safe Performance Monitor initialized (non-intrusive)');
+        log.once('monitor:init', () => {
+            log.info('Safe Performance Monitor initialized (non-intrusive)');
+        });
     }
 
     /**
@@ -32,7 +39,9 @@ class SafePerformanceMonitor {
         // Start periodic system checks (very conservative)
         this.startSystemMonitoring();
         
-        console.log('📊 Safe performance monitoring started');
+        log.once('monitor:start', () => {
+            log.info('Safe performance monitoring started');
+        });
     }
 
     startFPSMonitoring() {
@@ -107,7 +116,7 @@ class SafePerformanceMonitor {
      * Manual cleanup function (safe, user-triggered only)
      */
     safeCleanup() {
-        console.log('🧹 Performing safe manual cleanup...');
+        log.info('Performing safe manual cleanup...');
         
         // Only remove clearly temporary elements
         const temporarySelectors = [
@@ -137,7 +146,7 @@ class SafePerformanceMonitor {
             });
         });
         
-        console.log(`🧹 Safe cleanup removed ${removed} temporary elements`);
+        log.info(`Safe cleanup removed ${removed} temporary elements`);
         
         // Force garbage collection if available
         if (window.gc) {
@@ -151,7 +160,7 @@ class SafePerformanceMonitor {
      * Emergency brake - stop problematic effects only
      */
     emergencyBrake() {
-        console.log('🚨 Emergency brake - disabling heavy effects only');
+        log.warn('Emergency brake - disabling heavy effects only');
         
         // Add CSS to disable only the heaviest effects
         const emergencyStyle = document.createElement('style');
@@ -174,7 +183,7 @@ class SafePerformanceMonitor {
         // Perform safe cleanup
         this.safeCleanup();
         
-        console.log('🚨 Emergency brake applied - heavy effects disabled, core animations preserved');
+        log.warn('Emergency brake applied - heavy effects disabled, core animations preserved');
     }
 
     /**
@@ -184,7 +193,7 @@ class SafePerformanceMonitor {
         const emergencyStyle = document.getElementById('emergency-brake-style');
         if (emergencyStyle) {
             emergencyStyle.remove();
-            console.log('✅ Full effects restored');
+            log.info('Full effects restored');
         }
     }
 

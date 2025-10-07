@@ -10,6 +10,10 @@
  */
 
 import featureFlags from './feature-flags.js';
+import { createLogger } from './utils/logger.js';
+
+// Create namespaced logger
+const log = createLogger('alert');
 
 class PredictivePerformanceAlerting {
     constructor() {
@@ -59,7 +63,12 @@ class PredictivePerformanceAlerting {
             proactiveActions: 0
         };
         
-        console.log('🔮 Predictive Performance Alerting initialized');
+        log.once('alert:init', () => {
+            log.info('Predictive Performance Alerting initialized', {
+                thresholds: this.alertThresholds,
+                derivativeWindow: this.derivativeWindow
+            });
+        });
     }
     
     /**
@@ -71,7 +80,9 @@ class PredictivePerformanceAlerting {
         this.isActive = true;
         this.setupPerformanceIntegration();
         
-        console.log('🔮 Predictive Performance Alerting started');
+        log.once('alert:start', () => {
+            log.info('Predictive Performance Alerting started');
+        });
         this.emitEvent('predictive:started', {
             thresholds: this.alertThresholds,
             patternCount: this.performancePatterns.size
@@ -85,7 +96,7 @@ class PredictivePerformanceAlerting {
         if (!this.isActive) return;
         
         this.isActive = false;
-        console.log('🔮 Predictive Performance Alerting stopped');
+        log.info('Predictive Performance Alerting stopped');
         this.emitEvent('predictive:stopped', { stats: this.getStats() });
     }
     
@@ -110,9 +121,7 @@ class PredictivePerformanceAlerting {
             this.recordPerformanceEvent('memory_warning');
         });
         
-        if (this.debugMode) {
-            console.log('🔮 Performance integration initialized');
-        }
+        log.debug('Performance integration initialized');
     }
     
     /**
@@ -177,9 +186,10 @@ class PredictivePerformanceAlerting {
                 this.fpsDerivatives.shift();
             }
             
-            if (this.debugMode && this.fpsDerivatives.length % 30 === 0) {
-                console.log(`🔮 FPS Derivative: ${derivative.toFixed(2)} FPS/s`);
-            }
+            // Log FPS derivative occasionally with throttling
+            log.throttle('alert:derivative', 5000, () => {
+                log.debug(`FPS Derivative: ${derivative.toFixed(2)} FPS/s`);
+            });
         }
     }
     
@@ -581,11 +591,17 @@ class PredictivePerformanceAlerting {
             timestamp
         };
         
-        console.log(`🔮 Performance Alert [${level.toUpperCase()}]: FPS declining at ${derivative.toFixed(2)}/s`);
-        
-        if (this.debugMode) {
-            console.log('🔮 Alert details:', alertData);
+        // Only show critical and emergency alerts as warnings, demote others to debug
+        if (level === 'emergency' || level === 'critical') {
+            log.warn(`Performance Alert [${level.toUpperCase()}]: FPS declining at ${derivative.toFixed(2)}/s`);
+        } else {
+            // Use throttling for warning-level alerts to prevent spam
+            log.throttle('alert:warning', 10000, () => {
+                log.debug(`Performance Alert [WARNING]: FPS declining at ${derivative.toFixed(2)}/s`);
+            });
         }
+        
+        log.debug('Alert details:', alertData);
         
         // Emit alert event
         this.emitEvent(`predictive:alert:${level}`, alertData);
@@ -651,18 +667,14 @@ class PredictivePerformanceAlerting {
             }
         }
         
-        if (this.debugMode) {
-            console.log(`🔮 State transition recorded: ${from} → ${to} (${type})`);
-        }
+        log.debug(`State transition recorded: ${from} → ${to} (${type})`);
     }
     
     /**
      * Record general performance events
      */
     recordPerformanceEvent(eventType, data = {}) {
-        if (this.debugMode) {
-            console.log(`🔮 Performance event: ${eventType}`, data);
-        }
+        log.debug(`Performance event: ${eventType}`, data);
         
         this.emitEvent('predictive:event:recorded', {
             eventType,

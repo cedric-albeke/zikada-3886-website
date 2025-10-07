@@ -2,6 +2,10 @@
 
 import gsap from 'gsap';
 import intervalManager from './interval-manager.js';
+import { createLogger } from './utils/logger.js';
+
+// Create namespaced logger
+const log = createLogger('anim');
 
 // Ensure GSAP is globally available
 if (typeof window !== 'undefined' && !window.gsap) {
@@ -29,11 +33,10 @@ class GSAPAnimationRegistry {
         // Override GSAP methods to auto-register
         this.patchGSAPMethods();
         
-        if (this.verbose) {
-            console.log('🎬 GSAP Animation Registry initialized (verbose)');
-        } else {
-            console.log('🎬 GSAP Animation Registry initialized');
-        }
+        // Use structured logging
+        log.once('anim:init', () => {
+            log.info('GSAP Animation Registry initialized', { verbose: this.verbose });
+        });
     }
 
     /**
@@ -42,7 +45,7 @@ class GSAPAnimationRegistry {
     patchGSAPMethods() {
         // Check if already patched
         if (gsap._3886_patched) {
-            if (this.verbose) console.log('⚠️ GSAP already patched, skipping...');
+            log.debug('GSAP already patched, skipping...');
             return;
         }
 
@@ -138,7 +141,7 @@ class GSAPAnimationRegistry {
             set: originalSet
         };
 
-        if (this.verbose) console.log('🔧 GSAP methods patched for auto-registration');
+        log.debug('GSAP methods patched for auto-registration');
     }
 
     /**
@@ -236,12 +239,13 @@ class GSAPAnimationRegistry {
 
         this.animations.set(animationId, animationData);
 
-        // Reduce logging noise: only log occasionally unless verbose enabled
-        if (this.verbose) {
-            console.log(`🎬 Registered animation: ${name} (${category}) - Total: ${this.animations.size}`);
-        } else if (this.animationCounter % 100 === 0) { // Changed from logEvery (20) to 100 to reduce spam
-            console.log(`🎬 Animation registry status - Total: ${this.animations.size}`);
-        }
+        // Use throttled logging to reduce spam
+        log.debug(`Registered animation: ${name} (${category}) - Total: ${this.animations.size}`);
+        
+        // Periodic status updates with heavy throttling
+        log.throttle('anim:status', 5000, () => {
+            log.info(`Animation registry status - Total: ${this.animations.size}`);
+        });
 
         return animationId;
     }
@@ -352,13 +356,17 @@ class GSAPAnimationRegistry {
                 animationData.animation.kill();
             }
         } catch (error) {
-            console.warn(`⚠️ Error killing animation ${animationData.name}:`, error);
+            log.warn(`Error killing animation ${animationData.name}:`, error);
         }
 
         // Remove from registry
         this.animations.delete(animationId);
 
-        console.log(`🗑️ Killed animation: ${animationData.name} (Remaining: ${this.animations.size})`);
+        // Use throttled logging to prevent spam from killing many animations
+        log.throttle('anim:killed', 2000, () => {
+            log.debug(`Animation cleanup in progress - Current count: ${this.animations.size}`);
+        });
+        
         return true;
     }
 
@@ -376,7 +384,7 @@ class GSAPAnimationRegistry {
         });
 
         if (killed.length > 0) {
-            console.log(`🗑️ Killed ${killed.length} animations in category '${category}':`, killed);
+            log.debug(`Killed ${killed.length} animations in category '${category}'`, { animationNames: killed });
         }
 
         return killed.length;
@@ -396,7 +404,7 @@ class GSAPAnimationRegistry {
         });
 
         if (killed.length > 0) {
-            console.log(`🗑️ Killed ${killed.length} animations with owner '${ownerLabel}':`, killed);
+            log.debug(`Killed ${killed.length} animations with owner '${ownerLabel}'`, { animationNames: killed });
         }
 
         return killed.length;
@@ -420,7 +428,7 @@ class GSAPAnimationRegistry {
                 this.killAnimation(animationData.id);
             });
 
-            console.log(`⚖️ Enforced limits for category '${category}': removed ${oldestAnimations.length} animations`);
+            log.info(`Enforced limits for category '${category}': removed ${oldestAnimations.length} animations`);
         }
 
         // Global limit check
@@ -475,9 +483,11 @@ class GSAPAnimationRegistry {
         // Remove identified animations
         toRemove.forEach(id => this.killAnimation(id));
 
-        // Only log cleanup if significant number removed or verbose mode
-        if (toRemove.length > 10 || (this.verbose && toRemove.length > 0)) {
-            console.log(`🧹 Periodic cleanup: removed ${toRemove.length} animations`);
+        // Use throttled logging for periodic cleanup
+        if (toRemove.length > 0) {
+            log.throttle('anim:cleanup', 10000, () => {
+                log.info(`Periodic cleanup: removed ${toRemove.length} animations`);
+            });
         }
 
         return toRemove.length;
@@ -487,7 +497,7 @@ class GSAPAnimationRegistry {
      * Emergency cleanup - remove animations by priority
      */
     performEmergencyCleanup() {
-        console.log('🚨 EMERGENCY CLEANUP: Too many animations, removing by priority');
+        log.warn('EMERGENCY CLEANUP: Too many animations, removing by priority');
 
         // Group by priority
         const animationsByPriority = new Map();
@@ -523,7 +533,7 @@ class GSAPAnimationRegistry {
                 });
         }
 
-        console.log(`🚨 Emergency cleanup completed: removed ${removed} animations`);
+        log.warn(`Emergency cleanup completed: removed ${removed} animations`);
     }
 
     killByFilter({ category, olderThan, excludeEssential = true } = {}) {
@@ -536,7 +546,7 @@ class GSAPAnimationRegistry {
             ids.push(id);
         });
         ids.forEach(id => this.killAnimation(id));
-        if (ids.length) console.log(`🗑️ Killed ${ids.length} animations by filter`, { category, olderThan, excludeEssential });
+        if (ids.length) log.debug(`Killed ${ids.length} animations by filter`, { category, olderThan, excludeEssential });
         return ids.length;
     }
 
@@ -545,7 +555,7 @@ class GSAPAnimationRegistry {
      */
     pauseAll() {
         gsap.globalTimeline.pause();
-        console.log('⏸️ All GSAP animations paused');
+        log.info('All GSAP animations paused');
     }
 
     /**
@@ -553,7 +563,7 @@ class GSAPAnimationRegistry {
      */
     resumeAll() {
         gsap.globalTimeline.resume();
-        console.log('▶️ All GSAP animations resumed');
+        log.info('All GSAP animations resumed');
     }
 
     /**
@@ -635,7 +645,7 @@ class GSAPAnimationRegistry {
      * Emergency stop - kill all animations
      */
     emergencyStop() {
-        console.log('🚨 EMERGENCY STOP: Killing all GSAP animations');
+        log.error('EMERGENCY STOP: Killing all GSAP animations');
         
         // Kill global timeline
         gsap.killTweensOf('*');
@@ -644,7 +654,7 @@ class GSAPAnimationRegistry {
         const animationIds = Array.from(this.animations.keys());
         animationIds.forEach(id => this.killAnimation(id));
         
-        console.log(`🛑 Emergency stop completed: ${animationIds.length} animations killed`);
+        log.error(`Emergency stop completed: ${animationIds.length} animations killed`);
     }
 
     /**
@@ -665,7 +675,9 @@ class GSAPAnimationRegistry {
             maxAge: Infinity // Keep running until explicitly cleared
         });
 
-        console.log(`🧽 GSAP cleanup started (every ${interval}ms)`);
+        log.once('anim:cleanup-start', () => {
+            log.info(`GSAP periodic cleanup started (every ${interval}ms)`);
+        });
     }
 
     /**
@@ -680,7 +692,7 @@ class GSAPAnimationRegistry {
             this.cleanupIntervalHandle = null;
         }
         
-        console.log('💀 GSAP Animation Registry destroyed');
+        log.info('GSAP Animation Registry destroyed');
     }
 }
 

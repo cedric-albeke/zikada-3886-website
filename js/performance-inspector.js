@@ -1,12 +1,19 @@
 // Performance Inspector - Check actual GSAP and DOM performance
 // This will run automatically and log real performance data
 
+import { createLogger } from './utils/logger.js';
+
+// Create namespaced logger
+const log = createLogger('perf');
+
 class PerformanceInspector {
     constructor() {
         this.intervalId = null;
         this.isRunning = false;
         
-        console.log('🔍 Performance Inspector loaded');
+        log.once('perf:init', () => {
+            log.info('Performance Inspector loaded');
+        });
         
         // Start inspection after page loads
         setTimeout(() => {
@@ -18,7 +25,9 @@ class PerformanceInspector {
         if (this.isRunning) return;
         
         this.isRunning = true;
-        console.log('🔍 Starting performance inspection...');
+        log.once('perf:start', () => {
+            log.info('Performance inspection started');
+        });
         
         // Log initial state
         this.logPerformanceState();
@@ -32,19 +41,24 @@ class PerformanceInspector {
     logPerformanceState() {
         const report = this.gatherPerformanceData();
         
-        if (window.__3886_DEBUG && window.__3886_DEBUG.performanceInspectorVerbose) {
-            console.log('📊 PERFORMANCE INSPECTION REPORT:');
-            console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-            console.log(`🖥️  DOM Elements: ${report.domElements}`);
-            console.log(`🎬 GSAP Animations: ${report.gsapAnimations}`);
-            console.log(`📱 Memory Usage: ${report.memoryFormatted}`);
-            console.log(`⚡ Current FPS: ${report.fps}`);
-            console.log(`🔗 Loaded Modules: ${report.loadedModules.join(', ')}`);
-            console.log(`⚠️  Performance Issues: ${report.issues.join(', ') || 'None detected'}`);
-            console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-        } else {
-            console.log(`📊 Perf: DOM ${report.domElements}, Anim ${report.gsapAnimations}, Mem ${report.memoryFormatted}, FPS ${report.fps}`);
-        }
+        // Use throttled logging to prevent spam - only log every 30s
+        log.throttle('perf:report', 30000, () => {
+            log.group('Performance Report', () => {
+                log.info('DOM Elements:', report.domElements);
+                log.info('GSAP Animations:', report.gsapAnimations);
+                log.info('Memory Usage:', report.memoryFormatted);
+                log.info('Current FPS:', report.fps);
+                log.info('Loaded Modules:', report.loadedModules.join(', '));
+                if (report.issues.length > 0) {
+                    log.warn('Performance Issues:', report.issues.join(', '));
+                } else {
+                    log.debug('Performance Issues: None detected');
+                }
+            });
+        });
+        
+        // Always provide a minimal debug-level summary
+        log.debug(`Perf: DOM ${report.domElements}, Anim ${report.gsapAnimations} active, ${report.fps} FPS`);
     }
 
     gatherPerformanceData() {
@@ -140,14 +154,14 @@ class PerformanceInspector {
     }
 
     testColorSlider() {
-        console.log('🧪 Testing color slider communication...');
+        log.info('Testing color slider communication...');
         
         // Simulate color update message
         if (window.vjReceiver) {
-            console.log('🎛️ VJ Receiver found, testing updateColor...');
+            log.info('VJ Receiver found, testing updateColor...');
             window.vjReceiver.updateColor('hue', 45);
         } else {
-            console.log('❌ VJ Receiver not found');
+            log.warn('VJ Receiver not found');
         }
     }
 
@@ -156,7 +170,7 @@ class PerformanceInspector {
         if (this.intervalId) {
             clearInterval(this.intervalId);
         }
-        console.log('🔍 Performance Inspector destroyed');
+        log.info('Performance Inspector destroyed');
     }
 }
 
@@ -168,6 +182,8 @@ window.performanceInspector = performanceInspector;
 window.TEST_PERFORMANCE = () => performanceInspector.logPerformanceState();
 window.TEST_COLOR_SLIDER = () => performanceInspector.testColorSlider();
 
-console.log('🔍 Performance Inspector ready. Use window.TEST_PERFORMANCE() or window.TEST_COLOR_SLIDER()');
+log.once('perf:ready', () => {
+    log.info('Performance Inspector ready. Use window.TEST_PERFORMANCE() or window.TEST_COLOR_SLIDER()');
+});
 
 export default performanceInspector;
