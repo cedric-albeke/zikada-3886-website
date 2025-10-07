@@ -6,7 +6,7 @@
     <title>3886 VJ Control Panel V3 - Professional</title>
     <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
     <!-- V3 PROFESSIONAL CSS - Restored V1 Features -->
-    <link href="css/control-panel-v3-professional.css?v=3.1.1" rel="stylesheet">
+    <link href="css/control-panel-v3-professional.css?v=3.3.6" rel="stylesheet">
 </head>
 <body>
     <div class="control-panel">
@@ -36,29 +36,51 @@
                 </div>
             </div>
             
-            <!-- Performance Metrics Grid -->
-            <div class="matrix-section matrix-performance">
-                <div class="metrics-title">PERFORMANCE.METRICS</div>
-                <div class="metrics-grid">
-                    <div class="metric-cell">
-                        <div class="metric-label">FPS</div>
-                        <div id="fpsCounter" class="metric-value">60</div>
-                        <div class="metric-bar"><span class="bar-fill fps-bar"></span></div>
+            <!-- Combined Performance & Status Grid -->
+            <div class="matrix-section matrix-perf-status">
+                <div class="metrics-title">PERFORMANCE.STATUS</div>
+                <div class="perf-status-grid">
+                    <!-- Performance Metrics Column -->
+                    <div class="metrics-column" data-role="perf-metrics">
+                        <div class="metrics-grid">
+                            <div class="metric-cell">
+                                <div class="metric-label">FPS</div>
+                                <div id="fpsCounter" class="metric-value">60</div>
+                                <div class="metric-bar"><span class="bar-fill fps-bar"></span></div>
+                            </div>
+                            <div class="metric-cell">
+                                <div class="metric-label">MEM</div>
+                                <div id="memoryUsage" class="metric-value">--MB</div>
+                                <div class="metric-bar"><span class="bar-fill mem-bar"></span></div>
+                            </div>
+                            <div class="metric-cell">
+                                <div class="metric-label">DOM</div>
+                                <div id="domNodes" class="metric-value">--</div>
+                                <div class="metric-bar"><span class="bar-fill dom-bar"></span></div>
+                            </div>
+                            <div class="metric-cell">
+                                <div class="metric-label">FX</div>
+                                <div id="activeEffects" class="metric-value">0</div>
+                                <div class="metric-bar"><span class="bar-fill fx-bar"></span></div>
+                            </div>
+                        </div>
                     </div>
-                    <div class="metric-cell">
-                        <div class="metric-label">MEM</div>
-                        <div id="memoryUsage" class="metric-value">--MB</div>
-                        <div class="metric-bar"><span class="bar-fill mem-bar"></span></div>
-                    </div>
-                    <div class="metric-cell">
-                        <div class="metric-label">DOM</div>
-                        <div id="domNodes" class="metric-value">--</div>
-                        <div class="metric-bar"><span class="bar-fill dom-bar"></span></div>
-                    </div>
-                    <div class="metric-cell">
-                        <div class="metric-label">FX</div>
-                        <div id="activeEffects" class="metric-value">0</div>
-                        <div class="metric-bar"><span class="bar-fill fx-bar"></span></div>
+                    
+                    <!-- Connection Status Column -->
+                    <div class="connection-column" data-role="link-status">
+                        <div class="connection-container" id="connectionStatus">
+                            <div class="connection-indicator">
+                                <span class="status-dot"></span>
+                                <span class="status-wave"></span>
+                            </div>
+                            <div class="connection-text">
+                                <span class="status-text">OFFLINE</span>
+                                <div class="uptime-display">
+                                    <span class="uptime-label">UP:</span>
+                                    <span id="systemUptime">00:00:00</span>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -87,24 +109,6 @@
                         <div class="dice-message">
                             <div class="message-label">LAST MSG:</div>
                             <div id="lastMatrixMessage" class="message-text">STANDBY</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Connection Status -->
-            <div class="matrix-section matrix-connection">
-                <div class="connection-title">LINK.STATUS</div>
-                <div class="connection-container" id="connectionStatus">
-                    <div class="connection-indicator">
-                        <span class="status-dot"></span>
-                        <span class="status-wave"></span>
-                    </div>
-                    <div class="connection-text">
-                        <span class="status-text">OFFLINE</span>
-                        <div class="uptime-display">
-                            <span class="uptime-label">UP:</span>
-                            <span id="systemUptime">00:00:00</span>
                         </div>
                     </div>
                 </div>
@@ -193,47 +197,21 @@
         <div class="control-grid">
 
             <!-- ============================================
-                 SCENE SELECT - PRIMARY CONTROL
-                 ============================================ -->
-            <section class="cp-section scene-section">
-                <h2 class="cp-section__title">Scene Select</h2>
-                <div class="cp-section__content">
-                    <div class="scene-grid">
-                        <button class="scene-btn" data-scene="intense">INTENSE</button>
-                        <button class="scene-btn" data-scene="calm">CALM</button>
-                        <button class="scene-btn" data-scene="glitch">GLITCH</button>
-                        <button class="scene-btn" data-scene="techno">TECHNO</button>
-                        <button class="scene-btn" data-scene="matrix">MATRIX</button>
-                        <button class="scene-btn" data-scene="minimal">MINIMAL</button>
-                        
-                        <button class="scene-btn" data-scene="chaotic">CHAOTIC</button>
-                        <button class="scene-btn" data-scene="retro">RETRO</button>
-                        <button class="scene-btn" data-scene="vaporwave">VAPORWAVE</button>
-                        <button class="scene-btn" data-scene="cyberpunk">CYBERPUNK</button>
-                        <button class="scene-btn" data-scene="neon">NEON</button>
-                        <button class="scene-btn" data-scene="aurora">AURORA</button>
-                        
-                        <button class="scene-btn" data-scene="sunset">SUNSET</button>
-                        <button class="scene-btn" data-scene="ocean">OCEAN</button>
-                        <button class="scene-btn" data-scene="forest">FOREST</button>
-                        <button class="scene-btn" data-scene="fire">FIRE</button>
-                        <button class="scene-btn" data-scene="ice">ICE</button>
-                        <button class="scene-btn" data-scene="galaxy">GALAXY</button>
-                        
-                        <button class="scene-btn scene-auto active" data-scene="auto">AUTO MODE</button>
-                    </div>
-                </div>
-            </section>
-
-            <!-- ============================================
                  TRIGGER FX - PRIMARY PERFORMANCE CONTROL
                  ============================================ -->
             <section class="cp-section trigger-fx-section">
-                <h2 class="cp-section__title">Trigger FX</h2>
+                <h2 class="cp-section__title" id="trigger-fx-title">Trigger FX</h2>
+                
+                <!-- Hidden accessibility status for screen readers -->
+                <div id="effect-status" class="sr-announcement" aria-live="polite" role="status"></div>
+                
                 <div class="cp-section__content">
                     <div class="trigger-fx-grid">
                         <!-- Instant Effects -->
-                        <div class="trigger-effects">
+                        <div class="trigger-effects trigger-effects-container" 
+                             role="group" 
+                             aria-labelledby="trigger-fx-title"
+                             aria-describedby="effect-status">
                             <button class="trigger-btn" data-effect="strobe">STROBE</button>
                             <button class="trigger-btn" data-effect="blackout">BLACKOUT</button>
                             <button class="trigger-btn" data-effect="whiteout">WHITEOUT</button>
@@ -246,15 +224,27 @@
                             <button class="trigger-btn" data-effect="vignette-pulse">VIGNETTE</button>
                             <button class="trigger-btn" data-effect="scanlines-sweep">SCANLINE</button>
                             
-                            <button class="trigger-btn" data-effect="chroma-pulse">CHROMA</button>
+                            <button class="trigger-btn" 
+                                    data-effect="chroma-pulse" 
+                                    aria-label="Trigger chromatic aberration pulse effect"
+                                    aria-pressed="false"
+                                    title="Chromatic Aberration Pulse - Creates RGB color separation effect">CHROMA</button>
                             <button class="trigger-btn" data-effect="noise-burst">NOISE</button>
                             <button class="trigger-btn" data-effect="grid-flash">GRID FLASH</button>
                             <button class="trigger-btn" data-effect="lens-flare">LENS FLARE</button>
                             <button class="trigger-btn" data-effect="zoom-blur">ZOOM BLUR</button>
                             
                             <button class="trigger-btn" data-effect="invert-flicker">INVERT</button>
-                            <button class="trigger-btn" data-effect="spotlight-sweep">SPOTLIGHT</button>
-                            <button class="trigger-btn" data-effect="heat-shimmer">SHIMMER</button>
+                            <button class="trigger-btn" 
+                                    data-effect="spotlight-sweep" 
+                                    aria-label="Trigger spotlight sweep effect"
+                                    aria-pressed="false"
+                                    title="Spotlight Sweep - Creates moving light beam effect">SPOTLIGHT</button>
+                            <button class="trigger-btn" 
+                                    data-effect="heat-shimmer" 
+                                    aria-label="Trigger heat shimmer effect"
+                                    aria-pressed="false"
+                                    title="Heat Shimmer - Creates diagonal light sweep effect">SHIMMER</button>
                         </div>
 
                         <!-- Macro Buttons -->
@@ -306,11 +296,12 @@
                 <h2 class="cp-section__title">Animation System</h2>
                 <div class="cp-section__content">
                     <div class="animation-grid">
-                        <!-- System Controls -->
+                        <!-- System Controls - Toggle Style -->
                         <div class="animation-system-controls">
-                            <button class="system-btn enable" id="animeEnable">ENABLE</button>
-                            <button class="system-btn disable" id="animeDisable">DISABLE</button>
-                            <button class="system-btn kill" id="animeKill">STOP</button>
+                            <button class="system-toggle-btn" id="animeToggle" data-state="disabled">
+                                <span class="toggle-status">DISABLED</span>
+                                <span class="toggle-indicator"></span>
+                            </button>
                         </div>
 
                         <!-- Animation Triggers -->
@@ -371,6 +362,39 @@
             </section>
 
             <!-- ============================================
+                 SCENE SELECT
+                 ============================================ -->
+            <section class="cp-section scene-section">
+                <h2 class="cp-section__title">Scene Select</h2>
+                <div class="cp-section__content">
+                    <div class="scene-grid">
+                        <button class="scene-btn" data-scene="intense">INTENSE</button>
+                        <button class="scene-btn" data-scene="calm">CALM</button>
+                        <button class="scene-btn" data-scene="glitch">GLITCH</button>
+                        <button class="scene-btn" data-scene="techno">TECHNO</button>
+                        <button class="scene-btn" data-scene="matrix">MATRIX</button>
+                        <button class="scene-btn" data-scene="minimal">MINIMAL</button>
+                        
+                        <button class="scene-btn" data-scene="chaotic">CHAOTIC</button>
+                        <button class="scene-btn" data-scene="retro">RETRO</button>
+                        <button class="scene-btn" data-scene="vaporwave">VAPORWAVE</button>
+                        <button class="scene-btn" data-scene="cyberpunk">CYBERPUNK</button>
+                        <button class="scene-btn" data-scene="neon">NEON</button>
+                        <button class="scene-btn" data-scene="aurora">AURORA</button>
+                        
+                        <button class="scene-btn" data-scene="sunset">SUNSET</button>
+                        <button class="scene-btn" data-scene="ocean">OCEAN</button>
+                        <button class="scene-btn" data-scene="forest">FOREST</button>
+                        <button class="scene-btn" data-scene="fire">FIRE</button>
+                        <button class="scene-btn" data-scene="ice">ICE</button>
+                        <button class="scene-btn" data-scene="galaxy">GALAXY</button>
+                        
+                        <button class="scene-btn scene-auto active" data-scene="auto">AUTO MODE</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ============================================
                  VISUAL EFFECTS & LAYERS (Collapsible)
                  ============================================ -->
             <section class="cp-section visual-effects-section">
@@ -379,7 +403,6 @@
                     
                     <!-- Effect Toggles -->
                     <div class="effect-toggles">
-                        <h3>Effect Controls</h3>
                         <div class="toggle-grid">
                             <div class="toggle-item">
                                 <label>Holographic Scan</label>
@@ -516,6 +539,12 @@
         
         // Import preview client for live preview feature
         import './js/preview-client.js';
+        
+        // Import trigger effects diagnostic tool
+        import './js/trigger-effects-diagnostic.js';
+        
+        // Import trigger effect orchestrator for CHROMA, SPOTLIGHT, SHIMMER
+        import './js/trigger-effect-orchestrator.js';
         
         // Initialize MIDI support
         window.addEventListener('DOMContentLoaded', () => {

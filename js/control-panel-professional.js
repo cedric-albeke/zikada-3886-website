@@ -1060,6 +1060,37 @@ class ProfessionalVJControlPanel {
             });
         });
 
+        // Animation System Toggle Button (V3)
+        document.getElementById('animeToggle')?.addEventListener('click', () => {
+            const btn = document.getElementById('animeToggle');
+            if (!btn) return;
+            
+            const currentState = btn.getAttribute('data-state');
+            const newState = currentState === 'enabled' ? 'disabled' : 'enabled';
+            const isEnabled = newState === 'enabled';
+            
+            // Update button state
+            btn.setAttribute('data-state', newState);
+            btn.querySelector('.toggle-status').textContent = newState.toUpperCase();
+            
+            // Toggle active class
+            if (isEnabled) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+            
+            // Update internal state
+            this.animeSystem.enabled = isEnabled;
+            this.updateAnimeSystemStatus();
+            
+            // Send message to main page
+            this.sendMessage({
+                type: isEnabled ? 'anime_enable' : 'anime_disable',
+                timestamp: Date.now()
+            });
+        });
+
         // Logo controls
         document.getElementById('logoOutlineToggle')?.addEventListener('click', () => {
             this.animeSystem.logoOutlines = !this.animeSystem.logoOutlines;
