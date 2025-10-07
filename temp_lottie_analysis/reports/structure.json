@@ -1,0 +1,791 @@
+{
+  "timestamp": "2025-10-07T22:46:14.563Z",
+  "summary": {
+    "totalFiles": 10,
+    "complexityBreakdown": {
+      "HIGH": 0,
+      "MEDIUM": 0,
+      "LOW": 10
+    },
+    "totalLayers": 107,
+    "totalKeyframes": 4352,
+    "totalVertices": 1264,
+    "featuresFound": {
+      "mergePaths": 0,
+      "repeaters": 0,
+      "trimPaths": 7,
+      "gradients": 1,
+      "masks": 3
+    }
+  },
+  "files": [
+    {
+      "filename": "Abstraction.json",
+      "basic": {
+        "version": "4.8.0",
+        "frameRate": 24,
+        "inPoint": 14,
+        "outPoint": 244,
+        "duration": 9.583333333333334,
+        "width": 500,
+        "height": 500
+      },
+      "layers": {
+        "total": 37,
+        "byType": {
+          "shape": 42,
+          "precomp": 1,
+          "image": 0,
+          "text": 0,
+          "solid": 0,
+          "null": 0,
+          "adjustment": 0,
+          "camera": 0,
+          "light": 0
+        }
+      },
+      "shapes": {
+        "groups": 66,
+        "paths": 0,
+        "ellipses": 66,
+        "rectangles": 0,
+        "roundedCorners": 0,
+        "trimPaths": 0,
+        "gradients": 0,
+        "gradientStops": 0,
+        "strokes": 0,
+        "fills": 66,
+        "dashPatterns": 0,
+        "mergePaths": 0,
+        "repeaters": 0,
+        "masks": 0,
+        "blendModes": 0
+      },
+      "keyframes": {
+        "total": 1259,
+        "byProperty": {
+          "a": 129,
+          "p": 951,
+          "r": 7,
+          "s": 129,
+          "o": 43
+        },
+        "maxPerProperty": 27
+      },
+      "complexity": {
+        "totalVertices": 0,
+        "heaviestPaths": [],
+        "complexityScore": "LOW",
+        "scoreDetails": {
+          "score": 0,
+          "reasons": []
+        }
+      },
+      "assets": 1,
+      "fonts": 0,
+      "chars": 0
+    },
+    {
+      "filename": "Impossible-Hexagon-black.json",
+      "basic": {
+        "version": "5.5.7",
+        "frameRate": 30,
+        "inPoint": 0,
+        "outPoint": 90,
+        "duration": 3,
+        "width": 512,
+        "height": 512
+      },
+      "layers": {
+        "total": 18,
+        "byType": {
+          "shape": 18,
+          "precomp": 0,
+          "image": 0,
+          "text": 0,
+          "solid": 0,
+          "null": 0,
+          "adjustment": 0,
+          "camera": 0,
+          "light": 0
+        }
+      },
+      "shapes": {
+        "groups": 18,
+        "paths": 18,
+        "ellipses": 0,
+        "rectangles": 0,
+        "roundedCorners": 0,
+        "trimPaths": 0,
+        "gradients": 0,
+        "gradientStops": 0,
+        "strokes": 18,
+        "fills": 18,
+        "dashPatterns": 0,
+        "mergePaths": 0,
+        "repeaters": 0,
+        "masks": 0,
+        "blendModes": 0
+      },
+      "keyframes": {
+        "total": 195,
+        "byProperty": {
+          "a": 54,
+          "p": 54,
+          "s": 54,
+          "o": 18,
+          "r": 15
+        },
+        "maxPerProperty": 3
+      },
+      "complexity": {
+        "totalVertices": 0,
+        "heaviestPaths": [],
+        "complexityScore": "LOW",
+        "scoreDetails": {
+          "score": 0,
+          "reasons": []
+        }
+      },
+      "assets": 0,
+      "fonts": 0,
+      "chars": 0
+    },
+    {
+      "filename": "Morphing-Particle-Loader.json",
+      "basic": {
+        "version": "5.7.4",
+        "frameRate": 60,
+        "inPoint": 0,
+        "outPoint": 180,
+        "duration": 3,
+        "width": 300,
+        "height": 300
+      },
+      "layers": {
+        "total": 4,
+        "byType": {
+          "shape": 4,
+          "precomp": 0,
+          "image": 0,
+          "text": 0,
+          "solid": 0,
+          "null": 0,
+          "adjustment": 0,
+          "camera": 0,
+          "light": 0
+        }
+      },
+      "shapes": {
+        "groups": 4,
+        "paths": 1,
+        "ellipses": 8,
+        "rectangles": 0,
+        "roundedCorners": 0,
+        "trimPaths": 0,
+        "gradients": 1,
+        "gradientStops": 0,
+        "strokes": 3,
+        "fills": 0,
+        "dashPatterns": 0,
+        "mergePaths": 0,
+        "repeaters": 0,
+        "masks": 0,
+        "blendModes": 0
+      },
+      "keyframes": {
+        "total": 55,
+        "byProperty": {
+          "a": 12,
+          "p": 12,
+          "r": 6,
+          "s": 13,
+          "o": 12
+        },
+        "maxPerProperty": 5
+      },
+      "complexity": {
+        "totalVertices": 3,
+        "heaviestPaths": [
+          {
+            "vertices": 3,
+            "type": "path"
+          }
+        ],
+        "complexityScore": "LOW",
+        "scoreDetails": {
+          "score": 1,
+          "reasons": [
+            "60 fps"
+          ]
+        }
+      },
+      "assets": 0,
+      "fonts": 0,
+      "chars": 0
+    },
+    {
+      "filename": "Planet-Logo.json",
+      "basic": {
+        "version": "5.7.4",
+        "frameRate": 29.9700012207031,
+        "inPoint": 0,
+        "outPoint": 75.0000030548126,
+        "duration": 2.5025025025025034,
+        "width": 256,
+        "height": 256
+      },
+      "layers": {
+        "total": 1,
+        "byType": {
+          "shape": 15,
+          "precomp": 3,
+          "image": 0,
+          "text": 0,
+          "solid": 0,
+          "null": 2,
+          "adjustment": 0,
+          "camera": 0,
+          "light": 0
+        }
+      },
+      "shapes": {
+        "groups": 15,
+        "paths": 10,
+        "ellipses": 5,
+        "rectangles": 0,
+        "roundedCorners": 0,
+        "trimPaths": 0,
+        "gradients": 0,
+        "gradientStops": 0,
+        "strokes": 14,
+        "fills": 15,
+        "dashPatterns": 0,
+        "mergePaths": 0,
+        "repeaters": 0,
+        "masks": 3,
+        "blendModes": 0
+      },
+      "keyframes": {
+        "total": 211,
+        "byProperty": {
+          "a": 60,
+          "p": 60,
+          "s": 61,
+          "o": 18,
+          "r": 12
+        },
+        "maxPerProperty": 4
+      },
+      "complexity": {
+        "totalVertices": 51,
+        "heaviestPaths": [
+          {
+            "vertices": 15,
+            "type": "path"
+          },
+          {
+            "vertices": 4,
+            "type": "path"
+          },
+          {
+            "vertices": 4,
+            "type": "path"
+          },
+          {
+            "vertices": 4,
+            "type": "path"
+          },
+          {
+            "vertices": 4,
+            "type": "path"
+          }
+        ],
+        "complexityScore": "LOW",
+        "scoreDetails": {
+          "score": 1,
+          "reasons": [
+            "3 masks"
+          ]
+        }
+      },
+      "assets": 2,
+      "fonts": 0,
+      "chars": 0
+    },
+    {
+      "filename": "Sacred-Geometry.json",
+      "basic": {
+        "version": "5.7.4",
+        "frameRate": 20,
+        "inPoint": 0,
+        "outPoint": 80,
+        "duration": 4,
+        "width": 948,
+        "height": 1117
+      },
+      "layers": {
+        "total": 3,
+        "byType": {
+          "shape": 3,
+          "precomp": 0,
+          "image": 0,
+          "text": 0,
+          "solid": 0,
+          "null": 0,
+          "adjustment": 0,
+          "camera": 0,
+          "light": 0
+        }
+      },
+      "shapes": {
+        "groups": 23,
+        "paths": 23,
+        "ellipses": 0,
+        "rectangles": 0,
+        "roundedCorners": 0,
+        "trimPaths": 2,
+        "gradients": 0,
+        "gradientStops": 0,
+        "strokes": 11,
+        "fills": 12,
+        "dashPatterns": 5,
+        "mergePaths": 0,
+        "repeaters": 0,
+        "masks": 0,
+        "blendModes": 0
+      },
+      "keyframes": {
+        "total": 30,
+        "byProperty": {
+          "a": 9,
+          "p": 9,
+          "s": 9,
+          "o": 3
+        },
+        "maxPerProperty": 3
+      },
+      "complexity": {
+        "totalVertices": 78,
+        "heaviestPaths": [
+          {
+            "vertices": 6,
+            "type": "path"
+          },
+          {
+            "vertices": 4,
+            "type": "path"
+          },
+          {
+            "vertices": 4,
+            "type": "path"
+          },
+          {
+            "vertices": 4,
+            "type": "path"
+          },
+          {
+            "vertices": 4,
+            "type": "path"
+          }
+        ],
+        "complexityScore": "LOW",
+        "scoreDetails": {
+          "score": 0,
+          "reasons": []
+        }
+      },
+      "assets": 0,
+      "fonts": 0,
+      "chars": 0
+    },
+    {
+      "filename": "circuit-round-ani.json",
+      "basic": {
+        "version": "5.4.1",
+        "frameRate": 29.9700012207031,
+        "inPoint": 0,
+        "outPoint": 61.0000024845809,
+        "duration": 2.035368702035369,
+        "width": 1080,
+        "height": 1920
+      },
+      "layers": {
+        "total": 6,
+        "byType": {
+          "shape": 6,
+          "precomp": 0,
+          "image": 0,
+          "text": 0,
+          "solid": 0,
+          "null": 0,
+          "adjustment": 0,
+          "camera": 0,
+          "light": 0
+        }
+      },
+      "shapes": {
+        "groups": 107,
+        "paths": 107,
+        "ellipses": 0,
+        "rectangles": 0,
+        "roundedCorners": 0,
+        "trimPaths": 5,
+        "gradients": 0,
+        "gradientStops": 0,
+        "strokes": 173,
+        "fills": 107,
+        "dashPatterns": 0,
+        "mergePaths": 0,
+        "repeaters": 0,
+        "masks": 0,
+        "blendModes": 0
+      },
+      "keyframes": {
+        "total": 66,
+        "byProperty": {
+          "a": 18,
+          "p": 18,
+          "r": 6,
+          "s": 18,
+          "o": 6
+        },
+        "maxPerProperty": 3
+      },
+      "complexity": {
+        "totalVertices": 356,
+        "heaviestPaths": [
+          {
+            "vertices": 5,
+            "type": "path"
+          },
+          {
+            "vertices": 5,
+            "type": "path"
+          },
+          {
+            "vertices": 5,
+            "type": "path"
+          },
+          {
+            "vertices": 5,
+            "type": "path"
+          },
+          {
+            "vertices": 5,
+            "type": "path"
+          }
+        ],
+        "complexityScore": "LOW",
+        "scoreDetails": {
+          "score": 0,
+          "reasons": []
+        }
+      },
+      "assets": 0,
+      "fonts": 0,
+      "chars": 0
+    },
+    {
+      "filename": "circular-dots.json",
+      "basic": {
+        "version": "4.8.0",
+        "frameRate": 30,
+        "inPoint": 0,
+        "outPoint": 76,
+        "duration": 2.533333333333333,
+        "width": 1080,
+        "height": 1080
+      },
+      "layers": {
+        "total": 6,
+        "byType": {
+          "shape": 201,
+          "precomp": 5,
+          "image": 0,
+          "text": 0,
+          "solid": 0,
+          "null": 0,
+          "adjustment": 0,
+          "camera": 0,
+          "light": 0
+        }
+      },
+      "shapes": {
+        "groups": 201,
+        "paths": 190,
+        "ellipses": 10,
+        "rectangles": 1,
+        "roundedCorners": 0,
+        "trimPaths": 0,
+        "gradients": 0,
+        "gradientStops": 0,
+        "strokes": 0,
+        "fills": 201,
+        "dashPatterns": 0,
+        "mergePaths": 0,
+        "repeaters": 0,
+        "masks": 0,
+        "blendModes": 0
+      },
+      "keyframes": {
+        "total": 2064,
+        "byProperty": {
+          "a": 618,
+          "p": 618,
+          "s": 618,
+          "o": 206,
+          "r": 4
+        },
+        "maxPerProperty": 3
+      },
+      "complexity": {
+        "totalVertices": 760,
+        "heaviestPaths": [
+          {
+            "vertices": 4,
+            "type": "path"
+          },
+          {
+            "vertices": 4,
+            "type": "path"
+          },
+          {
+            "vertices": 4,
+            "type": "path"
+          },
+          {
+            "vertices": 4,
+            "type": "path"
+          },
+          {
+            "vertices": 4,
+            "type": "path"
+          }
+        ],
+        "complexityScore": "LOW",
+        "scoreDetails": {
+          "score": 0,
+          "reasons": []
+        }
+      },
+      "assets": 1,
+      "fonts": 0,
+      "chars": 0
+    },
+    {
+      "filename": "geometrical-lines.json",
+      "basic": {
+        "version": "5.9.0",
+        "frameRate": 25,
+        "inPoint": 0,
+        "outPoint": 1875,
+        "duration": 75,
+        "width": 1920,
+        "height": 1920
+      },
+      "layers": {
+        "total": 21,
+        "byType": {
+          "shape": 20,
+          "precomp": 0,
+          "image": 0,
+          "text": 0,
+          "solid": 1,
+          "null": 0,
+          "adjustment": 0,
+          "camera": 0,
+          "light": 0
+        }
+      },
+      "shapes": {
+        "groups": 20,
+        "paths": 20,
+        "ellipses": 0,
+        "rectangles": 0,
+        "roundedCorners": 0,
+        "trimPaths": 0,
+        "gradients": 0,
+        "gradientStops": 0,
+        "strokes": 20,
+        "fills": 0,
+        "dashPatterns": 0,
+        "mergePaths": 0,
+        "repeaters": 0,
+        "masks": 0,
+        "blendModes": 0
+      },
+      "keyframes": {
+        "total": 350,
+        "byProperty": {
+          "a": 63,
+          "p": 63,
+          "r": 60,
+          "s": 63,
+          "o": 101
+        },
+        "maxPerProperty": 5
+      },
+      "complexity": {
+        "totalVertices": 0,
+        "heaviestPaths": [],
+        "complexityScore": "LOW",
+        "scoreDetails": {
+          "score": 0,
+          "reasons": []
+        }
+      },
+      "assets": 0,
+      "fonts": 0,
+      "chars": 0
+    },
+    {
+      "filename": "planet-ring.json",
+      "basic": {
+        "version": "4.5.4",
+        "frameRate": 30,
+        "inPoint": 0,
+        "outPoint": 151,
+        "duration": 5.033333333333333,
+        "width": 800,
+        "height": 800
+      },
+      "layers": {
+        "total": 9,
+        "byType": {
+          "shape": 9,
+          "precomp": 0,
+          "image": 0,
+          "text": 0,
+          "solid": 0,
+          "null": 0,
+          "adjustment": 0,
+          "camera": 0,
+          "light": 0
+        }
+      },
+      "shapes": {
+        "groups": 13,
+        "paths": 4,
+        "ellipses": 9,
+        "rectangles": 0,
+        "roundedCorners": 0,
+        "trimPaths": 0,
+        "gradients": 0,
+        "gradientStops": 0,
+        "strokes": 4,
+        "fills": 9,
+        "dashPatterns": 0,
+        "mergePaths": 0,
+        "repeaters": 0,
+        "masks": 0,
+        "blendModes": 0
+      },
+      "keyframes": {
+        "total": 102,
+        "byProperty": {
+          "a": 27,
+          "p": 26,
+          "s": 24,
+          "o": 13,
+          "r": 12
+        },
+        "maxPerProperty": 4
+      },
+      "complexity": {
+        "totalVertices": 16,
+        "heaviestPaths": [
+          {
+            "vertices": 4,
+            "type": "path"
+          },
+          {
+            "vertices": 4,
+            "type": "path"
+          },
+          {
+            "vertices": 4,
+            "type": "path"
+          },
+          {
+            "vertices": 4,
+            "type": "path"
+          }
+        ],
+        "complexityScore": "LOW",
+        "scoreDetails": {
+          "score": 0,
+          "reasons": []
+        }
+      },
+      "assets": 0,
+      "fonts": 0,
+      "chars": 0
+    },
+    {
+      "filename": "transparent-diamond-dark.json",
+      "basic": {
+        "version": "5.5.7",
+        "frameRate": 30,
+        "inPoint": 0,
+        "outPoint": 30,
+        "duration": 1,
+        "width": 256,
+        "height": 256
+      },
+      "layers": {
+        "total": 2,
+        "byType": {
+          "shape": 2,
+          "precomp": 0,
+          "image": 0,
+          "text": 0,
+          "solid": 0,
+          "null": 0,
+          "adjustment": 0,
+          "camera": 0,
+          "light": 0
+        }
+      },
+      "shapes": {
+        "groups": 10,
+        "paths": 10,
+        "ellipses": 0,
+        "rectangles": 0,
+        "roundedCorners": 0,
+        "trimPaths": 0,
+        "gradients": 0,
+        "gradientStops": 0,
+        "strokes": 10,
+        "fills": 10,
+        "dashPatterns": 0,
+        "mergePaths": 0,
+        "repeaters": 0,
+        "masks": 0,
+        "blendModes": 0
+      },
+      "keyframes": {
+        "total": 20,
+        "byProperty": {
+          "a": 6,
+          "p": 6,
+          "s": 6,
+          "o": 2
+        },
+        "maxPerProperty": 3
+      },
+      "complexity": {
+        "totalVertices": 0,
+        "heaviestPaths": [],
+        "complexityScore": "LOW",
+        "scoreDetails": {
+          "score": 0,
+          "reasons": []
+        }
+      },
+      "assets": 0,
+      "fonts": 0,
+      "chars": 0
+    }
+  ]
+}

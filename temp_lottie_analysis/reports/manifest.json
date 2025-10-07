@@ -1,0 +1,124 @@
+{
+  "project": "zikada-3886-website",
+  "created": "2024-10-07T22:43:00Z",
+  "animations": [
+    {
+      "name": "Abstraction",
+      "files": {
+        "json": "Abstraction.json",
+        "lottie": "Abstraction.lottie"
+      },
+      "usage": "Background cosmic particle effects",
+      "criticality": "medium",
+      "visual_constraints": "Very low opacity (0.02), multiply blend mode",
+      "notes": "Largest file, complex particle system"
+    },
+    {
+      "name": "Circuit Round Animation", 
+      "files": {
+        "json": "circuit-round-ani.json",
+        "lottie": "circuit-round-ani.lottie"
+      },
+      "usage": "Circular circuit-like ambient background",
+      "criticality": "low",
+      "visual_constraints": "15% opacity, overlay blend mode",
+      "notes": "Tech-themed geometric animation"
+    },
+    {
+      "name": "Circular Dots",
+      "files": {
+        "json": "circular-dots.json", 
+        "lottie": "circular-dots.lottie"
+      },
+      "usage": "Particle dot effects",
+      "criticality": "low",
+      "visual_constraints": "18% opacity, screen blend mode",
+      "notes": "Canvas renderer preferred for better performance"
+    },
+    {
+      "name": "Geometrical Lines",
+      "files": {
+        "json": "geometrical-lines.json",
+        "lottie": "geometrical-lines.lottie"
+      },
+      "usage": "Background geometric pattern",
+      "criticality": "low", 
+      "visual_constraints": "8% opacity, add blend mode",
+      "notes": "Large size, geometric line patterns"
+    },
+    {
+      "name": "Impossible Hexagon",
+      "files": {
+        "json": "Impossible-Hexagon-black.json",
+        "lottie": "Impossible-Hexagon-black.lottie" 
+      },
+      "usage": "Disabled/removed animation",
+      "criticality": "none",
+      "visual_constraints": "N/A - commented out in code",
+      "notes": "Previously used, now disabled per code comments"
+    },
+    {
+      "name": "Morphing Particle Loader",
+      "files": {
+        "json": "Morphing-Particle-Loader.json",
+        "lottie": "Morphing-Particle-Loader.lottie"
+      },
+      "usage": "Particle morphing effects",
+      "criticality": "medium",
+      "visual_constraints": "22% opacity, add blend mode",
+      "notes": "Canvas renderer specified, particle animation"
+    },
+    {
+      "name": "Planet Logo",
+      "files": {
+        "json": "Planet-Logo.json",
+        "lottie": "Planet-Logo.lottie"
+      },
+      "usage": "Central brand/logo animation", 
+      "criticality": "high",
+      "visual_constraints": "20% opacity, screen blend mode",
+      "notes": "Brand element, higher visual impact"
+    },
+    {
+      "name": "Planet Ring",
+      "files": {
+        "json": "planet-ring.json",
+        "lottie": "planet-ring.lottie"
+      },
+      "usage": "Orbital ring effects around main content",
+      "criticality": "medium",
+      "visual_constraints": "8% opacity, screen blend mode",
+      "notes": "Complementary to Planet Logo"
+    },
+    {
+      "name": "Sacred Geometry", 
+      "files": {
+        "json": "Sacred-Geometry.json",
+        "lottie": "Sacred-Geometry.lottie"
+      },
+      "usage": "Mystical geometric background patterns",
+      "criticality": "low",
+      "visual_constraints": "10% opacity, overlay blend mode",
+      "notes": "Scroll-triggered, geometric mandala-style"
+    },
+    {
+      "name": "Transparent Diamond",
+      "files": {
+        "json": "transparent-diamond-dark.json", 
+        "lottie": "transparent-diamond-dark.lottie"
+      },
+      "usage": "Diamond/crystal accent effects",
+      "criticality": "low",
+      "visual_constraints": "25% opacity, screen blend mode",
+      "notes": "Smallest animation, simple geometric shape"
+    }
+  ],
+  "current_player": "@lottiefiles/lottie-player v2.0.12",
+  "rendering_strategy": "Mixed SVG/Canvas based on complexity",
+  "optimization_goals": [
+    "Reduce total payload size",
+    "Maintain visual quality at low opacities", 
+    "Improve render performance",
+    "Better compression ratios"
+  ]
+}

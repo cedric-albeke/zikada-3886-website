@@ -54,31 +54,18 @@ class ChaosEngine {
         this.originalPositions = null;
         
         // Three.js resource lifecycle tracking
-        this.resources = {
-            geometries: [],
-            materials: [],
-            textures: [],
-            meshes: [],
-            lights: []
-        };
+        this.trackedGeometries = [];
+        this.trackedMaterials = [];
+        this.trackedTextures = [];
+        this.trackedMeshes = [];
+        this.trackedLights = [];
         
         // Resource counters for monitoring
-        this.resourceCounters = {
-            created: {
-                geometries: 0,
-                materials: 0,
-                textures: 0,
-                meshes: 0,
-                lights: 0
-            },
-            disposed: {
-                geometries: 0,
-                materials: 0,
-                textures: 0,
-                meshes: 0,
-                lights: 0
-            }
-        };
+        this.geometryCount = 0;
+        this.materialCount = 0;
+        this.textureCount = 0;
+        this.meshCount = 0;
+        this.lightCount = 0;
 
         // Listen for performance adjustments
         window.addEventListener('adjustParticles', (e) => this.adjustParticleCount(e.detail.count));
@@ -87,32 +74,42 @@ class ChaosEngine {
     
     // Three.js resource tracking helper methods
     trackGeometry(geometry) {
-        this.resources.geometries.push(geometry);
-        this.resourceCounters.created.geometries++;
+        if (geometry) {
+            this.trackedGeometries.push(geometry);
+            this.geometryCount++;
+        }
         return geometry;
     }
     
     trackMaterial(material) {
-        this.resources.materials.push(material);
-        this.resourceCounters.created.materials++;
+        if (material) {
+            this.trackedMaterials.push(material);
+            this.materialCount++;
+        }
         return material;
     }
     
     trackTexture(texture) {
-        this.resources.textures.push(texture);
-        this.resourceCounters.created.textures++;
+        if (texture) {
+            this.trackedTextures.push(texture);
+            this.textureCount++;
+        }
         return texture;
     }
     
     trackMesh(mesh) {
-        this.resources.meshes.push(mesh);
-        this.resourceCounters.created.meshes++;
+        if (mesh) {
+            this.trackedMeshes.push(mesh);
+            this.meshCount++;
+        }
         return mesh;
     }
     
     trackLight(light) {
-        this.resources.lights.push(light);
-        this.resourceCounters.created.lights++;
+        if (light) {
+            this.trackedLights.push(light);
+            this.lightCount++;
+        }
         return light;
     }
     
@@ -120,13 +117,19 @@ class ChaosEngine {
     getResourceStats() {
         return {
             active: {
-                geometries: this.resources.geometries.length,
-                materials: this.resources.materials.length,
-                textures: this.resources.textures.length,
-                meshes: this.resources.meshes.length,
-                lights: this.resources.lights.length
+                geometries: this.trackedGeometries.length,
+                materials: this.trackedMaterials.length,
+                textures: this.trackedTextures.length,
+                meshes: this.trackedMeshes.length,
+                lights: this.trackedLights.length
             },
-            counters: this.resourceCounters
+            created: {
+                geometries: this.geometryCount,
+                materials: this.materialCount,
+                textures: this.textureCount,
+                meshes: this.meshCount,
+                lights: this.lightCount
+            }
         };
     }
 
@@ -358,8 +361,6 @@ class ChaosEngine {
             this.originalPositions[i] = x;
             this.originalPositions[i + 1] = y;
             this.originalPositions[i + 2] = z;
-            positions[i + 1] = (Math.random() - 0.5) * 100;
-            positions[i + 2] = (Math.random() - 0.5) * 100;
 
             // Techno colors - cyan, magenta, yellow
             const colorChoice = Math.random();
@@ -543,51 +544,65 @@ class ChaosEngine {
         // Update intensity based on animation phase
         const intensity = this.animationPhase / 3;
 
-        // Update mesh materials
-        this.meshes.forEach(mesh => {
-            mesh.material.emissiveIntensity = 0.5 + intensity * 0.5;
-            mesh.material.opacity = 0.3 + intensity * 0.4;
-        });
+        // Update mesh materials with null checks
+        if (Array.isArray(this.meshes)) {
+            this.meshes.forEach(mesh => {
+                if (mesh && mesh.material) {
+                    if (typeof mesh.material.emissiveIntensity !== 'undefined') {
+                        mesh.material.emissiveIntensity = 0.5 + intensity * 0.5;
+                    }
+                    if (typeof mesh.material.opacity !== 'undefined') {
+                        mesh.material.opacity = 0.3 + intensity * 0.4;
+                    }
+                }
+            });
+        }
 
-        // Update particle opacity
-        if (this.particles) {
+        // Update particle opacity with null checks
+        if (this.particles && this.particles.material && typeof this.particles.material.opacity !== 'undefined') {
             this.particles.material.opacity = 0.6 + intensity * 0.3;
         }
     }
 
     animate() {
+        // Always schedule next frame to keep loop alive
         requestAnimationFrame(() => this.animate());
 
-        // Skip heavy work in hidden tabs (browser will throttle rAF anyway)
+        // Skip heavy work in hidden tabs
         if (document.hidden) return;
 
         const time = this.clock.getElapsedTime();
         const delta = this.clock.getDelta();
 
-        // Animate meshes
-        this.meshes.forEach((mesh, i) => {
-            const userData = mesh.userData;
+        // Animate meshes with null checks
+        if (Array.isArray(this.meshes)) {
+            this.meshes.forEach((mesh, i) => {
+                if (!mesh || !mesh.userData) return;
+                
+                const userData = mesh.userData;
+                if (!userData.rotationSpeed || !userData.originalPosition) return;
 
-            // Rotation
-            mesh.rotation.x += userData.rotationSpeed * (1 + this.animationPhase);
-            mesh.rotation.y += userData.rotationSpeed * 0.7 * (1 + this.animationPhase);
+                // Rotation
+                mesh.rotation.x += userData.rotationSpeed * (1 + this.animationPhase);
+                mesh.rotation.y += userData.rotationSpeed * 0.7 * (1 + this.animationPhase);
 
-            // Floating motion
-            mesh.position.y = userData.originalPosition.y +
-                Math.sin(time * userData.floatSpeed) * userData.floatAmplitude;
+                // Floating motion
+                mesh.position.y = userData.originalPosition.y +
+                    Math.sin(time * userData.floatSpeed) * userData.floatAmplitude;
 
-            // Noise-based distortion
-            const noiseValue = this.noise3D(
-                mesh.position.x * 0.01,
-                mesh.position.y * 0.01,
-                time * 0.1
-            );
-            mesh.position.z = userData.originalPosition.z + noiseValue * 5 * this.animationPhase;
+                // Noise-based distortion
+                const noiseValue = this.noise3D(
+                    mesh.position.x * 0.01,
+                    mesh.position.y * 0.01,
+                    time * 0.1
+                );
+                mesh.position.z = userData.originalPosition.z + noiseValue * 5 * this.animationPhase;
 
-            // Scale pulsing
-            const scale = 1 + Math.sin(time * 2 + i) * 0.1 * (1 + this.animationPhase);
-            mesh.scale.set(scale, scale, scale);
-        });
+                // Scale pulsing
+                const scale = 1 + Math.sin(time * 2 + i) * 0.1 * (1 + this.animationPhase);
+                mesh.scale.set(scale, scale, scale);
+            });
+        }
 
         // Animate particles - optimized with frame skipping
         if (this.particles) {
@@ -611,16 +626,20 @@ class ChaosEngine {
                     const positions = this.particles.geometry.attributes.position.array;
                     const originalPositions = this.originalPositions;
 
-                    if (positions && originalPositions) {
-                        // Optimized loop with caching
+                    if (positions && originalPositions && positions.length === originalPositions.length) {
+                        // Optimized loop with caching and bounds checking
                         const timeHalf = time * 0.5;
                         const timeThird = time * 0.3;
                         const phaseFactor = 1 + this.animationPhase;
+                        const maxLength = Math.min(positions.length, originalPositions.length);
 
-                        for (let i = 0; i < positions.length; i += 3) {
-                            const origX = originalPositions[i];
-                            const origY = originalPositions[i + 1];
-                            const origZ = originalPositions[i + 2];
+                        for (let i = 0; i < maxLength; i += 3) {
+                            // Ensure we don't go out of bounds
+                            if (i + 2 >= maxLength) break;
+                            
+                            const origX = originalPositions[i] || 0;
+                            const origY = originalPositions[i + 1] || 0;
+                            const origZ = originalPositions[i + 2] || 0;
 
                             // Cache calculations
                             const factor1 = origY * 0.1;
@@ -631,7 +650,10 @@ class ChaosEngine {
                             positions[i + 1] = origY + Math.cos(timeThird + factor2) * 2;
                             positions[i + 2] = origZ + Math.sin(time + factor2 + factor1) * 3 * phaseFactor;
                         }
-                        this.particles.geometry.attributes.position.needsUpdate = true;
+                        
+                        if (this.particles.geometry && this.particles.geometry.attributes && this.particles.geometry.attributes.position) {
+                            this.particles.geometry.attributes.position.needsUpdate = true;
+                        }
                     }
                 }
 
@@ -642,25 +664,41 @@ class ChaosEngine {
             }
         }
 
-        // Animate lights
-        this.lights.forEach((light, i) => {
-            const angle = time * 0.5 + (i * Math.PI / 2);
-            light.position.x = Math.sin(angle) * 20;
-            light.position.y = Math.cos(angle) * 20;
-            light.position.z = Math.sin(angle * 2) * 10;
-            light.intensity = 2 + Math.sin(time * 3 + i) * 0.5 * (1 + this.animationPhase);
-        });
+        // Animate lights with null checks
+        if (Array.isArray(this.lights)) {
+            this.lights.forEach((light, i) => {
+                if (!light || !light.position) return;
+                
+                const angle = time * 0.5 + (i * Math.PI / 2);
+                light.position.x = Math.sin(angle) * 20;
+                light.position.y = Math.cos(angle) * 20;
+                light.position.z = Math.sin(angle * 2) * 10;
+                
+                if (typeof light.intensity !== 'undefined') {
+                    light.intensity = 2 + Math.sin(time * 3 + i) * 0.5 * (1 + this.animationPhase);
+                }
+            });
+        }
 
-        // Camera movement
-        this.camera.position.x = Math.sin(time * 0.1) * 5;
-        this.camera.position.y = Math.cos(time * 0.1) * 3;
-        this.camera.lookAt(0, 0, 0);
+        // Camera movement with null checks
+        if (this.camera && this.camera.position) {
+            this.camera.position.x = Math.sin(time * 0.1) * 5;
+            this.camera.position.y = Math.cos(time * 0.1) * 3;
+            if (typeof this.camera.lookAt === 'function') {
+                this.camera.lookAt(0, 0, 0);
+            }
+        }
 
         // Render: short-circuit composer when no active post-processing
-        if (this.hasActivePostProcessing()) {
-            this.composer.render(delta);
-        } else {
-            this.renderer.render(this.scene, this.camera);
+        try {
+            if (this.hasActivePostProcessing() && this.composer) {
+                this.composer.render(delta);
+            } else if (this.renderer && this.scene && this.camera) {
+                this.renderer.render(this.scene, this.camera);
+            }
+        } catch (error) {
+            console.warn('Render error:', error);
+            // Try to continue with next frame
         }
     }
 

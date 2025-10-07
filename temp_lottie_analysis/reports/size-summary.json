@@ -1,0 +1,294 @@
+{
+  "timestamp": "2025-10-07T22:44:27.471Z",
+  "files": [
+    {
+      "name": "Abstraction",
+      "file": "Abstraction.json",
+      "type": "json",
+      "sizes": {
+        "raw": 169103,
+        "gzip": 16790,
+        "brotli": 12649
+      },
+      "compressionRatio": {
+        "gzip": 90.07114007439253,
+        "brotli": 92.51994346640805
+      }
+    },
+    {
+      "name": "geometrical-lines",
+      "file": "geometrical-lines.json",
+      "type": "json",
+      "sizes": {
+        "raw": 145607,
+        "gzip": 4915,
+        "brotli": 2484
+      },
+      "compressionRatio": {
+        "gzip": 96.62447547164628,
+        "brotli": 98.29403806135694
+      }
+    },
+    {
+      "name": "circuit-round-ani",
+      "file": "circuit-round-ani.json",
+      "type": "json",
+      "sizes": {
+        "raw": 120430,
+        "gzip": 3968,
+        "brotli": 2328
+      },
+      "compressionRatio": {
+        "gzip": 96.70513991530349,
+        "brotli": 98.06692684547039
+      }
+    },
+    {
+      "name": "circular-dots",
+      "file": "circular-dots.json",
+      "type": "json",
+      "sizes": {
+        "raw": 53072,
+        "gzip": 2958,
+        "brotli": 2266
+      },
+      "compressionRatio": {
+        "gzip": 94.4264395538137,
+        "brotli": 95.73032861018993
+      }
+    },
+    {
+      "name": "Impossible-Hexagon-black",
+      "file": "Impossible-Hexagon-black.json",
+      "type": "json",
+      "sizes": {
+        "raw": 34211,
+        "gzip": 1400,
+        "brotli": 1034
+      },
+      "compressionRatio": {
+        "gzip": 95.90774896962965,
+        "brotli": 96.97758031042648
+      }
+    },
+    {
+      "name": "Planet-Logo",
+      "file": "Planet-Logo.json",
+      "type": "json",
+      "sizes": {
+        "raw": 26803,
+        "gzip": 3149,
+        "brotli": 2605
+      },
+      "compressionRatio": {
+        "gzip": 88.25131515128903,
+        "brotli": 90.28093870089168
+      }
+    },
+    {
+      "name": "Sacred-Geometry",
+      "file": "Sacred-Geometry.json",
+      "type": "json",
+      "sizes": {
+        "raw": 21286,
+        "gzip": 1705,
+        "brotli": 1446
+      },
+      "compressionRatio": {
+        "gzip": 91.99004040214224,
+        "brotli": 93.20680259325378
+      }
+    },
+    {
+      "name": "Abstraction",
+      "file": "Abstraction.lottie",
+      "type": "lottie",
+      "sizes": {
+        "raw": 17698,
+        "gzip": 17626,
+        "brotli": 17613
+      },
+      "compressionRatio": {
+        "gzip": 0.4068256300146909,
+        "brotli": 0.48028025765623233
+      }
+    },
+    {
+      "name": "planet-ring",
+      "file": "planet-ring.json",
+      "type": "json",
+      "sizes": {
+        "raw": 17573,
+        "gzip": 1535,
+        "brotli": 1281
+      },
+      "compressionRatio": {
+        "gzip": 91.26500882034941,
+        "brotli": 92.71040801229158
+      }
+    },
+    {
+      "name": "transparent-diamond-dark",
+      "file": "transparent-diamond-dark.json",
+      "type": "json",
+      "sizes": {
+        "raw": 11179,
+        "gzip": 890,
+        "brotli": 751
+      },
+      "compressionRatio": {
+        "gzip": 92.03864388585741,
+        "brotli": 93.28204669469541
+      }
+    },
+    {
+      "name": "Morphing-Particle-Loader",
+      "file": "Morphing-Particle-Loader.json",
+      "type": "json",
+      "sizes": {
+        "raw": 8547,
+        "gzip": 1185,
+        "brotli": 992
+      },
+      "compressionRatio": {
+        "gzip": 86.13548613548613,
+        "brotli": 88.3935883935884
+      }
+    },
+    {
+      "name": "geometrical-lines",
+      "file": "geometrical-lines.lottie",
+      "type": "lottie",
+      "sizes": {
+        "raw": 5816,
+        "gzip": 5430,
+        "brotli": 5333
+      },
+      "compressionRatio": {
+        "gzip": 6.636863823933975,
+        "brotli": 8.304676753782667
+      }
+    },
+    {
+      "name": "circuit-round-ani",
+      "file": "circuit-round-ani.lottie",
+      "type": "lottie",
+      "sizes": {
+        "raw": 3895,
+        "gzip": 3801,
+        "brotli": 3744
+      },
+      "compressionRatio": {
+        "gzip": 2.4133504492939664,
+        "brotli": 3.8767650834403082
+      }
+    },
+    {
+      "name": "Planet-Logo",
+      "file": "Planet-Logo.lottie",
+      "type": "lottie",
+      "sizes": {
+        "raw": 3787,
+        "gzip": 3715,
+        "brotli": 3663
+      },
+      "compressionRatio": {
+        "gzip": 1.9012410879324002,
+        "brotli": 3.274359651439134
+      }
+    },
+    {
+      "name": "circular-dots",
+      "file": "circular-dots.lottie",
+      "type": "lottie",
+      "sizes": {
+        "raw": 3502,
+        "gzip": 3434,
+        "brotli": 3377
+      },
+      "compressionRatio": {
+        "gzip": 1.9417475728155338,
+        "brotli": 3.5693889206167904
+      }
+    },
+    {
+      "name": "Sacred-Geometry",
+      "file": "Sacred-Geometry.lottie",
+      "type": "lottie",
+      "sizes": {
+        "raw": 2227,
+        "gzip": 2157,
+        "brotli": 2097
+      },
+      "compressionRatio": {
+        "gzip": 3.1432420296362817,
+        "brotli": 5.837449483610238
+      }
+    },
+    {
+      "name": "planet-ring",
+      "file": "planet-ring.lottie",
+      "type": "lottie",
+      "sizes": {
+        "raw": 2002,
+        "gzip": 1930,
+        "brotli": 1881
+      },
+      "compressionRatio": {
+        "gzip": 3.5964035964035967,
+        "brotli": 6.043956043956044
+      }
+    },
+    {
+      "name": "Impossible-Hexagon-black",
+      "file": "Impossible-Hexagon-black.lottie",
+      "type": "lottie",
+      "sizes": {
+        "raw": 1835,
+        "gzip": 1762,
+        "brotli": 1705
+      },
+      "compressionRatio": {
+        "gzip": 3.978201634877384,
+        "brotli": 7.084468664850137
+      }
+    },
+    {
+      "name": "Morphing-Particle-Loader",
+      "file": "Morphing-Particle-Loader.lottie",
+      "type": "lottie",
+      "sizes": {
+        "raw": 1629,
+        "gzip": 1560,
+        "brotli": 1509
+      },
+      "compressionRatio": {
+        "gzip": 4.23572744014733,
+        "brotli": 7.366482504604052
+      }
+    },
+    {
+      "name": "transparent-diamond-dark",
+      "file": "transparent-diamond-dark.lottie",
+      "type": "lottie",
+      "sizes": {
+        "raw": 1334,
+        "gzip": 1261,
+        "brotli": 1231
+      },
+      "compressionRatio": {
+        "gzip": 5.472263868065967,
+        "brotli": 7.721139430284858
+      }
+    }
+  ],
+  "totals": {
+    "raw": 651536,
+    "gzip": 81171,
+    "brotli": 69989,
+    "compressionRatio": {
+      "gzip": 87.54159401782864,
+      "brotli": 89.25784607450701
+    }
+  }
+}

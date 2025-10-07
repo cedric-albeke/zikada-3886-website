@@ -52,7 +52,7 @@ const featureFlags = window.SAFE_FEATURE_FLAGS || {
     }
 };
 import enhancedWatchdog from './enhanced-watchdog.js';
-import memoryLeakGuardian from './memory-leak-guardian.js';
+// import memoryLeakGuardian from './memory-leak-guardian.js'; // DISABLED - causing aggressive cleanup
 import performanceLadder from './performance-degradation-ladder.js';
 import performanceLadderTest from './performance-ladder-test.js';
 import smartPreloader from './smart-preloader.js';
@@ -891,18 +891,19 @@ class ChaosInitializer {
         this.initPerformanceMonitor();
         this.initPerformanceManager(); // Initialize performance monitoring first
         
-        // Start Memory Leak Guardian for heap/DOM protection
-        try {
-            console.log('🧠 Starting Memory Leak Guardian...');
-            if (memoryLeakGuardian && typeof memoryLeakGuardian.startGuardian === 'function') {
-                memoryLeakGuardian.startGuardian();
-                console.log('✅ Memory Leak Guardian active');
-            } else {
-                console.warn('[ZIKADA][init] Memory Leak Guardian not started: startGuardian() unavailable or instance undefined');
-            }
-        } catch (error) {
-            console.warn('⚠️ Memory Leak Guardian failed to start:', error);
-        }
+        // Memory Leak Guardian DISABLED - was causing aggressive cleanups
+        console.log('🚤 Memory Leak Guardian disabled (was interfering with normal operation)');
+        // try {
+        //     console.log('🧠 Starting Memory Leak Guardian...');
+        //     if (memoryLeakGuardian && typeof memoryLeakGuardian.startGuardian === 'function') {
+        //         memoryLeakGuardian.startGuardian();
+        //         console.log('✅ Memory Leak Guardian active');
+        //     } else {
+        //         console.warn('[ZIKADA][init] Memory Leak Guardian not started: startGuardian() unavailable or instance undefined');
+        //     }
+        // } catch (error) {
+        //     console.warn('⚠️ Memory Leak Guardian failed to start:', error);
+        // }
         
         // Start Enhanced Watchdog for RAF/WebGL/performance monitoring
         try {

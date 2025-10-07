@@ -51,10 +51,12 @@
   <!-- Poster runtime should load early so it can fade out when ready -->
   <script type="module" src="/js/poster-runtime.js"></script>
 
+  <!-- SAFE_MODE Controller - DISABLED -->
+  <!-- <script type="module" src="/js/safe-mode-controller.js"></script> -->
   <!-- Safe Feature Flags - MUST LOAD FIRST for safety controls -->
   <script type="module" src="/js/feature-flags-safe.js"></script>
-  <!-- Emergency Cleanup Utility - Load early for safety -->
-  <script type="module" src="/js/emergency-cleanup-safe.js"></script>
+  <!-- Emergency Cleanup Utility - DISABLED -->
+  <!-- <script type="module" src="/js/emergency-cleanup-safe.js"></script> -->
   <!-- Central Logger - MUST LOAD FIRST -->
   <script type="module" src="/js/utils/logger.js"></script>
   <!-- Performance Inspector - Debug tool -->
