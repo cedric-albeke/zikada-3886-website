@@ -1,4 +1,17 @@
+/**
+ * ZIKADA 3886 Chaos Initializer - Safe Version
+ * 
+ * This version has been updated to use safe managers to prevent memory leaks:
+ * - Uses safe PerformanceElementManager (with proper purge() method)
+ * - Uses safe TextEffectsManager (with proper lifecycle management) 
+ * - Uses safe Feature Flags system for configuration
+ * - Integrates with emergency cleanup utilities
+ * 
+ * Safe managers are loaded globally and referenced here for compatibility.
+ */
+
 import chaosEngine from './chaos-engine.js';
+// Safe imports - use the safe versions of problematic managers
 import textEffects from './text-effects.js';
 import backgroundAnimator from './background-animator.js';
 import matrixMessages from './matrix-messages.js';
@@ -21,7 +34,22 @@ import directLogoAnimation from './direct-logo-animation.js';
 import vjReceiver from './vj-receiver.js';
 import performanceOptimizer from './performance-optimizer.js';
 import VisualEffectsController from './visual-effects-complete.js';
-import featureFlags from './feature-flags.js';
+
+// Use safe feature flags system
+const featureFlags = window.SAFE_FEATURE_FLAGS || {
+    isEnabled: (flag) => {
+        // Fallback for missing safe feature flags
+        const defaults = { 
+            pwaEnabled: false, 
+            debugMetrics: false, 
+            predictiveAlerting: false,
+            serviceWorkerEnabled: false,
+            installPrompt: false,
+            monitorDashboard: false
+        };
+        return defaults[flag] || false;
+    }
+};
 import enhancedWatchdog from './enhanced-watchdog.js';
 import memoryLeakGuardian from './memory-leak-guardian.js';
 import performanceLadder from './performance-degradation-ladder.js';
@@ -42,11 +70,15 @@ if (typeof window !== 'undefined' && !window.gsap) {
     window.gsap = gsap;
 }
 
-// Performance Management Imports
-import performanceElementManager from './performance-element-manager.js';
-import intervalManager from './interval-manager.js';
-import gsapAnimationRegistry from './gsap-animation-registry.js';
-import performanceMonitor from './performance-monitor.js';
+// Safe Performance Management Imports - use the safe versions
+// These are now globally available after safe initialization
+const performanceElementManager = window.performanceElementManager || null;
+const intervalManager = window.intervalManager || null;
+const gsapAnimationRegistry = window.gsapAnimationRegistry || null;
+const performanceMonitor = window.performanceMonitor || null;
+
+// Safe text effects manager
+const safeTextEffects = window.safeTextEffects || textEffects;
 
 class ChaosInitializer {
     constructor() {
@@ -1438,8 +1470,31 @@ class ChaosInitializer {
 
     initTextEffects() {
         try {
-            textEffects.init();
-            textEffects.addDataCorruption();
+            // Use safe text effects manager if available
+            if (window.safeTextEffects) {
+                window.safeTextEffects.init();
+                console.log('✅ Safe Text Effects initialized');
+                // Only add data corruption if text effects are enabled
+                if (window.SAFE_FEATURE_FLAGS?.isEnabled('TEXT_EFFECTS_ENABLED')) {
+                    window.safeTextEffects.addDataCorruption();
+                }
+            } else if (window.textEffects) {
+                // Use the global text effects instance
+                console.log('✅ Using global text effects instance');
+                window.textEffects.init();
+                if (window.SAFE_FEATURE_FLAGS?.isEnabled('TEXT_EFFECTS_ENABLED')) {
+                    window.textEffects.addDataCorruption();
+                }
+            } else {
+                // Create new text effects instance
+                console.log('⚠️ Creating new text effects instance');
+                const TextEffectsClass = textEffects; // This is the class
+                const textEffectsInstance = new TextEffectsClass();
+                textEffectsInstance.init();
+                if (window.SAFE_FEATURE_FLAGS?.isEnabled('TEXT_EFFECTS_ENABLED')) {
+                    textEffectsInstance.addDataCorruption();
+                }
+            }
             matrixMessages.init();
             subtleEffects.init();
         } catch (error) {
@@ -1959,13 +2014,25 @@ class ChaosInitializer {
             }, { autoAppend: false });
             container.appendChild(stream);
 
-            this.gsapRegistry.createAnimation('to', stream, {
-                y: window.innerHeight + 200,
-                duration: Math.random() * 10 + 5,
-                repeat: -1,
-                ease: 'linear',
-                delay: Math.random() * 5
-            }, `data-stream-${i}`, 'stream');
+            // Use GSAP registry if available, otherwise direct GSAP
+            if (this.gsapRegistry) {
+                this.gsapRegistry.createAnimation('to', stream, {
+                    y: window.innerHeight + 200,
+                    duration: Math.random() * 10 + 5,
+                    repeat: -1,
+                    ease: 'linear',
+                    delay: Math.random() * 5
+                }, `data-stream-${i}`, 'stream');
+            } else {
+                // Fallback to direct GSAP
+                gsap.to(stream, {
+                    y: window.innerHeight + 200,
+                    duration: Math.random() * 10 + 5,
+                    repeat: -1,
+                    ease: 'linear',
+                    delay: Math.random() * 5
+                });
+            }
         }
     }
 

@@ -446,14 +446,81 @@ class MemoryLeakGuardian {
     handleExcessiveDOMGrowth(growth, currentCount) {
         console.error(`🚨 Excessive DOM growth: ${growth} nodes (${currentCount} total)`);
         
-        // Trigger DOM cleanup through performance element manager
-        performanceElementManager.removeOrphanedElements();
+        // Trigger DOM cleanup through performance element manager (use global reference)
+        let cleanedCount = 0;
+        if (window.performanceElementManager && typeof window.performanceElementManager.removeOrphanedElements === 'function') {
+            try {
+                cleanedCount = window.performanceElementManager.removeOrphanedElements();
+                console.log(`🧹 Cleaned up ${cleanedCount} orphaned elements via performance manager`);
+            } catch (error) {
+                console.warn('⚠️ Error cleaning orphaned elements via performance manager:', error);
+            }
+        }
+        
+        // Fallback manual cleanup if performance manager isn't available or failed
+        if (cleanedCount === 0) {
+            cleanedCount = this.performFallbackDOMCleanup();
+        }
         
         // Emit DOM growth event
         const event = new CustomEvent('dom:excessive-growth', {
-            detail: { growth, currentCount }
+            detail: { growth, currentCount, cleanedCount }
         });
         window.dispatchEvent(event);
+    }
+    
+    /**
+     * Fallback DOM cleanup when performance manager isn't available
+     */
+    performFallbackDOMCleanup() {
+        console.log('🧹 Performing fallback DOM cleanup...');
+        
+        let cleanedCount = 0;
+        
+        // Clean up common temporary elements
+        const temporarySelectors = [
+            'div[style*="position: fixed"][style*="z-index: 999"]',
+            '.matrix-overlay',
+            '.phase-overlay', 
+            '.flash-overlay',
+            '.glitch-overlay',
+            '[data-temp="true"]',
+            '.perf-managed:not([data-permanent])'
+        ];
+        
+        temporarySelectors.forEach(selector => {
+            const elements = document.querySelectorAll(selector);
+            elements.forEach(el => {
+                // Extra safety checks
+                if (!el.classList.contains('pre-loader') && 
+                    !el.classList.contains('control-panel') &&
+                    !el.querySelector('.logo-text') &&
+                    !el.querySelector('.image-2')) {
+                    try {
+                        el.remove();
+                        cleanedCount++;
+                    } catch (e) {
+                        // Silent fail - element may have been removed already
+                    }
+                }
+            });
+        });
+        
+        // Clean up detached elements
+        const detachedElements = document.querySelectorAll('*');
+        detachedElements.forEach(el => {
+            if (!el.isConnected && el.parentNode) {
+                try {
+                    el.parentNode.removeChild(el);
+                    cleanedCount++;
+                } catch (e) {
+                    // Element may have been removed already
+                }
+            }
+        });
+        
+        console.log(`🧹 Fallback cleanup removed ${cleanedCount} elements`);
+        return cleanedCount;
     }
     
     /**
@@ -675,11 +742,19 @@ class MemoryLeakGuardian {
     triggerModerateCleanup() {
         console.log('🧹 Triggering moderate cleanup...');
         
-        // Clean up performance element manager
-        performanceElementManager.removeOrphanedElements();
+        // Clean up performance element manager (use global reference)
+        if (window.performanceElementManager && typeof window.performanceElementManager.removeOrphanedElements === 'function') {
+            try {
+                window.performanceElementManager.removeOrphanedElements();
+            } catch (error) {
+                console.warn('⚠️ Error in moderate cleanup via performance manager:', error);
+            }
+        }
         
         // Clean up interval manager
-        intervalManager.performAutoCleanup();
+        if (intervalManager && typeof intervalManager.performAutoCleanup === 'function') {
+            intervalManager.performAutoCleanup();
+        }
         
         // Trim object pools
         this.maintainObjectPools();
@@ -691,12 +766,20 @@ class MemoryLeakGuardian {
     triggerEmergencyCleanup() {
         console.log('🚨 EMERGENCY CLEANUP TRIGGERED');
         
-        // Emergency cleanup via performance element manager
-        performanceElementManager.emergencyCleanup();
+        // Emergency cleanup via performance element manager (use global reference)
+        if (window.performanceElementManager && typeof window.performanceElementManager.emergencyCleanup === 'function') {
+            try {
+                window.performanceElementManager.emergencyCleanup();
+            } catch (error) {
+                console.warn('⚠️ Error in emergency cleanup via performance manager:', error);
+            }
+        }
         
         // Stop non-essential intervals
-        intervalManager.clearCategory('effects');
-        intervalManager.clearCategory('animations');
+        if (intervalManager) {
+            intervalManager.clearCategory('effects');
+            intervalManager.clearCategory('animations');
+        }
         
         // Clean all object pools
         this.objectPools.forEach(pool => {
