@@ -22,6 +22,8 @@ import vjReceiver from './vj-receiver.js';
 import performanceOptimizer from './performance-optimizer.js';
 import VisualEffectsController from './visual-effects-complete.js';
 import featureFlags from './feature-flags.js';
+import enhancedWatchdog from './enhanced-watchdog.js';
+import memoryLeakGuardian from './memory-leak-guardian.js';
 import gsap from 'gsap';
 
 // Ensure GSAP is globally available
@@ -73,6 +75,9 @@ class ChaosInitializer {
             console.log('📱 PWA features enabled');
             this.initializePWAFeatures();
         }
+        
+        // Set up watchdog event listeners for recovery
+        this.setupWatchdogEventHandlers();
 
         this.setupAnimeIntegration();
     }
@@ -152,6 +157,417 @@ class ChaosInitializer {
             console.log('✅ PWA installed successfully');
             deferredPrompt = null;
         });
+    }
+    
+    /**
+     * Set up event handlers for watchdog recovery events
+     */
+    setupWatchdogEventHandlers() {
+        // Listen for RAF restart events
+        window.addEventListener('raf:restart', () => {
+            console.log('🔄 RAF restart requested by watchdog');
+            this.restartAnimationLoop();
+        });
+        
+        // Listen for WebGL context rebuild events
+        window.addEventListener('webgl:rebuild', (event) => {
+            console.log('🆕 WebGL rebuild requested by watchdog');
+            this.handleWebGLRebuild(event.detail.context);
+        });
+        
+        // Listen for performance emergency events
+        window.addEventListener('performance:emergency', (event) => {
+            console.log('🚨 Emergency performance reduction requested');
+            this.handlePerformanceEmergency(event.detail.level);
+        });
+        
+        // Listen for temporary performance reduction
+        window.addEventListener('performance:reduce', (event) => {
+            console.log('⚡ Temporary performance reduction requested');
+            this.handleTemporaryPerformanceReduction(event.detail);
+        });
+        
+        // Listen for performance restoration
+        window.addEventListener('performance:restore', () => {
+            console.log('✅ Performance restoration requested');
+            this.handlePerformanceRestore();
+        });
+        
+        // Listen for component quarantine events
+        window.addEventListener('component:quarantine', (event) => {
+            console.log(`⛔ Component quarantine requested: ${event.detail.component}`);
+            this.handleComponentQuarantine(event.detail.component);
+        });
+        
+        // Listen for soft restart events
+        window.addEventListener('app:soft-restart', () => {
+            console.log('🔄 Soft restart requested by watchdog');
+            this.handleSoftRestart();
+        });
+        
+        // Listen for memory events from Memory Leak Guardian
+        window.addEventListener('memory:warning', (event) => {
+            console.log('⚠️ Memory growth warning detected');
+            this.handleMemoryWarning(event.detail);
+        });
+        
+        window.addEventListener('memory:critical', (event) => {
+            console.log('🚨 Critical memory growth detected');
+            this.handleMemoryCritical(event.detail);
+        });
+        
+        window.addEventListener('dom:excessive-growth', (event) => {
+            console.log('🌳 Excessive DOM growth detected');
+            this.handleDOMGrowth(event.detail);
+        });
+    }
+    
+    /**
+     * Restart the main animation loop
+     */
+    restartAnimationLoop() {
+        // Emit a global event that other animation systems can listen to
+        const event = new CustomEvent('chaos:restart-animations');
+        window.dispatchEvent(event);
+        
+        // Force a new RAF cycle
+        requestAnimationFrame(() => {
+            console.log('🔄 Animation loop restarted');
+        });
+    }
+    
+    /**
+     * Handle WebGL context rebuild
+     */
+    handleWebGLRebuild(context) {
+        // Emit event for Three.js systems to rebuild
+        const event = new CustomEvent('chaos:webgl-rebuild', {
+            detail: { context }
+        });
+        window.dispatchEvent(event);
+    }
+    
+    /**
+     * Handle emergency performance reduction
+     */
+    handlePerformanceEmergency(level) {
+        if (level === 'critical') {
+            // Disable heavy effects immediately
+            this.disableHeavyEffects();
+            // Set emergency CSS
+            this.applyEmergencyCSS();
+        }
+    }
+    
+    /**
+     * Handle temporary performance reduction
+     */
+    handleTemporaryPerformanceReduction(options) {
+        const { level, duration } = options;
+        
+        // Temporarily reduce effects
+        this.reduceEffectsTemporarily(level);
+        
+        // Restore after duration
+        if (duration) {
+            setTimeout(() => {
+                this.restoreEffects();
+            }, duration);
+        }
+    }
+    
+    /**
+     * Handle performance restoration
+     */
+    handlePerformanceRestore() {
+        this.restoreEffects();
+        this.removeEmergencyCSS();
+    }
+    
+    /**
+     * Handle component quarantine
+     */
+    handleComponentQuarantine(component) {
+        // Add component to quarantine list and disable it
+        const event = new CustomEvent('chaos:quarantine-component', {
+            detail: { component }
+        });
+        window.dispatchEvent(event);
+    }
+    
+    /**
+     * Handle soft restart
+     */
+    handleSoftRestart() {
+        console.log('🔄 Performing soft restart...');
+        
+        // Clear all timers and intervals
+        this.clearAllTimers();
+        
+        // Reset animation states
+        this.resetAnimationStates();
+        
+        // Restart with minimal configuration
+        setTimeout(() => {
+            this.restartMinimal();
+        }, 1000);
+    }
+    
+    /**
+     * Handle memory warning from Memory Leak Guardian
+     */
+    handleMemoryWarning(details) {
+        console.log('🧠 Memory warning details:', details);
+        // Progressive cleanup strategies
+        
+        try {
+            // 1. Cleanup oldest animations
+            if (window.animationRegistry) {
+                window.animationRegistry.cleanup();
+            }
+            
+            // 2. Purge element pools
+            if (window.performanceElementManager) {
+                window.performanceElementManager.purge();
+            }
+            
+            // 3. Clear expired intervals
+            if (window.intervalManager) {
+                window.intervalManager.cleanup();
+            }
+            
+            // 4. Clear cached GSAP transforms
+            if (typeof gsap !== 'undefined') {
+                gsap.set('*', { clearProps: 'transform' });
+            }
+            
+            console.log('✅ Memory warning cleanup completed');
+        } catch (error) {
+            console.error('Memory warning cleanup failed:', error);
+        }
+    }
+    
+    /**
+     * Handle critical memory situation from Memory Leak Guardian
+     */
+    handleMemoryCritical(details) {
+        console.error('🚨 Critical memory situation:', details);
+        
+        // Emergency cleanup - more aggressive
+        try {
+            // Stop all animations immediately
+            if (typeof gsap !== 'undefined') {
+                gsap.killTweensOf('*');
+                gsap.set('*', { clearProps: 'all' });
+            }
+            
+            // Clear all cached elements
+            if (window.performanceElementManager) {
+                window.performanceElementManager.dispose();
+            }
+            
+            // Clear all intervals
+            if (window.intervalManager) {
+                window.intervalManager.disposeAll();
+            }
+            
+            // Clear all timers managed by this class
+            this.clearAllTimers();
+            
+            // Apply emergency performance CSS
+            this.applyEmergencyCSS();
+            
+            // Trigger garbage collection if available
+            if (window.gc) {
+                window.gc();
+            }
+            
+            console.log('💥 Emergency memory cleanup completed');
+            
+            // If we still have issues, restart the app after brief delay
+            setTimeout(() => {
+                console.log('🔄 Initiating soft restart due to memory crisis');
+                this.handleSoftRestart();
+            }, 2000);
+            
+        } catch (error) {
+            console.error('❌ Critical memory cleanup failed:', error);
+            // Last resort: reload the page
+            setTimeout(() => {
+                console.error('🎆 Forcing page reload as last resort');
+                window.location.reload();
+            }, 3000);
+        }
+    }
+    
+    /**
+     * Handle excessive DOM growth from Memory Leak Guardian
+     */
+    handleDOMGrowth(details) {
+        console.log('📊 DOM growth details:', details);
+        
+        try {
+            // DOM-specific cleanup
+            if (window.performanceElementManager) {
+                // Force DOM cleanup with stricter limits
+                window.performanceElementManager.purge(true);
+            }
+            
+            // Remove orphaned elements
+            const orphanedElements = document.querySelectorAll('[data-animation-orphaned="true"]');
+            let removedCount = 0;
+            orphanedElements.forEach(el => {
+                try {
+                    el.remove();
+                    removedCount++;
+                } catch (e) {
+                    console.warn('Could not remove orphaned element:', e);
+                }
+            });
+            
+            // Clean up elements marked for removal
+            const markedForRemoval = document.querySelectorAll('[data-remove-pending="true"]');
+            markedForRemoval.forEach(el => {
+                try {
+                    el.remove();
+                    removedCount++;
+                } catch (e) {
+                    console.warn('Could not remove marked element:', e);
+                }
+            });
+            
+            // Clean up detached DOM nodes (common memory leak source)
+            const detachedElements = document.querySelectorAll('*:not(:connected)');
+            detachedElements.forEach(el => {
+                try {
+                    if (el.parentNode) {
+                        el.parentNode.removeChild(el);
+                        removedCount++;
+                    }
+                } catch (e) {
+                    // Element may have been removed already
+                }
+            });
+            
+            console.log(`🗑️ DOM cleanup completed, removed ${removedCount} elements`);
+            
+        } catch (error) {
+            console.error('DOM growth cleanup failed:', error);
+        }
+    }
+    
+    /**
+     * Disable heavy effects for emergency performance
+     */
+    disableHeavyEffects() {
+        const event = new CustomEvent('chaos:disable-heavy-effects');
+        window.dispatchEvent(event);
+    }
+    
+    /**
+     * Apply emergency CSS to reduce performance impact
+     */
+    applyEmergencyCSS() {
+        if (document.getElementById('emergency-performance-css')) return;
+        
+        const style = document.createElement('style');
+        style.id = 'emergency-performance-css';
+        style.textContent = `
+            /* Emergency performance reduction */
+            .quantum-particles { display: none !important; }
+            .holographic-shimmer { opacity: 0.01 !important; }
+            .energy-field { display: none !important; }
+            .matrix-overlay { opacity: 0.1 !important; }
+            .phase-overlay { display: none !important; }
+            
+            /* Reduce animation complexity */
+            * {
+                animation-duration: 2s !important;
+                transition-duration: 0.1s !important;
+            }
+            
+            /* Disable expensive filters */
+            .blur-effect { filter: none !important; }
+            .glow-effect { box-shadow: none !important; }
+        `;
+        
+        document.head.appendChild(style);
+    }
+    
+    /**
+     * Remove emergency CSS
+     */
+    removeEmergencyCSS() {
+        const style = document.getElementById('emergency-performance-css');
+        if (style) {
+            style.remove();
+        }
+    }
+    
+    /**
+     * Reduce effects temporarily
+     */
+    reduceEffectsTemporarily(level) {
+        const event = new CustomEvent('chaos:reduce-effects', {
+            detail: { level }
+        });
+        window.dispatchEvent(event);
+    }
+    
+    /**
+     * Restore normal effects
+     */
+    restoreEffects() {
+        const event = new CustomEvent('chaos:restore-effects');
+        window.dispatchEvent(event);
+    }
+    
+    /**
+     * Clear all managed timers and intervals
+     */
+    clearAllTimers() {
+        // Clear managed intervals
+        this.managedIntervals.forEach(id => {
+            clearInterval(id);
+        });
+        this.managedIntervals = [];
+        
+        // Emit event for other systems to clear their timers
+        const event = new CustomEvent('chaos:clear-timers');
+        window.dispatchEvent(event);
+    }
+    
+    /**
+     * Reset animation states
+     */
+    resetAnimationStates() {
+        // Kill all GSAP animations
+        if (typeof gsap !== 'undefined') {
+            gsap.killTweensOf('*');
+        }
+        
+        // Reset phases
+        this.currentPhase = null;
+        
+        // Clear phase timer
+        if (this.phaseTimer) {
+            clearTimeout(this.phaseTimer);
+            this.phaseTimer = null;
+        }
+    }
+    
+    /**
+     * Restart with minimal configuration
+     */
+    restartMinimal() {
+        console.log('🔄 Restarting with minimal configuration');
+        
+        // Reinitialize with reduced complexity
+        const event = new CustomEvent('chaos:restart-minimal');
+        window.dispatchEvent(event);
+        
+        // Restart phase system with longer intervals
+        this.phaseDurationMs = Math.max(this.phaseDurationMs * 1.5, 45000); // Increase to 45s minimum
     }
 
     setupAnimeIntegration() {
@@ -423,6 +839,24 @@ class ChaosInitializer {
         // Initialize subsystems
         this.initPerformanceMonitor();
         this.initPerformanceManager(); // Initialize performance monitoring first
+        
+        // Start Memory Leak Guardian for heap/DOM protection
+        try {
+            console.log('🧠 Starting Memory Leak Guardian...');
+            memoryLeakGuardian.start();
+            console.log('✅ Memory Leak Guardian active');
+        } catch (error) {
+            console.warn('⚠️ Memory Leak Guardian failed to start:', error);
+        }
+        
+        // Start Enhanced Watchdog for RAF/WebGL/performance monitoring
+        try {
+            console.log('🐶 Starting Enhanced Watchdog...');
+            enhancedWatchdog.start();
+            console.log('✅ Enhanced Watchdog active');
+        } catch (error) {
+            console.warn('⚠️ Enhanced Watchdog failed to start:', error);
+        }
         this.initBackgroundAnimator();
         this.initLogoAnimator();  // Initialize logo animator early
         this.initChaosEngine();
