@@ -5,10 +5,14 @@
 ### Changed
 - Control Panel: auto-scroll Scene section to center the active/selected scene on load and after selection; also centers on `scene_changed` acknowledgment from the main page for consistency.
 - Performance flags: raised `MAX_DOM_NODES_GROWTH` default to 300 (from 200) in `js/feature-flags-safe.js`.
+- Main overlay: disabled logo click-triggered animation (big bounce / spin) by removing the click handler in `js/direct-logo-animation.js`.
+- Main overlay: disabled global click ripple effect on the canvas/viewport (handled via `js/vj-receiver.js`).
 
 ### Files Modified
 - `js/control-panel-professional.js`
 - `js/feature-flags-safe.js`
+- `js/direct-logo-animation.js`
+- `js/vj-receiver.js`
 
 ## [2025-10-07] - Particle optimizer init order + text effects default
 

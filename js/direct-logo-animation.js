@@ -88,10 +88,6 @@ class DirectLogoAnimation {
             }
         });
 
-        // Click animation
-        this.container.addEventListener('click', () => {
-            this.bigBounce();
-        });
     }
 
     wobble() {
