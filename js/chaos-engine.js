@@ -8,6 +8,29 @@ import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { createNoise3D } from 'simplex-noise';
 import gsap from 'gsap';
 
+// Safe GSAP wrapper to prevent null target errors
+function safeGsapTo(targets, vars) {
+    const arr = Array.isArray(targets) ? targets.filter(Boolean) : (targets ? [targets] : []);
+    if (!arr.length) {
+        if (typeof console !== 'undefined') console.debug('[ZIKADA][GSAP] Skipped gsap.to(): no valid targets');
+        return null;
+    }
+    return gsap.to(arr, vars);
+}
+
+function safeGsapTimeline(options) {
+    return gsap.timeline(options);
+}
+
+function safeGsapSet(targets, vars) {
+    const arr = Array.isArray(targets) ? targets.filter(Boolean) : (targets ? [targets] : []);
+    if (!arr.length) {
+        if (typeof console !== 'undefined') console.debug('[ZIKADA][GSAP] Skipped gsap.set(): no valid targets');
+        return null;
+    }
+    return gsap.set(arr, vars);
+}
+
 class ChaosEngine {
     constructor() {
         this.scene = null;
@@ -470,37 +493,41 @@ class ChaosEngine {
                 onUpdate: () => this.updatePhase()
             });
 
-        // Periodic glitch triggers
-        gsap.timeline({ repeat: -1 })
-            .to(this.glitchPass, {
-                duration: 0.1,
-                enabled: true,
-                delay: 3,
-                onComplete: () => {
-                    setTimeout(() => {
-                        this.glitchPass.enabled = false;
-                    }, Math.random() * 200 + 100);
-                }
-            })
-            .to(this.glitchPass, {
-                duration: 0.1,
-                enabled: true,
-                delay: 5,
-                onComplete: () => {
-                    setTimeout(() => {
-                        this.glitchPass.enabled = false;
-                    }, Math.random() * 300 + 100);
-                }
-            });
+        // Periodic glitch triggers (only if glitch pass is available)
+        if (this.glitchPass) {
+            gsap.timeline({ repeat: -1 })
+                .to(this.glitchPass, {
+                    duration: 0.1,
+                    enabled: true,
+                    delay: 3,
+                    onComplete: () => {
+                        setTimeout(() => {
+                            if (this.glitchPass) this.glitchPass.enabled = false;
+                        }, Math.random() * 200 + 100);
+                    }
+                })
+                .to(this.glitchPass, {
+                    duration: 0.1,
+                    enabled: true,
+                    delay: 5,
+                    onComplete: () => {
+                        setTimeout(() => {
+                            if (this.glitchPass) this.glitchPass.enabled = false;
+                        }, Math.random() * 300 + 100);
+                    }
+                });
+        }
 
-        // Chromatic aberration pulsing
-        gsap.to(this.chromaticAberrationPass.uniforms.amount, {
-            value: 0.01,
-            duration: 2,
-            yoyo: true,
-            repeat: -1,
-            ease: "sine.inOut"
-        });
+        // Chromatic aberration pulsing (only if pass is available)
+        if (this.chromaticAberrationPass && this.chromaticAberrationPass.uniforms && this.chromaticAberrationPass.uniforms.amount) {
+            gsap.to(this.chromaticAberrationPass.uniforms.amount, {
+                value: 0.01,
+                duration: 2,
+                yoyo: true,
+                repeat: -1,
+                ease: "sine.inOut"
+            });
+        }
     }
 
     updatePhase() {

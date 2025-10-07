@@ -1,0 +1,205 @@
+/**
+ * ZIKADA 3886 PWA Performance Monitoring - Dashboard Styles
+ * Lightweight, high-contrast, and accessible styling
+ */
+
+/* Main dashboard container - styles are primarily inline for performance */
+.zikada-monitor-dashboard {
+  /* Ensure proper font rendering */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* KPI Pills hover states */
+.zikada-kpi-panel > div {
+  transition: none; /* Disable transitions for reduced motion by default */
+}
+
+.zikada-kpi-panel > div:hover {
+  opacity: 0.9;
+  transform: none; /* No transform for reduced motion */
+}
+
+/* Alert panel animations - respect reduced motion */
+.zikada-alert-panel {
+  transition: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .zikada-kpi-panel > div {
+    transition: opacity 0.1s ease-out;
+  }
+  
+  .zikada-alert-panel {
+    transition: max-height 0.2s ease-out;
+  }
+}
+
+/* State ladder segments */
+.zikada-state-ladder > div {
+  transition: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .zikada-state-ladder > div {
+    transition: opacity 0.15s ease-out;
+  }
+}
+
+/* High contrast mode adjustments */
+@media (prefers-contrast: high) {
+  .zikada-monitor-dashboard {
+    background: rgba(0, 0, 0, 0.95) !important;
+    border-left: 3px solid #00ff88 !important;
+  }
+  
+  .zikada-kpi-panel > div {
+    border-width: 2px !important;
+  }
+  
+  .zikada-alert-panel {
+    border-width: 2px !important;
+  }
+}
+
+/* Scrollbar styling for alert panel */
+.zikada-alert-panel::-webkit-scrollbar {
+  width: 4px;
+}
+
+.zikada-alert-panel::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.zikada-alert-panel::-webkit-scrollbar-thumb {
+  background: rgba(255, 68, 68, 0.6);
+  border-radius: 2px;
+}
+
+.zikada-alert-panel::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 68, 68, 0.8);
+}
+
+/* Graph canvas optimizations */
+.zikada-graph-container canvas {
+  image-rendering: pixelated; /* Prevent anti-aliasing for performance */
+  image-rendering: -moz-crisp-edges;
+  image-rendering: crisp-edges;
+}
+
+/* Focus indicators for accessibility */
+.zikada-monitor-dashboard button:focus {
+  outline: 2px solid #00ff88;
+  outline-offset: 2px;
+}
+
+/* Ensure text remains readable at all zoom levels */
+@media (min-resolution: 2dppx) {
+  .zikada-monitor-dashboard {
+    font-size: 12px;
+  }
+}
+
+/* Emergency high-visibility mode (for critical alerts) */
+.zikada-monitor-dashboard.critical-mode {
+  border-left-color: #ff4444 !important;
+  animation: none; /* No blinking for accessibility */
+}
+
+.zikada-monitor-dashboard.critical-mode .zikada-alert-panel {
+  background: rgba(80, 0, 0, 0.9) !important;
+}
+
+/* Compact mode for smaller screens */
+@media (max-height: 600px) {
+  .zikada-monitor-dashboard {
+    width: 380px !important;
+    font-size: 10px !important;
+  }
+  
+  .zikada-kpi-panel {
+    padding: 8px 12px !important;
+    gap: 6px !important;
+  }
+  
+  .zikada-state-ladder {
+    height: 30px !important;
+    padding: 6px 12px !important;
+  }
+  
+  .zikada-alert-panel {
+    max-height: 80px !important;
+    padding: 6px 12px !important;
+  }
+}
+
+/* Print styles - hide dashboard */
+@media print {
+  .zikada-monitor-dashboard {
+    display: none !important;
+  }
+}
+
+/* Color scheme adjustments for different themes */
+@media (prefers-color-scheme: light) {
+  .zikada-monitor-dashboard {
+    /* Keep dark theme even in light mode for better visibility */
+    background: rgba(20, 20, 20, 0.95) !important;
+    color: #f0f0f0 !important;
+  }
+}
+
+/* Utility classes for dynamic styling */
+.zikada-hidden {
+  display: none !important;
+}
+
+.zikada-fade-in {
+  opacity: 0;
+  animation: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .zikada-fade-in {
+    animation: fadeIn 0.3s ease-out forwards;
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Performance indicator colors - semantic meaning */
+.perf-good { color: #00ff88 !important; }
+.perf-warning { color: #ffaa00 !important; }
+.perf-critical { color: #ff4444 !important; }
+.perf-unknown { color: #888888 !important; }
+
+/* Ensure proper stacking context */
+.zikada-monitor-dashboard {
+  isolation: isolate;
+  contain: layout style;
+}
+
+/* Performance optimization - reduce repaints */
+.zikada-kpi-panel,
+.zikada-alert-panel,
+.zikada-state-ladder {
+  will-change: auto; /* Don't promote to layer unless animating */
+  contain: layout;
+}
+
+/* Canvas container optimizations */
+.zikada-graph-container {
+  contain: strict;
+  overflow: hidden;
+}
+
+.zikada-graph-container canvas {
+  /* Optimize for frequent updates */
+  will-change: transform;
+  backface-visibility: hidden;
+  transform: translateZ(0); /* Force hardware acceleration */
+}

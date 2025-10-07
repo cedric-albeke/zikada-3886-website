@@ -28,8 +28,13 @@ import performanceLadder from './performance-degradation-ladder.js';
 import performanceLadderTest from './performance-ladder-test.js';
 import smartPreloader from './smart-preloader.js';
 import smartPreloaderTest from './smart-preloader-test.js';
+import predictivePerformanceAlerting from './predictive-performance-alerting.js';
+import PredictiveTrendAnalysis from './predictive-trend-analysis.js';
+import predictiveLadderIntegration from './predictive-ladder-integration.js';
+import predictiveAlertingTestSuite from './predictive-alerting-tests.js';
 import { threeJSParticleOptimizer } from './threejs-particle-optimizer.js';
 import { webglResourceManager } from './webgl-resource-manager.js';
+import { registerMonitor } from './monitor/dashboard.js';
 import gsap from 'gsap';
 
 // Ensure GSAP is globally available
@@ -75,6 +80,11 @@ class ChaosInitializer {
         // PWA and performance-aware features
         this.pwaEnabled = featureFlags.isEnabled('pwaEnabled');
         this.debugMetrics = featureFlags.isEnabled('debugMetrics');
+        
+        // Predictive performance alerting
+        this.predictiveAlertingEnabled = featureFlags.isEnabled('predictiveAlerting');
+        this.predictiveTrendAnalysis = null;
+        this.lastFPSUpdate = 0;
         
         console.log('🚀 ChaosInitializer created with performance management');
         if (this.pwaEnabled) {
@@ -940,8 +950,12 @@ class ChaosInitializer {
         // Start Memory Leak Guardian for heap/DOM protection
         try {
             console.log('🧠 Starting Memory Leak Guardian...');
-            memoryLeakGuardian.start();
-            console.log('✅ Memory Leak Guardian active');
+            if (memoryLeakGuardian && typeof memoryLeakGuardian.startGuardian === 'function') {
+                memoryLeakGuardian.startGuardian();
+                console.log('✅ Memory Leak Guardian active');
+            } else {
+                console.warn('[ZIKADA][init] Memory Leak Guardian not started: startGuardian() unavailable or instance undefined');
+            }
         } catch (error) {
             console.warn('⚠️ Memory Leak Guardian failed to start:', error);
         }
@@ -949,8 +963,12 @@ class ChaosInitializer {
         // Start Enhanced Watchdog for RAF/WebGL/performance monitoring
         try {
             console.log('🐶 Starting Enhanced Watchdog...');
-            enhancedWatchdog.start();
-            console.log('✅ Enhanced Watchdog active');
+            if (enhancedWatchdog && typeof enhancedWatchdog.startWatchdog === 'function') {
+                enhancedWatchdog.startWatchdog();
+                console.log('✅ Enhanced Watchdog active');
+            } else {
+                console.warn('[ZIKADA][init] Enhanced Watchdog not started: startWatchdog() unavailable or instance undefined');
+            }
         } catch (error) {
             console.warn('⚠️ Enhanced Watchdog failed to start:', error);
         }
@@ -1033,6 +1051,13 @@ class ChaosInitializer {
         } catch (error) {
             console.warn('⚠️ Smart Preloader failed to start:', error);
         }
+        
+        // Initialize Predictive Performance Alerting System
+        this.initPredictiveAlerting();
+        
+        // Initialize Performance Monitoring Dashboard if enabled
+        this.initMonitoringDashboard();
+        
         this.initBackgroundAnimator();
         this.initLogoAnimator();  // Initialize logo animator early
         this.initChaosEngine();
@@ -1114,6 +1139,9 @@ class ChaosInitializer {
 
             this.fps = this.fpsHistory.reduce((a, b) => a + b, 0) / this.fpsHistory.length;
 
+            // Update predictive alerting system with current FPS
+            this.updatePredictiveAlerting(currentFPS, now);
+
             // Auto-adjust quality based on performance - less aggressive
             frameCount++;
             if (frameCount % 300 === 0 && this.performanceMode === 'auto') {  // Check every 5 seconds
@@ -1154,6 +1182,216 @@ class ChaosInitializer {
                     chaosEngine.particles.material.size = 0.5;
                 }
                 break;
+        }
+    }
+
+    /**
+     * Initialize Predictive Performance Alerting System
+     */
+    initPredictiveAlerting() {
+        try {
+            if (!this.predictiveAlertingEnabled) {
+                console.log('💤 Predictive Performance Alerting disabled by feature flag');
+                return;
+            }
+            
+            console.log('🔮 Starting Predictive Performance Alerting System...');
+            
+            // Initialize trend analysis
+            this.predictiveTrendAnalysis = new PredictiveTrendAnalysis();
+            
+            // Start predictive alerting system
+            predictivePerformanceAlerting.start();
+            console.log('✅ Predictive Performance Alerting active');
+            
+            // Start ladder integration
+            predictiveLadderIntegration.start();
+            console.log('✅ Predictive Ladder Integration active');
+            
+            // Setup predictive event listeners
+            this.setupPredictiveEventListeners();
+            
+            // Expose for debugging if enabled
+            if (this.debugMetrics) {
+                window.predictivePerformanceAlerting = predictivePerformanceAlerting;
+                window.predictiveTrendAnalysis = this.predictiveTrendAnalysis;
+                window.predictiveLadderIntegration = predictiveLadderIntegration;
+                window.predictiveAlertingTestSuite = predictiveAlertingTestSuite;
+                console.log('🧪 Debug mode: Predictive alerting available for testing');
+                
+                // Add test runner to global scope
+                window.runPredictiveTests = async (category = 'all') => {
+                    if (category === 'all') {
+                        return await predictiveAlertingTestSuite.runAllTests();
+                    } else {
+                        return await predictiveAlertingTestSuite.runTestCategory(category);
+                    }
+                };
+                
+                console.log('🧪 Debug: Run tests with window.runPredictiveTests()');
+            }
+            
+        } catch (error) {
+            console.warn('⚠️ Predictive Performance Alerting failed to start:', error);
+        }
+    }
+    
+    /**
+     * Setup predictive alerting event listeners
+     */
+    setupPredictiveEventListeners() {
+        // Listen for predictive ladder transition requests
+        window.addEventListener('predictive-ladder:transition-request', (event) => {
+            if (this.debugMetrics) {
+                console.log('🎯 Predictive transition request:', event.detail);
+            }
+            
+            // Forward to performance ladder
+            const transitionEvent = new CustomEvent('performance:transition-request', {
+                detail: {
+                    ...event.detail,
+                    source: 'predictive'
+                }
+            });
+            window.dispatchEvent(transitionEvent);
+        });
+        
+        // Listen for rollback requests
+        window.addEventListener('predictive-ladder:rollback-request', (event) => {
+            console.log('↩️ Predictive rollback request:', event.detail);
+            
+            // Forward to performance ladder
+            const rollbackEvent = new CustomEvent('performance:rollback-request', {
+                detail: {
+                    ...event.detail,
+                    source: 'predictive'
+                }
+            });
+            window.dispatchEvent(rollbackEvent);
+        });
+        
+        // Listen for predictive pattern matches
+        window.addEventListener('predictive:pattern:matched', (event) => {
+            if (this.debugMetrics) {
+                console.log('🔍 Performance pattern matched:', event.detail.patternName);
+            }
+        });
+        
+        // Listen for predictive events and forward FPS data
+        window.addEventListener('predictive:started', () => {
+            this.lastFPSUpdate = performance.now();
+        });
+    }
+    
+    /**
+     * Update predictive alerting system with current FPS data
+     */
+    updatePredictiveAlerting(currentFPS, timestamp) {
+        if (!this.predictiveAlertingEnabled || !predictivePerformanceAlerting.isActive) {
+            return;
+        }
+        
+        // Throttle updates to avoid overwhelming the system (every 100ms)
+        if (timestamp - this.lastFPSUpdate < 100) {
+            return;
+        }
+        
+        try {
+            // Update predictive alerting system
+            predictivePerformanceAlerting.updateFPS(currentFPS, timestamp);
+            
+            // Update trend analysis if available
+            if (this.predictiveTrendAnalysis) {
+                this.predictiveTrendAnalysis.processData(currentFPS, timestamp);
+            }
+            
+            // Emit FPS update event for other systems
+            const fpsEvent = new CustomEvent('performance:fps:update', {
+                detail: {
+                    fps: currentFPS,
+                    timestamp,
+                    avgFPS: this.fps,
+                    fpsHistory: this.fpsHistory.slice(-10) // Last 10 samples
+                }
+            });
+            window.dispatchEvent(fpsEvent);
+            
+            this.lastFPSUpdate = timestamp;
+            
+        } catch (error) {
+            if (this.debugMetrics) {
+                console.warn('⚠️ Predictive alerting update failed:', error);
+            }
+        }
+    }
+
+    /**
+     * Initialize Performance Monitoring Dashboard
+     */
+    initMonitoringDashboard() {
+        try {
+            // Check if monitoring dashboard is enabled via feature flag
+            const dashboardEnabled = featureFlags.isEnabled('monitorDashboard') || 
+                                    window.__ZIKADA_FLAGS__?.monitorDashboard ||
+                                    this.debugMetrics; // Enable in debug mode
+            
+            if (!dashboardEnabled) {
+                console.log('💤 Monitoring Dashboard disabled by feature flag');
+                return;
+            }
+            
+            console.log('📊 Initializing Performance Monitoring Dashboard...');
+            
+            // Create a simple event bus if ZIKADA_EVENT_BUS doesn't exist
+            if (!window.ZIKADA_EVENT_BUS) {
+                window.ZIKADA_EVENT_BUS = {
+                    listeners: new Map(),
+                    on(event, callback) {
+                        if (!this.listeners.has(event)) {
+                            this.listeners.set(event, []);
+                        }
+                        this.listeners.get(event).push(callback);
+                    },
+                    emit(event, data) {
+                        const callbacks = this.listeners.get(event);
+                        if (callbacks) {
+                            callbacks.forEach(callback => {
+                                try {
+                                    callback(data);
+                                } catch (error) {
+                                    console.warn(`Event handler error for ${event}:`, error);
+                                }
+                            });
+                        }
+                    }
+                };
+            }
+            
+            // Register the monitoring dashboard
+            const dashboard = registerMonitor(window.ZIKADA_EVENT_BUS);
+            
+            if (dashboard) {
+                console.log('✅ Performance Monitoring Dashboard active (Ctrl+Alt+M to toggle)');
+                
+                // Expose for debugging if enabled
+                if (this.debugMetrics) {
+                    window.monitorDashboard = dashboard;
+                    console.log('🧪 Debug mode: Dashboard available via window.monitorDashboard');
+                }
+                
+                // Auto-show dashboard in debug mode
+                if (this.debugMetrics) {
+                    setTimeout(() => {
+                        dashboard.show();
+                    }, 2000);
+                }
+            } else {
+                console.warn('⚠️ Failed to initialize monitoring dashboard');
+            }
+            
+        } catch (error) {
+            console.error('❌ Monitoring Dashboard initialization failed:', error);
+            // Don't let dashboard failures break the animation system
         }
     }
 

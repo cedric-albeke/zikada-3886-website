@@ -15,7 +15,9 @@ class FeatureFlags {
             backgroundSync: false,         // Background metrics sync
             installPrompt: false,          // PWA install prompts
             performanceBudgets: true,      // Always enforce performance budgets
-            debugMetrics: false           // Detailed performance logging
+            debugMetrics: false,          // Detailed performance logging
+            predictiveAlerting: true,     // Predictive performance alerting system
+            monitorDashboard: false        // Performance monitoring dashboard
         };
         
         this.flags = { ...this.defaultFlags };

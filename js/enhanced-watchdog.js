@@ -12,6 +12,57 @@
 import featureFlags from './feature-flags.js';
 import performanceLadder from './performance-degradation-ladder.js';
 
+// Sentinel WebGL canvas system to prevent "Canvas has an existing context of a different type" errors
+let __wd_sentinelCanvas = null;
+let __wd_gl = null;
+
+function __wd_getSentinelCanvas() {
+    if (__wd_sentinelCanvas) return __wd_sentinelCanvas;
+    
+    if (typeof OffscreenCanvas !== 'undefined') {
+        __wd_sentinelCanvas = new OffscreenCanvas(1, 1);
+    } else {
+        const c = document.createElement('canvas');
+        c.width = 1;
+        c.height = 1;
+        c.style.position = 'absolute';
+        c.style.left = '-9999px';
+        c.style.top = '-9999px';
+        c.setAttribute('data-zikada-watchdog-sentinel', 'true');
+        document.body.appendChild(c);
+        __wd_sentinelCanvas = c;
+    }
+    
+    return __wd_sentinelCanvas;
+}
+
+function __wd_obtainWebGL() {
+    if (__wd_gl) return __wd_gl;
+    
+    const c = __wd_getSentinelCanvas();
+    if (!c || typeof c.getContext !== 'function') return null;
+    
+    const attrs = {
+        alpha: false,
+        antialias: false,
+        depth: false,
+        stencil: false,
+        preserveDrawingBuffer: false,
+        powerPreference: 'low-power',
+        desynchronized: true,
+        failIfMajorPerformanceCaveat: true
+    };
+    
+    try {
+        __wd_gl = c.getContext('webgl2', attrs) || c.getContext('webgl', attrs) || c.getContext('experimental-webgl', attrs);
+    } catch (e) {
+        console.warn('[ZIKADA][watchdog] WebGL obtain failed, continuing without GL:', e && e.message);
+        __wd_gl = null;
+    }
+    
+    return __wd_gl;
+}
+
 class EnhancedWatchdog {
     constructor() {
         this.isActive = false;
@@ -160,17 +211,21 @@ class EnhancedWatchdog {
      * WebGL Context Loss and Recovery
      */
     setupWebGLRecovery() {
-        // Find WebGL canvas
-        this.webglCanvas = document.querySelector('canvas');
-        if (!this.webglCanvas) {
-            setTimeout(() => this.setupWebGLRecovery(), 1000); // Retry in 1s
+        // Use sentinel WebGL context instead of trying to get context from existing canvas
+        this.webglContext = __wd_obtainWebGL();
+        
+        if (!this.webglContext) {
+            console.log('🔧 WebGL context not available, operating in fallback mode');
+            // Set up fallback monitoring using rAF and PerformanceObserver
+            this.setupFallbackWebGLMonitoring();
             return;
         }
         
-        this.webglContext = this.webglCanvas.getContext('webgl') || this.webglCanvas.getContext('webgl2');
+        // Get the sentinel canvas for event listeners
+        this.webglCanvas = __wd_getSentinelCanvas();
         
-        if (this.webglContext) {
-            // Listen for context loss
+        if (this.webglCanvas) {
+            // Listen for context loss on sentinel canvas
             this.webglCanvas.addEventListener('webglcontextlost', (e) => {
                 e.preventDefault();
                 this.handleWebGLContextLoss();
@@ -181,8 +236,50 @@ class EnhancedWatchdog {
                 this.handleWebGLContextRestore();
             });
             
-            console.log('🔧 WebGL context recovery handlers installed');
+            console.log('🔧 WebGL context recovery handlers installed on sentinel canvas');
         }
+    }
+    
+    /**
+     * Fallback monitoring when WebGL is not available
+     */
+    setupFallbackWebGLMonitoring() {
+        // Use rAF for frame timing analysis when WebGL unavailable
+        if (typeof PerformanceObserver !== 'undefined') {
+            try {
+                const observer = new PerformanceObserver((list) => {
+                    const entries = list.getEntries();
+                    for (const entry of entries) {
+                        if (entry.entryType === 'measure' || entry.entryType === 'mark') {
+                            // Basic performance monitoring via Performance API
+                            if (entry.duration && entry.duration > 16.67) { // 60 FPS threshold
+                                this.handlePerformanceIssue('frame-overrun', entry.duration);
+                            }
+                        }
+                    }
+                });
+                
+                observer.observe({ entryTypes: ['measure', 'mark'] });
+                console.log('🔧 Fallback WebGL monitoring via PerformanceObserver');
+            } catch (error) {
+                console.log('🔧 PerformanceObserver not available, minimal fallback mode');
+            }
+        }
+    }
+    
+    /**
+     * Handle performance issues in fallback mode
+     */
+    handlePerformanceIssue(type, data) {
+        if (this.debugMode) {
+            console.warn(`🔧 Performance issue detected (fallback): ${type}`, data);
+        }
+        
+        // Emit performance warning event
+        const performanceEvent = new CustomEvent('performance:issue', {
+            detail: { type, data, source: 'fallback-watchdog' }
+        });
+        window.dispatchEvent(performanceEvent);
     }
     
     /**
@@ -284,15 +381,19 @@ class EnhancedWatchdog {
             return;
         }
         
-        // Try to get new context
-        if (this.webglCanvas) {
-            this.webglContext = this.webglCanvas.getContext('webgl', { antialias: false }) || 
-                              this.webglCanvas.getContext('webgl2', { antialias: false });
-            
-            if (this.webglContext) {
-                console.log('🔧 WebGL context recovered manually');
-                this.handleWebGLContextRestore();
-            }
+        // Reset sentinel canvas and try to get new WebGL context
+        __wd_gl = null;
+        __wd_sentinelCanvas = null;
+        
+        this.webglContext = __wd_obtainWebGL();
+        
+        if (this.webglContext) {
+            console.log('🔧 WebGL context recovered manually via sentinel canvas');
+            this.webglCanvas = __wd_getSentinelCanvas();
+            this.handleWebGLContextRestore();
+        } else {
+            console.log('🔧 WebGL context recovery failed, continuing in fallback mode');
+            this.setupFallbackWebGLMonitoring();
         }
     }
     
