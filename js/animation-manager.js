@@ -1,6 +1,9 @@
 // Professional Animation Manager for ZIKADA 3886
 // Handles all animation triggers with proper state management and cleanup
 
+// NOTE: Import-safe: no DOM access or instantiation at import time. Use initAnimationManager() or
+// rely on the DOMContentLoaded bootstrap below (browser-only) to create the singleton.
+
 class AnimationManager {
     constructor() {
         this.activeAnimations = new Map();
@@ -712,12 +715,30 @@ class AnimationManager {
     }
 }
 
-// Create global instance
-const animationManager = new AnimationManager();
+// Singleton holder (live binding)
+let animationManager = null;
 
-// Make it globally available
-if (typeof window !== 'undefined') {
-    window.animationManager = animationManager;
+export function initAnimationManager() {
+    if (typeof window === 'undefined' || typeof document === 'undefined') return null;
+    if (animationManager) return animationManager;
+    try {
+        animationManager = new AnimationManager();
+        window.animationManager = animationManager;
+        return animationManager;
+    } catch (e) {
+        console.error('Failed to initialize AnimationManager:', e);
+        return null;
+    }
+}
+
+// Auto-bootstrap on DOM ready in browsers
+if (typeof window !== 'undefined' && typeof document !== 'undefined') {
+    const ready = () => { try { initAnimationManager(); } catch (_) {} };
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', ready, { once: true });
+    } else {
+        ready();
+    }
 }
 
 export default animationManager;
