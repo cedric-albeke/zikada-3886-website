@@ -33,6 +33,22 @@
 </style>
   <!--  Audio Player Plugin - REMOVED for performance
   <script src="https://trueaudioplayer.b-cdn.net/true-audio-player@1.1.1.min.js" type="text/javascript"></script> -->
+  <style>
+    /* Poster backdrop styles: placed behind everything; fades out when app is ready */
+    #poster-backdrop {
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+      background: #000 url('posters/index-hero.png') center/cover no-repeat;
+      z-index: 0;
+      opacity: 1;
+      transition: opacity 500ms ease;
+    }
+  </style>
+  <!-- Poster runtime should load early so it can fade out when ready -->
+  <script type="module" src="/js/poster-runtime.js"></script>
+
   <!-- Safe Feature Flags - MUST LOAD FIRST for safety controls -->
   <script type="module" src="/js/feature-flags-safe.js"></script>
   <!-- Emergency Cleanup Utility - Load early for safety -->
@@ -62,8 +78,17 @@
   <script type="module" src="/js/chaos-init.js"></script>
   <!-- Diagnostics (read-only) -->
   <script type="module" src="/js/diagnostics.js"></script>
+  <script type="module" src="/js/vj-receiver.js"></script>
+  <!-- Preview bridge: reduces load when running as control panel live preview -->
+  <script type="module" src="/js/preview-bridge.js"></script>
+  <script type="module" src="/js/chaos-init.js"></script>
+  <!-- Diagnostics (read-only) -->
+  <script type="module" src="/js/diagnostics.js"></script>
+  <!-- Test Fixes - Verification script for debugging -->
+  <script type="module" src="/js/test-fixes.js"></script>
 </head>
 <body class="body">
+  <div id="poster-backdrop" aria-hidden="true"></div>
   <div class="pre-loader">
     <div class="swiper"></div>
     <div class="welcome-wrapper"><img src="images/illu-eye.svg" loading="lazy" alt="" class="illu-img"></div>

@@ -12,6 +12,7 @@
     "build": "vite build",
     "serve": "npx http-server . -p 3886",
     "preview": "vite preview --port 3886",
+    "poster:capture": "npm run build && node scripts/poster-capture.js",
     "test:e2e": "playwright test",
     "baseline": "BASELINE_SECS=120 playwright test tests/e2e/perf-baseline.spec.ts --project=chromium",
     "runbook:duplicates": "DUPES_SECS=60 playwright test tests/e2e/runbook-duplicates.spec.ts --project=chromium",

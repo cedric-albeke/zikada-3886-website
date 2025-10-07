@@ -968,6 +968,18 @@ class ChaosInitializer {
     }
 
     initialize() {
+        // Poster mode: If ?poster=1 is present, avoid heavy subsystems and render static hero only for capture
+        try {
+            const qp = new URLSearchParams(window.location.search || '');
+            if (qp.get('poster') === '1') {
+                document.body.classList.add('poster-mode');
+                // Ensure baseline elements exist (pre-loader wrapper)
+                this.ensureFxRoot();
+                // Do not start chaos engine or heavy effects; exit early
+                console.log('🖼️ Poster mode enabled (no heavy initialization)');
+                return;
+            }
+        } catch (_) {}
         console.log('🌀 ZIKADA 3886 CHAOS ENGINE INITIALIZING...');
         // Ensure a single FX overlay root to prevent z-index conflicts and flicker
         this.ensureFxRoot();
@@ -1125,6 +1137,7 @@ class ChaosInitializer {
         // Start the chaos
         this.isReady = true;
         console.log('⚡ CHAOS ENGINE ONLINE');
+        try { window.dispatchEvent(new CustomEvent('app:ready', { detail: { ts: Date.now() } })); } catch (_) {}
 
         // Skip startup sequence - removed status texts
         // this.runStartupSequence();
