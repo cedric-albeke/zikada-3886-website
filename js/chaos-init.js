@@ -24,6 +24,7 @@ import VisualEffectsController from './visual-effects-complete.js';
 import featureFlags from './feature-flags.js';
 import enhancedWatchdog from './enhanced-watchdog.js';
 import memoryLeakGuardian from './memory-leak-guardian.js';
+import { threeJSParticleOptimizer } from './threejs-particle-optimizer.js';
 import gsap from 'gsap';
 
 // Ensure GSAP is globally available
@@ -856,6 +857,18 @@ class ChaosInitializer {
             console.log('✅ Enhanced Watchdog active');
         } catch (error) {
             console.warn('⚠️ Enhanced Watchdog failed to start:', error);
+        }
+        
+        // Initialize Three.js Particle Optimizer
+        try {
+            console.log('🌌 Initializing Three.js Particle Optimizer...');
+            // Initialize with renderer if chaos engine is available
+            if (window.chaosEngine && window.chaosEngine.renderer) {
+                threeJSParticleOptimizer.initialize(window.chaosEngine.renderer);
+            }
+            console.log('✅ Three.js Particle Optimizer ready');
+        } catch (error) {
+            console.warn('⚠️ Three.js Particle Optimizer failed to initialize:', error);
         }
         this.initBackgroundAnimator();
         this.initLogoAnimator();  // Initialize logo animator early

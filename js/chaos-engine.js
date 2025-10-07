@@ -352,6 +352,27 @@ class ChaosEngine {
         });
 
         this.particles = new THREE.Points(geometry, material);
+        
+        // Try to optimize particle system with instancing
+        if (window.THREEJS_PARTICLE_OPTIMIZER && window.THREEJS_PARTICLE_OPTIMIZER.enabled) {
+            try {
+                console.log('🚀 Optimizing particle system for performance...');
+                const optimizedParticles = window.THREEJS_PARTICLE_OPTIMIZER.optimizeParticleSystem(
+                    this.particles, 
+                    this.particleCount
+                );
+                
+                if (optimizedParticles !== this.particles) {
+                    console.log('✅ Using optimized instanced particle system');
+                    this.particles = optimizedParticles;
+                } else {
+                    console.log('⚠️ Using fallback Points particle system');
+                }
+            } catch (error) {
+                console.error('Particle optimization failed, using fallback:', error);
+            }
+        }
+        
         this.scene.add(this.particles);
         
         // Track resources for cleanup
@@ -534,42 +555,55 @@ class ChaosEngine {
 
         // Animate particles - optimized with frame skipping
         if (this.particles) {
-            // Continuous rotation
-            this.particles.rotation.x += 0.001;
-            this.particles.rotation.y += 0.0015;
-            this.particles.rotation.z += 0.0005;
+            // Check if particles are optimized instanced mesh
+            const isInstancedMesh = this.particles.isInstancedMesh;
+            
+            if (isInstancedMesh && typeof this.particles.updateParticles === 'function') {
+                // Use optimized instanced particle update
+                this.particles.updateParticles(time, delta);
+            } else {
+                // Legacy Points particle system
+                // Continuous rotation
+                this.particles.rotation.x += 0.001;
+                this.particles.rotation.y += 0.0015;
+                this.particles.rotation.z += 0.0005;
 
-            // Update particles only every N frames for performance
-            this.frameCounter++;
-            if (this.frameCounter % this.updateFrequency === 0) {
-                // Dynamic particle wave effect
-                const positions = this.particles.geometry.attributes.position.array;
-                const originalPositions = this.originalPositions;
+                // Update particles only every N frames for performance
+                this.frameCounter++;
+                if (this.frameCounter % this.updateFrequency === 0) {
+                    // Dynamic particle wave effect
+                    const positions = this.particles.geometry.attributes.position.array;
+                    const originalPositions = this.originalPositions;
 
-                // Optimized loop with caching
-                const timeHalf = time * 0.5;
-                const timeThird = time * 0.3;
-                const phaseFactor = 1 + this.animationPhase;
+                    if (positions && originalPositions) {
+                        // Optimized loop with caching
+                        const timeHalf = time * 0.5;
+                        const timeThird = time * 0.3;
+                        const phaseFactor = 1 + this.animationPhase;
 
-                for (let i = 0; i < positions.length; i += 3) {
-                    const origX = originalPositions[i];
-                    const origY = originalPositions[i + 1];
-                    const origZ = originalPositions[i + 2];
+                        for (let i = 0; i < positions.length; i += 3) {
+                            const origX = originalPositions[i];
+                            const origY = originalPositions[i + 1];
+                            const origZ = originalPositions[i + 2];
 
-                    // Cache calculations
-                    const factor1 = origY * 0.1;
-                    const factor2 = origX * 0.1;
+                            // Cache calculations
+                            const factor1 = origY * 0.1;
+                            const factor2 = origX * 0.1;
 
-                    // Multiple wave effects for continuous motion
-                    positions[i] = origX + Math.sin(timeHalf + factor1) * 2;
-                    positions[i + 1] = origY + Math.cos(timeThird + factor2) * 2;
-                    positions[i + 2] = origZ + Math.sin(time + factor2 + factor1) * 3 * phaseFactor;
+                            // Multiple wave effects for continuous motion
+                            positions[i] = origX + Math.sin(timeHalf + factor1) * 2;
+                            positions[i + 1] = origY + Math.cos(timeThird + factor2) * 2;
+                            positions[i + 2] = origZ + Math.sin(time + factor2 + factor1) * 3 * phaseFactor;
+                        }
+                        this.particles.geometry.attributes.position.needsUpdate = true;
+                    }
                 }
-                this.particles.geometry.attributes.position.needsUpdate = true;
-            }
 
-            // Pulse particle size
-            this.particles.material.size = 0.5 + Math.sin(time * 2) * 0.2;
+                // Pulse particle size for Points materials
+                if (this.particles.material && this.particles.material.size !== undefined) {
+                    this.particles.material.size = 0.5 + Math.sin(time * 2) * 0.2;
+                }
+            }
         }
 
         // Animate lights
@@ -651,6 +685,12 @@ class ChaosEngine {
                 else this.filmPass.enabled = true;
                 break;
         }
+        
+        // Adjust particle optimizer quality as well
+        if (window.THREEJS_PARTICLE_OPTIMIZER) {
+            window.THREEJS_PARTICLE_OPTIMIZER.setQualityLevel(quality);
+        }
+        
         this.performanceMode = quality;
     }
 
@@ -731,6 +771,15 @@ class ChaosEngine {
         this.originalPositions = null;
         this.scene = null;
         this.camera = null;
+        
+        // Cleanup particle optimizer
+        if (window.THREEJS_PARTICLE_OPTIMIZER) {
+            try {
+                window.THREEJS_PARTICLE_OPTIMIZER.dispose();
+            } catch (error) {
+                console.warn('Particle optimizer cleanup failed:', error);
+            }
+        }
 
         this.isInitialized = false;
         
