@@ -11,6 +11,10 @@
     <link href="css/control-panel-v3-professional.css?v=3.3.6" rel="stylesheet">
     <!-- Transitions and Overlays System -->
     <link href="css/transitions-and-overlays.css?v=1.0.0" rel="stylesheet">
+    <!-- Live Logs Styling -->
+    <link href="css/live-logs.css?v=1.0.0" rel="stylesheet">
+    <!-- Header Redesign (LAST - overrides all other styles) -->
+    <link href="css/control-panel-header-redesign.css?v=1.0.0" rel="stylesheet">
 </head>
 <body>
     <div class="control-panel">
@@ -40,53 +44,9 @@
                 </div>
             </div>
             
-            <!-- Combined Performance & Status Grid -->
-            <div class="matrix-section matrix-perf-status">
-                <div class="metrics-title">PERFORMANCE.STATUS</div>
-                <div class="perf-status-grid">
-                    <!-- Performance Metrics Column -->
-                    <div class="metrics-column" data-role="perf-metrics">
-                        <div class="metrics-grid">
-                            <div class="metric-cell">
-                                <div class="metric-label">FPS</div>
-                                <div id="fpsCounter" class="metric-value">60</div>
-                                <div class="metric-bar"><span class="bar-fill fps-bar"></span></div>
-                            </div>
-                            <div class="metric-cell">
-                                <div class="metric-label">MEM</div>
-                                <div id="memoryUsage" class="metric-value">--MB</div>
-                                <div class="metric-bar"><span class="bar-fill mem-bar"></span></div>
-                            </div>
-                            <div class="metric-cell">
-                                <div class="metric-label">DOM</div>
-                                <div id="domNodes" class="metric-value">--</div>
-                                <div class="metric-bar"><span class="bar-fill dom-bar"></span></div>
-                            </div>
-                            <div class="metric-cell">
-                                <div class="metric-label">FX</div>
-                                <div id="activeEffects" class="metric-value">0</div>
-                                <div class="metric-bar"><span class="bar-fill fx-bar"></span></div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Connection Status Column -->
-                    <div class="connection-column" data-role="link-status">
-                        <div class="connection-container" id="connectionStatus">
-                            <div class="connection-indicator">
-                                <span class="status-dot"></span>
-                                <span class="status-wave"></span>
-                            </div>
-                            <div class="connection-text">
-                                <span class="status-text">OFFLINE</span>
-                                <div class="uptime-display">
-                                    <span class="uptime-label">UP:</span>
-                                    <span id="systemUptime">00:00:00</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+            <!-- Live Console Dedicated Panel -->
+            <div class="matrix-section matrix-live-console">
+                <!-- Live logs UI will be mounted here dynamically -->
             </div>
             
             <!-- Matrix Dice System -->
@@ -118,29 +78,76 @@
                 </div>
             </div>
             
-            <!-- System Controls -->
-            <div class="matrix-section matrix-controls">
-                <div class="controls-grid">
-                    <button class="matrix-control-btn kill-btn" id="emergencyStop" title="Emergency Kill">
-                        <span class="btn-glyph">☠</span>
-                        <span class="btn-label">KILL</span>
-                        <span class="btn-code">[ESC]</span>
-                    </button>
-                    <button class="matrix-control-btn reset-btn" id="systemReset" title="System Reset">
-                        <span class="btn-glyph">↻</span>
-                        <span class="btn-label">RESET</span>
-                        <span class="btn-code">[RST]</span>
-                    </button>
-                    <button class="matrix-control-btn reload-btn" id="systemReload" title="Full Reload">
-                        <span class="btn-glyph">⟳</span>
-                        <span class="btn-label">RELOAD</span>
-                        <span class="btn-code">[RLD]</span>
-                    </button>
-                </div>
-                <div class="performance-modes">
-                    <button class="mode-btn" data-mode="low" id="perfLow" title="Low Performance">[L]</button>
-                    <button class="mode-btn active" data-mode="auto" id="perfAuto" title="Auto Performance">[A]</button>
-                    <button class="mode-btn" data-mode="high" id="perfHigh" title="High Performance">[H]</button>
+            <!-- System Controls + Performance Status Combined -->
+            <div class="matrix-section matrix-controls-perf">
+                <div class="controls-perf-title">SYSTEM.CONTROLS + PERFORMANCE</div>
+                <div class="controls-perf-container">
+                    <!-- System Controls Column -->
+                    <div class="system-controls-column">
+                        <div class="controls-grid">
+                            <button class="matrix-control-btn kill-btn" id="emergencyStop" title="Emergency Kill">
+                                <span class="btn-glyph">☠</span>
+                                <span class="btn-label">KILL</span>
+                                <span class="btn-code">[ESC]</span>
+                            </button>
+                            <button class="matrix-control-btn reset-btn" id="systemReset" title="System Reset">
+                                <span class="btn-glyph">↻</span>
+                                <span class="btn-label">RESET</span>
+                                <span class="btn-code">[RST]</span>
+                            </button>
+                            <button class="matrix-control-btn reload-btn" id="systemReload" title="Full Reload">
+                                <span class="btn-glyph">⟳</span>
+                                <span class="btn-label">RELOAD</span>
+                                <span class="btn-code">[RLD]</span>
+                            </button>
+                        </div>
+                        <div class="performance-modes">
+                            <button class="mode-btn" data-mode="low" id="perfLow" title="Low Performance">[L]</button>
+                            <button class="mode-btn active" data-mode="auto" id="perfAuto" title="Auto Performance">[A]</button>
+                            <button class="mode-btn" data-mode="high" id="perfHigh" title="High Performance">[H]</button>
+                        </div>
+                    </div>
+                    
+                    <!-- Performance Metrics Column -->
+                    <div class="perf-metrics-column">
+                        <div class="metrics-grid-compact">
+                            <div class="metric-cell-compact">
+                                <div class="metric-label">FPS</div>
+                                <div id="fpsCounter" class="metric-value">60</div>
+                                <div class="metric-bar"><span class="bar-fill fps-bar"></span></div>
+                            </div>
+                            <div class="metric-cell-compact">
+                                <div class="metric-label">MEM</div>
+                                <div id="memoryUsage" class="metric-value">--MB</div>
+                                <div class="metric-bar"><span class="bar-fill mem-bar"></span></div>
+                            </div>
+                            <div class="metric-cell-compact">
+                                <div class="metric-label">DOM</div>
+                                <div id="domNodes" class="metric-value">--</div>
+                                <div class="metric-bar"><span class="bar-fill dom-bar"></span></div>
+                            </div>
+                            <div class="metric-cell-compact">
+                                <div class="metric-label">FX</div>
+                                <div id="activeEffects" class="metric-value">0</div>
+                                <div class="metric-bar"><span class="bar-fill fx-bar"></span></div>
+                            </div>
+                        </div>
+                        
+                        <!-- Connection Status -->
+                        <div class="connection-status-compact" id="connectionStatus">
+                            <div class="connection-indicator">
+                                <span class="status-dot"></span>
+                                <span class="status-wave"></span>
+                            </div>
+                            <div class="connection-text">
+                                <span class="status-text">OFFLINE</span>
+                                <div class="uptime-display">
+                                    <span class="uptime-label">UP:</span>
+                                    <span id="systemUptime">00:00:00</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
             
@@ -561,6 +568,9 @@
         
         // Import trigger effect orchestrator for CHROMA, SPOTLIGHT, SHIMMER
         import './js/trigger-effect-orchestrator.js';
+        
+        // Import live logs UI for real-time console monitoring
+        import './js/control-panel-live-logs.js';
         
         // Profile badge removed - duplicate controls prevention
         

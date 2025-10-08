@@ -1,5 +1,6 @@
 import gsap from 'gsap';
 import perfConfig from './perf-config.js';
+import intervalManager from './interval-manager.js';
 
 class BackgroundAnimator {
     constructor() {
@@ -11,9 +12,8 @@ class BackgroundAnimator {
         this.initialized = false;
         
         // Performance tracking
-        this.activeAnimations = new Set();
-        this._glowTween = null;
-        this._glowInterval = null;
+        this.activeAnimations = new Map(); // Change to Map for better tracking
+        this.activeTweens = new Map(); // Track individual tweens by name
         this._warnedMissingElement = false;
         
         // GSAP context for proper cleanup
@@ -21,10 +21,27 @@ class BackgroundAnimator {
         
         // Visibility observer for pausing animations
         this.observer = null;
-        this.isVisible = true;
+        this.pageVisibilityObserver = null;
+        this.isElementVisible = true;
+        this.isPageVisible = !document.hidden;
+        this.isPaused = false;
+        this.isDegraded = false;
         
-        // Page visibility handling
+        // Managed intervals
+        this.managedIntervals = new Map();
+        
+        // Performance state
+        this.performanceState = {
+            qualityLevel: 1.0, // 0.0 = disabled, 1.0 = full quality
+            effectsEnabled: true,
+            glowEnabled: true
+        };
+        
+        // Bind methods to maintain context
         this.handleVisibilityChange = this.handleVisibilityChange.bind(this);
+        this.handleSoftDegrade = this.handleSoftDegrade.bind(this);
+        this.handleRestore = this.handleRestore.bind(this);
+        this.handleEmergencyStop = this.handleEmergencyStop.bind(this);
     }
 
     init() {
@@ -47,6 +64,9 @@ class BackgroundAnimator {
             return;
         }
         
+        // Initialize page visibility state
+        this.isPageVisible = !document.hidden;
+        
         // Create GSAP context for proper cleanup
         this.ctx = gsap.context(() => {
             // All GSAP animations will be created within this context
@@ -55,19 +75,21 @@ class BackgroundAnimator {
         
         // Set up visibility observers
         this.setupVisibilityObserver();
-        
-        // Listen for page visibility changes
-        document.addEventListener('visibilitychange', this.handleVisibilityChange);
+        this.setupPageVisibilityObserver();
         
         // Listen for performance events
-        window.addEventListener('perf:soft-degrade', this.handleSoftDegrade.bind(this));
-        window.addEventListener('perf:restore', this.handleRestore.bind(this));
-        window.addEventListener('perf:emergency-stop', this.handleEmergencyStop.bind(this));
+        window.addEventListener('perf:soft-degrade', this.handleSoftDegrade);
+        window.addEventListener('perf:restore', this.handleRestore);
+        window.addEventListener('perf:emergency-stop', this.handleEmergencyStop);
+        
+        // Listen for GSAP animation registry pause/resume events
+        window.addEventListener('perf:pause-background', () => this.pauseGlow());
+        window.addEventListener('perf:resume-background', () => this.resumeGlow());
 
         this.initialized = true;
         
         if (perfConfig.shouldLog()) {
-            console.log('🎨 BackgroundAnimator initialized with performance controls');
+            console.log('🎨 BackgroundAnimator initialized with enhanced visibility controls');
         }
     }
     
@@ -112,23 +134,35 @@ class BackgroundAnimator {
     }
 
     setupContinuousRotation() {
-        // Very slow continuous rotation
-        gsap.to(this.bgElement, {
+        // Kill any existing rotation tweens
+        this.killTween('bgRotation');
+        this.killTween('bgDepthRotation');
+        
+        // Very slow continuous rotation - single tween management
+        const rotationTween = gsap.to(this.bgElement, {
             rotation: 360,
-            duration: 240, // Doubled - much slower
+            duration: 240 * this.performanceState.qualityLevel, // Adjust speed based on quality
             repeat: -1,
-            ease: 'none'
+            ease: 'none',
+            _regCategory: 'background',
+            _regSoftCap: true
         });
+        this.activeTweens.set('bgRotation', rotationTween);
 
-        // Very subtle z-axis rotation for depth
-        gsap.to(this.bgElement, {
-            rotationY: 5, // Reduced from 15
-            rotationX: 5, // Reduced from 15
-            duration: 20, // Slower
-            yoyo: true,
-            repeat: -1,
-            ease: 'power2.inOut'
-        });
+        // Very subtle z-axis rotation for depth - only at high quality
+        if (this.performanceState.qualityLevel > 0.5) {
+            const depthTween = gsap.to(this.bgElement, {
+                rotationY: 5 * this.performanceState.qualityLevel,
+                rotationX: 5 * this.performanceState.qualityLevel,
+                duration: 20,
+                yoyo: true,
+                repeat: -1,
+                ease: 'power2.inOut',
+                _regCategory: 'background',
+                _regSoftCap: true
+            });
+            this.activeTweens.set('bgDepthRotation', depthTween);
+        }
     }
 
     setupPulsatingEffects() {
@@ -164,45 +198,68 @@ class BackgroundAnimator {
     }
 
     setupColorShifts() {
-        // Enhanced color variations - more subtle transitions
-        const colorTimeline = gsap.timeline({ repeat: -1 });
-
-        colorTimeline
-            .to(this.bgOverlay, {
-                filter: 'hue-rotate(0deg) brightness(100%) saturate(100%)',
-                duration: 0
-            })
-            .to(this.bgOverlay, {
-                filter: 'hue-rotate(15deg) brightness(105%) saturate(110%)',  // Subtle purple tint
-                duration: 12,
-                ease: 'sine.inOut'
-            })
-            .to(this.bgOverlay, {
-                filter: 'hue-rotate(-10deg) brightness(95%) saturate(120%)',  // Slight cyan shift
-                duration: 10,
-                ease: 'sine.inOut'
-            })
-            .to(this.bgOverlay, {
-                filter: 'hue-rotate(25deg) brightness(102%) saturate(115%)',  // Soft magenta
-                duration: 14,
-                ease: 'sine.inOut'
-            })
-            .to(this.bgOverlay, {
-                filter: 'hue-rotate(-20deg) brightness(98%) saturate(125%)',  // Cool blue-green
-                duration: 11,
-                ease: 'sine.inOut'
-            })
-            .to(this.bgOverlay, {
-                filter: 'hue-rotate(8deg) brightness(103%) saturate(108%)',   // Warm tint
-                duration: 9,
-                ease: 'sine.inOut'
-            })
-            .to(this.bgOverlay, {
-                filter: 'hue-rotate(0deg) brightness(100%) saturate(100%)',
-                duration: 8,
-                ease: 'sine.inOut'
+        // Kill existing color and glow tweens
+        this.killTween('bgColorShift');
+        this.killTween('bgGlow');
+        
+        // Only run color shifts at medium quality or higher
+        if (this.performanceState.qualityLevel >= 0.5 && this.bgOverlay) {
+            // Replace expensive filter animations with opacity/scale alternatives where possible
+            // Use more efficient transforms instead of filters when visually equivalent
+            const colorTimeline = gsap.timeline({ 
+                repeat: -1,
+                _regCategory: 'background',
+                _regSoftCap: true
             });
 
+            // Use opacity and scale instead of expensive filters for performance
+            colorTimeline
+                .to(this.bgOverlay, {
+                    opacity: 0.8,
+                    scale: 1.01,
+                    duration: 12,
+                    ease: 'sine.inOut'
+                })
+                .to(this.bgOverlay, {
+                    opacity: 0.6,
+                    scale: 0.99,
+                    duration: 10,
+                    ease: 'sine.inOut'
+                })
+                .to(this.bgOverlay, {
+                    opacity: 0.9,
+                    scale: 1.02,
+                    duration: 14,
+                    ease: 'sine.inOut'
+                })
+                .to(this.bgOverlay, {
+                    opacity: 0.7,
+                    scale: 0.98,
+                    duration: 11,
+                    ease: 'sine.inOut'
+                })
+                .to(this.bgOverlay, {
+                    opacity: 0.85,
+                    scale: 1.0,
+                    duration: 8,
+                    ease: 'sine.inOut'
+                });
+                
+            this.activeTweens.set('bgColorShift', colorTimeline);
+        }
+
+        // Setup managed glow effect
+        this.setupManagedGlow();
+    }
+    
+    setupManagedGlow() {
+        if (!this.performanceState.glowEnabled) {
+            return;
+        }
+        
+        // Clear any existing glow interval
+        this.clearManagedInterval('bgGlow');
+        
         // Dynamic glow color shifts with proper lifecycle management
         const glowColors = [
             'rgba(0, 255, 133, 0.3)',   // Green
@@ -215,40 +272,49 @@ class BackgroundAnimator {
         let colorIndex = 0;
         const shiftGlow = () => {
             // Guard: ensure element still exists and is connected
-            if (!this.bgElement || !this.bgElement.isConnected) {
-                if (perfConfig.shouldLog()) {
-                    console.warn('🎨 bgElement missing or disconnected, skipping glow animation');
-                }
+            if (!this.bgElement || !this.bgElement.isConnected || !this.shouldAnimate()) {
                 return;
             }
             
             // Kill previous glow tween to prevent stacking
-            if (this._glowTween) {
-                this._glowTween.kill();
-            }
+            this.killTween('bgGlow');
             
-            this._glowTween = gsap.to(this.bgElement, {
-                boxShadow: `0 0 100px ${glowColors[colorIndex]}`,
+            const glowTween = gsap.to(this.bgElement, {
+                boxShadow: `0 0 ${100 * this.performanceState.qualityLevel}px ${glowColors[colorIndex]}`,
                 duration: 4,
                 ease: 'power2.inOut',
-                overwrite: 'auto', // Prevent tween stacking
+                overwrite: 'auto',
+                _regCategory: 'background',
+                _regSoftCap: true,
                 onComplete: () => {
-                    this._glowTween = null;
-                    perfConfig.decrementCounter('animations');
+                    this.activeTweens.delete('bgGlow');
                 },
                 onStart: () => {
                     perfConfig.incrementCounter('animations');
+                },
+                onKill: () => {
+                    perfConfig.decrementCounter('animations');
                 }
             });
             
+            this.activeTweens.set('bgGlow', glowTween);
             colorIndex = (colorIndex + 1) % glowColors.length;
         };
 
-        // Use managed interval instead of raw setInterval
-        this._glowInterval = setInterval(shiftGlow, 4000);
-        perfConfig.incrementCounter('intervals');
+        // Use managed interval with proper cleanup
+        const glowInterval = intervalManager.createInterval(
+            shiftGlow,
+            4000,
+            'background-glow',
+            {
+                owner: 'background-animator',
+                category: 'background',
+                maxAge: Infinity // Runs until explicitly cleared
+            }
+        );
         
-        shiftGlow();
+        this.managedIntervals.set('bgGlow', glowInterval);
+        shiftGlow(); // Initial call
     }
 
     setupLogoReaction() {
@@ -313,11 +379,22 @@ class BackgroundAnimator {
 
     // Periodic glitch triggers
     startGlitchSequence() {
-        setInterval(() => {
-            if (Math.random() > 0.7) {
-                this.triggerGlitchBurst();
+        // Use managed interval instead of raw setInterval
+        const glitchInterval = intervalManager.createInterval(
+            () => {
+                if (Math.random() > 0.7 && this.shouldAnimate()) {
+                    this.triggerGlitchBurst();
+                }
+            },
+            8000,
+            'background-glitch',
+            {
+                owner: 'background-animator',
+                category: 'background',
+                maxAge: Infinity
             }
-        }, 8000);
+        );
+        this.managedIntervals.set('bgGlitch', glitchInterval);
     }
 
     setupVisibilityObserver() {
@@ -327,60 +404,74 @@ class BackgroundAnimator {
         
         this.observer = new IntersectionObserver((entries) => {
             entries.forEach((entry) => {
-                const wasVisible = this.isVisible;
-                this.isVisible = entry.isIntersecting;
+                const wasVisible = this.isElementVisible;
+                this.isElementVisible = entry.isIntersecting;
                 
-                if (wasVisible !== this.isVisible) {
-                    if (this.isVisible) {
-                        this.resumeAnimations();
-                    } else {
-                        this.pauseAnimations();
+                if (wasVisible !== this.isElementVisible) {
+                    if (perfConfig.shouldLog()) {
+                        console.log(`🎨 Background element visibility: ${this.isElementVisible ? 'visible' : 'hidden'}`);
                     }
+                    this.updateAnimationState();
                 }
             });
         }, {
-            threshold: 0.1 // Trigger when 10% visible
+            threshold: 0.1, // Trigger when 10% visible
+            rootMargin: '50px' // Add some buffer for smoother transitions
         });
         
         this.observer.observe(this.bgElement);
     }
     
     handleVisibilityChange() {
-        if (!perfConfig.isFeatureEnabled('pauseOnHidden')) {
-            return;
-        }
-        
-        if (document.visibilityState === 'hidden') {
-            this.pauseAnimations();
-        } else if (document.visibilityState === 'visible') {
-            this.resumeAnimations();
-        }
+        // This method is now handled by setupPageVisibilityObserver
+        // Keeping for backward compatibility
+        this.updateAnimationState();
     }
     
     pauseAnimations() {
+        if (this.isPaused) return;
+        
+        this.isPaused = true;
+        
+        // Pause all active tweens
+        this.activeTweens.forEach((tween, name) => {
+            if (tween && typeof tween.pause === 'function') {
+                tween.pause();
+            }
+        });
+        
+        // Pause GSAP context animations
         if (this.ctx) {
-            // Pause all GSAP animations in this context
             gsap.globalTimeline.getChildren(true, true, false).forEach(tween => {
-                if (tween.vars && tween.vars._backgroundAnimator) {
+                if (tween.vars && (tween.vars._regCategory === 'background' || tween.vars._backgroundAnimator)) {
                     tween.pause();
                 }
             });
         }
         
         if (perfConfig.shouldLog()) {
-            console.log('⏸️ Background animations paused (not visible)');
+            console.log('⏸️ Background animations paused');
         }
     }
     
     resumeAnimations() {
-        if (!this.initialized || !this.isVisible) {
+        if (!this.isPaused || !this.shouldAnimate()) {
             return;
         }
         
+        this.isPaused = false;
+        
+        // Resume all paused tweens
+        this.activeTweens.forEach((tween, name) => {
+            if (tween && typeof tween.resume === 'function' && tween.paused()) {
+                tween.resume();
+            }
+        });
+        
+        // Resume GSAP context animations
         if (this.ctx) {
-            // Resume all paused GSAP animations in this context
             gsap.globalTimeline.getChildren(true, true, false).forEach(tween => {
-                if (tween.vars && tween.vars._backgroundAnimator && tween.paused()) {
+                if (tween.vars && (tween.vars._regCategory === 'background' || tween.vars._backgroundAnimator) && tween.paused()) {
                     tween.resume();
                 }
             });
@@ -391,40 +482,165 @@ class BackgroundAnimator {
         }
     }
     
-    handleSoftDegrade() {
-        this.pauseAnimations();
+    handleSoftDegrade(event) {
+        const level = event?.detail?.level || 1;
+        this.isDegraded = true;
+        
+        // Progressive degradation based on level
+        switch (level) {
+            case 1:
+                // Light degradation - reduce quality to 70%
+                this.setQualityLevel(0.7);
+                break;
+            case 2:
+                // Moderate degradation - reduce quality to 40%, pause glow
+                this.setQualityLevel(0.4);
+                this.pauseGlow();
+                break;
+            case 3:
+                // Aggressive degradation - minimal quality, pause all effects
+                this.setQualityLevel(0.1);
+                this.performanceState.effectsEnabled = false;
+                this.pauseAnimations();
+                break;
+            default:
+                this.pauseAnimations();
+        }
+        
         if (perfConfig.shouldLog()) {
-            console.log('📉 Background animator: soft degrade mode');
+            console.log(`📉 Background animator: soft degrade level ${level}`);
         }
     }
     
-    handleRestore() {
-        this.resumeAnimations();
+    handleRestore(event) {
+        const fromLevel = event?.detail?.fromLevel || 0;
+        this.isDegraded = false;
+        
+        // Restore to full quality
+        this.performanceState.effectsEnabled = true;
+        this.setQualityLevel(1.0);
+        this.resumeGlow();
+        this.updateAnimationState();
+        
         if (perfConfig.shouldLog()) {
-            console.log('📈 Background animator: performance restored');
+            console.log(`📈 Background animator: restored from level ${fromLevel}`);
         }
     }
     
     handleEmergencyStop() {
+        this.performanceState.effectsEnabled = false;
         this.destroy();
+        
         if (perfConfig.shouldLog()) {
-            console.log('🛑 Background animator: emergency stop');
+            console.log('🛑 Background animator: emergency stop - complete shutdown');
         }
     }
     
-    destroy() {
-        // Clean up managed interval
-        if (this._glowInterval) {
-            clearInterval(this._glowInterval);
-            this._glowInterval = null;
-            perfConfig.decrementCounter('intervals');
+    // Utility Methods
+    
+    shouldAnimate() {
+        return this.initialized && 
+               this.isElementVisible && 
+               this.isPageVisible && 
+               !this.isPaused && 
+               this.performanceState.effectsEnabled;
+    }
+    
+    updateAnimationState() {
+        if (this.shouldAnimate()) {
+            this.resumeAnimations();
+        } else {
+            this.pauseAnimations();
+        }
+    }
+    
+    killTween(name) {
+        const tween = this.activeTweens.get(name);
+        if (tween) {
+            tween.kill();
+            this.activeTweens.delete(name);
+        }
+    }
+    
+    clearManagedInterval(name) {
+        const interval = this.managedIntervals.get(name);
+        if (interval) {
+            interval.clear();
+            this.managedIntervals.delete(name);
+        }
+    }
+    
+    setQualityLevel(level) {
+        this.performanceState.qualityLevel = Math.max(0, Math.min(1, level));
+        
+        // Restart animations with new quality settings
+        if (this.initialized) {
+            this.setupContinuousRotation();
+            this.setupColorShifts();
         }
         
-        // Kill active glow tween
-        if (this._glowTween) {
-            this._glowTween.kill();
-            this._glowTween = null;
+        if (perfConfig.shouldLog()) {
+            console.log(`🎨 Background quality level set to ${(level * 100).toFixed(0)}%`);
         }
+    }
+    
+    pauseGlow() {
+        this.performanceState.glowEnabled = false;
+        this.clearManagedInterval('bgGlow');
+        this.killTween('bgGlow');
+    }
+    
+    resumeGlow() {
+        if (this.shouldAnimate()) {
+            this.performanceState.glowEnabled = true;
+            this.setupManagedGlow();
+        }
+    }
+    
+    setupPageVisibilityObserver() {
+        // Enhanced page visibility handling
+        const handlePageVisibilityChange = () => {
+            const wasVisible = this.isPageVisible;
+            this.isPageVisible = !document.hidden;
+            
+            if (wasVisible !== this.isPageVisible) {
+                if (perfConfig.shouldLog()) {
+                    console.log(`🎨 Page visibility: ${this.isPageVisible ? 'visible' : 'hidden'}`);
+                }
+                this.updateAnimationState();
+            }
+        };
+        
+        document.addEventListener('visibilitychange', handlePageVisibilityChange);
+        
+        // Also listen for focus/blur events for better coverage
+        window.addEventListener('focus', () => {
+            if (!this.isPageVisible) {
+                this.isPageVisible = true;
+                this.updateAnimationState();
+            }
+        });
+        
+        window.addEventListener('blur', () => {
+            if (this.isPageVisible) {
+                this.isPageVisible = false;
+                this.updateAnimationState();
+            }
+        });
+    }
+    
+    destroy() {
+        // Clear all managed intervals
+        this.managedIntervals.forEach((interval, name) => {
+            interval.clear();
+        });
+        this.managedIntervals.clear();
+        
+        // Kill all active tweens
+        this.activeTweens.forEach((tween, name) => {
+            tween.kill();
+        });
+        this.activeTweens.clear();
         
         // Kill GSAP context (cleans up all animations within)
         if (this.ctx) {
@@ -432,19 +648,28 @@ class BackgroundAnimator {
             this.ctx = null;
         }
         
-        // Disconnect intersection observer
+        // Disconnect all observers
         if (this.observer) {
             this.observer.disconnect();
             this.observer = null;
         }
         
-        // Remove event listeners
-        document.removeEventListener('visibilitychange', this.handleVisibilityChange);
-        window.removeEventListener('perf:soft-degrade', this.handleSoftDegrade.bind(this));
-        window.removeEventListener('perf:restore', this.handleRestore.bind(this));
-        window.removeEventListener('perf:emergency-stop', this.handleEmergencyStop.bind(this));
+        if (this.pageVisibilityObserver) {
+            this.pageVisibilityObserver.disconnect();
+            this.pageVisibilityObserver = null;
+        }
         
-        // Clear references
+        // Remove all event listeners with proper binding
+        document.removeEventListener('visibilitychange', this.handleVisibilityChange);
+        window.removeEventListener('perf:soft-degrade', this.handleSoftDegrade);
+        window.removeEventListener('perf:restore', this.handleRestore);
+        window.removeEventListener('perf:emergency-stop', this.handleEmergencyStop);
+        window.removeEventListener('perf:pause-background', this.pauseGlow);
+        window.removeEventListener('perf:resume-background', this.resumeGlow);
+        window.removeEventListener('focus', this.handleVisibilityChange);
+        window.removeEventListener('blur', this.handleVisibilityChange);
+        
+        // Clear all references
         this.bgElement = null;
         this.bgOverlay = null;
         this.logoWrapper = null;
@@ -452,10 +677,15 @@ class BackgroundAnimator {
         this.timeline = null;
         this.activeAnimations.clear();
         
+        // Reset state
         this.initialized = false;
+        this.isPaused = false;
+        this.isDegraded = false;
+        this.isElementVisible = true;
+        this.isPageVisible = true;
         
         if (perfConfig.shouldLog()) {
-            console.log('💀 BackgroundAnimator destroyed');
+            console.log('💠 BackgroundAnimator destroyed with complete cleanup');
         }
     }
 }

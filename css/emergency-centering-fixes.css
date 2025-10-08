@@ -1,0 +1,231 @@
+/* ZIKADA 3886 - Emergency Centering Fixes */
+/* Resolves element duplication, missing text, and visual artifacts */
+
+/* ===== FOUNDATION: Prevent Transform Interference ===== */
+html, body {
+    height: 100%;
+    transform: none !important; /* Critical: Prevents fixed element misalignment */
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+}
+
+/* ===== CHAOS ENGINE OVERRIDE ===== */
+/* Force preloader to show above three.js chaos scene */
+#chaos-canvas {
+    z-index: -10 !important;
+    opacity: 0.1 !important;
+    display: none !important; /* Temporarily hide chaos until preloader is dismissed */
+}
+
+/* ===== DUPLICATE ELEMENT CLEANUP ===== */
+/* Hide duplicate canvas elements that cause visual artifacts */
+#matrix-rain-safe:not(:first-of-type),
+#cyber-grid:not(:first-of-type),
+#static-noise:not(:first-of-type) {
+    display: none !important;
+    opacity: 0 !important;
+}
+
+/* ===== RESTORE MISSING UI ELEMENTS ===== */
+/* Ensure essential preloader elements are visible and centered */
+.pre-loader {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+    background-color: #000804;
+    width: 100vw;
+    height: 100vh;
+}
+
+.mid-loader-image {
+    z-index: 17;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    width: 100vw;
+    height: 100vh;
+    position: relative;
+}
+
+/* ===== LOGO TEXT CENTERING (ZIKADA) ===== */
+.logo-text-wrapper {
+    position: absolute;
+    top: 15vh;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 50;
+    text-align: center;
+    width: 100%;
+}
+
+.logo-text {
+    color: #00ff85 !important;
+    text-align: center !important;
+    letter-spacing: 2px !important;
+    -webkit-text-stroke-width: 1px !important;
+    -webkit-text-stroke-color: #00ff85 !important;
+    text-shadow: 0 0 20px #00ff85, 0 0 40px #00ff85 !important;
+    font-family: Anta, sans-serif !important;
+    font-size: 6rem !important;
+    font-weight: 700 !important;
+    line-height: 60px !important;
+    display: block !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+}
+
+/* ===== CICADA LOGO CENTERING ===== */
+.image-wrapper {
+    z-index: 25;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+    width: 100%;
+}
+
+.image-2 {
+    z-index: 26 !important;
+    filter: brightness(150%) !important;
+    border-radius: 100% !important;
+    width: 20rem !important;
+    height: 20rem !important;
+    object-fit: contain !important;
+    display: block !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    /* Add subtle glow to make it more visible */
+    box-shadow: 0 0 30px rgba(0, 255, 133, 0.5) !important;
+}
+
+/* ===== RESTORE 3886 TEXT & ENTER BUTTON ===== */
+.enter-button-wrapper {
+    position: absolute;
+    bottom: 22vh;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 50;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    max-width: 350px;
+    width: 100%;
+}
+
+.text-3886 {
+    text-align: center;
+    font-family: Anta, sans-serif;
+    font-size: 5rem;
+    position: relative;
+    z-index: 50;
+    margin-bottom: 1rem;
+}
+
+.text-3886,
+.text-3886 .text-span,
+.text-span {
+    color: #00ff85 !important;
+    letter-spacing: 5px !important;
+    -webkit-text-stroke-width: 1px !important;
+    -webkit-text-stroke-color: #00ff85 !important;
+    text-shadow: 0 0 20px #00ff85, 0 0 40px #00ff85 !important;
+    font-family: Anta, sans-serif !important;
+    font-size: 5rem !important;
+    font-weight: 700 !important;
+    display: block !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    text-align: center !important;
+}
+
+/* ===== MATRIX MESSAGE CENTERING ===== */
+.matrix-messages {
+    position: fixed !important;
+    top: 50% !important;
+    left: 50% !important;
+    transform: translate(-50%, -50%) !important;
+    z-index: 9999 !important;
+    text-align: center !important;
+    font-family: 'Inconsolata', monospace !important;
+    font-size: 1.4rem !important;
+    color: #00ffa3 !important;
+    pointer-events: none !important;
+}
+
+/* ===== Z-INDEX HIERARCHY ===== */
+:root {
+    --z-preloader: 9999;
+    --z-overlay: 8500;
+    --z-matrix: 9000;
+    --z-background: 0;
+    --z-negative: -1;
+}
+
+/* Apply consistent z-indexing */
+.pre-loader { z-index: var(--z-preloader) !important; }
+.matrix-messages { z-index: var(--z-matrix) !important; }
+#chaos-canvas { z-index: var(--z-background) !important; }
+#cyber-grid { z-index: var(--z-negative) !important; }
+#static-noise { z-index: var(--z-background) !important; }
+#matrix-rain-safe { z-index: var(--z-background) !important; }
+
+/* ===== BACKGROUND ELEMENT FIXES ===== */
+.bg {
+    z-index: -2 !important; /* Push way back */
+    opacity: 0.05 !important; /* Keep subtle */
+    transform: translate(-50%, -50%) scale(3) !important;
+}
+
+/* ===== PERFORMANCE OPTIMIZATIONS ===== */
+/* Reduce visual noise from floating symbols */
+.floating-symbol {
+    opacity: 0.1 !important;
+    font-size: 12px !important;
+}
+
+/* ===== HOVER RULE COMPLIANCE ===== */
+/* No movement animations on hover per WARP.md rules */
+.button:hover,
+.button-primary:hover,
+.nav-link:hover {
+    transform: none !important;
+}
+
+/* ===== RESPONSIVE VIEWPORT FIXES ===== */
+@media screen and (max-width: 768px) {
+    .logo-text {
+        font-size: 4rem;
+    }
+    
+    .text-3886,
+    .text-span {
+        font-size: 3rem !important;
+    }
+    
+    .image-2 {
+        width: 15rem;
+        height: 15rem;
+    }
+}
+
+@media screen and (max-width: 480px) {
+    .logo-text {
+        font-size: 3rem;
+    }
+    
+    .text-3886,
+    .text-span {
+        font-size: 2.5rem !important;
+    }
+    
+    .image-2 {
+        width: 12rem;
+        height: 12rem;
+    }
+}
