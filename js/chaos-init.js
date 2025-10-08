@@ -83,6 +83,54 @@ const performanceMonitor = window.performanceMonitor || null;
 // Safe text effects manager
 const safeTextEffects = window.safeTextEffects || textEffects;
 
+// Safe element creation helpers - fallback to direct DOM if performanceElementManager unavailable
+const warnOnce = (() => {
+    let warned = false;
+    return (msg) => {
+        if (!warned) {
+            console.warn(msg);
+            warned = true;
+        }
+    };
+})();
+
+const safeCreateElement = (tagName, category = 'effect', styles = {}) => {
+    const pem = window.performanceElementManager;
+    if (pem && typeof pem.createElement === 'function') {
+        return pem.createElement(tagName, category, styles);
+    }
+    
+    // Fallback: create element directly
+    warnOnce('[ZIKADA] No element management detected: falling back to document.createElement()');
+    const el = document.createElement(tagName);
+    
+    // Apply styles manually
+    if (styles && typeof styles === 'object') {
+        Object.entries(styles).forEach(([key, value]) => {
+            const cssKey = key.replace(/([A-Z])/g, '-$1').toLowerCase();
+            el.style.setProperty(cssKey, value);
+        });
+    }
+    
+    return el;
+};
+
+const safeRemoveElement = (element) => {
+    if (!element) return;
+    
+    const pem = window.performanceElementManager;
+    if (pem && typeof pem.removeElement === 'function') {
+        pem.removeElement(element);
+    } else {
+        // Fallback: direct DOM removal
+        if (element.parentNode) {
+            element.parentNode.removeChild(element);
+        } else if (typeof element.remove === 'function') {
+            element.remove();
+        }
+    }
+};
+
 class ChaosInitializer {
     constructor() {
         this.isReady = false;
@@ -1643,54 +1691,26 @@ class ChaosInitializer {
     }
 
     addScanlines() {
-        let scanlines;
-        
-        // Use performance manager if available, otherwise create normally
-        if (this.performanceElementManager) {
-            scanlines = this.performanceElementManager.createElement('div', 'effect', {
-                position: 'fixed',
-                top: '0',
-                left: '0',
-                width: '100%',
-                height: '100%',
-                pointerEvents: 'none',
-                zIndex: '9997',
-                background: `repeating-linear-gradient(
-                    0deg,
-                    rgba(0, 0, 0, 0.01) 0px,
-                    transparent 1px,
-                    transparent 2px,
-                    rgba(0, 0, 0, 0.01) 3px
-                )`,
-                opacity: '0.001',
-                mixBlendMode: 'multiply'
-            });
-        } else {
-            // Fallback to direct creation
-            scanlines = document.createElement('div');
-            scanlines.className = 'scanlines';
-            scanlines.style.cssText = `
-                position: fixed;
-                top: 0;
-                left: 0;
-                width: 100%;
-                height: 100%;
-                pointer-events: none;
-                z-index: 9997;
-                background: repeating-linear-gradient(
-                    0deg,
-                    rgba(0, 0, 0, 0.01) 0px,
-                    transparent 1px,
-                    transparent 2px,
-                    rgba(0, 0, 0, 0.01) 3px
-                );
-                opacity: 0.001;
-                mix-blend-mode: multiply;
-            `;
-            document.body.appendChild(scanlines);
-        }
-        
+        const scanlines = safeCreateElement('div', 'effect', {
+            position: 'fixed',
+            top: '0',
+            left: '0',
+            width: '100%',
+            height: '100%',
+            pointerEvents: 'none',
+            zIndex: '9997',
+            background: `repeating-linear-gradient(
+                0deg,
+                rgba(0, 0, 0, 0.01) 0px,
+                transparent 1px,
+                transparent 2px,
+                rgba(0, 0, 0, 0.01) 3px
+            )`,
+            opacity: '0.001',
+            mixBlendMode: 'multiply'
+        });
         scanlines.className = 'scanlines';
+        document.body.appendChild(scanlines);
 
         // Use GSAP registry if available, otherwise direct GSAP
         if (this.gsapRegistry) {
@@ -1760,7 +1780,7 @@ class ChaosInitializer {
     }
 
     addCyberGrid() {
-        const gridCanvas = this.performanceElementManager.createElement('canvas', 'background', {
+        const gridCanvas = safeCreateElement('canvas', 'background', {
             position: 'fixed',
             bottom: '0',
             left: '0',
@@ -1771,6 +1791,7 @@ class ChaosInitializer {
             opacity: '0.008'
         });
         gridCanvas.id = 'cyber-grid';
+        document.body.appendChild(gridCanvas);
 
         const ctx = gridCanvas.getContext('2d');
         gridCanvas.width = window.innerWidth;
@@ -2068,7 +2089,7 @@ class ChaosInitializer {
     }
 
     addDataStreams() {
-        const container = this.performanceElementManager.createElement('div', 'stream', {
+        const container = safeCreateElement('div', 'stream', {
             position: 'fixed',
             top: '0',
             left: '0',
@@ -2079,10 +2100,11 @@ class ChaosInitializer {
             overflow: 'hidden'
         });
         container.className = 'data-streams';
+        document.body.appendChild(container);
 
         // Create vertical data streams with managed elements
         for (let i = 0; i < 3; i++) { // Reduced from 5 to 3
-            const stream = this.performanceElementManager.createElement('div', 'stream', {
+            const stream = safeCreateElement('div', 'stream', {
                 position: 'absolute',
                 left: `${Math.random() * 100}%`,
                 top: '-100px',
@@ -2611,7 +2633,7 @@ class ChaosInitializer {
 
         const createGlitchLine = () => {
             // REPLACED: Circular glitch burst instead of ugly full-width line
-            const glitchBurst = this.performanceElementManager.createElement('div', 'effect');
+            const glitchBurst = safeCreateElement('div', 'effect');
             const size = Math.random() * 80 + 20;
             const x = Math.random() * window.innerWidth;
             const y = Math.random() * window.innerHeight;
@@ -2639,7 +2661,7 @@ class ChaosInitializer {
                 rotation: 180,
                 duration: 0.8,
                 ease: 'power4.out',
-                onComplete: () => this.performanceElementManager.removeElement(glitchBurst)
+                onComplete: () => safeRemoveElement(glitchBurst)
             }, 'glitch-burst', 'effect');
         };
 
@@ -2746,7 +2768,7 @@ class ChaosInitializer {
 
     addDigitalArtifacts() {
         const createArtifact = () => {
-            const artifact = this.performanceElementManager.createElement('div', 'artifact');
+            const artifact = safeCreateElement('div', 'artifact');
             const types = ['horizontal', 'vertical', 'diagonal'];
             const type = types[Math.floor(Math.random() * types.length)];
 
@@ -2774,7 +2796,7 @@ class ChaosInitializer {
                     opacity: 0,
                     duration: Math.random() * 2 + 1,
                     ease: 'power2.out',
-                    onComplete: () => this.performanceElementManager.removeElement(artifact)
+                    onComplete: () => safeRemoveElement(artifact)
                 }, 'artifact-circular', 'artifact', { fromVars: { scale: 0, opacity: 1 } });
             } else if (type === 'vertical') {
                 // REPLACED: Circular pulse instead of ugly full-height line
@@ -2794,7 +2816,7 @@ class ChaosInitializer {
                     rotation: 180,
                     duration: Math.random() * 2 + 1,
                     ease: 'power2.out',
-                    onComplete: () => this.performanceElementManager.removeElement(artifact)
+                    onComplete: () => safeRemoveElement(artifact)
                 }, 'artifact-pulse', 'artifact', { fromVars: { scale: 0, opacity: 0.8, rotation: 0 } });
             } else {
                 // REPLACED: Small rotating circle instead of line
@@ -2814,7 +2836,7 @@ class ChaosInitializer {
                     opacity: 0,
                     duration: Math.random() * 3 + 1.5,
                     ease: 'power2.in',
-                    onComplete: () => this.performanceElementManager.removeElement(artifact)
+                    onComplete: () => safeRemoveElement(artifact)
                 }, 'artifact-rotating', 'artifact');
             }
 
@@ -2914,7 +2936,7 @@ class ChaosInitializer {
     addCorruptionWaves() {
         const createWave = () => {
             // REPLACED: Circular ripple effect instead of ugly horizontal bars
-            const wave = this.performanceElementManager.createElement('div', 'effect');
+            const wave = safeCreateElement('div', 'effect');
             const size = Math.random() * 100 + 50;
             wave.style.cssText = `
                 position: fixed;
@@ -2941,7 +2963,7 @@ class ChaosInitializer {
                 opacity: 0,
                 duration: 1.2,
                 ease: 'power2.out',
-                onComplete: () => this.performanceElementManager.removeElement(wave)
+                onComplete: () => safeRemoveElement(wave)
             }, 'corruption-ripple', 'effect');
         };
 
@@ -2988,7 +3010,7 @@ class ChaosInitializer {
         imageWrapper.appendChild(particleContainer);
 
         const createParticle = () => {
-            const particle = this.performanceElementManager.createElement('div', 'particle');
+            const particle = safeCreateElement('div', 'particle');
             const angle = Math.random() * Math.PI * 2;
             const distance = Math.random() * 100 + 50;
             const startX = Math.cos(angle) * distance;
@@ -3119,46 +3141,25 @@ class ChaosInitializer {
         // Phase: Retro
 
         // Add CRT TV effect using managed element system
-        let crt;
-        if (this.performanceElementManager) {
-            crt = this.performanceElementManager.createElement('div', 'effect', {
-                position: 'fixed',
-                top: '0',
-                left: '0',
-                width: '100%',
-                height: '100%',
-                pointerEvents: 'none',
-                zIndex: '9996',
-                background: `repeating-linear-gradient(
-                    0deg,
-                    rgba(0,0,0,0.1) 0px,
-                    transparent 2px,
-                    transparent 4px,
-                    rgba(0,0,0,0.1) 6px
-                )`,
-                animation: 'crtFlicker 4s infinite ease-in-out'
-            });
-        } else {
-            crt = document.createElement('div');
-            crt.style.cssText = `
-                position: fixed;
-                top: 0;
-                left: 0;
-                width: 100%;
-                height: 100%;
-                pointer-events: none;
-                z-index: 9996;
-                background: repeating-linear-gradient(
-                    0deg,
-                    rgba(0,0,0,0.1) 0px,
-                    transparent 2px,
-                    transparent 4px,
-                    rgba(0,0,0,0.1) 6px
-                );
-                animation: crtFlicker 4s infinite ease-in-out;
-            `;
-            document.body.appendChild(crt);
-        }
+        const crt = safeCreateElement('div', 'effect', {
+            position: 'fixed',
+            top: '0',
+            left: '0',
+            width: '100%',
+            height: '100%',
+            pointerEvents: 'none',
+            zIndex: '9996',
+            background: `repeating-linear-gradient(
+                0deg,
+                rgba(0,0,0,0.1) 0px,
+                transparent 2px,
+                transparent 4px,
+                rgba(0,0,0,0.1) 6px
+            )`,
+            animation: 'crtFlicker 4s infinite ease-in-out'
+        });
+        crt.style.animation = 'crtFlicker 4s infinite ease-in-out';
+        document.body.appendChild(crt);
 
         // Add style for CRT flicker
         const style = document.createElement('style');
