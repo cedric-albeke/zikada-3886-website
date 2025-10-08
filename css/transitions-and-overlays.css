@@ -1,0 +1,164 @@
+/**
+ * ============================================
+ * ZIKADA 3886 - TRANSITIONS AND OVERLAYS
+ * ============================================
+ * 
+ * Global CSS for smooth phase transitions and matrix/blackout overlays
+ * Provides consistent animations with reduced-motion support
+ */
+
+:root {
+  --overlay-fade-ms: 350ms;
+  --phase-fade-ms: 600ms;
+  --overlay-z-index: 99999;
+}
+
+/* ============================================
+   OVERLAY SYSTEM
+   ============================================ */
+
+.overlay-root {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: var(--overlay-z-index);
+}
+
+.overlay-blackout,
+.overlay-matrix {
+  opacity: 0;
+  transition: opacity var(--overlay-fade-ms) ease;
+  position: absolute;
+  inset: 0;
+}
+
+.overlay-blackout {
+  background: black;
+}
+
+.overlay-matrix {
+  background: rgba(0, 0, 0, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #00ff85;
+  font-family: 'Space Mono', monospace;
+  font-size: clamp(16px, 3vw, 28px);
+  text-shadow: 0 0 6px #00ff85;
+  text-align: center;
+  padding: 20px;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+}
+
+.overlay-visible {
+  opacity: 1;
+}
+
+/* ============================================
+   PHASE TRANSITIONS
+   ============================================ */
+
+.phase-fade-in {
+  animation: phaseFadeIn var(--phase-fade-ms) ease both;
+}
+
+.phase-fade-out {
+  animation: phaseFadeOut var(--phase-fade-ms) ease both;
+}
+
+@keyframes phaseFadeIn {
+  from { 
+    opacity: 0;
+    transform: translateY(10px);
+  } 
+  to { 
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes phaseFadeOut {
+  from { 
+    opacity: 1;
+    transform: translateY(0);
+  } 
+  to { 
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+}
+
+/* Smooth transition for phase containers */
+[data-phase] {
+  transition: opacity var(--phase-fade-ms) ease, transform var(--phase-fade-ms) ease;
+}
+
+/* ============================================
+   REDUCED MOTION SUPPORT
+   ============================================ */
+
+@media (prefers-reduced-motion: reduce) {
+  .overlay-blackout,
+  .overlay-matrix,
+  .phase-fade-in,
+  .phase-fade-out {
+    transition: none !important;
+    animation: none !important;
+  }
+  
+  [data-phase] {
+    transition: none !important;
+  }
+  
+  :root {
+    --overlay-fade-ms: 0ms;
+    --phase-fade-ms: 0ms;
+  }
+}
+
+/* ============================================
+   MATRIX CONTROLS VISUAL FEEDBACK
+   ============================================ */
+
+.matrix-control-btn {
+  position: relative;
+  overflow: hidden;
+}
+
+.matrix-control-btn:active::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 255, 133, 0.2);
+  animation: buttonPulse 0.3s ease;
+}
+
+@keyframes buttonPulse {
+  0% { opacity: 0; transform: scale(0.8); }
+  50% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1.1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .matrix-control-btn:active::after {
+    animation: none !important;
+  }
+}
+
+/* ============================================
+   HIGH CONTRAST MODE SUPPORT
+   ============================================ */
+
+@media (prefers-contrast: high) {
+  .overlay-matrix {
+    background: rgba(0, 0, 0, 0.95);
+    color: #00ff00;
+    font-weight: bold;
+    border: 2px solid #00ff00;
+  }
+  
+  .matrix-control-btn:active::after {
+    background: rgba(0, 255, 0, 0.4);
+  }
+}

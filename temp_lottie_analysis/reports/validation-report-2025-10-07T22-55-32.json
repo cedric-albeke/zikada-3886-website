@@ -1,0 +1,247 @@
+{
+  "timestamp": "2025-10-07T22:55:32.129Z",
+  "summary": {
+    "total": 10,
+    "success": 0,
+    "warnings": 0,
+    "errors": 10,
+    "missing": 0,
+    "overallCompression": "98.3%",
+    "totalOriginalSize": "593.6 KB",
+    "totalOptimizedSize": "10 KB",
+    "spaceSaved": "583.6 KB"
+  },
+  "results": [
+    {
+      "animation": "Abstraction",
+      "status": "error",
+      "errors": [
+        "Layer count changed: 37 → 1"
+      ],
+      "warnings": [
+        "Animation markers removed",
+        "Layer types changed during optimization",
+        "Aggressive keyframe reduction (99.3%) - verify animation quality",
+        "Extremely high compression (99.3%) - verify animation integrity"
+      ],
+      "metrics": {
+        "originalSize": 169103,
+        "optimizedSize": 1178,
+        "compression": "99.3"
+      },
+      "optimizations": [
+        "Removed metadata fields: 504 instances",
+        "Optimized keyframes: 2135 → 15"
+      ]
+    },
+    {
+      "animation": "Impossible-Hexagon-black",
+      "status": "error",
+      "errors": [
+        "Layer count changed: 18 → 1"
+      ],
+      "warnings": [
+        "Animation markers removed",
+        "Layer types changed during optimization",
+        "Aggressive keyframe reduction (98.2%) - verify animation quality",
+        "Extremely high compression (97.6%) - verify animation integrity"
+      ],
+      "metrics": {
+        "originalSize": 34211,
+        "optimizedSize": 836,
+        "compression": "97.6"
+      },
+      "optimizations": [
+        "Reduced high-precision decimals: 102 → 0",
+        "Removed metadata fields: 179 instances",
+        "Optimized keyframes: 450 → 8"
+      ]
+    },
+    {
+      "animation": "Morphing-Particle-Loader",
+      "status": "error",
+      "errors": [
+        "Frame rate changed: 60 → 30",
+        "Animation duration changed: 0-180 → 0-90",
+        "Layer count changed: 4 → 1"
+      ],
+      "warnings": [
+        "Animation markers removed",
+        "Layer types changed during optimization",
+        "Aggressive keyframe reduction (91.0%) - verify animation quality"
+      ],
+      "metrics": {
+        "originalSize": 8547,
+        "optimizedSize": 944,
+        "compression": "89.0"
+      },
+      "optimizations": [
+        "Removed metadata fields: 29 instances",
+        "Optimized keyframes: 156 → 14",
+        "High compression achieved: 89.0%"
+      ]
+    },
+    {
+      "animation": "Planet-Logo",
+      "status": "error",
+      "errors": [
+        "Frame rate changed: 29.9700012207031 → 29.97",
+        "Animation duration changed: 0-75.0000030548126 → 0-75",
+        "Asset count changed: 2 → 1"
+      ],
+      "warnings": [
+        "Animation markers removed",
+        "Aggressive keyframe reduction (97.1%) - verify animation quality",
+        "Extremely high compression (96.8%) - verify animation integrity"
+      ],
+      "metrics": {
+        "originalSize": 26803,
+        "optimizedSize": 870,
+        "compression": "96.8"
+      },
+      "optimizations": [
+        "Reduced high-precision decimals: 119 → 0",
+        "Removed metadata fields: 146 instances",
+        "Optimized keyframes: 412 → 12"
+      ]
+    },
+    {
+      "animation": "Sacred-Geometry",
+      "status": "error",
+      "errors": [
+        "Layer count changed: 3 → 1"
+      ],
+      "warnings": [
+        "Animation markers removed",
+        "Layer types changed during optimization",
+        "Aggressive keyframe reduction (98.2%) - verify animation quality",
+        "Extremely high compression (96.6%) - verify animation integrity"
+      ],
+      "metrics": {
+        "originalSize": 21286,
+        "optimizedSize": 729,
+        "compression": "96.6"
+      },
+      "optimizations": [
+        "Reduced high-precision decimals: 61 → 0",
+        "Removed metadata fields: 182 instances",
+        "Optimized keyframes: 285 → 5"
+      ]
+    },
+    {
+      "animation": "circuit-round-ani",
+      "status": "error",
+      "errors": [
+        "Frame rate changed: 29.9700012207031 → 29.97",
+        "Animation duration changed: 0-61.0000024845809 → 0-61",
+        "Layer count changed: 6 → 1"
+      ],
+      "warnings": [
+        "Animation markers removed",
+        "Layer types changed during optimization",
+        "Aggressive keyframe reduction (99.7%) - verify animation quality",
+        "Extremely high compression (99.4%) - verify animation integrity"
+      ],
+      "metrics": {
+        "originalSize": 120430,
+        "optimizedSize": 705,
+        "compression": "99.4"
+      },
+      "optimizations": [
+        "Reduced high-precision decimals: 284 → 0",
+        "Removed metadata fields: 1110 instances",
+        "Optimized keyframes: 1836 → 6"
+      ]
+    },
+    {
+      "animation": "circular-dots",
+      "status": "error",
+      "errors": [
+        "Layer count changed: 6 → 1"
+      ],
+      "warnings": [
+        "Animation markers removed",
+        "Layer types changed during optimization",
+        "Aggressive keyframe reduction (98.6%) - verify animation quality",
+        "Extremely high compression (97.8%) - verify animation integrity"
+      ],
+      "metrics": {
+        "originalSize": 53072,
+        "optimizedSize": 1167,
+        "compression": "97.8"
+      },
+      "optimizations": [
+        "Reduced high-precision decimals: 3 → 0",
+        "Removed metadata fields: 332 instances",
+        "Optimized keyframes: 836 → 12"
+      ]
+    },
+    {
+      "animation": "geometrical-lines",
+      "status": "error",
+      "errors": [
+        "Layer count changed: 21 → 1"
+      ],
+      "warnings": [
+        "Animation markers removed",
+        "Layer types changed during optimization",
+        "Aggressive keyframe reduction (96.8%) - verify animation quality",
+        "Extremely high compression (98.3%) - verify animation integrity"
+      ],
+      "metrics": {
+        "originalSize": 145607,
+        "optimizedSize": 2443,
+        "compression": "98.3"
+      },
+      "optimizations": [
+        "Reduced high-precision decimals: 120 → 0",
+        "Removed metadata fields: 160 instances",
+        "Optimized keyframes: 749 → 24"
+      ]
+    },
+    {
+      "animation": "planet-ring",
+      "status": "error",
+      "errors": [
+        "Layer count changed: 9 → 1"
+      ],
+      "warnings": [
+        "Layer types changed during optimization",
+        "Aggressive keyframe reduction (96.6%) - verify animation quality",
+        "Extremely high compression (96.9%) - verify animation integrity"
+      ],
+      "metrics": {
+        "originalSize": 17573,
+        "optimizedSize": 540,
+        "compression": "96.9"
+      },
+      "optimizations": [
+        "Removed metadata fields: 98 instances",
+        "Optimized keyframes: 264 → 9"
+      ]
+    },
+    {
+      "animation": "transparent-diamond-dark",
+      "status": "error",
+      "errors": [
+        "Layer count changed: 2 → 1"
+      ],
+      "warnings": [
+        "Animation markers removed",
+        "Layer types changed during optimization",
+        "Aggressive keyframe reduction (95.5%) - verify animation quality",
+        "Extremely high compression (92.6%) - verify animation integrity"
+      ],
+      "metrics": {
+        "originalSize": 11179,
+        "optimizedSize": 825,
+        "compression": "92.6"
+      },
+      "optimizations": [
+        "Reduced high-precision decimals: 18 → 0",
+        "Removed metadata fields: 91 instances",
+        "Optimized keyframes: 178 → 8"
+      ]
+    }
+  ]
+}

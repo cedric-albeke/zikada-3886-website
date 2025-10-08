@@ -5,8 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>3886 VJ Control Panel V3 - Professional</title>
     <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <!-- Provide explicit favicon to avoid default /favicon.ico request -->
+    <link rel="icon" type="image/png" href="images/favicon.png">
     <!-- V3 PROFESSIONAL CSS - Restored V1 Features -->
     <link href="css/control-panel-v3-professional.css?v=3.3.6" rel="stylesheet">
+    <!-- Transitions and Overlays System -->
+    <link href="css/transitions-and-overlays.css?v=1.0.0" rel="stylesheet">
 </head>
 <body>
     <div class="control-panel">
@@ -269,20 +273,26 @@
                             </div>
                             <div class="tempo-control">
                                 <span class="tempo-label">PHASE</span>
-                                <input type="range"
-                                       class="tempo-slider"
-                                       id="phaseDurationSlider"
-                                       min="5"
-                                       max="60"
-                                       value="30"
-                                       aria-label="Phase Duration (seconds)">
-                                <span class="tempo-value" id="phaseValue">30s</span>
+                        <input type="range"
+                               class="tempo-slider"
+                               id="phaseDurationSlider"
+                               min="5"
+                               max="60"
+                               value="50"
+                               aria-label="Phase Duration (seconds)">
+                        <span class="tempo-value" id="phaseValue">50s</span>
                             </div>
                             <div class="tempo-bpm">
                                 <span class="tempo-label">BPM</span>
                                 <button class="bpm-tap-btn" id="tapBPM" aria-label="Tap BPM">TAP</button>
+                                <input type="number" 
+                                       class="bpm-input" 
+                                       id="bpmInput" 
+                                       min="20" 
+                                       max="300" 
+                                       value="120"
+                                       aria-label="Manual BPM input">
                                 <span class="tempo-value" id="bpmValue">120</span>
-                                <button class="bpm-tap-btn" id="toggleBpmRipple" data-state="off" aria-pressed="false" aria-label="Toggle BPM Ripple">OFF</button>
                             </div>
                         </div>
                     </div>
@@ -531,6 +541,12 @@
         // Import performance stats controller
         import performanceStatsController from './js/performance-stats-controller.js';
         
+        // Import VJ messaging system
+        import vjMessaging from './js/vj-messaging.js';
+        
+        // Make VJ messaging available globally for control handlers
+        window.vjMessaging = vjMessaging;
+        
         // Import V3 enhancements (keyboard shortcuts, toggles, animations)
         import './js/control-panel-v3.js';
         
@@ -545,6 +561,8 @@
         
         // Import trigger effect orchestrator for CHROMA, SPOTLIGHT, SHIMMER
         import './js/trigger-effect-orchestrator.js';
+        
+        // Profile badge removed - duplicate controls prevention
         
         // Initialize MIDI support
         window.addEventListener('DOMContentLoaded', () => {

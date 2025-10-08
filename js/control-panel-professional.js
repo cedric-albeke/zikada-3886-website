@@ -62,6 +62,64 @@ class ProfessionalVJControlPanel {
         this.init();
     }
 
+    // Phase transition orchestrator for smooth cross-fades
+    async transitionPhase(nextPhaseId) {
+        if (this.isTransitioning) {
+            console.log('Phase transition already in progress, skipping');
+            return;
+        }
+        
+        this.isTransitioning = true;
+        try {
+            const current = document.querySelector('[data-phase].active, .phase-container.active');
+            const next = document.querySelector(`[data-phase="${nextPhaseId}"], .phase-container[data-phase="${nextPhaseId}"]`);
+            
+            console.log('Phase transition:', current?.dataset?.phase, '->', nextPhaseId);
+            
+            // Fade out current phase
+            if (current && current.dataset.phase !== nextPhaseId) {
+                current.classList.add('phase-fade-out');
+                await this.waitForAnimation(current, 650); // match --phase-fade-ms
+                current.classList.remove('active', 'phase-fade-out');
+            }
+            
+            // Fade in next phase
+            if (next) {
+                next.classList.add('active', 'phase-fade-in');
+                await this.waitForAnimation(next, 650);
+                next.classList.remove('phase-fade-in');
+            }
+        } finally {
+            this.isTransitioning = false;
+        }
+    }
+    
+    // Animation helper that waits for CSS animation to complete or timeout
+    waitForAnimation(element, timeoutMs) {
+        return new Promise(resolve => {
+            if (!element) return resolve();
+            
+            let done = false;
+            const timeout = setTimeout(() => {
+                if (!done) {
+                    done = true;
+                    resolve();
+                }
+            }, timeoutMs);
+            
+            const handler = () => {
+                if (!done) {
+                    done = true;
+                    clearTimeout(timeout);
+                    resolve();
+                }
+            };
+            
+            element.addEventListener('animationend', handler, { once: true });
+            element.addEventListener('transitionend', handler, { once: true });
+        });
+    }
+
     // Lightweight debounce for high-frequency UI events
     _debounce(fn, wait = 32) {
         let t;
@@ -80,6 +138,8 @@ class ProfessionalVJControlPanel {
         this.startSystemMonitoring();
         this.startDiceRollCountdown();
         this.startPerformanceMonitoring();
+        // Ensure the scenes section centers the active button on load
+        this.scheduleInitialSceneScroll();
 
         console.log('🎛️ Professional VJ Control Panel initialized with original HTML');
     }
@@ -1018,17 +1078,29 @@ class ProfessionalVJControlPanel {
     }
 
     initEventListeners() {
-        // Scene buttons
+        // Scene buttons - with smooth phase transitions
         document.querySelectorAll('.scene-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
+            btn.addEventListener('click', async () => {
+                const newScene = btn.dataset.scene;
+                if (newScene === this.currentScene) return; // Skip if already active
+                
+                // Use phase transition orchestrator for smooth cross-fade
+                await this.transitionPhase(newScene);
+                
+                // Update UI state
                 document.querySelectorAll('.scene-btn').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
-                this.currentScene = btn.dataset.scene;
+                this.currentScene = newScene;
+                
+                // Send control message
                 this.sendMessage({
                     type: 'scene_change',
                     scene: this.currentScene,
                     timestamp: Date.now()
                 });
+                
+                // Auto-scroll the scenes container to center the selected scene
+                this.scrollScenesTo(this.currentScene);
             });
         });
 
@@ -1289,22 +1361,62 @@ class ProfessionalVJControlPanel {
         }
 
         // BPM Tap
-        document.getElementById('tapBPM')?.addEventListener('click', () => {
-            const now = Date.now();
-            if (this.lastTap && (now - this.lastTap) < 3000) {
-                const bpm = Math.round(60000 / (now - this.lastTap));
-                this.currentBPM = bpm;
-                const bpmDisplay = document.querySelector('.bpm-value');
-                if (bpmDisplay) bpmDisplay.textContent = bpm;
+        const tapBPMBtn = document.getElementById('tapBPM');
+        const bpmInput = document.getElementById('bpmInput');
+        const bpmDisplay = document.getElementById('bpmValue');
+        
+        if (tapBPMBtn) {
+            tapBPMBtn.addEventListener('click', () => {
+                const now = Date.now();
+                if (this.lastTap && (now - this.lastTap) < 3000) {
+                    const bpm = Math.round(60000 / (now - this.lastTap));
+                    this.currentBPM = bpm;
+                    
+                    // Update all displays
+                    if (bpmDisplay) bpmDisplay.textContent = bpm;
+                    if (bpmInput) bpmInput.value = bpm;
 
-                this.sendMessage({
-                    type: 'bpm_change',
-                    bpm: bpm,
-                    timestamp: now
-                });
-            }
-            this.lastTap = now;
-        });
+                    this.sendMessage({
+                        type: 'bpm_change',
+                        bpm: bpm,
+                        timestamp: now
+                    });
+                }
+                this.lastTap = now;
+            });
+        }
+        
+        // Manual BPM Input + steppers
+        if (bpmInput) {
+            const applyBpm = (val) => {
+                const bpm = Math.max(20, Math.min(300, parseInt(val)));
+                if (!Number.isFinite(bpm)) return;
+                this.currentBPM = bpm;
+                bpmInput.value = String(bpm);
+                if (bpmDisplay) bpmDisplay.textContent = bpm;
+                this.sendMessage({ type: 'bpm_change', bpm, timestamp: Date.now() });
+            };
+
+            bpmInput.addEventListener('change', () => applyBpm(bpmInput.value));
+            
+            // Allow Enter key to apply
+            bpmInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    applyBpm(bpmInput.value);
+                    bpmInput.blur();
+                }
+            });
+
+            // Stepper buttons
+            const bump = (delta, shift) => {
+                const current = parseInt(bpmInput.value || this.currentBPM || 120) || 120;
+                const step = shift ? 5 : 1;
+                applyBpm(current + delta * step);
+            };
+            document.getElementById('bpmUp')?.addEventListener('click', (e) => { e.preventDefault(); bump(1, e.shiftKey); });
+            document.getElementById('bpmDown')?.addEventListener('click', (e) => { e.preventDefault(); bump(-1, e.shiftKey); });
+        }
 
         // FX Intensity sliders (glitch, particles, noise)
         ['glitch', 'particles', 'noise'].forEach(effect => {
@@ -1651,6 +1763,28 @@ class ProfessionalVJControlPanel {
         if (autoBtn) autoBtn.classList.add('active');
     }
 
+    // Smoothly center the given scene button or the currently active one
+    scrollScenesTo(scene) {
+        try {
+            const grid = document.querySelector('.scene-section .scene-grid');
+            if (!grid) return;
+            const target = scene
+                ? grid.querySelector(`.scene-btn[data-scene="${scene}"]`)
+                : (grid.querySelector('.scene-btn.active') || grid.querySelector('.scene-btn[data-scene="auto"]'));
+            if (target && typeof target.scrollIntoView === 'function') {
+                target.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
+            } else {
+                grid.scrollIntoView({ behavior: 'smooth', block: 'start', inline: 'nearest' });
+            }
+        } catch (_) {}
+    }
+
+    // Schedule initial scroll after layout is ready
+    scheduleInitialSceneScroll() {
+        // Two RAFs to ensure layout calculations are settled
+        requestAnimationFrame(() => requestAnimationFrame(() => this.scrollScenesTo()));
+    }
+
     resetAllControls() {
         // Reset all controls to default values
         this.effects = {
@@ -1783,6 +1917,8 @@ class ProfessionalVJControlPanel {
             case 'scene_changed': {
                 const scene = (data.scene || '').toLowerCase();
                 this.updateAutoSceneHighlight(scene);
+                // Also center the scene button in view
+                this.scrollScenesTo(scene);
                 break;
             }
             case 'performance_mode_updated': {

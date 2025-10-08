@@ -20,13 +20,10 @@ class MatrixMessages {
     }
 
     createBlackoutElement() {
-        // Create or recreate blackout overlay
-        if (this.blackoutElement && this.blackoutElement.parentNode) {
-            this.blackoutElement.remove();
-        }
-
+        // Use a dedicated matrix blackout overlay to avoid z-index conflicts with viz-blackout
         this.blackoutElement = document.createElement('div');
         this.blackoutElement.className = 'matrix-blackout';
+        // Style mirrors styleMessages() but we ensure presence even if CSS hasn’t loaded yet
         this.blackoutElement.style.cssText = `
             position: fixed !important;
             top: 0 !important;
@@ -37,7 +34,8 @@ class MatrixMessages {
             opacity: 0;
             pointer-events: none !important;
             z-index: 9998 !important;
-            display: block !important;
+            transition: opacity 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+            display: none;
         `;
         document.body.appendChild(this.blackoutElement);
     }
@@ -230,22 +228,16 @@ class MatrixMessages {
                     // Force immediate blackout removal
                     if (this.blackoutElement) {
                         // Kill any existing animations on blackout
-                        gsap.killTweensOf(this.blackoutElement);
+                        try { gsap.killTweensOf(this.blackoutElement); } catch(_) {}
                         // Animate fade out
                         gsap.to(this.blackoutElement, {
                             opacity: 0,
                             duration: 0.4,
                             ease: 'power2.inOut',
                             onComplete: () => {
-                                // Force complete removal
-                                this.blackoutElement.classList.remove('active');
+                                // For shared overlay, do not remove from DOM
                                 this.blackoutElement.style.display = 'none';
                                 this.blackoutElement.style.opacity = '0';
-                                // Remove from DOM to ensure it's gone
-                                if (this.blackoutElement.parentNode) {
-                                    this.blackoutElement.remove();
-                                    this.blackoutElement = null;
-                                }
                             }
                         });
                     }
@@ -286,14 +278,22 @@ class MatrixMessages {
             this.createBlackoutElement();
         }
 
+        // Ensure message sits above the blackout
+        if (this.messageElement && this.blackoutElement) {
+            const z = parseInt(getComputedStyle(this.blackoutElement).zIndex || '9998', 10);
+            this.messageElement.style.zIndex = String(Math.max(z + 1, 9999));
+        }
+
         // Trigger reactive effects on other elements
         this.triggerReactiveEffects('start');
 
         // Activate blackout with semi-transparent overlay
-        this.blackoutElement.classList.add('active');
-        this.blackoutElement.style.opacity = '0.85';  // Semi-transparent for FX visibility
-        this.blackoutElement.style.display = 'block';
-        this.blackoutElement.style.background = 'rgba(0, 0, 0, 0.95)';  // Slightly transparent black
+        if (this.blackoutElement) {
+            try { gsap.killTweensOf(this.blackoutElement); } catch(_) {}
+            this.blackoutElement.style.display = 'block';
+            gsap.to(this.blackoutElement, { opacity: 0.85, duration: 0.6, ease: 'power2.inOut' });
+            this.blackoutElement.style.background = 'rgba(0, 0, 0, 0.95)';
+        }
 
         // Subtle entrance effect - removed heavy glitch
         // this.createAnalogGlitch();  // Disabled for less strobe

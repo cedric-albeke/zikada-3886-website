@@ -10,6 +10,7 @@ class TextEffects {
         // Use WeakMap for element state tracking (automatic cleanup when element is GCed)
         this.activeEffects = new WeakMap();
         this.timelines = new WeakMap();
+        this.trackedElements = new Set(); // Track elements for cleanup
         this.intervals = new Set(); // For cleanup
         this.canvases = new Set(); // Track created canvases
         this.rafIds = new Set(); // Track RAF IDs
@@ -22,11 +23,16 @@ class TextEffects {
         // Mutation observer for cleanup when elements are removed
         this.observer = new MutationObserver((mutations) => {
             mutations.forEach((mutation) => {
-                mutation.removedNodes.forEach((node) => {
-                    if (node.nodeType === Node.ELEMENT_NODE) {
-                        this.cleanupElement(node);
-                    }
-                });
+                if (mutation.removedNodes) {
+                    mutation.removedNodes.forEach((node) => {
+                        if (node && node.nodeType === Node.ELEMENT_NODE) {
+                            this.cleanupElement(node);
+                            // Also clean up child elements with effects
+                            const childElements = node.querySelectorAll ? node.querySelectorAll('*') : [];
+                            childElements.forEach(child => this.cleanupElement(child));
+                        }
+                    });
+                }
             });
         });
         
@@ -96,6 +102,7 @@ class TextEffects {
         };
         
         this.activeEffects.set(element, state);
+        this.trackedElements.add(element);
         
         const startScramble = () => {
             if (state.destroyed || state.isScrambling) return;
@@ -107,12 +114,15 @@ class TextEffects {
             let iterations = 0;
             const maxIterations = Math.min(originalText.length * 3, 60); // Cap iterations
             
+            // Store reference to TextEffects instance for accessing class properties
+            const self = this;
+            
             // Use GSAP timeline instead of setInterval for better performance
             const tl = gsap.timeline({
                 onComplete: () => {
                     element.textContent = originalText;
                     state.isScrambling = false;
-                    this.activeScrambleCount--;
+                    self.activeScrambleCount--;
                     
                     // Schedule next scramble
                     if (!state.destroyed) {
@@ -128,14 +138,19 @@ class TextEffects {
             state.timeline = tl;
             
             // Create scramble animation using GSAP
+            // Use regular function (not arrow) so 'this' refers to the GSAP tween
             tl.to({}, {
                 duration: maxIterations * 0.03, // 30ms per iteration converted to seconds
                 ease: "none",
                 onUpdate: function() {
                     if (state.destroyed) return;
                     
+                    // 'this' is the GSAP tween, so this.progress() is valid
                     const progress = this.progress();
                     iterations = Math.floor(progress * maxIterations);
+                    
+                    // Access scrambleChars via 'self' (TextEffects instance)
+                    const chars = self.scrambleChars;
                     
                     const scrambledText = originalText
                         .split('')
@@ -144,13 +159,13 @@ class TextEffects {
                                 return originalText[index];
                             }
                             return state.originalText.includes(char) ? 
-                                this.scrambleChars[Math.floor(Math.random() * this.scrambleChars.length)] : 
+                                chars[Math.floor(Math.random() * chars.length)] : 
                                 char;
                         })
                         .join('');
                     
                     element.textContent = scrambledText;
-                }.bind(this)
+                }
             });
         };
 
@@ -256,20 +271,24 @@ class TextEffects {
             const step = hidden ? 200 : baseStep;
             
             if (currentTime - lastTime >= step) {
-                ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                try {
+                    ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-                ctx.fillStyle = '#00ff00';
-                ctx.font = '15px monospace';
+                    ctx.fillStyle = '#00ff00';
+                    ctx.font = '15px monospace';
 
-                for (let i = 0; i < drops.length; i++) {
-                    const text = this.matrixChars[Math.floor(Math.random() * this.matrixChars.length)];
-                    ctx.fillText(text, i * 20, drops[i] * 20);
+                    for (let i = 0; i < drops.length && i < 100; i++) { // Limit iterations
+                        const text = this.matrixChars[Math.floor(Math.random() * this.matrixChars.length)];
+                        ctx.fillText(text, i * 20, drops[i] * 20);
 
-                    if (drops[i] * 20 > canvas.height && Math.random() > 0.975) {
-                        drops[i] = 0;
+                        if (drops[i] * 20 > canvas.height && Math.random() > 0.975) {
+                            drops[i] = 0;
+                        }
+                        drops[i]++;
                     }
-                    drops[i]++;
+                } catch (error) {
+                    console.warn('Matrix canvas render error:', error);
                 }
                 
                 lastTime = currentTime;
@@ -303,6 +322,7 @@ class TextEffects {
         
         // Store cleanup for later
         this.activeEffects.set(canvas, { cleanup });
+        this.trackedElements.add(canvas);
     }
 
     initializeTextBreaking() {
@@ -319,6 +339,7 @@ class TextEffects {
         };
         
         this.activeEffects.set(enterButton, state);
+        this.trackedElements.add(enterButton);
 
         // Use more efficient corruption with limits
         const corruptText = () => {
@@ -427,6 +448,7 @@ class TextEffects {
         };
         
         this.activeEffects.set(corruptionOverlay, state);
+        this.trackedElements.add(corruptionOverlay);
 
         const createCorruptionBlock = () => {
             if (state.destroyed || activeBlocks >= this.MAX_CORRUPTION_BLOCKS) return;
@@ -518,6 +540,7 @@ class TextEffects {
             }
             
             this.activeEffects.delete(element);
+            this.trackedElements.delete(element);
             
             if (window.SAFE_FLAGS?.DEBUG_FX) {
                 console.log('🧹 Cleaned up text effect for element:', element);
@@ -545,10 +568,14 @@ class TextEffects {
         });
         this.canvases.clear();
         
-        // Clean up all active effects
-        for (const [element, state] of this.activeEffects) {
+        // Clean up all active effects - iterate safely using tracked elements
+        const elementsToCleanup = Array.from(this.trackedElements);
+        elementsToCleanup.forEach(element => {
             this.cleanupElement(element);
-        }
+        });
+        
+        // Clear the tracked elements set
+        this.trackedElements.clear();
         
         // Disconnect mutation observer
         this.observer.disconnect();

@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Production Lottie Performance Test</title>
+    <script src="https://unpkg.com/@lottiefiles/lottie-player@2.0.12/dist/lottie-player.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #0a0a0a;
+            color: #ffffff;
+            line-height: 1.6;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .status {
+            padding: 10px 20px;
+            border-radius: 6px;
+            margin: 10px 0;
+            font-weight: bold;
+        }
+
+        .status.success { background: #28a745; color: #fff; }
+        .status.info { background: #007acc; color: #fff; }
+        .status.warning { background: #ffc107; color: #000; }
+
+        .test-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .animation-test {
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+        }
+
+        .animation-test h3 {
+            margin-top: 0;
+            color: #007acc;
+            font-size: 16px;
+        }
+
+        .animation-container {
+            width: 200px;
+            height: 200px;
+            margin: 10px auto;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 4px;
+            position: relative;
+        }
+
+        .metrics {
+            font-size: 12px;
+            color: #888;
+            margin-top: 10px;
+            text-align: left;
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin: 20px 0;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .controls button {
+            padding: 8px 16px;
+            background: #1a1a1a;
+            color: #fff;
+            border: 1px solid #333;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .controls button:hover {
+            background: #333;
+            border-color: #555;
+        }
+
+        .controls button.active {
+            background: #007acc;
+            border-color: #007acc;
+        }
+
+        .results {
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .results h2 {
+            margin-top: 0;
+            color: #007acc;
+        }
+
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+        }
+
+        .comparison-table th,
+        .comparison-table td {
+            padding: 8px 12px;
+            text-align: left;
+            border-bottom: 1px solid #333;
+        }
+
+        .comparison-table th {
+            background: #0f0f0f;
+            color: #007acc;
+        }
+
+        .log {
+            background: #0f0f0f;
+            border: 1px solid #333;
+            border-radius: 4px;
+            padding: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 11px;
+            height: 200px;
+            overflow-y: auto;
+            margin: 20px 0;
+        }
+
+        .log-entry {
+            margin-bottom: 2px;
+            opacity: 0.8;
+        }
+
+        .log-entry.error { color: #ff6b6b; }
+        .log-entry.success { color: #51cf66; }
+        .log-entry.info { color: #74c0fc; }
+        .log-entry.perf { color: #ffd43b; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🎯 Production Lottie Performance Test</h1>
+        <p>Testing your current <code>.lottie</code> files vs optimized <code>.json</code> alternatives</p>
+    </div>
+
+    <div class="status info" id="status">
+        🔧 Initializing performance test suite...
+    </div>
+
+    <div class="controls">
+        <button id="test-lottie" class="active">Test .lottie Files</button>
+        <button id="test-json">Test .json Files</button>
+        <button id="compare">Compare Formats</button>
+        <button id="test-visibility">Test Visibility</button>
+        <button id="export-results">Export Results</button>
+    </div>
+
+    <div class="test-grid" id="test-grid">
+        <!-- Animation tests will be populated dynamically -->
+    </div>
+
+    <div class="results" id="results" style="display: none;">
+        <h2>📊 Performance Comparison Results</h2>
+        <table class="comparison-table" id="comparison-table">
+            <thead>
+                <tr>
+                    <th>Animation</th>
+                    <th>.lottie Load (ms)</th>
+                    <th>.lottie FPS</th>
+                    <th>.json Load (ms)</th>
+                    <th>.json FPS</th>
+                    <th>Winner</th>
+                    <th>Size Difference</th>
+                </tr>
+            </thead>
+            <tbody id="comparison-tbody">
+            </tbody>
+        </table>
+    </div>
+
+    <div class="log" id="performance-log">
+        <div class="log-entry info">🚀 Production test initialized</div>
+        <div class="log-entry info">📦 Testing .lottie vs .json performance</div>
+        <div class="log-entry info">🎛️ Click buttons above to start testing</div>
+    </div>
+
+    <script>
+        class ProductionLottieTest {
+            constructor() {
+                this.animations = [
+                    { 
+                        name: 'Planet Ring', 
+                        lottie: '/animations/lottie/planet-ring.lottie',
+                        json: '../out/conservative/planet-ring.json',
+                        renderer: 'svg',
+                        lottieSize: '2.0 KB',
+                        jsonSize: '16.0 KB'
+                    },
+                    { 
+                        name: 'Planet Logo', 
+                        lottie: '/animations/lottie/Planet-Logo.lottie',
+                        json: '../out/conservative/Planet-Logo.json',
+                        renderer: 'svg',
+                        lottieSize: '3.8 KB',
+                        jsonSize: '22.7 KB'
+                    },
+                    { 
+                        name: 'Abstraction', 
+                        lottie: '/animations/lottie/Abstraction.lottie',
+                        json: '../out/conservative/Abstraction.json',
+                        renderer: 'svg',
+                        lottieSize: '17.7 KB',
+                        jsonSize: '158.5 KB'
+                    },
+                    { 
+                        name: 'Morphing Particle', 
+                        lottie: '/animations/lottie/Morphing-Particle-Loader.lottie',
+                        json: '../out/conservative/Morphing-Particle-Loader.json',
+                        renderer: 'canvas',
+                        lottieSize: '1.6 KB',
+                        jsonSize: '8.2 KB'
+                    },
+                    { 
+                        name: 'Sacred Geometry', 
+                        lottie: '/animations/lottie/Sacred-Geometry.lottie',
+                        json: '../out/conservative/Sacred-Geometry.json',
+                        renderer: 'svg',
+                        lottieSize: '2.2 KB',
+                        jsonSize: '18.1 KB'
+                    },
+                    { 
+                        name: 'Transparent Diamond', 
+                        lottie: '/animations/lottie/transparent-diamond-dark.lottie',
+                        json: '../out/conservative/transparent-diamond-dark.json',
+                        renderer: 'svg',
+                        lottieSize: '1.3 KB',
+                        jsonSize: '9.5 KB'
+                    },
+                    { 
+                        name: 'Circuit Round', 
+                        lottie: '/animations/lottie/circuit-round-ani.lottie',
+                        json: '../out/conservative/circuit-round-ani.json',
+                        renderer: 'svg',
+                        lottieSize: '3.9 KB',
+                        jsonSize: '99.1 KB'
+                    },
+                    { 
+                        name: 'Geometrical Lines', 
+                        lottie: '/animations/lottie/geometrical-lines.lottie',
+                        json: '../out/conservative/geometrical-lines.json',
+                        renderer: 'svg',
+                        lottieSize: '5.8 KB',
+                        jsonSize: '139.2 KB'
+                    },
+                    { 
+                        name: 'Circular Dots', 
+                        lottie: '/animations/lottie/circular-dots.lottie',
+                        json: '../out/conservative/circular-dots.json',
+                        renderer: 'canvas',
+                        lottieSize: '3.5 KB',
+                        jsonSize: '48.1 KB'
+                    }
+                ];
+
+                this.results = {
+                    lottie: {},
+                    json: {}
+                };
+
+                this.init();
+            }
+
+            init() {
+                this.createTestContainers();
+                this.setupEventListeners();
+                this.log('✅ Production test suite ready', 'success');
+            }
+
+            createTestContainers() {
+                const grid = document.getElementById('test-grid');
+                grid.innerHTML = '';
+
+                this.animations.forEach((anim, index) => {
+                    const container = document.createElement('div');
+                    container.className = 'animation-test';
+                    container.innerHTML = `
+                        <h3>${anim.name}</h3>
+                        <div class="animation-container" id="container-${index}"></div>
+                        <div class="metrics">
+                            <div><strong>Renderer:</strong> ${anim.renderer}</div>
+                            <div><strong>.lottie:</strong> ${anim.lottieSize}</div>
+                            <div><strong>.json:</strong> ${anim.jsonSize}</div>
+                            <div id="metrics-${index}">Ready for testing</div>
+                        </div>
+                    `;
+                    grid.appendChild(container);
+                });
+            }
+
+            setupEventListeners() {
+                document.getElementById('test-lottie').addEventListener('click', () => this.testLottieFiles());
+                document.getElementById('test-json').addEventListener('click', () => this.testJsonFiles());
+                document.getElementById('compare').addEventListener('click', () => this.compareFormats());
+                document.getElementById('test-visibility').addEventListener('click', () => this.testVisibility());
+                document.getElementById('export-results').addEventListener('click', () => this.exportResults());
+            }
+
+            async testLottieFiles() {
+                this.setStatus('🧪 Testing .lottie files...', 'info');
+                this.setActiveButton('test-lottie');
+                
+                for (let i = 0; i < this.animations.length; i++) {
+                    await this.testAnimation(i, 'lottie');
+                }
+                
+                this.setStatus('✅ .lottie testing complete', 'success');
+            }
+
+            async testJsonFiles() {
+                this.setStatus('🧪 Testing .json files...', 'info');
+                this.setActiveButton('test-json');
+                
+                for (let i = 0; i < this.animations.length; i++) {
+                    await this.testAnimation(i, 'json');
+                }
+                
+                this.setStatus('✅ .json testing complete', 'success');
+            }
+
+            async testAnimation(index, format) {
+                const anim = this.animations[index];
+                const container = document.getElementById(`container-${index}`);
+                const metrics = document.getElementById(`metrics-${index}`);
+                
+                container.innerHTML = '';
+                metrics.textContent = `Testing ${format}...`;
+                
+                const src = format === 'lottie' ? anim.lottie : anim.json;
+                
+                try {
+                    const result = await this.measurePerformance(container, src, anim.renderer, anim.name);
+                    this.results[format][anim.name] = result;
+                    
+                    metrics.innerHTML = `
+                        <div><strong>${format.toUpperCase()}:</strong></div>
+                        <div>Load: ${result.loadTime}ms</div>
+                        <div>FPS: ${result.avgFps}</div>
+                        <div>Memory: ${result.memoryUsed}MB</div>
+                    `;
+                    
+                    this.log(`✅ ${anim.name} (${format}): ${result.loadTime}ms load, ${result.avgFps} FPS`, 'success');
+                    
+                } catch (error) {
+                    metrics.textContent = `Error: ${error.message}`;
+                    this.log(`❌ ${anim.name} (${format}): ${error.message}`, 'error');
+                }
+                
+                await this.sleep(500);
+            }
+
+            async measurePerformance(container, src, renderer, name) {
+                const startTime = performance.now();
+                const startMemory = performance.memory ? performance.memory.usedJSHeapSize : 0;
+                
+                return new Promise((resolve, reject) => {
+                    const player = document.createElement('lottie-player');
+                    player.setAttribute('src', src);
+                    player.setAttribute('background', 'transparent');
+                    player.setAttribute('speed', '1');
+                    player.setAttribute('loop', '');
+                    player.setAttribute('autoplay', '');
+                    player.setAttribute('renderer', renderer);
+                    player.style.width = '100%';
+                    player.style.height = '100%';
+                    
+                    let loadTime = 0;
+                    let frameCount = 0;
+                    let fpsSum = 0;
+                    let lastFrameTime = startTime;
+                    
+                    const timeout = setTimeout(() => {
+                        reject(new Error('Timeout loading animation'));
+                    }, 10000);
+                    
+                    player.addEventListener('ready', () => {
+                        loadTime = performance.now() - startTime;
+                        
+                        // Measure FPS over a short period
+                        const measureFPS = () => {
+                            const currentTime = performance.now();
+                            const deltaTime = currentTime - lastFrameTime;
+                            
+                            if (deltaTime > 0) {
+                                const fps = 1000 / deltaTime;
+                                fpsSum += fps;
+                                frameCount++;
+                            }
+                            
+                            lastFrameTime = currentTime;
+                            
+                            if (frameCount < 30) {
+                                requestAnimationFrame(measureFPS);
+                            } else {
+                                const endMemory = performance.memory ? performance.memory.usedJSHeapSize : 0;
+                                const avgFps = Math.round(fpsSum / frameCount);
+                                const memoryUsed = Math.round((endMemory - startMemory) / 1024 / 1024 * 100) / 100;
+                                
+                                clearTimeout(timeout);
+                                resolve({
+                                    loadTime: Math.round(loadTime),
+                                    avgFps,
+                                    memoryUsed
+                                });
+                            }
+                        };
+                        
+                        requestAnimationFrame(measureFPS);
+                    });
+                    
+                    player.addEventListener('error', (e) => {
+                        clearTimeout(timeout);
+                        reject(new Error('Failed to load animation'));
+                    });
+                    
+                    container.appendChild(player);
+                });
+            }
+
+            compareFormats() {
+                if (Object.keys(this.results.lottie).length === 0 || Object.keys(this.results.json).length === 0) {
+                    this.setStatus('⚠️ Please test both formats first', 'warning');
+                    return;
+                }
+
+                this.setStatus('📊 Generating comparison...', 'info');
+                const resultsDiv = document.getElementById('results');
+                const tbody = document.getElementById('comparison-tbody');
+                
+                tbody.innerHTML = '';
+                
+                let lottieWins = 0;
+                let jsonWins = 0;
+                
+                this.animations.forEach(anim => {
+                    const lottieResult = this.results.lottie[anim.name];
+                    const jsonResult = this.results.json[anim.name];
+                    
+                    if (!lottieResult || !jsonResult) return;
+                    
+                    // Determine winner based on load time and FPS
+                    const lottieScore = (1000 / lottieResult.loadTime) + (lottieResult.avgFps / 60);
+                    const jsonScore = (1000 / jsonResult.loadTime) + (jsonResult.avgFps / 60);
+                    
+                    const winner = lottieScore > jsonScore ? '.lottie' : '.json';
+                    if (winner === '.lottie') lottieWins++;
+                    else jsonWins++;
+                    
+                    const row = tbody.insertRow();
+                    row.innerHTML = `
+                        <td>${anim.name}</td>
+                        <td>${lottieResult.loadTime}</td>
+                        <td>${lottieResult.avgFps}</td>
+                        <td>${jsonResult.loadTime}</td>
+                        <td>${jsonResult.avgFps}</td>
+                        <td><strong>${winner}</strong></td>
+                        <td>${anim.lottieSize} vs ${anim.jsonSize}</td>
+                    `;
+                });
+                
+                resultsDiv.style.display = 'block';
+                
+                this.log(`📊 Comparison complete: .lottie wins ${lottieWins}, .json wins ${jsonWins}`, 'perf');
+                this.setStatus(`✅ Comparison complete: .lottie format wins ${lottieWins}/${lottieWins + jsonWins} tests`, 'success');
+            }
+
+            async testVisibility() {
+                this.setStatus('👁️ Testing visibility behavior...', 'info');
+                
+                // Create a test animation outside viewport
+                const testContainer = document.createElement('div');
+                testContainer.style.position = 'fixed';
+                testContainer.style.top = '-1000px';
+                testContainer.style.left = '-1000px';
+                testContainer.style.width = '200px';
+                testContainer.style.height = '200px';
+                
+                const player = document.createElement('lottie-player');
+                player.setAttribute('src', '/animations/lottie/planet-ring.lottie');
+                player.setAttribute('background', 'transparent');
+                player.setAttribute('loop', '');
+                player.setAttribute('autoplay', '');
+                
+                testContainer.appendChild(player);
+                document.body.appendChild(testContainer);
+                
+                // Test intersection observer
+                const observer = new IntersectionObserver((entries) => {
+                    entries.forEach(entry => {
+                        const player = entry.target;
+                        if (entry.isIntersecting) {
+                            if (player.paused) {
+                                player.play();
+                                this.log('👁️ Animation visible, playing', 'info');
+                            }
+                        } else {
+                            if (!player.paused) {
+                                player.pause();
+                                this.log('🙈 Animation hidden, pausing', 'info');
+                            }
+                        }
+                    });
+                }, { threshold: 0.1 });
+                
+                observer.observe(player);
+                
+                // Move into view
+                await this.sleep(1000);
+                testContainer.style.position = 'static';
+                testContainer.style.top = 'auto';
+                testContainer.style.left = 'auto';
+                
+                await this.sleep(2000);
+                
+                // Move out of view
+                testContainer.style.position = 'fixed';
+                testContainer.style.top = '-1000px';
+                testContainer.style.left = '-1000px';
+                
+                await this.sleep(1000);
+                
+                // Cleanup
+                observer.disconnect();
+                testContainer.remove();
+                
+                this.setStatus('✅ Visibility test complete', 'success');
+                this.log('✅ Visibility behavior test completed', 'success');
+            }
+
+            exportResults() {
+                const data = {
+                    timestamp: new Date().toISOString(),
+                    userAgent: navigator.userAgent,
+                    results: this.results,
+                    animations: this.animations,
+                    summary: this.generateSummary()
+                };
+                
+                const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `production-lottie-test-${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.json`;
+                a.click();
+                URL.revokeObjectURL(url);
+                
+                this.log('📄 Results exported successfully', 'success');
+            }
+
+            generateSummary() {
+                const lottieKeys = Object.keys(this.results.lottie);
+                const jsonKeys = Object.keys(this.results.json);
+                
+                if (lottieKeys.length === 0 || jsonKeys.length === 0) return null;
+                
+                const avgLottieLoad = lottieKeys.reduce((sum, key) => sum + this.results.lottie[key].loadTime, 0) / lottieKeys.length;
+                const avgJsonLoad = jsonKeys.reduce((sum, key) => sum + this.results.json[key].loadTime, 0) / jsonKeys.length;
+                
+                const avgLottieFps = lottieKeys.reduce((sum, key) => sum + this.results.lottie[key].avgFps, 0) / lottieKeys.length;
+                const avgJsonFps = jsonKeys.reduce((sum, key) => sum + this.results.json[key].avgFps, 0) / jsonKeys.length;
+                
+                return {
+                    lottie: {
+                        avgLoadTime: Math.round(avgLottieLoad),
+                        avgFps: Math.round(avgLottieFps)
+                    },
+                    json: {
+                        avgLoadTime: Math.round(avgJsonLoad),
+                        avgFps: Math.round(avgJsonFps)
+                    },
+                    recommendation: avgLottieLoad < avgJsonLoad && avgLottieFps >= avgJsonFps ? 'lottie' : 'json'
+                };
+            }
+
+            setStatus(message, type) {
+                const status = document.getElementById('status');
+                status.textContent = message;
+                status.className = `status ${type}`;
+            }
+
+            setActiveButton(buttonId) {
+                document.querySelectorAll('.controls button').forEach(btn => {
+                    btn.classList.remove('active');
+                });
+                document.getElementById(buttonId).classList.add('active');
+            }
+
+            log(message, type = 'info') {
+                const log = document.getElementById('performance-log');
+                const entry = document.createElement('div');
+                entry.className = `log-entry ${type}`;
+                entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+                log.appendChild(entry);
+                log.scrollTop = log.scrollHeight;
+            }
+
+            sleep(ms) {
+                return new Promise(resolve => setTimeout(resolve, ms));
+            }
+        }
+
+        // Initialize when page loads
+        window.addEventListener('load', () => {
+            window.productionTest = new ProductionLottieTest();
+        });
+    </script>
+</body>
+</html>

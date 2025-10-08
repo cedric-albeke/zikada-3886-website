@@ -1,3 +1,5 @@
+import * as THREE from 'three';
+
 /**
  * WebGL Optimizer - GPU Rendering Optimization
  * 

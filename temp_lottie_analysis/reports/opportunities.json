@@ -1,0 +1,528 @@
+{
+  "timestamp": "2025-10-07T22:50:40.154Z",
+  "summary": {
+    "totalFiles": 10,
+    "quickWins": 27,
+    "structuralRefactors": 1,
+    "estimatedSavings": {
+      "minPercent": 22.277266336779544,
+      "maxPercent": 23.663567323985163,
+      "targetFiles": [
+        {
+          "file": "Abstraction.json",
+          "savings": {
+            "min": 24,
+            "max": 24
+          }
+        },
+        {
+          "file": "Impossible-Hexagon-black.json",
+          "savings": {
+            "min": 24,
+            "max": 24
+          }
+        },
+        {
+          "file": "Morphing-Particle-Loader.json",
+          "savings": {
+            "min": 35,
+            "max": 35
+          }
+        },
+        {
+          "file": "Planet-Logo.json",
+          "savings": {
+            "min": 24,
+            "max": 24
+          }
+        },
+        {
+          "file": "Sacred-Geometry.json",
+          "savings": {
+            "min": 17,
+            "max": 17
+          }
+        },
+        {
+          "file": "circuit-round-ani.json",
+          "savings": {
+            "min": 24.5,
+            "max": 32
+          }
+        },
+        {
+          "file": "circular-dots.json",
+          "savings": {
+            "min": 24,
+            "max": 24
+          }
+        },
+        {
+          "file": "geometrical-lines.json",
+          "savings": {
+            "min": 24,
+            "max": 24
+          }
+        },
+        {
+          "file": "planet-ring.json",
+          "savings": {
+            "min": 24,
+            "max": 24
+          }
+        },
+        {
+          "file": "transparent-diamond-dark.json",
+          "savings": {
+            "min": 17,
+            "max": 17
+          }
+        }
+      ]
+    }
+  },
+  "files": [
+    {
+      "filename": "Abstraction.json",
+      "currentSize": 169103,
+      "quickWins": [
+        {
+          "type": "precision_rounding",
+          "description": "Round numeric values to 3 decimal places",
+          "estimatedSavings": {
+            "min": 8,
+            "max": 15
+          },
+          "effort": "LOW",
+          "risk": "NONE"
+        },
+        {
+          "type": "metadata_pruning",
+          "description": "Remove names (nm), markers, and unused metadata",
+          "estimatedSavings": {
+            "min": 3,
+            "max": 8
+          },
+          "effort": "LOW",
+          "risk": "NONE"
+        },
+        {
+          "type": "keyframe_deduplication",
+          "description": "Remove identical consecutive keyframes",
+          "estimatedSavings": {
+            "min": 2,
+            "max": 12
+          },
+          "effort": "LOW",
+          "risk": "NONE"
+        }
+      ],
+      "structuralRefactors": [],
+      "rendererOptimization": {
+        "current": "unknown",
+        "recommended": "canvas",
+        "reason": "Good performance for shapes and paths"
+      },
+      "totalEstimatedSavings": {
+        "min": 24,
+        "max": 24
+      }
+    },
+    {
+      "filename": "circuit-round-ani.json",
+      "currentSize": 120430,
+      "quickWins": [
+        {
+          "type": "precision_rounding",
+          "description": "Round numeric values to 3 decimal places",
+          "estimatedSavings": {
+            "min": 8,
+            "max": 15
+          },
+          "effort": "LOW",
+          "risk": "NONE"
+        },
+        {
+          "type": "metadata_pruning",
+          "description": "Remove names (nm), markers, and unused metadata",
+          "estimatedSavings": {
+            "min": 3,
+            "max": 8
+          },
+          "effort": "LOW",
+          "risk": "NONE"
+        }
+      ],
+      "structuralRefactors": [
+        {
+          "type": "trim_path_optimization",
+          "description": "Consolidate or bake trim path operations",
+          "estimatedSavings": {
+            "min": 8,
+            "max": 25
+          },
+          "effort": "MEDIUM",
+          "risk": "MEDIUM",
+          "requiresReexport": true
+        }
+      ],
+      "rendererOptimization": {
+        "current": "unknown",
+        "recommended": "canvas",
+        "reason": "Good performance for shapes and paths"
+      },
+      "totalEstimatedSavings": {
+        "min": 24.5,
+        "max": 32
+      }
+    },
+    {
+      "filename": "geometrical-lines.json",
+      "currentSize": 145607,
+      "quickWins": [
+        {
+          "type": "precision_rounding",
+          "description": "Round numeric values to 3 decimal places",
+          "estimatedSavings": {
+            "min": 8,
+            "max": 15
+          },
+          "effort": "LOW",
+          "risk": "NONE"
+        },
+        {
+          "type": "metadata_pruning",
+          "description": "Remove names (nm), markers, and unused metadata",
+          "estimatedSavings": {
+            "min": 3,
+            "max": 8
+          },
+          "effort": "LOW",
+          "risk": "NONE"
+        },
+        {
+          "type": "keyframe_deduplication",
+          "description": "Remove identical consecutive keyframes",
+          "estimatedSavings": {
+            "min": 2,
+            "max": 12
+          },
+          "effort": "LOW",
+          "risk": "NONE"
+        }
+      ],
+      "structuralRefactors": [],
+      "rendererOptimization": {
+        "current": "unknown",
+        "recommended": "canvas",
+        "reason": "Good performance for shapes and paths"
+      },
+      "totalEstimatedSavings": {
+        "min": 24,
+        "max": 24
+      }
+    },
+    {
+      "filename": "circular-dots.json",
+      "currentSize": 53072,
+      "quickWins": [
+        {
+          "type": "precision_rounding",
+          "description": "Round numeric values to 3 decimal places",
+          "estimatedSavings": {
+            "min": 8,
+            "max": 15
+          },
+          "effort": "LOW",
+          "risk": "NONE"
+        },
+        {
+          "type": "metadata_pruning",
+          "description": "Remove names (nm), markers, and unused metadata",
+          "estimatedSavings": {
+            "min": 3,
+            "max": 8
+          },
+          "effort": "LOW",
+          "risk": "NONE"
+        },
+        {
+          "type": "keyframe_deduplication",
+          "description": "Remove identical consecutive keyframes",
+          "estimatedSavings": {
+            "min": 2,
+            "max": 12
+          },
+          "effort": "LOW",
+          "risk": "NONE"
+        }
+      ],
+      "structuralRefactors": [],
+      "rendererOptimization": {
+        "current": "unknown",
+        "recommended": "canvas",
+        "reason": "Good performance for shapes and paths"
+      },
+      "totalEstimatedSavings": {
+        "min": 24,
+        "max": 24
+      }
+    },
+    {
+      "filename": "Impossible-Hexagon-black.json",
+      "currentSize": 34211,
+      "quickWins": [
+        {
+          "type": "precision_rounding",
+          "description": "Round numeric values to 3 decimal places",
+          "estimatedSavings": {
+            "min": 8,
+            "max": 15
+          },
+          "effort": "LOW",
+          "risk": "NONE"
+        },
+        {
+          "type": "metadata_pruning",
+          "description": "Remove names (nm), markers, and unused metadata",
+          "estimatedSavings": {
+            "min": 3,
+            "max": 8
+          },
+          "effort": "LOW",
+          "risk": "NONE"
+        },
+        {
+          "type": "keyframe_deduplication",
+          "description": "Remove identical consecutive keyframes",
+          "estimatedSavings": {
+            "min": 2,
+            "max": 12
+          },
+          "effort": "LOW",
+          "risk": "NONE"
+        }
+      ],
+      "structuralRefactors": [],
+      "rendererOptimization": {
+        "current": "unknown",
+        "recommended": "canvas",
+        "reason": "Good performance for shapes and paths"
+      },
+      "totalEstimatedSavings": {
+        "min": 24,
+        "max": 24
+      }
+    },
+    {
+      "filename": "Planet-Logo.json",
+      "currentSize": 26803,
+      "quickWins": [
+        {
+          "type": "precision_rounding",
+          "description": "Round numeric values to 3 decimal places",
+          "estimatedSavings": {
+            "min": 8,
+            "max": 15
+          },
+          "effort": "LOW",
+          "risk": "NONE"
+        },
+        {
+          "type": "metadata_pruning",
+          "description": "Remove names (nm), markers, and unused metadata",
+          "estimatedSavings": {
+            "min": 3,
+            "max": 8
+          },
+          "effort": "LOW",
+          "risk": "NONE"
+        },
+        {
+          "type": "keyframe_deduplication",
+          "description": "Remove identical consecutive keyframes",
+          "estimatedSavings": {
+            "min": 2,
+            "max": 12
+          },
+          "effort": "LOW",
+          "risk": "NONE"
+        }
+      ],
+      "structuralRefactors": [],
+      "rendererOptimization": {
+        "current": "unknown",
+        "recommended": "svg",
+        "reason": "Complex masking better with SVG"
+      },
+      "totalEstimatedSavings": {
+        "min": 24,
+        "max": 24
+      }
+    },
+    {
+      "filename": "planet-ring.json",
+      "currentSize": 17573,
+      "quickWins": [
+        {
+          "type": "precision_rounding",
+          "description": "Round numeric values to 3 decimal places",
+          "estimatedSavings": {
+            "min": 8,
+            "max": 15
+          },
+          "effort": "LOW",
+          "risk": "NONE"
+        },
+        {
+          "type": "metadata_pruning",
+          "description": "Remove names (nm), markers, and unused metadata",
+          "estimatedSavings": {
+            "min": 3,
+            "max": 8
+          },
+          "effort": "LOW",
+          "risk": "NONE"
+        },
+        {
+          "type": "keyframe_deduplication",
+          "description": "Remove identical consecutive keyframes",
+          "estimatedSavings": {
+            "min": 2,
+            "max": 12
+          },
+          "effort": "LOW",
+          "risk": "NONE"
+        }
+      ],
+      "structuralRefactors": [],
+      "rendererOptimization": {
+        "current": "unknown",
+        "recommended": "canvas",
+        "reason": "Good performance for shapes and paths"
+      },
+      "totalEstimatedSavings": {
+        "min": 24,
+        "max": 24
+      }
+    },
+    {
+      "filename": "Sacred-Geometry.json",
+      "currentSize": 21286,
+      "quickWins": [
+        {
+          "type": "precision_rounding",
+          "description": "Round numeric values to 3 decimal places",
+          "estimatedSavings": {
+            "min": 8,
+            "max": 15
+          },
+          "effort": "LOW",
+          "risk": "NONE"
+        },
+        {
+          "type": "metadata_pruning",
+          "description": "Remove names (nm), markers, and unused metadata",
+          "estimatedSavings": {
+            "min": 3,
+            "max": 8
+          },
+          "effort": "LOW",
+          "risk": "NONE"
+        }
+      ],
+      "structuralRefactors": [],
+      "rendererOptimization": {
+        "current": "unknown",
+        "recommended": "canvas",
+        "reason": "Good performance for shapes and paths"
+      },
+      "totalEstimatedSavings": {
+        "min": 17,
+        "max": 17
+      }
+    },
+    {
+      "filename": "Morphing-Particle-Loader.json",
+      "currentSize": 8547,
+      "quickWins": [
+        {
+          "type": "precision_rounding",
+          "description": "Round numeric values to 3 decimal places",
+          "estimatedSavings": {
+            "min": 8,
+            "max": 15
+          },
+          "effort": "LOW",
+          "risk": "NONE"
+        },
+        {
+          "type": "metadata_pruning",
+          "description": "Remove names (nm), markers, and unused metadata",
+          "estimatedSavings": {
+            "min": 3,
+            "max": 8
+          },
+          "effort": "LOW",
+          "risk": "NONE"
+        },
+        {
+          "type": "frame_rate_optimization",
+          "description": "Reduce frame rate from 60fps to 30fps",
+          "estimatedSavings": {
+            "min": 10,
+            "max": 25
+          },
+          "effort": "LOW",
+          "risk": "LOW"
+        }
+      ],
+      "structuralRefactors": [],
+      "rendererOptimization": {
+        "current": "unknown",
+        "recommended": "canvas",
+        "reason": "Good performance for shapes and paths"
+      },
+      "totalEstimatedSavings": {
+        "min": 35,
+        "max": 35
+      }
+    },
+    {
+      "filename": "transparent-diamond-dark.json",
+      "currentSize": 11179,
+      "quickWins": [
+        {
+          "type": "precision_rounding",
+          "description": "Round numeric values to 3 decimal places",
+          "estimatedSavings": {
+            "min": 8,
+            "max": 15
+          },
+          "effort": "LOW",
+          "risk": "NONE"
+        },
+        {
+          "type": "metadata_pruning",
+          "description": "Remove names (nm), markers, and unused metadata",
+          "estimatedSavings": {
+            "min": 3,
+            "max": 8
+          },
+          "effort": "LOW",
+          "risk": "NONE"
+        }
+      ],
+      "structuralRefactors": [],
+      "rendererOptimization": {
+        "current": "unknown",
+        "recommended": "canvas",
+        "reason": "Good performance for shapes and paths"
+      },
+      "totalEstimatedSavings": {
+        "min": 17,
+        "max": 17
+      }
+    }
+  ]
+}

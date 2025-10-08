@@ -1,0 +1,145 @@
+{
+  "timestamp": "2025-10-07T22:57:09.083Z",
+  "type": "conservative_optimization",
+  "summary": {
+    "totalFiles": 10,
+    "successful": 10,
+    "failed": 0,
+    "totalOriginalSize": "593.6 KB",
+    "totalOptimizedSize": "549.7 KB",
+    "totalSavings": "43.8 KB",
+    "totalSavingsPercent": "7.4",
+    "averageSavingsPercent": "8.6"
+  },
+  "results": [
+    {
+      "filename": "Abstraction.json",
+      "status": "success",
+      "originalSize": 169103,
+      "optimizedSize": 162340,
+      "savings": 6763,
+      "savingsPercent": "4.0",
+      "optimizations": [
+        "Removed non-essential metadata fields",
+        "Optimized consecutive identical keyframes"
+      ],
+      "errors": []
+    },
+    {
+      "filename": "Impossible-Hexagon-black.json",
+      "status": "success",
+      "originalSize": 34211,
+      "optimizedSize": 30953,
+      "savings": 3258,
+      "savingsPercent": "9.5",
+      "optimizations": [
+        "Rounded numeric precision to 3 decimals",
+        "Removed non-essential metadata fields"
+      ],
+      "errors": []
+    },
+    {
+      "filename": "Morphing-Particle-Loader.json",
+      "status": "success",
+      "originalSize": 8547,
+      "optimizedSize": 8447,
+      "savings": 100,
+      "savingsPercent": "1.2",
+      "optimizations": [
+        "Removed non-essential metadata fields"
+      ],
+      "errors": []
+    },
+    {
+      "filename": "Planet-Logo.json",
+      "status": "success",
+      "originalSize": 26803,
+      "optimizedSize": 23223,
+      "savings": 3580,
+      "savingsPercent": "13.4",
+      "optimizations": [
+        "Rounded numeric precision to 3 decimals",
+        "Removed non-essential metadata fields",
+        "Optimized consecutive identical keyframes"
+      ],
+      "errors": []
+    },
+    {
+      "filename": "Sacred-Geometry.json",
+      "status": "success",
+      "originalSize": 21286,
+      "optimizedSize": 18526,
+      "savings": 2760,
+      "savingsPercent": "13.0",
+      "optimizations": [
+        "Rounded numeric precision to 3 decimals",
+        "Removed non-essential metadata fields"
+      ],
+      "errors": []
+    },
+    {
+      "filename": "circuit-round-ani.json",
+      "status": "success",
+      "originalSize": 120430,
+      "optimizedSize": 101517,
+      "savings": 18913,
+      "savingsPercent": "15.7",
+      "optimizations": [
+        "Rounded numeric precision to 3 decimals",
+        "Removed non-essential metadata fields"
+      ],
+      "errors": []
+    },
+    {
+      "filename": "circular-dots.json",
+      "status": "success",
+      "originalSize": 53072,
+      "optimizedSize": 49270,
+      "savings": 3802,
+      "savingsPercent": "7.2",
+      "optimizations": [
+        "Rounded numeric precision to 3 decimals",
+        "Removed non-essential metadata fields"
+      ],
+      "errors": []
+    },
+    {
+      "filename": "geometrical-lines.json",
+      "status": "success",
+      "originalSize": 145607,
+      "optimizedSize": 142567,
+      "savings": 3040,
+      "savingsPercent": "2.1",
+      "optimizations": [
+        "Rounded numeric precision to 3 decimals",
+        "Removed non-essential metadata fields"
+      ],
+      "errors": []
+    },
+    {
+      "filename": "planet-ring.json",
+      "status": "success",
+      "originalSize": 17573,
+      "optimizedSize": 16351,
+      "savings": 1222,
+      "savingsPercent": "7.0",
+      "optimizations": [
+        "Removed non-essential metadata fields"
+      ],
+      "errors": []
+    },
+    {
+      "filename": "transparent-diamond-dark.json",
+      "status": "success",
+      "originalSize": 11179,
+      "optimizedSize": 9749,
+      "savings": 1430,
+      "savingsPercent": "12.8",
+      "optimizations": [
+        "Rounded numeric precision to 3 decimals",
+        "Removed non-essential metadata fields"
+      ],
+      "errors": []
+    }
+  ]
+}

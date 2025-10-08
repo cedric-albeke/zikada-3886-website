@@ -40,6 +40,7 @@ import gsap from 'gsap';
     return {
       timestamp: new Date().toISOString(),
       fps: getFPS(),
+      scene: window.vjReceiver?.currentSettings?.scene ?? 'unknown',
       domNodes,
       managedElements,
       intervals,

@@ -1,0 +1,95 @@
+{
+  "baseline": {
+    "metadata": {
+      "file": "artifacts/baseline/perf-20251007-221442.jsonl",
+      "dataPoints": 120,
+      "duration": 121,
+      "timestamp": "2025-10-07T20:16:59.298Z"
+    },
+    "fps": {
+      "count": 120,
+      "min": 6,
+      "max": 60,
+      "mean": 18.29,
+      "stdDev": 8.92,
+      "p50": 16,
+      "p95": 24,
+      "p99": 60,
+      "stability": "fair",
+      "coefficientOfVariation": 0.49,
+      "droppedFramePercent": 95.83,
+      "belowThreshold": 115,
+      "assessment": "poor"
+    },
+    "memory": {
+      "count": 120,
+      "min": 18.41,
+      "max": 18.41,
+      "mean": 18.41,
+      "stdDev": 0,
+      "growthRateMBPerHour": 0,
+      "projected24hGrowthMB": 0,
+      "assessment": "excellent"
+    },
+    "dom": {
+      "count": 120,
+      "min": 143,
+      "max": 318,
+      "mean": 213.74,
+      "stdDev": 39.26,
+      "initialNodes": 167,
+      "finalNodes": 171,
+      "totalGrowth": 4,
+      "growthPercent": 2.4,
+      "assessment": "excellent"
+    },
+    "effects": {
+      "overlays": {
+        "count": 120,
+        "min": 0,
+        "max": 1,
+        "mean": 0.93,
+        "stdDev": 0.25
+      },
+      "controlFx": {
+        "count": 120,
+        "min": 0,
+        "max": 6,
+        "mean": 5.6,
+        "stdDev": 1.5
+      }
+    },
+    "performance": {
+      "score": 60,
+      "rating": "fair",
+      "issues": [
+        "FPS critically low (< 30)"
+      ],
+      "summary": "1 issue(s) found"
+    }
+  },
+  "generated": "2025-10-07T20:16:59.298Z",
+  "summary": {
+    "fps": {
+      "mean": 18.29,
+      "p95": 24,
+      "assessment": "poor"
+    },
+    "memory": {
+      "growthRateMBPerHour": 0,
+      "projected24hGrowthMB": 0,
+      "assessment": "excellent"
+    },
+    "dom": {
+      "totalGrowth": 4,
+      "assessment": "excellent"
+    },
+    "performance": {
+      "score": 60,
+      "rating": "fair",
+      "issues": [
+        "FPS critically low (< 30)"
+      ]
+    }
+  }
+}

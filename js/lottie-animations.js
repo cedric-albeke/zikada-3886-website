@@ -19,6 +19,10 @@ class LottieAnimations {
         this.containers = {};
         this.isInitialized = false;
         this.activeIntervals = []; // Track managed interval handles for cleanup
+        // Track fade/display timers and visibility per animation to prevent overlaps
+        this.displayTimers = {};
+        this.fadeOutTimers = {};
+        this.visibleStates = {};
 
         // Animation configurations - centered and full-width circular animations
         this.config = {
@@ -183,6 +187,11 @@ class LottieAnimations {
     }
 
     async init() {
+        // Prevent DOM bloat on re-initialization
+        if (this.isInitialized) {
+            console.warn('⚠️ LottieAnimations.init() called while already initialized — performing safe destroy to prevent DOM growth');
+            try { this.destroy(); } catch (_) {}
+        }
         console.log('🌟 Initializing Lottie animations...');
 
         try {
@@ -266,6 +275,8 @@ class LottieAnimations {
                 width: ${config.size};
                 height: ${config.size};
                 border-radius: 50%;
+                will-change: opacity, transform;
+                backface-visibility: hidden;
                 overflow: hidden;
             `;
 
@@ -487,6 +498,62 @@ class LottieAnimations {
         });
     }
 
+    // Compute per-animation fade durations with sensible defaults
+    getFadeDurations(name) {
+        const defaults = { fadeInMs: 1000, fadeOutMs: 1200 };
+        switch (name) {
+            case 'planetLogo':
+                return { fadeInMs: 1200, fadeOutMs: 1400 };
+            case 'circuitRound':
+                return { fadeInMs: 900, fadeOutMs: 1100 };
+            case 'planetRing':
+                return { fadeInMs: 1000, fadeOutMs: 1200 };
+            default:
+                return defaults;
+        }
+    }
+
+    // Fade in utility with timer coordination
+    fadeInAnimation(name, targetOpacity, durationMs) {
+        const player = this.animations[name];
+        if (!player || !player.parentElement) return;
+        const wrapper = player.parentElement;
+
+        // Cancel any pending fade-out to avoid fighting transitions
+        if (this.fadeOutTimers[name]) {
+            clearTimeout(this.fadeOutTimers[name]);
+            this.fadeOutTimers[name] = null;
+        }
+
+        wrapper.style.transition = `opacity ${durationMs}ms ease-in-out, filter ${Math.max(600, durationMs)}ms ease-in-out`;
+        wrapper.style.opacity = String(targetOpacity);
+
+        // Subtle enhancement for planetLogo as before
+        if (name === 'planetLogo') {
+            wrapper.style.filter = 'saturate(1.2) brightness(1.05) contrast(1.05) drop-shadow(0 0 15px rgba(0, 255, 200, 0.15))';
+        }
+
+        this.visibleStates[name] = true;
+    }
+
+    // Fade out utility; stops playback after the fade completes and emits end event
+    fadeOutAnimation(name, durationMs) {
+        const player = this.animations[name];
+        if (!player || !player.parentElement) return;
+        const wrapper = player.parentElement;
+
+        wrapper.style.transition = `opacity ${durationMs}ms ease-in-out, filter ${Math.max(600, durationMs)}ms ease-in-out`;
+        wrapper.style.opacity = '0';
+        wrapper.style.filter = 'none';
+
+        // Delay stopping playback until after fade completes
+        this.fadeOutTimers[name] = setTimeout(() => {
+            try { if (player.stop) player.stop(); } catch (e) { /* no-op */ }
+            this.visibleStates[name] = false;
+            window.dispatchEvent(new CustomEvent('lottieAnimationEnd', { detail: { name } }));
+        }, durationMs + 50);
+    }
+
     startAnimationCycles() {
         console.log('🎬 Starting Lottie animation cycles');
 
@@ -603,36 +670,35 @@ class LottieAnimations {
     }
 
     showAnimation(name) {
-        const animation = this.animations[name];
+        const player = this.animations[name];
         const config = this.config[name];
-        if (!animation || !animation.parentElement) return;
+        if (!player || !player.parentElement) return;
 
-        const wrapper = animation.parentElement;
+        const wrapper = player.parentElement;
 
-        // Dispatch event for logo animations to react
-        window.dispatchEvent(new CustomEvent('lottieAnimationStart', {
-            detail: { name: name }
-        }));
+        // Notify other systems (e.g., direct-logo-animation)
+        window.dispatchEvent(new CustomEvent('lottieAnimationStart', { detail: { name } }));
 
-        // Fade in with smoother transitions
-        wrapper.style.transition = 'opacity 2s ease-in-out, filter 2s ease-in-out';
-        wrapper.style.opacity = config.opacity.toString();
+        // Determine fade timings
+        const { fadeInMs, fadeOutMs } = this.getFadeDurations(name);
 
-        // Special enhancement for planet-logo
-        if (name === 'planetLogo') {
-            // Very subtle enhancement with minimal glow
-            wrapper.style.filter = 'saturate(1.2) brightness(1.05) contrast(1.05) drop-shadow(0 0 15px rgba(0, 255, 200, 0.15))';
+        // Cancel any pending fade-out or display timers to avoid overlaps
+        if (this.fadeOutTimers[name]) {
+            clearTimeout(this.fadeOutTimers[name]);
+            this.fadeOutTimers[name] = null;
+        }
+        if (this.displayTimers[name]) {
+            clearTimeout(this.displayTimers[name]);
+            this.displayTimers[name] = null;
         }
 
-        animation.play();
+        // Fade in and start playback
+        this.fadeInAnimation(name, config.opacity, fadeInMs);
+        try { if (player.play) player.play(); } catch (e) { /* no-op */ }
 
-        // Fade out after display duration
-        setTimeout(() => {
-            wrapper.style.opacity = '0';
-            wrapper.style.filter = 'none';
-            setTimeout(() => {
-                animation.stop();
-            }, 500);
+        // Schedule fade out after the configured display duration
+        this.displayTimers[name] = setTimeout(() => {
+            this.fadeOutAnimation(name, fadeOutMs);
         }, config.displayDuration);
     }
 

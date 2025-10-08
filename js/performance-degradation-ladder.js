@@ -34,24 +34,24 @@ class PerformanceDegradationLadder {
         this.minFPSSamples = 30; // Minimum samples before state decisions
         
         // Hysteresis and Timing
-        this.hysteresisDelay = 15000; // 15s delay before recovery
+        this.hysteresisDelay = 8000; // 8s delay before recovery (less strict)
         this.degradationDelay = 3000; // 3s confirmation before degradation
         this.lastDegradationCheck = 0;
         this.recoveryTimer = null;
         this.isInRecoveryWindow = false;
         
-        // State Configuration
+        // State Configuration (relaxed)
         this.stateThresholds = {
-            S0: { minFPS: 75, maxFPS: Infinity },  // Full quality
-            S1: { minFPS: 60, maxFPS: 75 },       // Reduce post-processing
-            S2: { minFPS: 45, maxFPS: 60 },       // Fewer particles
-            S3: { minFPS: 30, maxFPS: 45 },       // Lower pixel ratio
-            S4: { minFPS: 20, maxFPS: 30 },       // No shadows
-            S5: { minFPS: 0, maxFPS: 20 }         // Minimal mode
+            S0: { minFPS: 60, maxFPS: Infinity },  // Full quality at >= 60 FPS
+            S1: { minFPS: 45, maxFPS: 60 },        // Reduce post-processing
+            S2: { minFPS: 35, maxFPS: 45 },        // Fewer particles
+            S3: { minFPS: 25, maxFPS: 35 },        // Lower pixel ratio
+            S4: { minFPS: 15, maxFPS: 25 },        // No shadows
+            S5: { minFPS: 0, maxFPS: 15 }          // Minimal mode
         };
         
-        this.recoveryThreshold = 95; // FPS needed for recovery
-        this.degradationBuffer = 5; // FPS buffer to prevent oscillation
+        this.recoveryThreshold = 70; // FPS needed for recovery (lowered)
+        this.degradationBuffer = 10; // Larger buffer to reduce oscillation
         
         // State Implementations
         this.stateImplementations = new Map();

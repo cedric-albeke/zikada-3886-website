@@ -116,9 +116,9 @@ class PerformanceInspector {
     identifyIssues() {
         const issues = [];
         
-        // Check DOM element count
+        // Check DOM element count (relaxed)
         const domCount = document.querySelectorAll('*').length;
-        if (domCount > 1000) {
+        if (domCount > 3000) {
             issues.push(`High DOM count: ${domCount}`);
         }
         
@@ -138,7 +138,7 @@ class PerformanceInspector {
         }
         
         // Check memory usage
-        if (performance.memory && performance.memory.usedJSHeapSize > 100 * 1024 * 1024) {
+        if (performance.memory && performance.memory.usedJSHeapSize > 500 * 1024 * 1024) {
             issues.push(`High memory: ${this.formatBytes(performance.memory.usedJSHeapSize)}`);
         }
         

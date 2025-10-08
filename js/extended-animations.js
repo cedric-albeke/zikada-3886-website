@@ -1,14 +1,52 @@
 import gsap from 'gsap';
 import matrixConfig from './matrix-config.js';
+import { register as registerEffect, enforceBudget } from './runtime/effects/EffectManager.js';
+import { createNodePool } from './runtime/dom/NodePool.js';
 
 class ExtendedAnimations {
     constructor() {
         this.isRunning = false;
         this.currentEffect = null;
+        this.container = null;
+        this._effectHandle = null;
+        this._budgetDisposer = null;
+        
+        // Rate limiting to prevent DOM growth
+        this.lastEffectTime = {};
+        this.minEffectInterval = 2000; // Min 2 seconds between same effect
+    }
+
+    _installPools() {
+        // Placeholder for future pooling of repeaters
+    }
+    
+    _canRunEffect(effectName) {
+        const now = Date.now();
+        const lastRun = this.lastEffectTime[effectName] || 0;
+        
+        if (now - lastRun < this.minEffectInterval) {
+            return false; // Too soon
+        }
+        
+        this.lastEffectTime[effectName] = now;
+        return true;
     }
 
     init() {
         this.isRunning = true;
+        // Create a single container for extended effects
+        this.container = document.querySelector('.extended-effects-root');
+        if (!this.container) {
+            this.container = document.createElement('div');
+            this.container.className = 'extended-effects-root';
+            this.container.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:80;';
+            document.body.appendChild(this.container);
+        }
+        // Budget guard: warn if > 800 nodes under container
+        this._budgetDisposer = enforceBudget(this.container, 800, ({count,maxNodes}) => {
+            console.warn(`ExtendedEffects: node budget exceeded (${count}/${maxNodes}), skipping effect run.`);
+        });
+        this._installPools();
         this.startExtendedSequence();
         this.addDynamicBackgroundEffects();
         this.add80sRetroEffects();
@@ -19,7 +57,6 @@ class ExtendedAnimations {
             () => this.vhsScanlineGlitch(),
             () => this.dataCorruption(),
             () => this.neonCityLights(),
-            // Removed glitchArtEffect - creates random rectangles
             () => this.cyberPunkNoise(),
             () => this.matrixRainVariation(),
             () => this.analogTVDistortion(),
@@ -31,24 +68,17 @@ class ExtendedAnimations {
             () => this.dataMoshing(),
             () => this.quantumFlicker()
         ];
-
-        this.runRandomEffect = () => {
-            if (!this.isRunning) {
-                // Auto-restart if stopped
-                console.log('🔄 Auto-restarting extended animations...');
-                this.isRunning = true;
-            }
-
-            if (Math.random() > 0.4) {
+        // Register a managed loop: every 8s try an effect 40% of the time
+        this._effectHandle = registerEffect(({ every }) => {
+            const stopEvery = every(8000, () => {
+                if (!this.isRunning) return;
+                if (this.container && this.container.querySelectorAll('*').length > 700) return; // soft clamp
+                if (Math.random() > 0.6) return; // 40% chance to run
                 const effect = effects[Math.floor(Math.random() * effects.length)];
-                effect();
-            }
-
-            // Keep animations running more frequently
-            setTimeout(() => this.runRandomEffect(), Math.random() * 6000 + 3000);
-        };
-
-        setTimeout(() => this.runRandomEffect(), 3000);
+                try { effect(); } catch (e) { /* ignore */ }
+            });
+            return () => { try { stopEvery(); } catch(_){} };
+        });
     }
 
     vhsScanlineGlitch() {
@@ -70,7 +100,7 @@ class ExtendedAnimations {
             z-index: 100;
             overflow: hidden;
         `;
-        document.body.appendChild(container);
+        (this.container || document.body).appendChild(container);
 
         // Multiple scan line tears - minimal count
         for (let i = 0; i < 2; i++) {  // Further reduced to 2
@@ -208,8 +238,11 @@ class ExtendedAnimations {
     }
 
     dataCorruption() {
-        // Create corrupted data blocks
-        const blocks = Math.floor(Math.random() * 20 + 15);
+        // Rate limit check
+        if (!this._canRunEffect('dataCorruption')) return;
+        
+        // Create corrupted data blocks (heavily reduced)
+        const blocks = Math.min(Math.floor(Math.random() * 3 + 2), 5); // Reduced from 10 to 5 max
 
         for (let i = 0; i < blocks; i++) {
             const block = document.createElement('div');
@@ -236,7 +269,7 @@ class ExtendedAnimations {
                 text-shadow: 0 0 10px currentColor;
                 mix-blend-mode: screen;
             `;
-            document.body.appendChild(block);
+            (this.container || document.body).appendChild(block);
 
             gsap.to(block, {
                 x: Math.random() * 200 - 100,
@@ -252,7 +285,7 @@ class ExtendedAnimations {
 
     neonCityLights() {
         // Create neon light streaks
-        for (let i = 0; i < 15; i++) {
+        for (let i = 0; i < 8; i++) {
             const light = document.createElement('div');
             const isVertical = Math.random() > 0.5;
 
@@ -306,7 +339,7 @@ class ExtendedAnimations {
                 });
             }
 
-            document.body.appendChild(light);
+        (this.container || document.body).appendChild(light);
         }
     }
 
@@ -376,7 +409,7 @@ class ExtendedAnimations {
             );
         }
 
-        document.body.appendChild(canvas);
+        (this.container || document.body).appendChild(canvas);
 
         gsap.to(canvas, {
             opacity: 0,
@@ -414,7 +447,7 @@ class ExtendedAnimations {
             );
             mix-blend-mode: screen;
         `;
-        document.body.appendChild(noise);
+        (this.container || document.body).appendChild(noise);
 
         gsap.to(noise, {
             opacity: 1,
@@ -431,8 +464,11 @@ class ExtendedAnimations {
     }
 
     matrixRainVariation() {
-        // Different style of matrix rain
-        const columns = Math.floor(window.innerWidth / 30);
+        // Rate limit check
+        if (!this._canRunEffect('matrixRainVariation')) return;
+        
+        // Different style of matrix rain (heavily reduced columns)
+        const columns = Math.min(Math.floor(window.innerWidth / 60), 12); // Reduced from 25 to 12 max, wider spacing
 
         for (let i = 0; i < columns; i++) {
             const drop = document.createElement('div');
@@ -483,7 +519,7 @@ class ExtendedAnimations {
                 rgba(0,0,0,0.1) 3px
             );
         `;
-        document.body.appendChild(distortion);
+        (this.container || document.body).appendChild(distortion);
 
         // Add rolling effect
         gsap.to(distortion, {
@@ -515,7 +551,7 @@ class ExtendedAnimations {
             opacity: 0;
             mix-blend-mode: screen;
         `;
-        document.body.appendChild(colorBars);
+        (this.container || document.body).appendChild(colorBars);
 
         gsap.to(colorBars, {
             opacity: 0.5,
@@ -539,7 +575,7 @@ class ExtendedAnimations {
             z-index: 70;
             perspective: 1000px;
         `;
-        document.body.appendChild(gridContainer);
+        (this.container || document.body).appendChild(gridContainer);
 
         // Horizontal lasers
         for (let i = 0; i < 5; i++) {
@@ -679,7 +715,7 @@ class ExtendedAnimations {
             opacity: 0;
             transform: scale(0);
         `;
-        document.body.appendChild(holo);
+        (this.container || document.body).appendChild(holo);
 
         gsap.to(holo, {
             scale: 1.5,  // Reduced from 2
@@ -712,7 +748,7 @@ class ExtendedAnimations {
             background: rgba(0,255,0,0.05);
             mix-blend-mode: screen;
         `;
-        document.body.appendChild(flicker);
+        (this.container || document.body).appendChild(flicker);
 
         // Reduced flicker intensity and slowed down
         const flickerSequence = [0.8, 0.6, 0.8, 0.7, 0.8];  // Less dramatic changes
@@ -727,7 +763,7 @@ class ExtendedAnimations {
 
     pixelSortGlitch() {
         // Pixel sorting effect
-        for (let i = 0; i < 10; i++) {
+        for (let i = 0; i < 4; i++) {
             const strip = document.createElement('div');
             const y = Math.random() * window.innerHeight;
             const height = Math.random() * 50 + 10;
@@ -747,7 +783,7 @@ class ExtendedAnimations {
                 mix-blend-mode: difference;
                 transform: translateX(0);
             `;
-            document.body.appendChild(strip);
+        (this.container || document.body).appendChild(strip);
 
             gsap.to(strip, {
                 x: Math.random() * 100 - 50,
@@ -842,7 +878,7 @@ class ExtendedAnimations {
             mix-blend-mode: screen;
             opacity: 0;
         `;
-        document.body.appendChild(wave);
+        (this.container || document.body).appendChild(wave);
 
         gsap.to(wave, {
             opacity: 0.3,
@@ -872,7 +908,7 @@ class ExtendedAnimations {
             transform: skewY(${Math.random() * 10 - 5}deg);
             opacity: 0;
         `;
-        document.body.appendChild(mosh);
+        (this.container || document.body).appendChild(mosh);
 
         gsap.to(mosh, {
             opacity: 0.6,
@@ -912,6 +948,12 @@ class ExtendedAnimations {
 
     destroy() {
         this.isRunning = false;
+        try { this._effectHandle?.stop?.(); } catch(_){}
+        try { this._budgetDisposer?.(); } catch(_){}
+        // Remove container contents but keep the root for reuse
+        if (this.container) {
+            try { this.container.querySelectorAll('*').forEach(n=>n.remove()); } catch(_){}
+        }
     }
 }
 

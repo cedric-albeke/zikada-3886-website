@@ -16,21 +16,27 @@ class PerformanceMonitoringIntegration {
     constructor() {
         this.thresholds = {
             fps: {
-                warning: 30,
-                critical: 15,
-                emergency: 10
+                warning: 24,
+                critical: 12,
+                emergency: 8
             },
             memory: {
-                warning: 100 * 1024 * 1024,  // 100MB
-                critical: 150 * 1024 * 1024, // 150MB
-                emergency: 200 * 1024 * 1024 // 200MB
+                warning: 500 * 1024 * 1024,  // 500MB
+                critical: 700 * 1024 * 1024, // 700MB
+                emergency: 900 * 1024 * 1024 // 900MB
             },
             domNodes: {
-                warning: 2000,
-                critical: 3000,
-                emergency: 4000
+                warning: 4000,
+                critical: 7000,
+                emergency: 10000
             }
         };
+
+        // Smoothing: require consecutive confirmations before applying degradations or recoveries
+        this._lastComputedLevel = 'normal';
+        this._levelStreak = 0;
+        this._streakThresholdDegrade = 3; // require 3 consecutive evaluations (~6s) before degrading
+        this._streakThresholdRecover = 2; // require 2 consecutive evaluations (~4s) before recovering
         
         this.degradationLevel = 'normal'; // normal, warning, critical, emergency
         this.monitoring = false;
@@ -117,11 +123,22 @@ class PerformanceMonitoringIntegration {
         }
         
         // Determine new degradation level
-        const newLevel = this.calculateDegradationLevel(report);
-        
-        // Apply degradation if level changed
-        if (newLevel !== this.degradationLevel) {
-            this.applyDegradation(newLevel, report);
+        const computedLevel = this.calculateDegradationLevel(report);
+
+        // Update streaks
+        if (computedLevel === this._lastComputedLevel) {
+            this._levelStreak++;
+        } else {
+            this._lastComputedLevel = computedLevel;
+            this._levelStreak = 1;
+        }
+
+        // Decide when to apply
+        const isImproving = this.isLevelBetter(computedLevel, this.degradationLevel);
+        const requiredStreak = isImproving ? this._streakThresholdRecover : this._streakThresholdDegrade;
+
+        if (computedLevel !== this.degradationLevel && this._levelStreak >= requiredStreak) {
+            this.applyDegradation(computedLevel, report);
         }
     }
     

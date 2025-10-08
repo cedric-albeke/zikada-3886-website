@@ -1,0 +1,165 @@
+{
+  "timestamp": "2025-10-07T23:02:23.632Z",
+  "summary": {
+    "total": 10,
+    "success": 10,
+    "warnings": 0,
+    "errors": 0,
+    "missing": 0,
+    "overallCompression": "7.4%",
+    "totalOriginalSize": "593.6 KB",
+    "totalOptimizedSize": "549.7 KB",
+    "spaceSaved": "43.8 KB"
+  },
+  "results": [
+    {
+      "animation": "Abstraction",
+      "status": "success",
+      "errors": [],
+      "warnings": [],
+      "metrics": {
+        "originalSize": 169103,
+        "optimizedSize": 162340,
+        "compression": "4.0"
+      },
+      "optimizations": [
+        "Removed metadata fields: 198 instances",
+        "Optimized keyframes: 2135 → 2130"
+      ]
+    },
+    {
+      "animation": "Impossible-Hexagon-black",
+      "status": "success",
+      "errors": [],
+      "warnings": [],
+      "metrics": {
+        "originalSize": 34211,
+        "optimizedSize": 30953,
+        "compression": "9.5"
+      },
+      "optimizations": [
+        "Reduced high-precision decimals: 102 → 0",
+        "Removed metadata fields: 72 instances"
+      ]
+    },
+    {
+      "animation": "Morphing-Particle-Loader",
+      "status": "success",
+      "errors": [],
+      "warnings": [],
+      "metrics": {
+        "originalSize": 8547,
+        "optimizedSize": 8447,
+        "compression": "1.2"
+      },
+      "optimizations": [
+        "Removed metadata fields: 4 instances"
+      ]
+    },
+    {
+      "animation": "Planet-Logo",
+      "status": "success",
+      "errors": [],
+      "warnings": [],
+      "metrics": {
+        "originalSize": 26803,
+        "optimizedSize": 23223,
+        "compression": "13.4"
+      },
+      "optimizations": [
+        "Reduced high-precision decimals: 119 → 0",
+        "Removed metadata fields: 55 instances",
+        "Optimized keyframes: 412 → 408"
+      ]
+    },
+    {
+      "animation": "Sacred-Geometry",
+      "status": "success",
+      "errors": [],
+      "warnings": [],
+      "metrics": {
+        "originalSize": 21286,
+        "optimizedSize": 18526,
+        "compression": "13.0"
+      },
+      "optimizations": [
+        "Reduced high-precision decimals: 61 → 0",
+        "Removed metadata fields: 71 instances"
+      ]
+    },
+    {
+      "animation": "circuit-round-ani",
+      "status": "success",
+      "errors": [],
+      "warnings": [],
+      "metrics": {
+        "originalSize": 120430,
+        "optimizedSize": 101517,
+        "compression": "15.7"
+      },
+      "optimizations": [
+        "Reduced high-precision decimals: 284 → 0",
+        "Removed metadata fields: 499 instances"
+      ]
+    },
+    {
+      "animation": "circular-dots",
+      "status": "success",
+      "errors": [],
+      "warnings": [],
+      "metrics": {
+        "originalSize": 53072,
+        "optimizedSize": 49270,
+        "compression": "7.2"
+      },
+      "optimizations": [
+        "Reduced high-precision decimals: 3 → 0",
+        "Removed metadata fields: 123 instances"
+      ]
+    },
+    {
+      "animation": "geometrical-lines",
+      "status": "success",
+      "errors": [],
+      "warnings": [],
+      "metrics": {
+        "originalSize": 145607,
+        "optimizedSize": 142567,
+        "compression": "2.1"
+      },
+      "optimizations": [
+        "Reduced high-precision decimals: 120 → 0",
+        "Removed metadata fields: 60 instances"
+      ]
+    },
+    {
+      "animation": "planet-ring",
+      "status": "success",
+      "errors": [],
+      "warnings": [],
+      "metrics": {
+        "originalSize": 17573,
+        "optimizedSize": 16351,
+        "compression": "7.0"
+      },
+      "optimizations": [
+        "Removed metadata fields: 39 instances"
+      ]
+    },
+    {
+      "animation": "transparent-diamond-dark",
+      "status": "success",
+      "errors": [],
+      "warnings": [],
+      "metrics": {
+        "originalSize": 11179,
+        "optimizedSize": 9749,
+        "compression": "12.8"
+      },
+      "optimizations": [
+        "Reduced high-precision decimals: 18 → 0",
+        "Removed metadata fields: 40 instances"
+      ]
+    }
+  ]
+}

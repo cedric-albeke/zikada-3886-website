@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lottie Animation Performance Benchmark</title>
+    <script src="https://unpkg.com/@lottiefiles/lottie-player@2.0.12/dist/lottie-player.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #0a0a0a;
+            color: #ffffff;
+            line-height: 1.6;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .controls button {
+            padding: 10px 20px;
+            background: #1a1a1a;
+            color: #fff;
+            border: 1px solid #333;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .controls button:hover {
+            background: #333;
+            border-color: #555;
+        }
+
+        .controls button.active {
+            background: #007acc;
+            border-color: #007acc;
+        }
+
+        .benchmark-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .animation-card {
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+        }
+
+        .animation-card h3 {
+            margin-top: 0;
+            color: #007acc;
+            font-size: 16px;
+        }
+
+        .animation-player {
+            width: 200px;
+            height: 200px;
+            margin: 10px auto;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 4px;
+            position: relative;
+        }
+
+        .metrics {
+            font-size: 12px;
+            color: #888;
+            margin-top: 10px;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 5px;
+            text-align: left;
+        }
+
+        .status {
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: bold;
+            margin: 5px;
+        }
+
+        .status.loading { background: #ff9500; color: #000; }
+        .status.ready { background: #28a745; color: #fff; }
+        .status.error { background: #dc3545; color: #fff; }
+        .status.testing { background: #007acc; color: #fff; }
+
+        .global-metrics {
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 30px;
+        }
+
+        .global-metrics h2 {
+            margin-top: 0;
+            color: #007acc;
+        }
+
+        .metrics-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+
+        .metrics-table th,
+        .metrics-table td {
+            padding: 8px 12px;
+            text-align: left;
+            border-bottom: 1px solid #333;
+        }
+
+        .metrics-table th {
+            background: #0f0f0f;
+            color: #007acc;
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid #333;
+            border-top: 2px solid #007acc;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 8px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .visibility-test {
+            position: fixed;
+            top: -1000px;
+            left: -1000px;
+            width: 200px;
+            height: 200px;
+        }
+
+        .logs {
+            background: #0f0f0f;
+            border: 1px solid #333;
+            border-radius: 4px;
+            padding: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 11px;
+            height: 200px;
+            overflow-y: auto;
+            margin-top: 20px;
+        }
+
+        .log-entry {
+            margin-bottom: 2px;
+            opacity: 0.8;
+        }
+
+        .log-entry.error { color: #ff6b6b; }
+        .log-entry.success { color: #51cf66; }
+        .log-entry.info { color: #74c0fc; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🎯 Lottie Performance Benchmark</h1>
+        <p>Testing optimized animations with different renderers and configurations</p>
+    </div>
+
+    <div class="controls">
+        <button id="start-benchmark" class="active">Start Benchmark</button>
+        <button id="test-visibility">Test Visibility</button>
+        <button id="test-reduced-motion">Test Reduced Motion</button>
+        <button id="clear-results">Clear Results</button>
+        <button id="export-results">Export Results</button>
+    </div>
+
+    <div class="benchmark-grid" id="animation-grid">
+        <!-- Animation cards will be populated dynamically -->
+    </div>
+
+    <div class="global-metrics" id="global-metrics">
+        <h2>📊 Benchmark Results</h2>
+        <div class="status loading">
+            <span class="loading-spinner"></span>
+            Initializing benchmark...
+        </div>
+        <div id="results-content" style="display: none;">
+            <table class="metrics-table">
+                <thead>
+                    <tr>
+                        <th>Animation</th>
+                        <th>Renderer</th>
+                        <th>Load Time (ms)</th>
+                        <th>First Frame (ms)</th>
+                        <th>Avg FPS</th>
+                        <th>Memory (MB)</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody id="results-table">
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="logs" id="benchmark-logs">
+        <div class="log-entry info">🚀 Benchmark system initialized</div>
+        <div class="log-entry info">📦 Lottie Player v2.0.12 loaded</div>
+        <div class="log-entry info">🎛️ Ready to start performance testing</div>
+    </div>
+
+    <div class="visibility-test" id="visibility-test-area"></div>
+
+    <script>
+        class LottieBenchmark {
+            constructor() {
+                this.animations = [];
+                this.results = [];
+                this.isRunning = false;
+                this.observer = null;
+                
+                this.init();
+            }
+
+            async init() {
+                this.log('🔧 Initializing Lottie benchmark system...', 'info');
+                
+                // Get list of animations to test
+                await this.loadAnimationList();
+                
+                // Setup intersection observer for visibility testing
+                this.setupIntersectionObserver();
+                
+                // Setup event listeners
+                this.setupEventListeners();
+                
+                this.log('✅ Benchmark system ready', 'success');
+                document.querySelector('.status.loading').style.display = 'none';
+            }
+
+            async loadAnimationList() {
+                // In a real scenario, this would be loaded from the server
+                // For this demo, we'll use a predefined list
+                this.animations = [
+                    { name: 'Abstraction', path: '../out/conservative/Abstraction.json', size: '158.5KB' },
+                    { name: 'Circuit Round', path: '../out/conservative/circuit-round-ani.json', size: '99.1KB' },
+                    { name: 'Circular Dots', path: '../out/conservative/circular-dots.json', size: '48.1KB' },
+                    { name: 'Geometrical Lines', path: '../out/conservative/geometrical-lines.json', size: '139.2KB' },
+                    { name: 'Planet Logo', path: '../out/conservative/Planet-Logo.json', size: '22.7KB' },
+                    { name: 'Planet Ring', path: '../out/conservative/planet-ring.json', size: '16.0KB' },
+                    { name: 'Sacred Geometry', path: '../out/conservative/Sacred-Geometry.json', size: '18.1KB' },
+                    { name: 'Transparent Diamond', path: '../out/conservative/transparent-diamond-dark.json', size: '9.5KB' },
+                    { name: 'Morphing Particle', path: '../out/conservative/Morphing-Particle-Loader.json', size: '8.2KB' },
+                    { name: 'Impossible Hexagon', path: '../out/conservative/Impossible-Hexagon-black.json', size: '30.2KB' }
+                ];
+
+                this.createAnimationCards();
+            }
+
+            createAnimationCards() {
+                const grid = document.getElementById('animation-grid');
+                grid.innerHTML = '';
+
+                this.animations.forEach((anim, index) => {
+                    const card = document.createElement('div');
+                    card.className = 'animation-card';
+                    card.innerHTML = \`
+                        <h3>\${anim.name}</h3>
+                        <div class="status loading" id="status-\${index}">
+                            <span class="loading-spinner"></span>
+                            Loading...
+                        </div>
+                        <div class="animation-player" id="player-\${index}"></div>
+                        <div class="metrics">
+                            <div class="metrics-grid">
+                                <div>Size: \${anim.size}</div>
+                                <div id="renderer-\${index}">Renderer: -</div>
+                                <div id="load-time-\${index}">Load: -</div>
+                                <div id="fps-\${index}">FPS: -</div>
+                            </div>
+                        </div>
+                    \`;
+                    grid.appendChild(card);
+                });
+            }
+
+            setupIntersectionObserver() {
+                this.observer = new IntersectionObserver((entries) => {
+                    entries.forEach(entry => {
+                        const player = entry.target;
+                        if (entry.isIntersecting) {
+                            if (player.paused) {
+                                player.play();
+                                this.log(\`👁️ Animation visible, playing: \${player.getAttribute('data-name')}\`, 'info');
+                            }
+                        } else {
+                            if (!player.paused) {
+                                player.pause();
+                                this.log(\`🙈 Animation hidden, pausing: \${player.getAttribute('data-name')}\`, 'info');
+                            }
+                        }
+                    });
+                }, { threshold: 0.1 });
+            }
+
+            setupEventListeners() {
+                document.getElementById('start-benchmark').addEventListener('click', () => this.startBenchmark());
+                document.getElementById('test-visibility').addEventListener('click', () => this.testVisibilityBehavior());
+                document.getElementById('test-reduced-motion').addEventListener('click', () => this.testReducedMotion());
+                document.getElementById('clear-results').addEventListener('click', () => this.clearResults());
+                document.getElementById('export-results').addEventListener('click', () => this.exportResults());
+
+                // Handle reduced motion preference
+                const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+                mediaQuery.addListener(() => this.handleReducedMotionChange());
+                this.handleReducedMotionChange();
+            }
+
+            async startBenchmark() {
+                if (this.isRunning) return;
+                
+                this.isRunning = true;
+                this.results = [];
+                this.log('🚀 Starting performance benchmark...', 'info');
+                
+                const startBtn = document.getElementById('start-benchmark');
+                startBtn.textContent = 'Running...';
+                startBtn.disabled = true;
+
+                for (let i = 0; i < this.animations.length; i++) {
+                    await this.benchmarkAnimation(i);
+                    await this.sleep(500); // Brief delay between tests
+                }
+
+                this.displayResults();
+                this.isRunning = false;
+                startBtn.textContent = 'Start Benchmark';
+                startBtn.disabled = false;
+                
+                this.log('✅ Benchmark complete!', 'success');
+            }
+
+            async benchmarkAnimation(index) {
+                const anim = this.animations[index];
+                const container = document.getElementById(\`player-\${index}\`);
+                const status = document.getElementById(\`status-\${index}\`);
+                
+                this.log(\`🧪 Testing \${anim.name}...\`, 'info');
+                status.innerHTML = '<span class="loading-spinner"></span>Testing...';
+                status.className = 'status testing';
+
+                const results = {
+                    name: anim.name,
+                    path: anim.path,
+                    size: anim.size
+                };
+
+                try {
+                    // Test SVG renderer
+                    const svgResult = await this.testRenderer(container, anim, 'svg');
+                    results.svg = svgResult;
+                    
+                    // Clear container
+                    container.innerHTML = '';
+                    await this.sleep(200);
+                    
+                    // Test Canvas renderer
+                    const canvasResult = await this.testRenderer(container, anim, 'canvas');
+                    results.canvas = canvasResult;
+                    
+                    // Determine recommended renderer
+                    const recommended = this.determineRecommendedRenderer(results);
+                    results.recommended = recommended;
+                    
+                    // Create final player with recommended renderer
+                    container.innerHTML = '';
+                    await this.createFinalPlayer(container, anim, recommended, index);
+                    
+                    status.textContent = \`Ready (\${recommended})\`;
+                    status.className = 'status ready';
+                    
+                    this.results.push(results);
+                    this.log(\`✅ \${anim.name}: SVG=\${svgResult.avgFps}fps, Canvas=\${canvasResult.avgFps}fps, Best=\${recommended}\`, 'success');
+                    
+                } catch (error) {
+                    this.log(\`❌ Error testing \${anim.name}: \${error.message}\`, 'error');
+                    status.textContent = 'Error';
+                    status.className = 'status error';
+                    
+                    results.error = error.message;
+                    this.results.push(results);
+                }
+            }
+
+            async testRenderer(container, animation, renderer) {
+                const startTime = performance.now();
+                const startMemory = performance.memory ? performance.memory.usedJSHeapSize : 0;
+                
+                return new Promise((resolve, reject) => {
+                    const player = document.createElement('lottie-player');
+                    player.setAttribute('src', animation.path);
+                    player.setAttribute('background', 'transparent');
+                    player.setAttribute('speed', '1');
+                    player.setAttribute('loop', '');
+                    player.setAttribute('autoplay', '');
+                    player.setAttribute('renderer', renderer);
+                    player.style.width = '100%';
+                    player.style.height = '100%';
+                    
+                    let loadTime = 0;
+                    let firstFrameTime = 0;
+                    let frameCount = 0;
+                    let fpsSum = 0;
+                    let lastFrameTime = startTime;
+                    
+                    const timeout = setTimeout(() => {
+                        reject(new Error(\`Timeout loading animation with \${renderer} renderer\`));
+                    }, 10000);
+                    
+                    player.addEventListener('ready', () => {
+                        loadTime = performance.now() - startTime;
+                        firstFrameTime = loadTime; // Approximate first frame time
+                        
+                        // Measure FPS over a short period
+                        const measureFPS = () => {
+                            const currentTime = performance.now();
+                            const deltaTime = currentTime - lastFrameTime;
+                            
+                            if (deltaTime > 0) {
+                                const fps = 1000 / deltaTime;
+                                fpsSum += fps;
+                                frameCount++;
+                            }
+                            
+                            lastFrameTime = currentTime;
+                            
+                            if (frameCount < 30) { // Measure for ~30 frames
+                                requestAnimationFrame(measureFPS);
+                            } else {
+                                const endMemory = performance.memory ? performance.memory.usedJSHeapSize : 0;
+                                const avgFps = Math.round(fpsSum / frameCount);
+                                const memoryUsed = Math.round((endMemory - startMemory) / 1024 / 1024 * 100) / 100;
+                                
+                                clearTimeout(timeout);
+                                resolve({
+                                    renderer,
+                                    loadTime: Math.round(loadTime),
+                                    firstFrameTime: Math.round(firstFrameTime),
+                                    avgFps,
+                                    memoryUsed
+                                });
+                            }
+                        };
+                        
+                        requestAnimationFrame(measureFPS);
+                    });
+                    
+                    player.addEventListener('error', (e) => {
+                        clearTimeout(timeout);
+                        reject(new Error(\`Failed to load with \${renderer} renderer\`));
+                    });
+                    
+                    container.appendChild(player);
+                });
+            }
+
+            determineRecommendedRenderer(results) {
+                const svg = results.svg;
+                const canvas = results.canvas;
+                
+                // Prefer the renderer with better performance
+                if (svg && canvas) {
+                    if (canvas.avgFps > svg.avgFps * 1.1) {
+                        return 'canvas';
+                    } else if (svg.avgFps > canvas.avgFps * 1.1) {
+                        return 'svg';
+                    } else {
+                        // Similar performance, prefer canvas for general use
+                        return 'canvas';
+                    }
+                }
+                
+                return svg ? 'svg' : 'canvas';
+            }
+
+            async createFinalPlayer(container, animation, renderer, index) {
+                const player = document.createElement('lottie-player');
+                player.setAttribute('src', animation.path);
+                player.setAttribute('background', 'transparent');
+                player.setAttribute('speed', '1');
+                player.setAttribute('loop', '');
+                player.setAttribute('autoplay', '');
+                player.setAttribute('renderer', renderer);
+                player.setAttribute('data-name', animation.name);
+                player.style.width = '100%';
+                player.style.height = '100%';
+                
+                container.appendChild(player);
+                
+                // Update UI with renderer info
+                document.getElementById(\`renderer-\${index}\`).textContent = \`Renderer: \${renderer}\`;
+                
+                // Setup intersection observer for this player
+                this.observer.observe(player);
+            }
+
+            displayResults() {
+                const resultsContent = document.getElementById('results-content');
+                const tableBody = document.getElementById('results-table');
+                
+                tableBody.innerHTML = '';
+                
+                this.results.forEach(result => {
+                    if (result.error) {
+                        const row = tableBody.insertRow();
+                        row.innerHTML = \`
+                            <td>\${result.name}</td>
+                            <td colspan="6" style="color: #ff6b6b;">Error: \${result.error}</td>
+                        \`;
+                        return;
+                    }
+                    
+                    const recommended = result[result.recommended];
+                    const row = tableBody.insertRow();
+                    row.innerHTML = \`
+                        <td>\${result.name}</td>
+                        <td><strong>\${result.recommended}</strong></td>
+                        <td>\${recommended.loadTime}</td>
+                        <td>\${recommended.firstFrameTime}</td>
+                        <td>\${recommended.avgFps}</td>
+                        <td>\${recommended.memoryUsed}</td>
+                        <td><span class="status ready">✓</span></td>
+                    \`;
+                });
+                
+                resultsContent.style.display = 'block';
+            }
+
+            async testVisibilityBehavior() {
+                this.log('👁️ Testing visibility behavior...', 'info');
+                
+                const testArea = document.getElementById('visibility-test-area');
+                const player = document.createElement('lottie-player');
+                player.setAttribute('src', '../out/conservative/planet-ring.json');
+                player.setAttribute('background', 'transparent');
+                player.setAttribute('loop', '');
+                player.setAttribute('autoplay', '');
+                player.setAttribute('data-name', 'Visibility Test');
+                
+                testArea.appendChild(player);
+                this.observer.observe(player);
+                
+                // Move into view
+                testArea.style.position = 'static';
+                testArea.style.top = 'auto';
+                testArea.style.left = 'auto';
+                
+                await this.sleep(2000);
+                
+                // Move out of view
+                testArea.style.position = 'fixed';
+                testArea.style.top = '-1000px';
+                testArea.style.left = '-1000px';
+                
+                await this.sleep(1000);
+                
+                testArea.innerHTML = '';
+                this.log('✅ Visibility behavior test complete', 'success');
+            }
+
+            testReducedMotion() {
+                this.log('🎭 Testing reduced motion preference...', 'info');
+                
+                // Simulate reduced motion preference
+                const players = document.querySelectorAll('lottie-player');
+                const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+                
+                if (prefersReduced) {
+                    players.forEach(player => {
+                        player.pause();
+                        this.log(\`⏸️ Paused \${player.getAttribute('data-name')} due to reduced motion preference\`, 'info');
+                    });
+                } else {
+                    this.log('🎬 No reduced motion preference detected, animations continue normally', 'info');
+                }
+            }
+
+            handleReducedMotionChange() {
+                const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+                if (prefersReduced) {
+                    const players = document.querySelectorAll('lottie-player');
+                    players.forEach(player => player.pause());
+                    this.log('⏸️ Animations paused due to reduced motion preference', 'info');
+                }
+            }
+
+            clearResults() {
+                this.results = [];
+                document.getElementById('results-content').style.display = 'none';
+                document.getElementById('benchmark-logs').innerHTML = '<div class="log-entry info">🧹 Results cleared</div>';
+                this.log('🔄 Ready for new benchmark run', 'info');
+            }
+
+            exportResults() {
+                if (this.results.length === 0) {
+                    this.log('❌ No results to export', 'error');
+                    return;
+                }
+                
+                const exportData = {
+                    timestamp: new Date().toISOString(),
+                    userAgent: navigator.userAgent,
+                    results: this.results,
+                    summary: this.generateSummary()
+                };
+                
+                const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = \`lottie-benchmark-\${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.json\`;
+                a.click();
+                URL.revokeObjectURL(url);
+                
+                this.log('📄 Results exported successfully', 'success');
+            }
+
+            generateSummary() {
+                const validResults = this.results.filter(r => !r.error);
+                if (validResults.length === 0) return null;
+                
+                const avgLoadTime = validResults.reduce((sum, r) => sum + r[r.recommended].loadTime, 0) / validResults.length;
+                const avgFps = validResults.reduce((sum, r) => sum + r[r.recommended].avgFps, 0) / validResults.length;
+                const avgMemory = validResults.reduce((sum, r) => sum + r[r.recommended].memoryUsed, 0) / validResults.length;
+                
+                const rendererCounts = validResults.reduce((counts, r) => {
+                    counts[r.recommended] = (counts[r.recommended] || 0) + 1;
+                    return counts;
+                }, {});
+                
+                return {
+                    totalAnimations: validResults.length,
+                    avgLoadTime: Math.round(avgLoadTime),
+                    avgFps: Math.round(avgFps),
+                    avgMemory: Math.round(avgMemory * 100) / 100,
+                    rendererDistribution: rendererCounts
+                };
+            }
+
+            log(message, type = 'info') {
+                const logs = document.getElementById('benchmark-logs');
+                const entry = document.createElement('div');
+                entry.className = \`log-entry \${type}\`;
+                entry.textContent = \`[\${new Date().toLocaleTimeString()}] \${message}\`;
+                logs.appendChild(entry);
+                logs.scrollTop = logs.scrollHeight;
+            }
+
+            sleep(ms) {
+                return new Promise(resolve => setTimeout(resolve, ms));
+            }
+        }
+
+        // Initialize benchmark system when page loads
+        window.addEventListener('load', () => {
+            window.lottieBenchmark = new LottieBenchmark();
+        });
+    </script>
+</body>
+</html>

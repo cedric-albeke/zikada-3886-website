@@ -81,6 +81,35 @@ test.describe.serial('soak', () => {
 
   stream.end();
 
+  // Quick device-profile snapshot
+  const device = await main.evaluate(async () => {
+    const nav = navigator as any;
+    const dpr = window.devicePixelRatio || 1;
+    const cores = nav.hardwareConcurrency || null;
+    const ua = nav.userAgent || '';
+    const canvas = document.createElement('canvas');
+    const gl: any = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+    let vendor = null, renderer = null, maxTex = null;
+    if (gl) {
+      try {
+        const ext = gl.getExtension('WEBGL_debug_renderer_info');
+        if (ext) {
+          vendor = gl.getParameter(ext.UNMASKED_VENDOR_WEBGL);
+          renderer = gl.getParameter(ext.UNMASKED_RENDERER_WEBGL);
+        }
+        maxTex = gl.getParameter(gl.MAX_TEXTURE_SIZE);
+      } catch (_) {}
+    }
+    const fps = (window as any).performanceBus?.metrics?.fps ?? 0;
+    const dom = document.querySelectorAll('*').length;
+    return { dpr, cores, ua, vendor, renderer, maxTex, fps, dom };
+  });
+  try {
+    const outDir = path.join(process.cwd(), 'artifacts', 'soak');
+    fs.mkdirSync(outDir, { recursive: true });
+    fs.writeFileSync(path.join(outDir, `device-${ts()}.json`), JSON.stringify(device, null, 2));
+  } catch {}
+
   // Basic post-conditions: panel status still online or standby, fps non-negative
   const finalFps = await main.evaluate(() => (window as any).performanceBus?.metrics?.fps ?? 0);
   expect(finalFps).toBeGreaterThanOrEqual(0);

@@ -7,10 +7,87 @@ const VJ_DEBUG = false;
 import filterManager from './filter-manager.js';
 import fxController from './fx-controller.js';
 import animationManager from './animation-manager.js';
+import vjMessaging, { MESSAGE_TYPES } from './vj-messaging.js';
 
 // Ensure GSAP is globally available
 if (typeof window !== 'undefined' && !window.gsap) {
     window.gsap = gsap;
+}
+
+// ============================================
+// OVERLAY SYSTEM
+// ============================================
+
+// Ensure overlay root exists
+function ensureOverlayRoot() {
+    let root = document.getElementById('overlays-root');
+    if (!root) {
+        root = document.createElement('div');
+        root.id = 'overlays-root';
+        root.className = 'overlay-root';
+        document.body.appendChild(root);
+    }
+    return root;
+}
+
+// Get or create blackout overlay element
+function getBlackoutEl() {
+    const root = ensureOverlayRoot();
+    let el = root.querySelector('.overlay-blackout');
+    if (!el) {
+        el = document.createElement('div');
+        el.className = 'overlay-blackout';
+        root.appendChild(el);
+    }
+    return el;
+}
+
+// Get or create matrix message overlay element 
+function getMatrixEl() {
+    const root = ensureOverlayRoot();
+    let el = root.querySelector('.overlay-matrix');
+    if (!el) {
+        el = document.createElement('div');
+        el.className = 'overlay-matrix';
+        root.appendChild(el);
+    }
+    return el;
+}
+
+// Public overlay API
+export function setBlackout(on) {
+    const el = getBlackoutEl();
+    if (on) {
+        el.classList.add('overlay-visible');
+    } else {
+        el.classList.remove('overlay-visible');
+    }
+}
+
+export function showMatrixMessage(text) {
+    const el = getMatrixEl();
+    el.textContent = text || '';
+    el.classList.add('overlay-visible');
+}
+
+export function hideMatrixMessage() {
+    const el = getMatrixEl();
+    el.classList.remove('overlay-visible');
+}
+
+// Debounce helper for matrix messages
+let matrixMessageDebounceTimer = null;
+function debouncedShowMatrixMessage(text) {
+    if (matrixMessageDebounceTimer) {
+        clearTimeout(matrixMessageDebounceTimer);
+    }
+    
+    const currentEl = getMatrixEl();
+    if (currentEl.textContent === text && currentEl.classList.contains('overlay-visible')) {
+        return; // Same message already showing
+    }
+    
+    showMatrixMessage(text);
 }
 
 class VJReceiver {
@@ -23,7 +100,7 @@ class VJReceiver {
         // Ripple feature flags
         this.bpmRippleEnabled = false;
         this.bpmRippleInterval = null;
-        this.clickRippleEnabled = true;
+        this.clickRippleEnabled = false; // disable click-based ripple by default to avoid on-click animations
         this.currentSettings = {
             colors: {
                 hue: 0,
@@ -59,6 +136,9 @@ class VJReceiver {
 
     init() {
         console.log('🎮 VJ Receiver initializing...');
+        
+        // Initialize VJ messaging system handlers
+        this.initVJMessaging();
 
         // Initialize broadcast channel
         this.initBroadcastChannel();
@@ -80,6 +160,37 @@ class VJReceiver {
                 this._fallbackDiceEnabled = true;
             }
         }, 25000);
+    }
+    
+    initVJMessaging() {
+        // Set up handlers for the new VJ messaging system
+        vjMessaging.on(MESSAGE_TYPES.EMERGENCY_KILL, () => {
+            setBlackout(true);
+            this.emergencyStop();
+        });
+        
+        vjMessaging.on(MESSAGE_TYPES.SYSTEM_RESET, () => {
+            setBlackout(false);
+            this.resetAllSystems();
+        });
+        
+        vjMessaging.on(MESSAGE_TYPES.SYSTEM_RELOAD, () => {
+            window.location.reload();
+        });
+        
+        vjMessaging.on(MESSAGE_TYPES.SET_PERFORMANCE_MODE, (payload) => {
+            this.setPerformanceMode(payload.mode);
+        });
+        
+        vjMessaging.on(MESSAGE_TYPES.MATRIX_MESSAGE_SHOW, (payload) => {
+            debouncedShowMatrixMessage(payload.text);
+        });
+        
+        vjMessaging.on(MESSAGE_TYPES.MATRIX_MESSAGE_HIDE, () => {
+            hideMatrixMessage();
+        });
+        
+        console.log('📡 VJ messaging handlers initialized');
     }
 
     initBroadcastChannel() {
@@ -537,6 +648,50 @@ class VJReceiver {
                 break;
 
             // REMOVED: Complex reset handlers - now using minimal reset approach
+            default:
+                // Handle new VJ messaging system messages
+                if (data.kind === 'ZIKADA_CONTROL') {
+                    this.handleVJMessage(data);
+                }
+                break;
+        }
+    }
+
+    handleVJMessage(data) {
+        const { type, payload } = data;
+        
+        switch (type) {
+            case MESSAGE_TYPES.EMERGENCY_KILL:
+                console.log('🚨 Emergency Kill triggered via VJ messaging');
+                setBlackout(true);
+                this.emergencyStop();
+                break;
+                
+            case MESSAGE_TYPES.SYSTEM_RESET:
+                console.log('🔄 System Reset triggered via VJ messaging');
+                setBlackout(false);
+                this.resetAllSystems();
+                break;
+                
+            case MESSAGE_TYPES.SYSTEM_RELOAD:
+                console.log('🌀 System Reload triggered via VJ messaging');
+                window.location.reload();
+                break;
+                
+            case MESSAGE_TYPES.SET_PERFORMANCE_MODE:
+                console.log('⚡ Performance mode change via VJ messaging:', payload.mode);
+                this.setPerformanceMode(payload.mode);
+                break;
+                
+            case MESSAGE_TYPES.MATRIX_MESSAGE_SHOW:
+                console.log('📝 Matrix message show via VJ messaging:', payload.text);
+                debouncedShowMatrixMessage(payload.text);
+                break;
+                
+            case MESSAGE_TYPES.MATRIX_MESSAGE_HIDE:
+                console.log('📝 Matrix message hide via VJ messaging');
+                hideMatrixMessage();
+                break;
         }
     }
 
@@ -625,6 +780,15 @@ class VJReceiver {
         }
 
         this.currentSettings.scene = scene;
+
+        // Log and expose current scene for diagnostics
+        try {
+            console.log(`[VJ] Scene -> ${String(scene).toUpperCase()}`);
+            // Provide a getter on ChaosControl when available (non-destructive)
+            if (window.ChaosControl && typeof window.ChaosControl.getScene !== 'function') {
+                window.ChaosControl.getScene = () => this.currentSettings.scene;
+            }
+        } catch (_) {}
 
         // Send confirmation
         this.sendMessage({
@@ -1172,6 +1336,13 @@ class VJReceiver {
     }
 
     setupClickRipple() {
+        // Always remove any previously attached handlers (HMR safe)
+        if (this._clickRippleHandler) {
+            try { window.removeEventListener('click', this._clickRippleHandler); } catch (_) {}
+            try { window.removeEventListener('touchstart', this._clickRippleHandler); } catch (_) {}
+            this._clickRippleHandler = null;
+        }
+        // Respect flag: if disabled, do not attach click/touch handlers
         if (!this.clickRippleEnabled) return;
         const handler = (ev) => {
             try {
@@ -2485,6 +2656,7 @@ class VJReceiver {
         }
         
         if (window.lottieAnimations && window.lottieAnimations.init) {
+            try { window.lottieAnimations.destroy?.(); } catch (_) {}
             window.lottieAnimations.init();
         }
         
@@ -2663,6 +2835,11 @@ class VJReceiver {
         this.sendMessage(data);
     }
 
+    // Expose current scene via method for external checks/testing
+    getCurrentScene() {
+        return this.currentSettings.scene;
+    }
+
     sendDetailedPerformanceData() {
         // Gather detailed performance data from all systems
         const detailedData = {
@@ -2692,6 +2869,15 @@ class VJReceiver {
 
                 // Add VJ control to window for debugging
                 window.vjReceiver = this;
+
+                // Provide simple accessors for scene on ChaosControl if not present
+                try {
+                    if (window.ChaosControl) {
+                        if (typeof window.ChaosControl.getScene !== 'function') {
+                            window.ChaosControl.getScene = () => this.currentSettings.scene;
+                        }
+                    }
+                } catch (_) {}
             }
         }, 100);
     }

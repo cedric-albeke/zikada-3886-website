@@ -1,0 +1,199 @@
+{
+  "timestamp": "2025-10-07T22:51:55.167Z",
+  "settings": {
+    "precision": 3,
+    "transformPrecision": 2,
+    "removeNames": true,
+    "removeMarkers": true,
+    "removeHiddenLayers": true,
+    "dedupeKeyframes": true,
+    "normalizeFrameRate": true,
+    "removeMetadata": true,
+    "tolerance": 0.001
+  },
+  "files": [
+    {
+      "filename": "Abstraction.json",
+      "originalSize": 169103,
+      "optimizedSize": 1178,
+      "savings": {
+        "bytes": 167925,
+        "percent": 99.30338314518372
+      },
+      "optimizations": {
+        "precisionRounds": 0,
+        "removedNames": 6,
+        "removedMarkers": 1,
+        "removedHiddenLayers": 0,
+        "deduplicatedKeyframes": 59,
+        "frameRateChanged": false
+      }
+    },
+    {
+      "filename": "Impossible-Hexagon-black.json",
+      "originalSize": 34211,
+      "optimizedSize": 836,
+      "savings": {
+        "bytes": 33375,
+        "percent": 97.55634152757885
+      },
+      "optimizations": {
+        "precisionRounds": 0,
+        "removedNames": 5,
+        "removedMarkers": 1,
+        "removedHiddenLayers": 0,
+        "deduplicatedKeyframes": 85,
+        "frameRateChanged": false
+      }
+    },
+    {
+      "filename": "Morphing-Particle-Loader.json",
+      "originalSize": 8547,
+      "optimizedSize": 944,
+      "savings": {
+        "bytes": 7603,
+        "percent": 88.95518895518896
+      },
+      "optimizations": {
+        "precisionRounds": 0,
+        "removedNames": 4,
+        "removedMarkers": 1,
+        "removedHiddenLayers": 0,
+        "deduplicatedKeyframes": 33,
+        "frameRateChanged": true
+      }
+    },
+    {
+      "filename": "Planet-Logo.json",
+      "originalSize": 26803,
+      "optimizedSize": 870,
+      "savings": {
+        "bytes": 25933,
+        "percent": 96.75409469089281
+      },
+      "optimizations": {
+        "precisionRounds": 5,
+        "removedNames": 3,
+        "removedMarkers": 1,
+        "removedHiddenLayers": 0,
+        "deduplicatedKeyframes": 25,
+        "frameRateChanged": false
+      }
+    },
+    {
+      "filename": "Sacred-Geometry.json",
+      "originalSize": 21286,
+      "optimizedSize": 729,
+      "savings": {
+        "bytes": 20557,
+        "percent": 96.57521375552007
+      },
+      "optimizations": {
+        "precisionRounds": 0,
+        "removedNames": 4,
+        "removedMarkers": 1,
+        "removedHiddenLayers": 0,
+        "deduplicatedKeyframes": 28,
+        "frameRateChanged": false
+      }
+    },
+    {
+      "filename": "circuit-round-ani.json",
+      "originalSize": 120430,
+      "optimizedSize": 705,
+      "savings": {
+        "bytes": 119725,
+        "percent": 99.41459769160508
+      },
+      "optimizations": {
+        "precisionRounds": 5,
+        "removedNames": 4,
+        "removedMarkers": 1,
+        "removedHiddenLayers": 0,
+        "deduplicatedKeyframes": 33,
+        "frameRateChanged": false
+      }
+    },
+    {
+      "filename": "circular-dots.json",
+      "originalSize": 53072,
+      "optimizedSize": 1167,
+      "savings": {
+        "bytes": 51905,
+        "percent": 97.80110039192041
+      },
+      "optimizations": {
+        "precisionRounds": 0,
+        "removedNames": 6,
+        "removedMarkers": 1,
+        "removedHiddenLayers": 0,
+        "deduplicatedKeyframes": 75,
+        "frameRateChanged": false
+      }
+    },
+    {
+      "filename": "geometrical-lines.json",
+      "originalSize": 145607,
+      "optimizedSize": 2443,
+      "savings": {
+        "bytes": 143164,
+        "percent": 98.3221960482669
+      },
+      "optimizations": {
+        "precisionRounds": 0,
+        "removedNames": 4,
+        "removedMarkers": 1,
+        "removedHiddenLayers": 0,
+        "deduplicatedKeyframes": 299,
+        "frameRateChanged": false
+      }
+    },
+    {
+      "filename": "planet-ring.json",
+      "originalSize": 17573,
+      "optimizedSize": 540,
+      "savings": {
+        "bytes": 17033,
+        "percent": 96.92710408012292
+      },
+      "optimizations": {
+        "precisionRounds": 0,
+        "removedNames": 3,
+        "removedMarkers": 0,
+        "removedHiddenLayers": 0,
+        "deduplicatedKeyframes": 14,
+        "frameRateChanged": false
+      }
+    },
+    {
+      "filename": "transparent-diamond-dark.json",
+      "originalSize": 11179,
+      "optimizedSize": 825,
+      "savings": {
+        "bytes": 10354,
+        "percent": 92.62009124250827
+      },
+      "optimizations": {
+        "precisionRounds": 0,
+        "removedNames": 5,
+        "removedMarkers": 1,
+        "removedHiddenLayers": 0,
+        "deduplicatedKeyframes": 23,
+        "frameRateChanged": false
+      }
+    }
+  ],
+  "summary": {
+    "totalFiles": 10,
+    "totalSavings": {
+      "bytes": 597574,
+      "percent": 98.31575933966316
+    },
+    "optimizations": {
+      "precisionRounding": 0,
+      "metadataRemoval": 0,
+      "keyframeDeduplication": 0,
+      "frameRateNormalization": 0
+    }
+  }
+}
