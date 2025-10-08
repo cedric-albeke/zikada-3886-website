@@ -207,37 +207,44 @@ class MatrixDiceSystem {
                 clearInterval(this.autoRollInterval);
                 this.autoRollInterval = null;
             }
-            console.log('⏸️ Auto-roll disabled');
+            console.log('⏹️ Auto-roll disabled');
         }
+    }
+    
+    wait(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
     }
     
     saveStats() {
         try {
-            localStorage.setItem('3886_dice_stats', JSON.stringify(this.stats));
-            localStorage.setItem('3886_dice_history', JSON.stringify(this.rollHistory));
+            const data = {
+                stats: this.stats,
+                history: this.rollHistory.slice(0, 10) // Save only last 10 rolls
+            };
+            localStorage.setItem('matrixDiceStats', JSON.stringify(data));
         } catch (error) {
-            console.warn('Failed to save dice stats:', error);
+            console.warn('Could not save dice stats:', error);
         }
     }
     
     loadStats() {
         try {
-            const savedStats = localStorage.getItem('3886_dice_stats');
-            const savedHistory = localStorage.getItem('3886_dice_history');
-            
-            if (savedStats) {
-                this.stats = { ...this.stats, ...JSON.parse(savedStats) };
-            }
-            
-            if (savedHistory) {
-                this.rollHistory = JSON.parse(savedHistory);
+            const saved = localStorage.getItem('matrixDiceStats');
+            if (saved) {
+                const data = JSON.parse(saved);
+                if (data.stats) {
+                    this.stats = { ...this.stats, ...data.stats };
+                }
+                if (data.history && Array.isArray(data.history)) {
+                    this.rollHistory = data.history;
+                }
             }
         } catch (error) {
-            console.warn('Failed to load dice stats:', error);
+            console.warn('Could not load dice stats:', error);
         }
     }
     
-    resetStats() {
+    reset() {
         this.stats = {
             totalRolls: 0,
             wins: 0,
@@ -247,90 +254,77 @@ class MatrixDiceSystem {
         this.rollHistory = [];
         this.saveStats();
         this.updateDisplay();
-        console.log('🔄 Dice stats reset');
-    }
-    
-    wait(ms) {
-        return new Promise(resolve => setTimeout(resolve, ms));
-    }
-    
-    // Public API
-    getStats() {
-        return { ...this.stats };
-    }
-    
-    getHistory() {
-        return [...this.rollHistory];
-    }
-    
-    setThreshold(value) {
-        this.threshold = Math.max(1, Math.min(100, value));
-        console.log(`🎯 Dice threshold set to: ${this.threshold}`);
+        this.setDiceNumber('?');
+        console.log('🎲 Dice system reset');
     }
 }
 
-/**
- * Connection Status Manager - Fixes reload freeze issue
- */
+// ============================================================================
+// CONNECTION STATUS MANAGER - Handles connection states and prevents freeze
+// ============================================================================
+
 class ConnectionStatusManager {
     constructor() {
         this.status = 'offline';
         this.uptime = 0;
         this.uptimeInterval = null;
-        this.reloadTimeout = null;
         this.isReloading = false;
+        this.reloadTimeout = null;
         
         this.init();
     }
     
     init() {
-        console.log('🔗 Connection Status Manager initialized');
+        console.log('🔌 Connection Status Manager initialized');
+        this.bindEvents();
         this.startUptimeCounter();
-        this.bindReloadEvents();
-        this.updateDisplay();
+        
+        // Detect page load/refresh
+        if (performance.navigation.type === performance.navigation.TYPE_RELOAD) {
+            this.handleReload();
+        } else {
+            // Set to online after brief delay on initial load
+            setTimeout(() => this.setStatus('online'), 1000);
+        }
     }
     
-    bindReloadEvents() {
-        // System reload button
-        const reloadBtn = document.getElementById('systemReload');
-        if (reloadBtn) {
-            reloadBtn.addEventListener('click', () => this.handleReload());
-        }
+    bindEvents() {
+        // Listen for beforeunload to set reloading state
+        window.addEventListener('beforeunload', () => {
+            this.handleReload();
+        });
         
-        // Page visibility change
+        // Listen for page visibility changes
         document.addEventListener('visibilitychange', () => {
-            if (!document.hidden && this.isReloading) {
-                // Page became visible again after reload
-                this.handleReloadComplete();
+            if (document.hidden) {
+                this.setStatus('offline');
+            } else if (!this.isReloading) {
+                this.setStatus('online');
             }
         });
         
-        // Window focus events
-        window.addEventListener('focus', () => {
-            if (this.isReloading) {
-                this.handleReloadComplete();
+        // Listen for online/offline events
+        window.addEventListener('online', () => {
+            if (!this.isReloading) {
+                this.setStatus('online');
             }
+        });
+        
+        window.addEventListener('offline', () => {
+            this.setStatus('offline');
         });
     }
     
     handleReload() {
-        this.setStatus('reloading');
         this.isReloading = true;
+        this.setStatus('reloading');
         
-        console.log('🔄 Page reload initiated');
-        
-        // Set timeout to handle stuck reload state
+        // Prevent infinite reloading state with timeout
         this.reloadTimeout = setTimeout(() => {
-            if (this.isReloading) {
-                console.warn('⚠️ Reload timeout - forcing status reset');
-                this.handleReloadComplete();
-            }
-        }, 5000);
+            this.handleReloadComplete();
+        }, 5000); // Maximum 5 seconds in reloading state
         
-        // Perform the actual reload
-        setTimeout(() => {
-            window.location.reload();
-        }, 500);
+        console.log('🔄 Reload detected, setting status to reloading');
     }
     
     handleReloadComplete() {
