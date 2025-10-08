@@ -15,6 +15,12 @@
     <link href="css/live-logs.css?v=1.0.0" rel="stylesheet">
     <!-- Header Redesign (LAST - overrides all other styles) -->
     <link href="css/control-panel-header-redesign.css?v=1.0.0" rel="stylesheet">
+    <!-- Header Layout Fix (FINAL - fixes visual layout issues) -->
+    <link href="css/control-panel-header-layout-fix.css?v=1.0.0" rel="stylesheet">
+    <!-- Control Panel Fixes V4 (ULTIMATE - fixes all UI and functionality issues) -->
+    <link href="css/control-panel-fixes-v4.css?v=4.0.0" rel="stylesheet">
+    <!-- Header Refinements V5 (FINAL - layout and interaction improvements) -->
+    <link href="css/control-panel-header-refinements.css?v=5.1.0" rel="stylesheet">
 </head>
 <body>
     <div class="control-panel">
@@ -49,31 +55,40 @@
                 <!-- Live logs UI will be mounted here dynamically -->
             </div>
             
-            <!-- Matrix Dice System -->
+            <!-- Matrix Dice System - Redesigned Compact -->
             <div class="matrix-section matrix-dice">
                 <div class="dice-title">MATRIX.DICE.SYSTEM</div>
-                <div class="dice-container">
-                    <div class="dice-countdown-ring">
-                        <svg class="countdown-svg" width="60" height="60">
-                            <circle cx="30" cy="30" r="28" stroke="#003311" stroke-width="2" fill="none"/>
-                            <circle id="countdownCircle" cx="30" cy="30" r="28" stroke="#00ff85" stroke-width="2" fill="none"
-                                stroke-dasharray="176" stroke-dashoffset="0"
-                                transform="rotate(-90 30 30)"/>
-                        </svg>
-                        <div class="countdown-text" id="diceCountdown">15</div>
+                <div class="dice-compact-container">
+                    <!-- Dice Display Area -->
+                    <div class="dice-display">
+                        <div class="dice-face" id="diceDisplay">
+                            <span class="dice-number" id="diceNumber">?</span>
+                        </div>
+                        <button class="dice-roll-btn" id="diceRollBtn" title="Roll Dice">ROLL</button>
                     </div>
-                    <div class="dice-info">
-                        <div class="dice-stats">
-                            <div class="dice-threshold">THRESHOLD ≥ 90</div>
-                            <div class="dice-last">
-                                <span class="last-label">LAST:</span>
-                                <span id="lastDiceRoll" class="last-value">--/100</span>
-                            </div>
+                    
+                    <!-- Stats Compact -->
+                    <div class="dice-stats-compact">
+                        <div class="stat-row">
+                            <span class="stat-label">LAST:</span>
+                            <span class="stat-value" id="lastDiceValue">--</span>
                         </div>
-                        <div class="dice-message">
-                            <div class="message-label">LAST MSG:</div>
-                            <div id="lastMatrixMessage" class="message-text">STANDBY</div>
+                        <div class="stat-row">
+                            <span class="stat-label">WINS:</span>
+                            <span class="stat-value" id="diceWinCount">0</span>
                         </div>
+                        <div class="stat-row">
+                            <span class="stat-label">≥90:</span>
+                            <span class="stat-value" id="diceThresholdHits">0</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Auto Roll Toggle -->
+                    <div class="dice-auto-row">
+                        <label class="dice-auto-toggle">
+                            <input type="checkbox" id="diceAutoRoll">
+                            <span class="toggle-text">AUTO</span>
+                        </label>
                     </div>
                 </div>
             </div>
@@ -85,15 +100,10 @@
                     <!-- System Controls Column -->
                     <div class="system-controls-column">
                         <div class="controls-grid">
-                            <button class="matrix-control-btn kill-btn" id="emergencyStop" title="Emergency Kill">
-                                <span class="btn-glyph">☠</span>
-                                <span class="btn-label">KILL</span>
-                                <span class="btn-code">[ESC]</span>
-                            </button>
-                            <button class="matrix-control-btn reset-btn" id="systemReset" title="System Reset">
-                                <span class="btn-glyph">↻</span>
-                                <span class="btn-label">RESET</span>
-                                <span class="btn-code">[RST]</span>
+                            <button class="matrix-control-btn kill-reset-btn" id="systemKillReset" title="Kill and Reset System" aria-label="Kill and Reset System">
+                                <span class="btn-glyph">☠↻</span>
+                                <span class="btn-label">KILL+RESET</span>
+                                <span class="btn-code">[ESC+RST]</span>
                             </button>
                             <button class="matrix-control-btn reload-btn" id="systemReload" title="Full Reload">
                                 <span class="btn-glyph">⟳</span>
@@ -113,7 +123,7 @@
                         <div class="metrics-grid-compact">
                             <div class="metric-cell-compact">
                                 <div class="metric-label">FPS</div>
-                                <div id="fpsCounter" class="metric-value">60</div>
+                                <div id="fpsCounter" data-metric="fps" class="metric-value">60</div>
                                 <div class="metric-bar"><span class="bar-fill fps-bar"></span></div>
                             </div>
                             <div class="metric-cell-compact">
@@ -543,6 +553,9 @@
     <script src="./js/midi-controller.js"></script>
     <script src="./js/midi-action-catalog.js"></script>
     <script src="./js/midi-feedback.js"></script>
+    
+    <!-- Matrix Dice System and Connection Status -->
+    <script src="./js/matrix-dice-system.js"></script>
     
     <script type="module">
         // Import performance stats controller
