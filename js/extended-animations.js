@@ -72,7 +72,17 @@ class ExtendedAnimations {
         this._effectHandle = registerEffect(({ every }) => {
             const stopEvery = every(8000, () => {
                 if (!this.isRunning) return;
-                if (this.container && this.container.querySelectorAll('*').length > 700) return; // soft clamp
+                
+                // More aggressive DOM prevention
+                const totalDOMNodes = document.querySelectorAll('*').length;
+                const containerNodes = this.container ? this.container.querySelectorAll('*').length : 0;
+                
+                // Block if total DOM is too high OR container has too many nodes
+                if (totalDOMNodes > 40000 || containerNodes > 500) {
+                    console.log(`🚫 ExtendedAnimations blocked: DOM=${totalDOMNodes}, container=${containerNodes}`);
+                    return;
+                }
+                
                 if (Math.random() > 0.6) return; // 40% chance to run
                 const effect = effects[Math.floor(Math.random() * effects.length)];
                 try { effect(); } catch (e) { /* ignore */ }

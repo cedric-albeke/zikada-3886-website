@@ -1,0 +1,907 @@
+/*
+ * Control Panel Header Redesign
+ * Complete restructure of the matrix header for better visual hierarchy
+ * Separates System Controls from Performance Metrics cleanly
+ */
+
+/* ============================================
+   MATRIX HEADER FOUNDATION
+   ============================================ */
+
+.matrix-header {
+  position: relative;
+  background: linear-gradient(135deg, #001100, #002211, #001100);
+  border-bottom: 2px solid #00ff85;
+  padding: 16px;
+  overflow: hidden;
+}
+
+/* Matrix background effects */
+.matrix-grid-bg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: 
+    linear-gradient(rgba(0, 255, 133, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 255, 133, 0.03) 1px, transparent 1px);
+  background-size: 20px 20px;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.matrix-scan-line {
+  position: absolute;
+  top: 0;
+  left: -100%;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #00ff85, transparent);
+  animation: scanMove 3s ease-in-out infinite;
+  z-index: 2;
+}
+
+@keyframes scanMove {
+  0% { left: -100%; }
+  100% { left: 100%; }
+}
+
+/* ============================================
+   HEADER GRID LAYOUT
+   ============================================ */
+
+.matrix-header {
+  display: grid;
+  grid-template-columns: 280px 1fr 240px 180px 200px;
+  grid-template-rows: auto;
+  gap: 16px;
+  align-items: start;
+}
+
+/* ============================================
+   LIVE PREVIEW (Column 1)
+   ============================================ */
+
+.matrix-identity {
+  position: relative;
+  z-index: 10;
+}
+
+.live-preview {
+  background: rgba(0, 17, 0, 0.8);
+  border: 1px solid #003311;
+  border-radius: 4px;
+  padding: 12px;
+}
+
+.preview-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.preview-title {
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  color: #00ff85;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+.preview-hint {
+  font-family: 'Space Mono', monospace;
+  font-size: 9px;
+  color: #888;
+  font-style: italic;
+}
+
+.preview-frame-wrap {
+  position: relative;
+  aspect-ratio: 16/9;
+  background: #000;
+  border: 1px solid #003311;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+/* ============================================
+   PERFORMANCE METRICS (Column 2)
+   ============================================ */
+
+.matrix-performance {
+  position: relative;
+  z-index: 10;
+}
+
+.metrics-title {
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  color: #00ff85;
+  font-weight: 700;
+  letter-spacing: 1px;
+  margin-bottom: 12px;
+  text-align: center;
+  padding: 0 8px;
+  border-bottom: 1px solid #003311;
+  padding-bottom: 6px;
+}
+
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  grid-template-rows: repeat(2, 1fr);
+  gap: 12px;
+  padding: 8px;
+}
+
+.metric-cell {
+  background: rgba(0, 17, 0, 0.6);
+  border: 1px solid #003311;
+  border-radius: 3px;
+  padding: 8px 6px;
+  text-align: center;
+  transition: all 0.2s ease;
+}
+
+.metric-cell:hover {
+  border-color: #00ff85;
+  background: rgba(0, 34, 17, 0.8);
+}
+
+.metric-label {
+  font-family: 'Space Mono', monospace;
+  font-size: 9px;
+  color: #888;
+  font-weight: 400;
+  letter-spacing: 0.5px;
+  margin-bottom: 3px;
+}
+
+.metric-value {
+  font-family: 'Space Mono', monospace;
+  font-size: 14px;
+  color: #00ff85;
+  font-weight: 700;
+  margin-bottom: 4px;
+  min-height: 17px;
+}
+
+.metric-bar {
+  height: 3px;
+  background: #002211;
+  border-radius: 2px;
+  overflow: hidden;
+  position: relative;
+}
+
+.bar-fill {
+  height: 100%;
+  background: #00ff85;
+  border-radius: 2px;
+  width: 0%;
+  transition: width 0.3s ease;
+}
+
+.fps-bar { background: #00ff85; }
+.mem-bar { background: #ffaa00; }
+.dom-bar { background: #0088ff; }
+.fx-bar { background: #ff4444; }
+
+/* ============================================
+   SYSTEM STATUS (Column 3)
+   ============================================ */
+
+.matrix-connection {
+  position: relative;
+  z-index: 10;
+}
+
+.connection-title {
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  color: #00ff85;
+  font-weight: 700;
+  letter-spacing: 1px;
+  margin-bottom: 12px;
+  text-align: center;
+  padding: 0 8px;
+  border-bottom: 1px solid #003311;
+  padding-bottom: 6px;
+}
+
+.connection-container {
+  background: rgba(0, 17, 0, 0.6);
+  border: 1px solid #003311;
+  border-radius: 3px;
+  padding: 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.connection-indicator {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.status-dot {
+  display: block;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #ff4444;
+  transition: all 0.3s ease;
+}
+
+.status-wave {
+  position: absolute;
+  top: -6px;
+  left: -6px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 68, 68, 0.3);
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% { transform: scale(0.8); opacity: 1; }
+  100% { transform: scale(1.4); opacity: 0; }
+}
+
+.connection-text {
+  flex: 1;
+}
+
+.status-text {
+  font-family: 'Space Mono', monospace;
+  font-size: 12px;
+  color: #ff4444;
+  font-weight: 700;
+  display: block;
+}
+
+.uptime-display {
+  margin-top: 4px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.uptime-label {
+  font-family: 'Space Mono', monospace;
+  font-size: 9px;
+  color: #888;
+  font-weight: 400;
+}
+
+#systemUptime {
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  color: #00ff85;
+  font-weight: 400;
+}
+
+/* ============================================
+   SYSTEM CONTROLS (Column 4)
+   ============================================ */
+
+.matrix-controls {
+  position: relative;
+  z-index: 10;
+}
+
+.controls-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.matrix-control-btn {
+  background: rgba(0, 17, 0, 0.8);
+  border: 1px solid #003311;
+  border-radius: 3px;
+  padding: 8px 12px;
+  font-family: 'Space Mono', monospace;
+  color: #888;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 10px;
+  height: 36px;
+}
+
+.matrix-control-btn:hover {
+  background: rgba(0, 34, 17, 0.9);
+  border-color: #00ff85;
+  color: #00ff85;
+}
+
+.btn-glyph {
+  font-size: 14px;
+  width: 16px;
+  text-align: center;
+}
+
+.btn-label {
+  flex: 1;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.btn-code {
+  font-size: 8px;
+  color: #555;
+  font-weight: 400;
+}
+
+/* Button-specific colors */
+.kill-btn:hover {
+  border-color: #ff4444;
+  color: #ff4444;
+  background: rgba(34, 0, 0, 0.9);
+}
+
+.reset-btn:hover {
+  border-color: #ffaa00;
+  color: #ffaa00;
+  background: rgba(34, 17, 0, 0.9);
+}
+
+.reload-btn:hover {
+  border-color: #0088ff;
+  color: #0088ff;
+  background: rgba(0, 17, 34, 0.9);
+}
+
+/* Performance Modes */
+.performance-modes {
+  display: flex;
+  gap: 4px;
+  border-top: 1px solid #003311;
+  padding-top: 8px;
+}
+
+.mode-btn {
+  flex: 1;
+  background: rgba(0, 17, 0, 0.6);
+  border: 1px solid #003311;
+  border-radius: 2px;
+  padding: 6px 4px;
+  font-family: 'Space Mono', monospace;
+  font-size: 9px;
+  color: #888;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-weight: 700;
+  text-align: center;
+}
+
+.mode-btn:hover {
+  border-color: #00ff85;
+  color: #00ff85;
+}
+
+.mode-btn.active {
+  background: rgba(0, 255, 133, 0.2);
+  border-color: #00ff85;
+  color: #00ff85;
+}
+
+/* ============================================
+   ONLINE STATE STYLES
+   ============================================ */
+
+.matrix-header.online .status-dot {
+  background: #00ff85;
+}
+
+.matrix-header.online .status-wave {
+  border-color: rgba(0, 255, 133, 0.3);
+}
+
+.matrix-header.online .status-text {
+  color: #00ff85;
+}
+
+/* ============================================
+   V3 SPECIFIC: REDESIGN COMBINED CONTROLS-PERF SECTION
+   ============================================ */
+
+/* Target the specific combined section and restructure it */
+.matrix-header .section:has(.section-title:contains("SYSTEM.CONTROLS + PERFORMANCE")),
+.matrix-controls-perf {
+  position: relative !important;
+  z-index: 10;
+  background: rgba(0, 17, 0, 0.8) !important;
+  border: 1px solid #003311 !important;
+  border-radius: 4px !important;
+  padding: 0 !important;
+  margin: 10px 0 !important;
+  min-height: 140px !important;
+}
+
+/* Hide the ugly title */
+.matrix-header .section:has(.section-title:contains("SYSTEM.CONTROLS + PERFORMANCE")) .section-title,
+.controls-perf-title {
+  display: none !important;
+}
+
+/* Restructure the container with proper alignment */
+.matrix-header .section:has(.section-title:contains("SYSTEM.CONTROLS + PERFORMANCE")) .section-content,
+.controls-perf-container {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 16px !important;
+  align-items: start !important;
+  align-content: start !important;
+  padding: 40px 12px 12px !important;
+  height: 100% !important;
+  box-sizing: border-box !important;
+}
+
+/* Add section headers */
+.matrix-header .section:has(.section-title:contains("SYSTEM.CONTROLS + PERFORMANCE"))::before {
+  content: "SYSTEM.CONTROLS" !important;
+  position: absolute !important;
+  top: 8px !important;
+  left: calc(25% - 60px) !important;
+  color: #00ff85 !important;
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  font-family: 'Space Mono', monospace !important;
+  background: rgba(0, 17, 0, 0.9) !important;
+  padding: 4px 8px !important;
+  border: 1px solid #003311 !important;
+  border-radius: 2px !important;
+  z-index: 15 !important;
+  letter-spacing: 0.5px !important;
+}
+
+.matrix-header .section:has(.section-title:contains("SYSTEM.CONTROLS + PERFORMANCE"))::after {
+  content: "PERFORMANCE" !important;
+  position: absolute !important;
+  top: 8px !important;
+  right: calc(25% - 50px) !important;
+  color: #00ff85 !important;
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  font-family: 'Space Mono', monospace !important;
+  background: rgba(0, 17, 0, 0.9) !important;
+  padding: 4px 8px !important;
+  border: 1px solid #003311 !important;
+  border-radius: 2px !important;
+  z-index: 15 !important;
+  letter-spacing: 0.5px !important;
+}
+
+/* Content distribution and alignment fixes */
+.matrix-header .section:has(.section-title:contains("SYSTEM.CONTROLS + PERFORMANCE")) .section-content > * {
+  margin: 0 0 8px 0 !important;
+  padding: 6px 10px !important;
+  background: rgba(0, 17, 0, 0.6) !important;
+  border: 1px solid #003311 !important;
+  border-radius: 3px !important;
+  color: #888 !important;
+  font-family: 'Space Mono', monospace !important;
+  font-size: 10px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  min-height: 28px !important;
+  box-sizing: border-box !important;
+  transition: all 0.2s ease !important;
+}
+
+/* Distribute content into columns */
+.matrix-header .section:has(.section-title:contains("SYSTEM.CONTROLS + PERFORMANCE")) .section-content > *:nth-child(-n+4) {
+  grid-column: 1 !important;
+  align-self: start !important;
+}
+
+.matrix-header .section:has(.section-title:contains("SYSTEM.CONTROLS + PERFORMANCE")) .section-content > *:nth-child(n+5) {
+  grid-column: 2 !important;
+  align-self: start !important;
+}
+
+/* Button hover effects (no movement per project rules) */
+.matrix-header .section:has(.section-title:contains("SYSTEM.CONTROLS + PERFORMANCE")) .section-content > *:hover {
+  background: rgba(0, 34, 17, 0.8) !important;
+  border-color: #00ff85 !important;
+  color: #00ff85 !important;
+  transform: none !important; /* No movement on hover */
+}
+
+/* Special styling for different element types */
+.matrix-header .section:has(.section-title:contains("SYSTEM.CONTROLS + PERFORMANCE")) .section-content .metric-value {
+  color: #00ff85 !important;
+  font-weight: 700 !important;
+}
+
+.matrix-header .section:has(.section-title:contains("SYSTEM.CONTROLS + PERFORMANCE")) .section-content .connection-indicator {
+  display: inline-block !important;
+  width: 8px !important;
+  height: 8px !important;
+  background: #ff4444 !important;
+  border-radius: 50% !important;
+  margin-right: 6px !important;
+}
+
+/* Online state styling */
+.matrix-header.online .section:has(.section-title:contains("SYSTEM.CONTROLS + PERFORMANCE")) .section-content .connection-indicator {
+  background: #00ff85 !important;
+}
+
+/* Style system controls column */
+.system-controls-column {
+  position: relative;
+}
+
+.system-controls-column::before {
+  content: 'SYSTEM.CONTROLS';
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  color: #00ff85;
+  font-weight: 700;
+  letter-spacing: 1px;
+  display: block;
+  text-align: center;
+  margin-bottom: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid #003311;
+}
+
+/* Style performance metrics column */
+.perf-metrics-column {
+  position: relative;
+}
+
+.perf-metrics-column::before {
+  content: 'PERFORMANCE';
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  color: #00ff85;
+  font-weight: 700;
+  letter-spacing: 1px;
+  display: block;
+  text-align: center;
+  margin-bottom: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid #003311;
+}
+
+/* Restyle controls grid */
+.system-controls-column .controls-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.system-controls-column .matrix-control-btn {
+  background: rgba(0, 17, 0, 0.6);
+  border: 1px solid #003311;
+  border-radius: 3px;
+  padding: 6px 10px;
+  font-family: 'Space Mono', monospace;
+  color: #888;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 9px;
+  height: 28px;
+}
+
+.system-controls-column .matrix-control-btn:hover {
+  background: rgba(0, 34, 17, 0.9);
+  border-color: #00ff85;
+  color: #00ff85;
+}
+
+.system-controls-column .btn-glyph {
+  font-size: 12px;
+  width: 14px;
+  text-align: center;
+}
+
+.system-controls-column .btn-label {
+  flex: 1;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.system-controls-column .btn-code {
+  font-size: 7px;
+  color: #555;
+  font-weight: 400;
+}
+
+/* Button-specific colors */
+.system-controls-column .kill-btn:hover {
+  border-color: #ff4444;
+  color: #ff4444;
+  background: rgba(34, 0, 0, 0.9);
+}
+
+.system-controls-column .reset-btn:hover {
+  border-color: #ffaa00;
+  color: #ffaa00;
+  background: rgba(34, 17, 0, 0.9);
+}
+
+.system-controls-column .reload-btn:hover {
+  border-color: #0088ff;
+  color: #0088ff;
+  background: rgba(0, 17, 34, 0.9);
+}
+
+/* Performance modes */
+.system-controls-column .performance-modes {
+  display: flex;
+  gap: 3px;
+  border-top: 1px solid #003311;
+  padding-top: 6px;
+}
+
+.system-controls-column .mode-btn {
+  flex: 1;
+  background: rgba(0, 17, 0, 0.6);
+  border: 1px solid #003311;
+  border-radius: 2px;
+  padding: 4px 3px;
+  font-family: 'Space Mono', monospace;
+  font-size: 8px;
+  color: #888;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-weight: 700;
+  text-align: center;
+}
+
+.system-controls-column .mode-btn:hover {
+  border-color: #00ff85;
+  color: #00ff85;
+}
+
+.system-controls-column .mode-btn.active {
+  background: rgba(0, 255, 133, 0.2);
+  border-color: #00ff85;
+  color: #00ff85;
+}
+
+/* Restyle metrics grid */
+.metrics-grid-compact {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.metric-cell-compact {
+  background: rgba(0, 17, 0, 0.6);
+  border: 1px solid #003311;
+  border-radius: 3px;
+  padding: 6px 4px;
+  text-align: center;
+  transition: all 0.2s ease;
+}
+
+.metric-cell-compact:hover {
+  border-color: #00ff85;
+  background: rgba(0, 34, 17, 0.8);
+}
+
+.metric-cell-compact .metric-label {
+  font-family: 'Space Mono', monospace;
+  font-size: 8px;
+  color: #888;
+  font-weight: 400;
+  letter-spacing: 0.5px;
+  margin-bottom: 2px;
+}
+
+.metric-cell-compact .metric-value {
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  color: #00ff85;
+  font-weight: 700;
+  margin-bottom: 3px;
+  min-height: 13px;
+}
+
+.metric-cell-compact .metric-bar {
+  height: 2px;
+  background: #002211;
+  border-radius: 1px;
+  overflow: hidden;
+  position: relative;
+}
+
+.metric-cell-compact .bar-fill {
+  height: 100%;
+  background: #00ff85;
+  border-radius: 1px;
+  width: 0%;
+  transition: width 0.3s ease;
+}
+
+.metric-cell-compact .fps-bar { background: #00ff85; }
+.metric-cell-compact .mem-bar { background: #ffaa00; }
+.metric-cell-compact .dom-bar { background: #0088ff; }
+.metric-cell-compact .fx-bar { background: #ff4444; }
+
+/* Connection status */
+.connection-status-compact {
+  background: rgba(0, 17, 0, 0.6);
+  border: 1px solid #003311;
+  border-radius: 3px;
+  padding: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.connection-status-compact .connection-indicator {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.connection-status-compact .status-dot {
+  display: block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #ff4444;
+  transition: all 0.3s ease;
+}
+
+.connection-status-compact .status-wave {
+  position: absolute;
+  top: -4px;
+  left: -4px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 68, 68, 0.3);
+  animation: pulse 2s infinite;
+}
+
+.connection-status-compact .connection-text {
+  flex: 1;
+}
+
+.connection-status-compact .status-text {
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  color: #ff4444;
+  font-weight: 700;
+  display: block;
+}
+
+.connection-status-compact .uptime-display {
+  margin-top: 2px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.connection-status-compact .uptime-label {
+  font-family: 'Space Mono', monospace;
+  font-size: 8px;
+  color: #888;
+  font-weight: 400;
+}
+
+.connection-status-compact #systemUptime {
+  font-family: 'Space Mono', monospace;
+  font-size: 8px;
+  color: #00ff85;
+  font-weight: 400;
+}
+
+/* Online state */
+.matrix-header.online .connection-status-compact .status-dot {
+  background: #00ff85;
+}
+
+.matrix-header.online .connection-status-compact .status-wave {
+  border-color: rgba(0, 255, 133, 0.3);
+}
+
+.matrix-header.online .connection-status-compact .status-text {
+  color: #00ff85;
+}
+
+/* ============================================
+   DICE SYSTEM (HIDDEN FOR NOW)
+   ============================================ */
+
+.matrix-dice {
+  display: none; /* Hide dice system to simplify layout */
+}
+
+/* ============================================
+   RESPONSIVE BEHAVIOR
+   ============================================ */
+
+@media (max-width: 1400px) {
+  .matrix-header {
+    grid-template-columns: 280px 1fr 220px 180px;
+    gap: 16px;
+  }
+}
+
+@media (max-width: 1200px) {
+  .matrix-header {
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto auto;
+    gap: 16px;
+  }
+  
+  .matrix-identity {
+    grid-column: 1;
+    grid-row: 1;
+  }
+  
+  .matrix-performance {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  
+  .matrix-connection {
+    grid-column: 1;
+    grid-row: 2;
+  }
+  
+  .matrix-controls {
+    grid-column: 2;
+    grid-row: 2;
+  }
+}
+
+@media (max-width: 768px) {
+  .matrix-header {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto auto auto;
+    gap: 12px;
+    padding: 12px;
+  }
+  
+  .matrix-identity,
+  .matrix-performance,
+  .matrix-connection,
+  .matrix-controls {
+    grid-column: 1;
+  }
+  
+  .matrix-identity { grid-row: 1; }
+  .matrix-performance { grid-row: 2; }
+  .matrix-connection { grid-row: 3; }
+  .matrix-controls { grid-row: 4; }
+  
+  .metrics-grid {
+    grid-template-columns: repeat(4, 1fr);
+    grid-template-rows: 1fr;
+  }
+  
+  .controls-grid {
+    flex-direction: row;
+  }
+  
+  .matrix-control-btn {
+    flex: 1;
+    padding: 8px 6px;
+  }
+  
+  .btn-label {
+    font-size: 9px;
+  }
+}

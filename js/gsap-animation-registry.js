@@ -100,6 +100,15 @@ class GSAPAnimationRegistry {
             return count < cfg.maxAnimations;
         };
 
+        // Helper to clean registry-specific properties from vars
+        const cleanVars = (vars) => {
+            if (!vars) return vars;
+            const cleaned = { ...vars };
+            delete cleaned._regCategory;
+            delete cleaned._regSoftCap;
+            return cleaned;
+        };
+
         // Patch gsap.to
         gsap.to = function(targets, vars = {}) {
             const category = resolveCategory(vars);
@@ -107,7 +116,9 @@ class GSAPAnimationRegistry {
                 if (registry.verbose) console.log(`⏳ Skipping creation in category '${category}' (soft cap reached)`);
                 return registry.createNoopTween();
             }
-            const tween = originalTo.call(this, targets, vars);
+            // Remove custom registry properties before passing to GSAP
+            const cleanedVars = cleanVars(vars);
+            const tween = originalTo.call(this, targets, cleanedVars);
             if (tween && registry) {
                 registry.registerAnimation(tween, 'auto-to', category);
             }
@@ -121,7 +132,8 @@ class GSAPAnimationRegistry {
                 if (registry.verbose) console.log(`⏳ Skipping creation in category '${category}' (soft cap reached)`);
                 return registry.createNoopTween();
             }
-            const tween = originalFrom.call(this, targets, vars);
+            const cleanedVars = cleanVars(vars);
+            const tween = originalFrom.call(this, targets, cleanedVars);
             if (tween && registry) {
                 registry.registerAnimation(tween, 'auto-from', category);
             }
@@ -135,7 +147,9 @@ class GSAPAnimationRegistry {
                 if (registry.verbose) console.log(`⏳ Skipping creation in category '${category}' (soft cap reached)`);
                 return registry.createNoopTween();
             }
-            const tween = originalFromTo.call(this, targets, fromVars, toVars);
+            const cleanedFromVars = cleanVars(fromVars);
+            const cleanedToVars = cleanVars(toVars);
+            const tween = originalFromTo.call(this, targets, cleanedFromVars, cleanedToVars);
             if (tween && registry) {
                 registry.registerAnimation(tween, 'auto-fromTo', category);
             }
@@ -149,7 +163,8 @@ class GSAPAnimationRegistry {
                 if (registry.verbose) console.log(`⏳ Skipping creation in category '${category}' (soft cap reached)`);
                 return registry.createNoopTimeline();
             }
-            const timeline = originalTimeline.call(this, vars);
+            const cleanedVars = cleanVars(vars);
+            const timeline = originalTimeline.call(this, vars); // Keep original vars for timeline as it handles custom props
             if (timeline && registry) {
                 registry.registerAnimation(timeline, 'auto-timeline', category);
             }

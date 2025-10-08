@@ -14,6 +14,8 @@
   <link href="styles/logo-protection.css" rel="stylesheet" type="text/css">
   <link href="css/monitor.css" rel="stylesheet" type="text/css">
   <link href="css/transitions-and-overlays.css" rel="stylesheet" type="text/css">
+  <!-- EMERGENCY CENTERING FIXES - Loaded last to ensure specificity -->
+  <link href="css/emergency-centering-fixes.css" rel="stylesheet" type="text/css">
   <link href="https://fonts.googleapis.com" rel="preconnect">
   <link href="https://fonts.gstatic.com" rel="preconnect" crossorigin="anonymous">
   <!-- jQuery removed - was only needed for legacy Webflow code -->
@@ -100,6 +102,10 @@
   <script type="module" src="/js/diagnostics.js"></script>
   <!-- Test Fixes - Verification script for debugging -->
   <script type="module" src="/js/test-fixes.js"></script>
+  <!-- EMERGENCY DOM FIXES - Load early to prevent issues -->
+  <script src="/js/emergency-dom-fixes.js"></script>
+  <!-- Live Console Logger Bus - Real-time log broadcasting -->
+  <script type="module" src="/js/install-index-logs.js"></script>
 </head>
 <body class="body">
   <div id="poster-backdrop" aria-hidden="true"></div>

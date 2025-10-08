@@ -48,6 +48,16 @@ class RandomAnimations {
             this.isRunning = true;
         }
 
+        // Check DOM health before triggering any animation
+        const totalDOMNodes = document.querySelectorAll('*').length;
+        if (totalDOMNodes > 42000) {
+            console.log(`🚫 Random animations blocked: ${totalDOMNodes} DOM nodes`);
+            // Extend delay when DOM is bloated
+            const nextDelay = Math.random() * 20000 + 15000; // Longer delay when blocked
+            setTimeout(() => this.triggerRandomAnimation(), nextDelay);
+            return;
+        }
+
         // Random chance to trigger an animation (reduced)
         if (Math.random() > 0.5) { // 50% chance (was 70%)
             // Pick a random animation that isn't the last one

@@ -1,28 +1,55 @@
 // Lottie Animations Module - Cosmic visual effects system
 import intervalManager from './interval-manager.js';
+import gsap from 'gsap';
+
+// Ensure GSAP plugins are properly registered
+if (typeof window !== 'undefined') {
+    // Register background animation category if not already done
+    if (!gsap._3886_bgCategoryRegistered) {
+        // Add support for background animation category
+        gsap.registerEffect = gsap.registerEffect || (() => {});
+        gsap._3886_bgCategoryRegistered = true;
+        console.log('🔧 GSAP background animation support registered');
+    }
+}
 
 class LottieAnimations {
     constructor() {
-        this.animations = {
-            planetRing: null,
-            planetLogo: null,
-            abstraction: null,
-            hexagon: null,
-            morphingParticle: null,
-            sacredGeometry: null,
-            transparentDiamond: null,
-            circuitRound: null,
-            geometricalLines: null,
-            circularDots: null
-        };
-
-        this.containers = {};
+        // Use Maps for better performance and management
+        this.animations = new Map();
+        this.containers = new Map();
+        this.animationInstances = new Map(); // Track actual dotlottie-player instances
+        
         this.isInitialized = false;
         this.activeIntervals = []; // Track managed interval handles for cleanup
+        
         // Track fade/display timers and visibility per animation to prevent overlaps
-        this.displayTimers = {};
-        this.fadeOutTimers = {};
-        this.visibleStates = {};
+        this.displayTimers = new Map();
+        this.fadeOutTimers = new Map();
+        this.visibleStates = new Map();
+        
+        // Intersection Observer for deferred loading
+        this.intersectionObserver = null;
+        this.pendingAnimations = new Set();
+        
+        // Cache for animation JSON data
+        this.animationDataCache = new Map();
+        
+        // Quality and performance settings
+        this.performanceMode = 'high'; // high, medium, low
+        this.maxConcurrentAnimations = 2; // Reduced from 3 to 2 to prevent overload
+        this.currentActiveCount = 0;
+        
+        // Interval management with proper owner
+        this.intervalOwner = 'lottie-animations';
+        
+        // Visibility and lifecycle management
+        this.isPageVisible = !document.hidden;
+        this.isContainerVisible = true;
+        
+        // Bind methods for event listeners
+        this.handleVisibilityChange = this.handleVisibilityChange.bind(this);
+        this.handleIntersection = this.handleIntersection.bind(this);
 
         // Animation configurations - centered and full-width circular animations
         this.config = {
@@ -171,19 +198,22 @@ class LottieAnimations {
             }
         };
 
-        // Store JSON data locally for better performance
-        this.animationData = {
-            planetRing: null,
-            planetLogo: null,
-            abstraction: null,  // Re-enabled with low opacity
-            // hexagon: null,  // REMOVED
-            morphingParticle: null,
-            sacredGeometry: null,
-            transparentDiamond: null,
-            circuitRound: null,
-            geometricalLines: null,
-            circularDots: null
-        };
+        // Animation names for easier iteration
+        this.animationNames = [
+            'planetRing', 'planetLogo', 'abstraction', 'morphingParticle', 
+            'sacredGeometry', 'transparentDiamond', 'circuitRound', 
+            'geometricalLines', 'circularDots'
+        ];
+        
+        // Initialize Maps with animation names
+        this.animationNames.forEach(name => {
+            this.animations.set(name, null);
+            this.containers.set(name, null);
+            this.animationInstances.set(name, null);
+            this.displayTimers.set(name, null);
+            this.fadeOutTimers.set(name, null);
+            this.visibleStates.set(name, false);
+        });
     }
 
     async init() {
@@ -195,43 +225,54 @@ class LottieAnimations {
         console.log('🌟 Initializing Lottie animations...');
 
         try {
+            // Set up visibility management
+            this.setupVisibilityManagement();
+
             // Create containers for each animation
             this.createContainers();
 
-            // Load animation data
+            // Set up Intersection Observer for deferred loading
+            this.setupIntersectionObserver();
+
+            // Load animation data (cached)
             await this.loadAnimationData();
 
-            // Initialize all animations
-            this.initPlanetRing();
-            this.initPlanetLogo();
-            this.initAbstraction();  // Re-enabled with low opacity
-            // this.initHexagon();  // REMOVED
-            this.initMorphingParticle();
-            this.initSacredGeometry();
-            this.initTransparentDiamond();
-            this.initCircuitRound();
-            this.initGeometricalLines();
-            this.initCircularDots();
+            // Initialize animations using the animationNames array
+            this.animationNames.forEach(name => {
+                this.initAnimation(name);
+            });
 
             // Set up interaction handlers
             this.setupInteractions();
 
-            // Start animation cycles
-            this.startAnimationCycles();
+            // Start animation cycles (deferred if not visible)
+            if (this.shouldAnimationsRun()) {
+                this.startAnimationCycles();
+            } else {
+                console.log('🛑 Deferring animation cycles until container becomes visible');
+                this.pendingAnimations.add('startCycles');
+            }
 
             // Add to window for debugging
             window.lottieAnimations = this;
 
             this.isInitialized = true;
-            console.log('✨ Lottie animations initialized');
+            console.log(`✨ Lottie animations initialized (${this.animationNames.length} animations)`);
         } catch (error) {
             console.error('Failed to initialize Lottie animations:', error);
         }
     }
 
     createContainers() {
+        // Check if main container already exists to prevent duplication
+        let mainContainer = document.querySelector('.lottie-container');
+        if (mainContainer) {
+            console.warn('⚠️ Main lottie container already exists, removing to prevent duplication');
+            mainContainer.remove();
+        }
+
         // Create main Lottie container
-        const mainContainer = document.createElement('div');
+        mainContainer = document.createElement('div');
         mainContainer.className = 'lottie-container';
         mainContainer.style.cssText = `
             position: fixed;
@@ -244,24 +285,35 @@ class LottieAnimations {
         `;
         document.body.appendChild(mainContainer);
 
-        // Create individual animation containers with dotlottie-player elements
-        ['planetRing', 'planetLogo', 'abstraction', 'morphingParticle', 'sacredGeometry', 'transparentDiamond', 'circuitRound', 'geometricalLines', 'circularDots'].forEach(name => {
+        // Create individual animation containers using animationNames array
+        this.animationNames.forEach(name => {
+            // Skip if instance already exists to prevent duplication
+            if (this.containers.get(name)) {
+                console.warn(`⚠️ Animation instance '${name}' already exists, skipping creation`);
+                return;
+            }
+
             const container = document.createElement('dotlottie-player');
             container.className = `lottie-${name}`;
             container.id = `lottie-${name}`;
 
             // Set attributes for dotlottie-player
-            container.setAttribute('src', this.config[name].path);
+            const config = this.config[name];
+            container.setAttribute('src', config.path);
             container.setAttribute('background', 'transparent');
             container.setAttribute('speed', '1');
             container.setAttribute('style', `width: 100%; height: 100%;`);
 
-            if (this.config[name].loop) {
+            if (config.loop) {
                 container.setAttribute('loop', '');
             }
+            
             // Don't autoplay - we'll control this with chaos engine
+            // Use canvas renderer where specified for better performance
+            if (config.renderer === 'canvas') {
+                container.setAttribute('renderer', 'canvas');
+            }
 
-            const config = this.config[name];
             const wrapperDiv = document.createElement('div');
             wrapperDiv.className = `lottie-wrapper-${name}`;
             wrapperDiv.style.cssText = `
@@ -282,133 +334,250 @@ class LottieAnimations {
 
             wrapperDiv.appendChild(container);
             mainContainer.appendChild(wrapperDiv);
-            this.containers[name] = container;
+            
+            // Store in Map for better management
+            this.containers.set(name, container);
+            this.animationInstances.set(name, container);
         });
     }
 
-    async loadAnimationData() {
-        // No need to load animation data anymore - we'll use file paths directly
-        // The Lottie library will handle loading the .lottie files
-        console.log('🎯 Using .lottie files directly from disk');
+    setupVisibilityManagement() {
+        // Page visibility API
+        document.addEventListener('visibilitychange', this.handleVisibilityChange);
+        
+        // Performance mode listeners
+        window.addEventListener('performanceModeChange', (event) => {
+            this.performanceMode = event.detail.mode;
+            this.adjustPerformanceSettings(event.detail.mode);
+        });
     }
 
-    initPlanetRing() {
-        if (!this.containers.planetRing) return;
+    setupIntersectionObserver() {
+        // Create intersection observer for the main container
+        this.intersectionObserver = new IntersectionObserver(this.handleIntersection, {
+            root: null,
+            rootMargin: '50px',
+            threshold: 0.1
+        });
 
-        const wrapper = this.containers.planetRing.parentElement;
-        this.animations.planetRing = this.containers.planetRing;
+        // Observe the main container once it's created
+        const mainContainer = document.querySelector('.lottie-container');
+        if (mainContainer) {
+            this.intersectionObserver.observe(mainContainer);
+        }
+    }
 
-        // Start hidden - will be shown by chaos engine
+    handleVisibilityChange() {
+        this.isPageVisible = !document.hidden;
+        
+        if (this.isPageVisible) {
+            // Resume animations when page becomes visible
+            if (this.shouldAnimationsRun()) {
+                this.resumeAllAnimations();
+                // Process any pending animations
+                this.processPendingAnimations();
+            }
+        } else {
+            // Pause animations when page is hidden
+            this.pauseAllAnimations();
+        }
+    }
+
+    // Define pause/resume methods first (called by handleIntersection)
+    pauseAllAnimations() {
+        this.animations.forEach((player, name) => {
+            if (player && player.pause) {
+                try {
+                    player.pause();
+                } catch (e) {
+                    console.warn(`⚠️ Error pausing animation '${name}':`, e);
+                }
+            }
+        });
+        if (console.log) console.log('⏸️ All Lottie animations paused');
+    }
+
+    resumeAllAnimations() {
+        this.animations.forEach((player, name) => {
+            if (player && player.play && this.visibleStates.get(name)) {
+                try {
+                    player.play();
+                } catch (e) {
+                    console.warn(`⚠️ Error resuming animation '${name}':`, e);
+                }
+            }
+        });
+        if (console.log) console.log('▶️ Visible Lottie animations resumed');
+    }
+
+    handleIntersection(entries) {
+        entries.forEach(entry => {
+            if (entry.target.classList.contains('lottie-container')) {
+                this.isContainerVisible = entry.isIntersecting;
+                
+                if (this.isContainerVisible && this.shouldAnimationsRun()) {
+                    this.processPendingAnimations();
+                } else if (!this.isContainerVisible) {
+                    // Optionally pause animations when container is not visible
+                    this.pauseAllAnimations();
+                }
+            }
+        });
+    }
+
+    shouldAnimationsRun() {
+        return this.isPageVisible && this.isContainerVisible && this.performanceMode !== 'low';
+    }
+
+    processPendingAnimations() {
+        if (this.pendingAnimations.has('startCycles')) {
+            this.startAnimationCycles();
+            this.pendingAnimations.delete('startCycles');
+        }
+    }
+
+    adjustPerformanceSettings(mode) {
+        switch (mode) {
+            case 'low':
+                this.maxConcurrentAnimations = 1;
+                this.pauseAllAnimations();
+                break;
+            case 'medium':
+                this.maxConcurrentAnimations = 2;
+                break;
+            case 'high':
+            default:
+                this.maxConcurrentAnimations = 3;
+                if (this.shouldAnimationsRun()) {
+                    this.resumeAllAnimations();
+                }
+                break;
+        }
+        console.log(`🎮 Performance mode: ${mode}, max concurrent: ${this.maxConcurrentAnimations}`);
+    }
+
+    async loadAnimationData() {
+        // Use file paths directly - dotlottie-player handles loading
+        // This could be enhanced to cache animation JSON data if needed
+        console.log('🎯 Using .lottie files directly from disk');
+        
+        // Optional: Preload critical animations
+        const criticalAnimations = ['planetLogo', 'planetRing'];
+        criticalAnimations.forEach(name => {
+            if (this.config[name]) {
+                this.animationDataCache.set(name, { 
+                    path: this.config[name].path,
+                    loaded: false 
+                });
+            }
+        });
+    }
+
+    // Generic animation initializer
+    initAnimation(name) {
+        const container = this.containers.get(name);
+        const config = this.config[name];
+        
+        if (!container || !config) {
+            console.warn(`⚠️ Cannot initialize animation '${name}': missing container or config`);
+            return;
+        }
+
+        const wrapper = container.parentElement;
+        this.animations.set(name, container);
+
+        // Start hidden - will be shown by animation cycles
         wrapper.style.opacity = '0';
 
-        // Add hover effect
-        wrapper.addEventListener('mousemove', (e) => {
-            const player = this.containers.planetRing;
-            if (!player) return;
+        // Add specific interactions based on animation type
+        this.setupAnimationInteractions(name, wrapper, container);
+    }
 
+    setupAnimationInteractions(name, wrapper, container) {
+        const config = this.config[name];
+
+        switch (name) {
+            case 'planetRing':
+                this.setupPlanetRingInteractions(wrapper, container);
+                break;
+            case 'planetLogo':
+                this.setupPlanetLogoInteractions(wrapper, container);
+                break;
+            case 'transparentDiamond':
+                this.setupTransparentDiamondInteractions(wrapper, container);
+                break;
+            case 'circuitRound':
+                this.setupCircuitRoundInteractions(wrapper, container);
+                break;
+            case 'geometricalLines':
+                this.setupGeometricalLinesInteractions(wrapper, container);
+                break;
+            case 'circularDots':
+                this.setupCircularDotsInteractions(wrapper, container);
+                break;
+            case 'sacredGeometry':
+                this.setupSacredGeometryInteractions(wrapper, container);
+                break;
+            // Default case: no special interactions
+            default:
+                break;
+        }
+    }
+
+    // Individual init methods removed - replaced by generic initAnimation() method
+    // which uses setupAnimationInteractions() for specific behavior
+
+    // Compute per-animation fade durations with sensible defaults
+    getFadeDurations(name) {
+        const defaults = { fadeInMs: 1000, fadeOutMs: 1200 };
+        switch (name) {
+            case 'planetLogo':
+                return { fadeInMs: 1200, fadeOutMs: 1400 };
+            case 'circuitRound':
+                return { fadeInMs: 900, fadeOutMs: 1100 };
+            case 'planetRing':
+                return { fadeInMs: 1000, fadeOutMs: 1200 };
+            default:
+                return defaults;
+        }
+    }
+
+    // Add specific interaction setup methods
+    setupPlanetRingInteractions(wrapper, container) {
+        wrapper.addEventListener('mousemove', (e) => {
+            if (!container) return;
             const rect = wrapper.getBoundingClientRect();
             const distance = Math.sqrt(
                 Math.pow(e.clientX - (rect.left + rect.width / 2), 2) +
                 Math.pow(e.clientY - (rect.top + rect.height / 2), 2)
             );
-
             if (distance < 300) {
-                player.setAttribute('speed', '1.2');  // Less dramatic speed change
-                wrapper.style.opacity = '0.15';  // More subtle brighten on hover
-                wrapper.style.filter = 'brightness(1.05)';  // Gentler brightness
+                container.setAttribute('speed', '1.2');
+                wrapper.style.opacity = '0.15';
+                wrapper.style.filter = 'brightness(1.05)';
             } else {
-                player.setAttribute('speed', '1');
+                container.setAttribute('speed', '1');
                 wrapper.style.opacity = this.config.planetRing.opacity.toString();
                 wrapper.style.filter = 'brightness(1)';
             }
         });
     }
 
-    initAbstraction() {
-        if (!this.containers.abstraction) return;
-
-        const wrapper = this.containers.abstraction.parentElement;
-        this.animations.abstraction = this.containers.abstraction;
-
-        // Start hidden - will be shown by chaos engine
-        wrapper.style.opacity = '0';
-    }
-
-    // REMOVED - hexagon animation disabled
-    /*
-    initHexagon() {
-        if (!this.containers.hexagon) return;
-
-        const wrapper = this.containers.hexagon.parentElement;
-        this.animations.hexagon = this.containers.hexagon;
-
-        // Start hidden
-        wrapper.style.opacity = '0';
-
-        // Subtle pulsing effect on hover
-        wrapper.addEventListener('mouseenter', () => {
-            wrapper.style.filter = 'brightness(1.15) saturate(1.2)';
-        });
-        wrapper.addEventListener('mouseleave', () => {
-            wrapper.style.filter = 'brightness(1)';
-        });
-    }
-    */
-
-    initMorphingParticle() {
-        if (!this.containers.morphingParticle) return;
-
-        const wrapper = this.containers.morphingParticle.parentElement;
-        this.animations.morphingParticle = this.containers.morphingParticle;
-
-        // Start hidden
-        wrapper.style.opacity = '0';
-    }
-
-    initSacredGeometry() {
-        if (!this.containers.sacredGeometry) return;
-
-        const wrapper = this.containers.sacredGeometry.parentElement;
-        this.animations.sacredGeometry = this.containers.sacredGeometry;
-
-        // Start hidden
-        wrapper.style.opacity = '0';
-
-        // Trigger on scroll
-        window.addEventListener('scroll', () => {
-            if (window.scrollY > 800 && !this.sacredGeometryTriggered) {
-                this.showAnimation('sacredGeometry');
-                this.sacredGeometryTriggered = true;
-            }
+    setupPlanetLogoInteractions(wrapper, container) {
+        wrapper.style.cursor = 'pointer';
+        wrapper.addEventListener('click', () => {
+            this.triggerCosmicBurst();
         });
     }
 
-    initTransparentDiamond() {
-        if (!this.containers.transparentDiamond) return;
-
-        const wrapper = this.containers.transparentDiamond.parentElement;
-        this.animations.transparentDiamond = this.containers.transparentDiamond;
-
-        // Start hidden
-        wrapper.style.opacity = '0';
-
-        // Sparkle effect on click
+    setupTransparentDiamondInteractions(wrapper, container) {
         wrapper.style.cursor = 'pointer';
         wrapper.addEventListener('click', () => {
             this.createSparkleEffect(wrapper);
         });
     }
 
-    initCircuitRound() {
-        if (!this.containers.circuitRound) return;
-
-        const wrapper = this.containers.circuitRound.parentElement;
-        this.animations.circuitRound = this.containers.circuitRound;
-
-        // Start hidden - will be shown by animation cycles
-        wrapper.style.opacity = '0';
-
-        // Add subtle rotation on hover
+    setupCircuitRoundInteractions(wrapper, container) {
         wrapper.addEventListener('mouseenter', () => {
             wrapper.style.transition = 'transform 1s ease-in-out';
             wrapper.style.transform = `${this.config.circuitRound.position.transform || ''} rotate(5deg)`;
@@ -418,16 +587,7 @@ class LottieAnimations {
         });
     }
 
-    initGeometricalLines() {
-        if (!this.containers.geometricalLines) return;
-
-        const wrapper = this.containers.geometricalLines.parentElement;
-        this.animations.geometricalLines = this.containers.geometricalLines;
-
-        // Start hidden
-        wrapper.style.opacity = '0';
-
-        // Subtle brightness effect on proximity
+    setupGeometricalLinesInteractions(wrapper, container) {
         document.addEventListener('mousemove', (e) => {
             const rect = wrapper.getBoundingClientRect();
             const centerX = rect.left + rect.width / 2;
@@ -436,7 +596,6 @@ class LottieAnimations {
                 Math.pow(e.clientX - centerX, 2) +
                 Math.pow(e.clientY - centerY, 2)
             );
-
             if (distance < 400) {
                 const proximity = 1 - (distance / 400);
                 wrapper.style.filter = `brightness(${1 + proximity * 0.1})`;
@@ -446,16 +605,7 @@ class LottieAnimations {
         });
     }
 
-    initCircularDots() {
-        if (!this.containers.circularDots) return;
-
-        const wrapper = this.containers.circularDots.parentElement;
-        this.animations.circularDots = this.containers.circularDots;
-
-        // Start hidden
-        wrapper.style.opacity = '0';
-
-        // Pulsing effect on click
+    setupCircularDotsInteractions(wrapper, container) {
         wrapper.style.cursor = 'pointer';
         wrapper.addEventListener('click', () => {
             wrapper.style.animation = 'dotsPulse 1s ease-out';
@@ -463,7 +613,7 @@ class LottieAnimations {
                 wrapper.style.animation = '';
             }, 1000);
         });
-
+        
         // Add the pulse animation if it doesn't exist
         if (!document.querySelector('#dots-pulse-style')) {
             const style = document.createElement('style');
@@ -482,47 +632,27 @@ class LottieAnimations {
         }
     }
 
-    initPlanetLogo() {
-        if (!this.containers.planetLogo) return;
-
-        const wrapper = this.containers.planetLogo.parentElement;
-        this.animations.planetLogo = this.containers.planetLogo;
-
-        // Start hidden - will be shown by chaos engine
-        wrapper.style.opacity = '0';
-
-        // Click interaction
-        wrapper.style.cursor = 'pointer';
-        wrapper.addEventListener('click', () => {
-            this.triggerCosmicBurst();
+    setupSacredGeometryInteractions(wrapper, container) {
+        // Trigger on scroll
+        window.addEventListener('scroll', () => {
+            if (window.scrollY > 800 && !this.sacredGeometryTriggered) {
+                this.showAnimation('sacredGeometry');
+                this.sacredGeometryTriggered = true;
+            }
         });
     }
 
-    // Compute per-animation fade durations with sensible defaults
-    getFadeDurations(name) {
-        const defaults = { fadeInMs: 1000, fadeOutMs: 1200 };
-        switch (name) {
-            case 'planetLogo':
-                return { fadeInMs: 1200, fadeOutMs: 1400 };
-            case 'circuitRound':
-                return { fadeInMs: 900, fadeOutMs: 1100 };
-            case 'planetRing':
-                return { fadeInMs: 1000, fadeOutMs: 1200 };
-            default:
-                return defaults;
-        }
-    }
-
-    // Fade in utility with timer coordination
+    // Fade in utility with timer coordination (updated for Maps)
     fadeInAnimation(name, targetOpacity, durationMs) {
-        const player = this.animations[name];
+        const player = this.animations.get(name);
         if (!player || !player.parentElement) return;
         const wrapper = player.parentElement;
 
         // Cancel any pending fade-out to avoid fighting transitions
-        if (this.fadeOutTimers[name]) {
-            clearTimeout(this.fadeOutTimers[name]);
-            this.fadeOutTimers[name] = null;
+        const fadeOutTimer = this.fadeOutTimers.get(name);
+        if (fadeOutTimer) {
+            clearTimeout(fadeOutTimer);
+            this.fadeOutTimers.set(name, null);
         }
 
         wrapper.style.transition = `opacity ${durationMs}ms ease-in-out, filter ${Math.max(600, durationMs)}ms ease-in-out`;
@@ -533,12 +663,12 @@ class LottieAnimations {
             wrapper.style.filter = 'saturate(1.2) brightness(1.05) contrast(1.05) drop-shadow(0 0 15px rgba(0, 255, 200, 0.15))';
         }
 
-        this.visibleStates[name] = true;
+        this.visibleStates.set(name, true);
     }
 
-    // Fade out utility; stops playback after the fade completes and emits end event
+    // Fade out utility; stops playback after the fade completes and emits end event (updated for Maps)
     fadeOutAnimation(name, durationMs) {
-        const player = this.animations[name];
+        const player = this.animations.get(name);
         if (!player || !player.parentElement) return;
         const wrapper = player.parentElement;
 
@@ -547,11 +677,13 @@ class LottieAnimations {
         wrapper.style.filter = 'none';
 
         // Delay stopping playback until after fade completes
-        this.fadeOutTimers[name] = setTimeout(() => {
+        const timer = setTimeout(() => {
             try { if (player.stop) player.stop(); } catch (e) { /* no-op */ }
-            this.visibleStates[name] = false;
+            this.visibleStates.set(name, false);
+            this.currentActiveCount = Math.max(0, this.currentActiveCount - 1);
             window.dispatchEvent(new CustomEvent('lottieAnimationEnd', { detail: { name } }));
         }, durationMs + 50);
+        this.fadeOutTimers.set(name, timer);
     }
 
     startAnimationCycles() {
@@ -566,6 +698,7 @@ class LottieAnimations {
             const handle = intervalManager.createInterval(() => {
                 this.showAnimation('planetLogo');
             }, this.config.planetLogo.displayInterval, 'lottie-planetLogo', {
+                owner: this.intervalOwner,
                 category: 'animation',
                 maxAge: Infinity // Keep running until explicitly cleared
             });
@@ -578,6 +711,7 @@ class LottieAnimations {
             const handle = intervalManager.createInterval(() => {
                 this.showAnimation('planetRing');
             }, this.config.planetRing.displayInterval, 'lottie-planetRing', {
+                owner: this.intervalOwner,
                 category: 'animation',
                 maxAge: Infinity
             });
@@ -590,6 +724,7 @@ class LottieAnimations {
             const handle = intervalManager.createInterval(() => {
                 this.showAnimation('abstraction');
             }, this.config.abstraction.displayInterval, 'lottie-abstraction', {
+                owner: this.intervalOwner,
                 category: 'animation',
                 maxAge: Infinity
             });
@@ -612,6 +747,7 @@ class LottieAnimations {
             const handle = intervalManager.createInterval(() => {
                 this.showAnimation('morphingParticle');
             }, this.config.morphingParticle.displayInterval * 1.5, 'lottie-morphingParticle', {
+                owner: this.intervalOwner,
                 category: 'animation',
                 maxAge: Infinity
             });
@@ -626,6 +762,7 @@ class LottieAnimations {
             const handle = intervalManager.createInterval(() => {
                 this.showAnimation('transparentDiamond');
             }, this.config.transparentDiamond.displayInterval * 2, 'lottie-transparentDiamond', {
+                owner: this.intervalOwner,
                 category: 'animation',
                 maxAge: Infinity
             });
@@ -638,6 +775,7 @@ class LottieAnimations {
             const handle = intervalManager.createInterval(() => {
                 this.showAnimation('circuitRound');
             }, this.config.circuitRound.displayInterval, 'lottie-circuitRound', {
+                owner: this.intervalOwner,
                 category: 'animation',
                 maxAge: Infinity
             });
@@ -650,6 +788,7 @@ class LottieAnimations {
             const handle = intervalManager.createInterval(() => {
                 this.showAnimation('geometricalLines');
             }, this.config.geometricalLines.displayInterval, 'lottie-geometricalLines', {
+                owner: this.intervalOwner,
                 category: 'animation',
                 maxAge: Infinity
             });
@@ -662,6 +801,7 @@ class LottieAnimations {
             const handle = intervalManager.createInterval(() => {
                 this.showAnimation('circularDots');
             }, this.config.circularDots.displayInterval, 'lottie-circularDots', {
+                owner: this.intervalOwner,
                 category: 'animation',
                 maxAge: Infinity
             });
@@ -670,9 +810,22 @@ class LottieAnimations {
     }
 
     showAnimation(name) {
-        const player = this.animations[name];
+        // Check if we've reached max concurrent animations
+        if (this.currentActiveCount >= this.maxConcurrentAnimations) {
+            console.log(`🚦 Skipping '${name}' - max concurrent animations (${this.maxConcurrentAnimations}) reached`);
+            return;
+        }
+
+        const player = this.animations.get(name);
         const config = this.config[name];
-        if (!player || !player.parentElement) return;
+        if (!player || !player.parentElement || !config) return;
+
+        // Check if animations should run (visibility/performance)
+        if (!this.shouldAnimationsRun()) {
+            console.log(`🛑 Deferring '${name}' animation - not ready to run`);
+            this.pendingAnimations.add(`show-${name}`);
+            return;
+        }
 
         const wrapper = player.parentElement;
 
@@ -683,23 +836,33 @@ class LottieAnimations {
         const { fadeInMs, fadeOutMs } = this.getFadeDurations(name);
 
         // Cancel any pending fade-out or display timers to avoid overlaps
-        if (this.fadeOutTimers[name]) {
-            clearTimeout(this.fadeOutTimers[name]);
-            this.fadeOutTimers[name] = null;
+        const fadeOutTimer = this.fadeOutTimers.get(name);
+        if (fadeOutTimer) {
+            clearTimeout(fadeOutTimer);
+            this.fadeOutTimers.set(name, null);
         }
-        if (this.displayTimers[name]) {
-            clearTimeout(this.displayTimers[name]);
-            this.displayTimers[name] = null;
+        const displayTimer = this.displayTimers.get(name);
+        if (displayTimer) {
+            clearTimeout(displayTimer);
+            this.displayTimers.set(name, null);
         }
+
+        // Increment active count
+        this.currentActiveCount++;
 
         // Fade in and start playback
         this.fadeInAnimation(name, config.opacity, fadeInMs);
-        try { if (player.play) player.play(); } catch (e) { /* no-op */ }
+        try { 
+            if (player.play) player.play(); 
+        } catch (e) { 
+            console.warn(`⚠️ Error playing animation '${name}':`, e);
+        }
 
         // Schedule fade out after the configured display duration
-        this.displayTimers[name] = setTimeout(() => {
+        const timer = setTimeout(() => {
             this.fadeOutAnimation(name, fadeOutMs);
         }, config.displayDuration);
+        this.displayTimers.set(name, timer);
     }
 
     setupInteractions() {
@@ -708,8 +871,8 @@ class LottieAnimations {
         let rotationDirections = {};  // Track rotation direction for each animation
         let rotationValues = {};  // Track current rotation values
 
-        // Initialize rotation values
-        Object.keys(this.containers).forEach(name => {
+        // Initialize rotation values using animation names array
+        this.animationNames.forEach(name => {
             rotationValues[name] = 0;
             rotationDirections[name] = 1;  // 1 = forward, -1 = reverse
         });
@@ -719,7 +882,7 @@ class LottieAnimations {
             // Every 10-20 seconds, randomly reverse some animations
             const handle = intervalManager.createInterval(() => {
                 // Randomly select 2-3 animations to reverse
-                const animations = Object.keys(this.containers);
+                const animations = this.animationNames;
                 const numToReverse = Math.floor(Math.random() * 2) + 2;
 
                 for (let i = 0; i < numToReverse; i++) {
@@ -727,7 +890,8 @@ class LottieAnimations {
                     rotationDirections[randomAnim] *= -1;  // Reverse direction
 
                     // Smooth transition when reversing
-                    const wrapper = this.containers[randomAnim]?.parentElement;
+                    const container = this.containers.get(randomAnim);
+                    const wrapper = container?.parentElement;
                     if (wrapper) {
                         wrapper.style.transition = 'transform 2s cubic-bezier(0.4, 0, 0.2, 1)';
                         setTimeout(() => {
@@ -736,6 +900,7 @@ class LottieAnimations {
                     }
                 }
             }, Math.random() * 10000 + 10000, 'lottie-rotationReversal', { // 10-20 seconds
+                owner: this.intervalOwner,
                 category: 'animation',
                 maxAge: Infinity
             });
@@ -762,8 +927,9 @@ class LottieAnimations {
                 circularDots: -0.07
             };
 
-            Object.keys(this.containers).forEach(name => {
-                const wrapper = this.containers[name]?.parentElement;
+            this.animationNames.forEach(name => {
+                const container = this.containers.get(name);
+                const wrapper = container?.parentElement;
                 if (wrapper) {
                     // Apply rotation with direction multiplier
                     const speed = rotationSpeeds[name] || 0.1;
@@ -953,39 +1119,73 @@ class LottieAnimations {
         setTimeout(() => glow.remove(), 5000);
     }
 
-    pauseAll() {
-        Object.values(this.animations).forEach(player => {
-            if (player && player.pause) player.pause();
-        });
-    }
 
-    resumeAll() {
-        Object.values(this.animations).forEach(player => {
-            if (player && player.play) player.play();
-        });
-    }
+    // Legacy method names for compatibility
+    pauseAll() { this.pauseAllAnimations(); }
+    resumeAll() { this.resumeAllAnimations(); }
 
-    // Public methods for integration
+    // Public methods for integration (updated to use Maps)
     play(name) {
-        if (this.animations[name] && this.animations[name].play) {
-            this.animations[name].play();
+        const player = this.animations.get(name);
+        if (player && player.play) {
+            try {
+                player.play();
+                this.visibleStates.set(name, true);
+            } catch (e) {
+                console.warn(`⚠️ Error playing animation '${name}':`, e);
+            }
         }
     }
 
     pause(name) {
-        if (this.animations[name] && this.animations[name].pause) {
-            this.animations[name].pause();
+        const player = this.animations.get(name);
+        if (player && player.pause) {
+            try {
+                player.pause();
+            } catch (e) {
+                console.warn(`⚠️ Error pausing animation '${name}':`, e);
+            }
         }
     }
 
     setSpeed(name, speed) {
-        if (this.animations[name]) {
-            this.animations[name].setAttribute('speed', speed.toString());
+        const player = this.animations.get(name);
+        if (player) {
+            try {
+                player.setAttribute('speed', speed.toString());
+            } catch (e) {
+                console.warn(`⚠️ Error setting speed for animation '${name}':`, e);
+            }
         }
+    }
+
+    // Diagnostic methods for debugging
+    getActiveAnimationsCount() {
+        return this.currentActiveCount;
+    }
+
+    getAnimationStatus() {
+        const status = {};
+        this.animations.forEach((player, name) => {
+            status[name] = {
+                visible: this.visibleStates.get(name) || false,
+                hasDisplayTimer: !!this.displayTimers.get(name),
+                hasFadeOutTimer: !!this.fadeOutTimers.get(name),
+                isPlaying: player && typeof player.currentFrame !== 'undefined'
+            };
+        });
+        return status;
     }
 
     destroy() {
         console.log('🧿 LottieAnimations cleanup initiated');
+        
+        // Clean up visibility management
+        document.removeEventListener('visibilitychange', this.handleVisibilityChange);
+        if (this.intersectionObserver) {
+            this.intersectionObserver.disconnect();
+            this.intersectionObserver = null;
+        }
         
         // Clear all managed intervals
         if (this.activeIntervals && this.activeIntervals.length > 0) {
@@ -998,26 +1198,56 @@ class LottieAnimations {
             console.log('✅ Lottie intervals cleared');
         }
         
+        // Clear all timers
+        this.displayTimers.forEach((timer, name) => {
+            if (timer) {
+                clearTimeout(timer);
+                console.log(`✅ Cleared display timer for '${name}'`);
+            }
+        });
+        this.fadeOutTimers.forEach((timer, name) => {
+            if (timer) {
+                clearTimeout(timer);
+                console.log(`✅ Cleared fade timer for '${name}'`);
+            }
+        });
+        
         // Stop and destroy all animations
-        Object.values(this.animations).forEach(player => {
+        this.animations.forEach((player, name) => {
             if (player) {
                 try {
                     if (player.stop) player.stop();
                     if (player.destroy) player.destroy();
+                    console.log(`✅ Destroyed animation '${name}'`);
                 } catch (e) {
-                    // Ignore errors during cleanup
+                    console.warn(`⚠️ Error destroying animation '${name}':`, e);
                 }
             }
         });
 
-        // Remove containers
+        // Remove containers from DOM
         const mainContainer = document.querySelector('.lottie-container');
-        if (mainContainer) mainContainer.remove();
+        if (mainContainer) {
+            mainContainer.remove();
+            console.log('✅ Main container removed from DOM');
+        }
         
-        // Reset state
+        // Reset all state using Maps
         this.isInitialized = false;
-        this.animations = {};
-        this.containers = {};
+        this.animations.clear();
+        this.containers.clear();
+        this.animationInstances.clear();
+        this.displayTimers.clear();
+        this.fadeOutTimers.clear();
+        this.visibleStates.clear();
+        this.pendingAnimations.clear();
+        this.animationDataCache.clear();
+        this.currentActiveCount = 0;
+        
+        // Remove from window debug object
+        if (window.lottieAnimations === this) {
+            delete window.lottieAnimations;
+        }
         
         console.log('✅ LottieAnimations cleanup complete');
     }

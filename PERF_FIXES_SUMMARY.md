@@ -103,5 +103,43 @@ window.__3886Debug.setFlag('enableBackgroundGlow', false);
 - [ ] Add debug panel UI
 - [ ] Chrome MCP verification testing
 
-**Progress**: 4/18 todo items completed (22%)  
-**Token Usage**: ~2,400 used, ~1,600 remaining for additional fixes
+**Progress**: 8/18 todo items completed (44%)  
+**Token Usage**: ~5,000 used for comprehensive stability enhancements
+
+### Latest Additions ✅
+
+#### 5. **GSAP Animation Registry** (HIGH)
+- **Enhanced**: Comprehensive animation tracking and centralized caps (48 animations max)
+- **Features**: Auto-registration, owner-based cleanup, priority-based emergency removal
+- **Files**: `js/gsap-animation-registry.js` - completely overhauled
+- **Impact**: Prevents animation overflow, enables targeted cleanup
+
+#### 6. **Enhanced Interval Manager** (MEDIUM)  
+- **Enhanced**: Ownership tracking with per-owner limits (4 per owner, 24 global)
+- **Features**: TTL support, auto-expiring intervals, clearByOwner utilities
+- **Files**: `js/interval-manager.js` - major upgrade
+- **Impact**: Prevents timer leaks, enables targeted cleanup by module
+
+#### 7. **Soft Degradation System** (CRITICAL)
+- **Replaced**: Emergency restart loops with progressive performance optimization
+- **Features**: 3-step degradation ladder with exponential backoff for hard restarts
+  - Step 1 (3s): Disable text scramble, pause background glows
+  - Step 2 (6s): Pause non-visible animations via registry
+  - Step 3 (10s): Lower Lottie quality, reduce effect intensities to 10%
+  - Last resort (20s): Hard restart with 60s+ exponential backoff
+- **Recovery**: Automatic restoration after sustained 50+ FPS for 30 seconds
+- **Files**: `js/vj-receiver.js` - comprehensive rewrite of performance monitoring
+- **Impact**: Eliminates recovery loops, maintains visual quality during performance issues
+
+#### 8. **Background Animator Lifecycle Hardening** (HIGH)
+- **Enhanced**: Complete overhaul of background animation management with visibility controls
+- **Features**: 
+  - Single tween per effect with proper kill-before-create lifecycle
+  - Dual visibility observers (element + page) with smooth state transitions
+  - Quality-based performance scaling (1.0 = full, 0.1 = minimal)
+  - Progressive degradation integration (70% → 40% → 10% → pause)
+  - Managed intervals via intervalManager instead of raw setInterval
+  - Replaced expensive filter animations with opacity/scale alternatives
+- **Observers**: IntersectionObserver + Page Visibility API + focus/blur events
+- **Files**: `js/background-animator.js` - major architectural improvements
+- **Impact**: Eliminates animation stacking, reduces CPU on hidden tabs, prevents filter performance hits
