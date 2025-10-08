@@ -20,19 +20,19 @@
    ============================================================================ */
 
 .matrix-header {
-    /* Updated grid proportions: Preview larger, MIDI smaller, Console taller */
+    /* Updated grid proportions: Compact controls, more dice space */
     display: grid !important;
     grid-template-columns: 
-        minmax(300px, 1.4fr)     /* Live Preview - increased from 1.0fr */
+        minmax(300px, 1.4fr)     /* Live Preview - maintained */
         minmax(280px, 1.0fr)     /* Live Console - maintained */
-        minmax(200px, 0.6fr)     /* Matrix Dice - reduced from 0.8fr */
-        minmax(360px, 1.6fr)     /* System Controls + Performance - maintained */
-        minmax(240px, 0.8fr);    /* MIDI Control - reduced from 1.3fr */
+        minmax(220px, 0.9fr)     /* Matrix Dice - increased from 0.6fr */
+        minmax(320px, 1.2fr)     /* System Controls + Performance - reduced from 1.6fr */
+        minmax(240px, 0.8fr);    /* MIDI Control - maintained */
     
     align-items: stretch !important;
     gap: var(--hdr-gap, 12px) !important;
-    min-height: 160px !important;
-    max-height: 200px; /* Prevent excessive height growth */
+    min-height: 180px !important; /* Increased by 20px from 160px */
+    max-height: 220px; /* Increased proportionally */
 }
 
 /* ============================================================================
@@ -88,8 +88,8 @@
    ============================================================================ */
 
 .matrix-dice {
-    min-width: 180px !important;
-    max-width: 220px !important;
+    min-width: 200px !important;
+    max-width: 280px !important; /* Increased for more space */
     padding: 10px !important;
 }
 
@@ -279,40 +279,164 @@
 }
 
 /* ============================================================================
-   SMALLER SYSTEM CONTROL BUTTONS
+   COMPACT SYSTEM CONTROL BUTTONS AND LAYOUT
    ============================================================================ */
 
+/* Make system controls section more compact */
+.matrix-controls-perf {
+    padding: 8px !important; /* Reduced padding */
+}
+
+.controls-perf-title {
+    font-size: 9px !important; /* Smaller title */
+    margin-bottom: 6px !important; /* Less margin */
+}
+
+.controls-perf-container {
+    gap: 8px !important; /* Reduced gap between columns */
+}
+
 .matrix-control-btn {
-    padding: 6px 8px !important; /* Reduced from 8px 12px */
-    min-height: 32px !important; /* Reduced from default */
-    font-size: 9px !important; /* Slightly smaller text */
+    padding: 4px 6px !important; /* Further reduced padding */
+    min-height: 28px !important; /* Smaller height */
+    font-size: 8px !important; /* Smaller text */
+    gap: 2px !important; /* Reduced internal gap */
 }
 
 .matrix-control-btn .btn-glyph {
-    font-size: 14px !important; /* Reduced from 18px */
+    font-size: 12px !important; /* Further reduced */
 }
 
 .matrix-control-btn .btn-label {
-    font-size: 8px !important; /* Reduced from 10px */
+    font-size: 7px !important; /* Further reduced */
 }
 
 .matrix-control-btn .btn-code {
-    font-size: 7px !important; /* Reduced from 8px */
+    font-size: 6px !important; /* Further reduced */
 }
 
 .controls-grid {
     display: flex !important;
-    flex-direction: row !important; /* Side by side for space efficiency */
-    gap: 4px !important;
-    margin-bottom: 6px !important;
+    flex-direction: row !important;
+    gap: 3px !important; /* Reduced gap */
+    margin-bottom: 4px !important; /* Less margin */
+}
+
+/* Compact performance metrics */
+.metrics-grid-compact {
+    gap: 4px !important; /* Reduced gap */
+    margin-bottom: 6px !important; /* Less margin */
+}
+
+.metric-cell-compact {
+    padding: 3px 4px !important; /* Reduced padding */
+}
+
+.metric-label {
+    font-size: 6px !important; /* Smaller label */
+}
+
+.metric-value {
+    font-size: 10px !important; /* Smaller value */
+}
+
+.performance-modes {
+    gap: 2px !important; /* Reduced gap */
+    margin-top: 4px !important; /* Less margin */
+}
+
+.mode-btn {
+    padding: 3px 6px !important; /* Smaller padding */
+    font-size: 7px !important; /* Smaller text */
 }
 
 /* ============================================================================
-   CONNECTION STATUS - FIX RELOAD FREEZE ISSUE
+   CONNECTION STATUS - RESTORE VISIBILITY AND FIX RELOAD FREEZE
    ============================================================================ */
 
 .connection-status-compact {
+    display: flex !important; /* Ensure it's visible */
+    align-items: center !important;
+    gap: 6px !important;
+    padding: 4px 6px !important;
+    background: rgba(0, 0, 0, 0.4) !important;
+    border: 1px solid rgba(0, 255, 133, 0.2) !important;
+    border-radius: 3px !important;
     transition: all 0.3s ease !important;
+    margin-top: 4px !important;
+    min-height: 24px !important;
+}
+
+.connection-status-compact .connection-indicator {
+    position: relative !important;
+    width: 8px !important;
+    height: 8px !important;
+    flex-shrink: 0 !important;
+}
+
+.connection-status-compact .status-dot {
+    width: 8px !important;
+    height: 8px !important;
+    border-radius: 50% !important;
+    background: #ff4444 !important; /* Default offline */
+    display: block !important;
+}
+
+.connection-status-compact .status-wave {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 8px !important;
+    height: 8px !important;
+    border-radius: 50% !important;
+    border: 1px solid #ff4444 !important;
+    opacity: 0 !important;
+    animation: none !important;
+}
+
+.connection-status-compact .connection-text {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 1px !important;
+    min-width: 0 !important;
+}
+
+.connection-status-compact .status-text {
+    font-family: 'Space Mono', monospace !important;
+    font-size: 7px !important;
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+    color: #ff4444 !important; /* Default offline */
+    white-space: nowrap !important;
+}
+
+.connection-status-compact .uptime-display {
+    display: flex !important;
+    align-items: center !important;
+    gap: 2px !important;
+}
+
+.connection-status-compact .uptime-label {
+    font-family: 'Space Mono', monospace !important;
+    font-size: 6px !important;
+    color: rgba(0, 255, 133, 0.6) !important;
+}
+
+.connection-status-compact #systemUptime {
+    font-family: 'Space Mono', monospace !important;
+    font-size: 6px !important;
+    color: #00ff85 !important;
+    font-variant-numeric: tabular-nums !important;
+}
+
+/* Connection status states */
+.connection-status-compact.reloading {
+    border-color: rgba(255, 170, 0, 0.4) !important;
+}
+
+.connection-status-compact.reloading .status-dot {
+    background: #ffaa00 !important;
+    animation: reloadPulse 1s infinite !important;
 }
 
 .connection-status-compact.reloading .status-text {
@@ -320,17 +444,39 @@
     animation: reloadPulse 1s infinite !important;
 }
 
-@keyframes reloadPulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.6; }
+.connection-status-compact.online {
+    border-color: rgba(0, 255, 133, 0.3) !important;
+}
+
+.connection-status-compact.online .status-dot {
+    background: #00ff85 !important;
 }
 
 .connection-status-compact.online .status-text {
     color: #00ff85 !important;
 }
 
+.connection-status-compact.online .status-wave {
+    border-color: #00ff85 !important;
+    animation: waveExpand 2s infinite !important;
+}
+
+.connection-status-compact.offline .status-dot {
+    background: #ff4444 !important;
+}
+
 .connection-status-compact.offline .status-text {
     color: #ff4444 !important;
+}
+
+@keyframes reloadPulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+}
+
+@keyframes waveExpand {
+    0% { transform: scale(1); opacity: 0.6; }
+    100% { transform: scale(2.5); opacity: 0; }
 }
 
 /* ============================================================================
@@ -340,11 +486,15 @@
 @media (max-width: 1400px) {
     .matrix-header {
         grid-template-columns: 
-            minmax(260px, 1.3fr)
-            minmax(240px, 0.9fr)
-            minmax(180px, 0.5fr)
-            minmax(320px, 1.5fr)
-            minmax(220px, 0.7fr);
+            minmax(260px, 1.3fr)     /* Live Preview */
+            minmax(240px, 0.9fr)     /* Live Console */
+            minmax(200px, 0.8fr)     /* Matrix Dice - maintain space */
+            minmax(280px, 1.0fr)     /* System Controls - more compact */
+            minmax(220px, 0.7fr);    /* MIDI Control */
+    }
+    
+    .matrix-header {
+        min-height: 170px !important; /* Slightly reduced for smaller screens */
     }
 }
 
