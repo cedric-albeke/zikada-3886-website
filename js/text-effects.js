@@ -1,4 +1,5 @@
 import gsap from 'gsap';
+import perfConfig from './perf-config.js';
 
 // Safe TextEffects implementation with proper lifecycle management
 class TextEffects {
@@ -15,10 +16,18 @@ class TextEffects {
         this.canvases = new Set(); // Track created canvases
         this.rafIds = new Set(); // Track RAF IDs
         
-        // Performance limits
-        this.MAX_SCRAMBLE_ELEMENTS = 5;
+        // Duplicate prevention - use WeakSet for memory efficiency
+        this.appliedScramble = new WeakSet();
+        this.appliedGlitch = new WeakSet();
+        
+        // Performance limits from config
+        this.MAX_SCRAMBLE_ELEMENTS = perfConfig.getLimit('maxActiveAnimations') || 5;
         this.MAX_CORRUPTION_BLOCKS = 10;
         this.activeScrambleCount = 0;
+        
+        // Intersection observer for off-screen optimization
+        this.intersectionObserver = null;
+        this.setupIntersectionObserver();
         
         // Mutation observer for cleanup when elements are removed
         this.observer = new MutationObserver((mutations) => {
@@ -44,36 +53,79 @@ class TextEffects {
         console.log('✅ Safe TextEffects initialized with lifecycle management');
     }
 
+    setupIntersectionObserver() {
+        if (!('IntersectionObserver' in window)) {
+            return;
+        }
+        
+        this.intersectionObserver = new IntersectionObserver((entries) => {
+            entries.forEach((entry) => {
+                const element = entry.target;
+                const state = this.activeEffects.get(element);
+                
+                if (state) {
+                    state.isVisible = entry.isIntersecting;
+                    
+                    if (!entry.isIntersecting && state.isScrambling) {
+                        // Pause scrambling when off-screen
+                        if (state.timeline) {
+                            state.timeline.pause();
+                        }
+                    } else if (entry.isIntersecting && state.timeline && state.timeline.paused()) {
+                        // Resume when back on screen
+                        state.timeline.resume();
+                    }
+                }
+            });
+        }, {
+            rootMargin: '50px', // Start observing 50px before element enters viewport
+            threshold: 0.1
+        });
+    }
+    
     init() {
         // Check feature flags before initializing any effects
-        if (!window.SAFE_FLAGS?.TEXT_EFFECTS_ENABLED) {
-            console.log('💤 TextEffects disabled by feature flag');
+        if (!perfConfig.isFeatureEnabled('enableTextScramble')) {
+            if (perfConfig.shouldLog()) {
+                console.log('💤 TextEffects disabled by feature flag');
+            }
             return;
         }
         
         this.initializeTextScramble();
         this.initializeGlitchText();
         
-        if (window.SAFE_FLAGS?.shouldEnableEffect('matrix')) {
+        if (perfConfig.isFeatureEnabled('enableMatrixRain')) {
             this.initializeMatrixRain();
         }
         
         this.initializeTextBreaking();
         
-        if (window.SAFE_FLAGS?.shouldEnableEffect('corruption')) {
-            this.addDataCorruption();
+        if (perfConfig.isFeatureEnabled('enableDataCorruption')) {
+            console.log('💤 Data corruption disabled by feature flag');
+            // this.addDataCorruption(); // Disabled - performance hog
         }
     }
 
     initializeTextScramble() {
-        if (!window.SAFE_FLAGS?.shouldEnableEffect('scramble')) {
-            console.log('💤 Text scramble disabled by feature flag');
+        if (!perfConfig.isFeatureEnabled('enableTextScramble')) {
+            if (perfConfig.shouldLog()) {
+                console.log('💤 Text scramble disabled by feature flag');
+            }
             return;
         }
         
         const scrambleElements = document.querySelectorAll('.scramble-text');
         
         scrambleElements.forEach((element, index) => {
+            // Check for duplicates before processing
+            if (this.appliedScramble.has(element) || element.dataset.scrambleApplied === '1') {
+                if (perfConfig.shouldLog()) {
+                    console.warn('⚠️ Element already has scramble effect, skipping');
+                }
+                return;
+            }
+            
             // Limit concurrent scrambles
             if (index >= this.MAX_SCRAMBLE_ELEMENTS) {
                 console.warn(`⚠️ Skipping scramble element ${index}, limit reached (${this.MAX_SCRAMBLE_ELEMENTS})`);
@@ -85,10 +137,16 @@ class TextEffects {
     }
     
     initScrambleForElement(element) {
-        if (this.activeEffects.has(element)) {
-            console.warn('⚠️ Element already has scramble effect, skipping');
+        // Defensive check against duplicate initialization
+        if (this.appliedScramble.has(element) || element.dataset.scrambleApplied === '1') {
+            if (perfConfig.shouldLog()) {
+                console.warn('⚠️ Element already has scramble effect, skipping');
+            }
             return;
         }
+        
+        // Clean up any existing effects first
+        this.destroyScramble(element);
         
         const originalText = element.textContent;
         if (!originalText) return;
@@ -98,11 +156,21 @@ class TextEffects {
             isScrambling: false,
             timeline: null,
             timeoutId: null,
-            destroyed: false
+            destroyed: false,
+            isVisible: true // Default to visible
         };
+        
+        // Mark as applied to prevent duplicates
+        this.appliedScramble.add(element);
+        element.dataset.scrambleApplied = '1';
         
         this.activeEffects.set(element, state);
         this.trackedElements.add(element);
+        
+        // Start observing for visibility changes
+        if (this.intersectionObserver && perfConfig.isFeatureEnabled('pauseOffscreen')) {
+            this.intersectionObserver.observe(element);
+        }
         
         const startScramble = () => {
             if (state.destroyed || state.isScrambling) return;
@@ -123,15 +191,19 @@ class TextEffects {
                     element.textContent = originalText;
                     state.isScrambling = false;
                     self.activeScrambleCount--;
+                    perfConfig.decrementCounter('animations');
                     
                     // Schedule next scramble
-                    if (!state.destroyed) {
+                    if (!state.destroyed && state.isVisible) {
                         state.timeoutId = setTimeout(() => {
                             if (!state.destroyed) {
                                 triggerRandomly();
                             }
                         }, Math.random() * 5000 + 5000);
                     }
+                },
+                onStart: () => {
+                    perfConfig.incrementCounter('animations');
                 }
             });
             
@@ -177,6 +249,57 @@ class TextEffects {
 
         // Start with initial delay
         state.timeoutId = setTimeout(triggerRandomly, Math.random() * 3000);
+    }
+    
+    destroyScramble(element) {
+        if (!element) return;
+        
+        const state = this.activeEffects.get(element);
+        if (state) {
+            // Mark as destroyed
+            state.destroyed = true;
+            
+            // Clear timeout
+            if (state.timeoutId) {
+                clearTimeout(state.timeoutId);
+                state.timeoutId = null;
+            }
+            
+            // Kill timeline
+            if (state.timeline) {
+                state.timeline.kill();
+                state.timeline = null;
+            }
+            
+            // Restore original text
+            if (state.originalText) {
+                element.textContent = state.originalText;
+            }
+            
+            // Remove from tracking
+            this.activeEffects.delete(element);
+            this.trackedElements.delete(element);
+            
+            // Update counters
+            if (state.isScrambling) {
+                this.activeScrambleCount--;
+                perfConfig.decrementCounter('animations');
+            }
+        }
+        
+        // Stop observing
+        if (this.intersectionObserver) {
+            this.intersectionObserver.unobserve(element);
+        }
+        
+        // Remove duplicate prevention markers
+        if (element.dataset) {
+            delete element.dataset.scrambleApplied;
+        }
+        
+        if (perfConfig.shouldLog()) {
+            console.log('🧹 Text scramble destroyed for element');
+        }
     }
 
     initializeGlitchText() {
