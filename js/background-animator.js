@@ -1,4 +1,5 @@
 import gsap from 'gsap';
+import perfConfig from './perf-config.js';
 
 class BackgroundAnimator {
     constructor() {
@@ -8,30 +9,93 @@ class BackgroundAnimator {
         this.imageWrapper = null;
         this.timeline = null;
         this.initialized = false;
+        
+        // Performance tracking
+        this.activeAnimations = new Set();
+        this._glowTween = null;
+        this._glowInterval = null;
+        this._warnedMissingElement = false;
+        
+        // GSAP context for proper cleanup
+        this.ctx = null;
+        
+        // Visibility observer for pausing animations
+        this.observer = null;
+        this.isVisible = true;
+        
+        // Page visibility handling
+        this.handleVisibilityChange = this.handleVisibilityChange.bind(this);
     }
 
     init() {
-        // Get elements
-        this.bgElement = document.querySelector('.bg');
-        this.bgOverlay = document.querySelector('.bg-overlay');
-        this.logoWrapper = document.querySelector('.logo-text-wrapper');
-        this.imageWrapper = document.querySelector('.image-wrapper');
-
-        if (!this.bgElement) {
-            console.warn('Background element not found');
+        if (this.initialized) {
+            console.warn('BackgroundAnimator already initialized');
             return;
         }
+        
+        // Get elements with existence checks
+        this.bgElement = this.findElement('.bg');
+        this.bgOverlay = this.findElement('.bg-overlay');
+        this.logoWrapper = this.findElement('.logo-text-wrapper');
+        this.imageWrapper = this.findElement('.image-wrapper');
 
+        if (!this.bgElement) {
+            if (!this._warnedMissingElement) {
+                console.warn('🎨 Background element (.bg) not found - animations disabled');
+                this._warnedMissingElement = true;
+            }
+            return;
+        }
+        
+        // Create GSAP context for proper cleanup
+        this.ctx = gsap.context(() => {
+            // All GSAP animations will be created within this context
+            this.initializeAnimations();
+        }, this.bgElement);
+        
+        // Set up visibility observers
+        this.setupVisibilityObserver();
+        
+        // Listen for page visibility changes
+        document.addEventListener('visibilitychange', this.handleVisibilityChange);
+        
+        // Listen for performance events
+        window.addEventListener('perf:soft-degrade', this.handleSoftDegrade.bind(this));
+        window.addEventListener('perf:restore', this.handleRestore.bind(this));
+        window.addEventListener('perf:emergency-stop', this.handleEmergencyStop.bind(this));
+
+        this.initialized = true;
+        
+        if (perfConfig.shouldLog()) {
+            console.log('🎨 BackgroundAnimator initialized with performance controls');
+        }
+    }
+    
+    findElement(selector) {
+        try {
+            return document.querySelector(selector);
+        } catch (e) {
+            console.warn(`Invalid selector: ${selector}`);
+            return null;
+        }
+    }
+    
+    initializeAnimations() {
+        if (!perfConfig.isFeatureEnabled('enableBackgroundGlow')) {
+            if (perfConfig.shouldLog()) {
+                console.log('💤 Background animations disabled by feature flag');
+            }
+            return;
+        }
+        
         // Center the background properly
         this.centerBackground();
 
-        // Initialize animations
+        // Initialize animations only if elements exist
         this.setupContinuousRotation();
         this.setupPulsatingEffects();
         this.setupColorShifts();
         this.setupLogoReaction();
-
-        this.initialized = true;
     }
 
     centerBackground() {
@@ -139,7 +203,7 @@ class BackgroundAnimator {
                 ease: 'sine.inOut'
             });
 
-        // Dynamic glow color shifts
+        // Dynamic glow color shifts with proper lifecycle management
         const glowColors = [
             'rgba(0, 255, 133, 0.3)',   // Green
             'rgba(0, 200, 255, 0.25)',  // Cyan
@@ -150,15 +214,40 @@ class BackgroundAnimator {
 
         let colorIndex = 0;
         const shiftGlow = () => {
-            gsap.to(this.bgElement, {
+            // Guard: ensure element still exists and is connected
+            if (!this.bgElement || !this.bgElement.isConnected) {
+                if (perfConfig.shouldLog()) {
+                    console.warn('🎨 bgElement missing or disconnected, skipping glow animation');
+                }
+                return;
+            }
+            
+            // Kill previous glow tween to prevent stacking
+            if (this._glowTween) {
+                this._glowTween.kill();
+            }
+            
+            this._glowTween = gsap.to(this.bgElement, {
                 boxShadow: `0 0 100px ${glowColors[colorIndex]}`,
                 duration: 4,
-                ease: 'power2.inOut'
+                ease: 'power2.inOut',
+                overwrite: 'auto', // Prevent tween stacking
+                onComplete: () => {
+                    this._glowTween = null;
+                    perfConfig.decrementCounter('animations');
+                },
+                onStart: () => {
+                    perfConfig.incrementCounter('animations');
+                }
             });
+            
             colorIndex = (colorIndex + 1) % glowColors.length;
         };
 
-        setInterval(shiftGlow, 4000);
+        // Use managed interval instead of raw setInterval
+        this._glowInterval = setInterval(shiftGlow, 4000);
+        perfConfig.incrementCounter('intervals');
+        
         shiftGlow();
     }
 
@@ -231,12 +320,143 @@ class BackgroundAnimator {
         }, 8000);
     }
 
-    destroy() {
-        if (this.timeline) {
-            this.timeline.kill();
+    setupVisibilityObserver() {
+        if (!this.bgElement || !('IntersectionObserver' in window)) {
+            return;
         }
-        gsap.killTweensOf([this.bgElement, this.bgOverlay, this.logoWrapper, this.imageWrapper]);
+        
+        this.observer = new IntersectionObserver((entries) => {
+            entries.forEach((entry) => {
+                const wasVisible = this.isVisible;
+                this.isVisible = entry.isIntersecting;
+                
+                if (wasVisible !== this.isVisible) {
+                    if (this.isVisible) {
+                        this.resumeAnimations();
+                    } else {
+                        this.pauseAnimations();
+                    }
+                }
+            });
+        }, {
+            threshold: 0.1 // Trigger when 10% visible
+        });
+        
+        this.observer.observe(this.bgElement);
+    }
+    
+    handleVisibilityChange() {
+        if (!perfConfig.isFeatureEnabled('pauseOnHidden')) {
+            return;
+        }
+        
+        if (document.visibilityState === 'hidden') {
+            this.pauseAnimations();
+        } else if (document.visibilityState === 'visible') {
+            this.resumeAnimations();
+        }
+    }
+    
+    pauseAnimations() {
+        if (this.ctx) {
+            // Pause all GSAP animations in this context
+            gsap.globalTimeline.getChildren(true, true, false).forEach(tween => {
+                if (tween.vars && tween.vars._backgroundAnimator) {
+                    tween.pause();
+                }
+            });
+        }
+        
+        if (perfConfig.shouldLog()) {
+            console.log('⏸️ Background animations paused (not visible)');
+        }
+    }
+    
+    resumeAnimations() {
+        if (!this.initialized || !this.isVisible) {
+            return;
+        }
+        
+        if (this.ctx) {
+            // Resume all paused GSAP animations in this context
+            gsap.globalTimeline.getChildren(true, true, false).forEach(tween => {
+                if (tween.vars && tween.vars._backgroundAnimator && tween.paused()) {
+                    tween.resume();
+                }
+            });
+        }
+        
+        if (perfConfig.shouldLog()) {
+            console.log('▶️ Background animations resumed');
+        }
+    }
+    
+    handleSoftDegrade() {
+        this.pauseAnimations();
+        if (perfConfig.shouldLog()) {
+            console.log('📉 Background animator: soft degrade mode');
+        }
+    }
+    
+    handleRestore() {
+        this.resumeAnimations();
+        if (perfConfig.shouldLog()) {
+            console.log('📈 Background animator: performance restored');
+        }
+    }
+    
+    handleEmergencyStop() {
+        this.destroy();
+        if (perfConfig.shouldLog()) {
+            console.log('🛑 Background animator: emergency stop');
+        }
+    }
+    
+    destroy() {
+        // Clean up managed interval
+        if (this._glowInterval) {
+            clearInterval(this._glowInterval);
+            this._glowInterval = null;
+            perfConfig.decrementCounter('intervals');
+        }
+        
+        // Kill active glow tween
+        if (this._glowTween) {
+            this._glowTween.kill();
+            this._glowTween = null;
+        }
+        
+        // Kill GSAP context (cleans up all animations within)
+        if (this.ctx) {
+            this.ctx.kill();
+            this.ctx = null;
+        }
+        
+        // Disconnect intersection observer
+        if (this.observer) {
+            this.observer.disconnect();
+            this.observer = null;
+        }
+        
+        // Remove event listeners
+        document.removeEventListener('visibilitychange', this.handleVisibilityChange);
+        window.removeEventListener('perf:soft-degrade', this.handleSoftDegrade.bind(this));
+        window.removeEventListener('perf:restore', this.handleRestore.bind(this));
+        window.removeEventListener('perf:emergency-stop', this.handleEmergencyStop.bind(this));
+        
+        // Clear references
+        this.bgElement = null;
+        this.bgOverlay = null;
+        this.logoWrapper = null;
+        this.imageWrapper = null;
+        this.timeline = null;
+        this.activeAnimations.clear();
+        
         this.initialized = false;
+        
+        if (perfConfig.shouldLog()) {
+            console.log('💀 BackgroundAnimator destroyed');
+        }
     }
 }
 

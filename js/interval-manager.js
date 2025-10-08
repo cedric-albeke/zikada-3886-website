@@ -1,12 +1,26 @@
 // Interval Manager - Tracks and manages all setInterval calls to prevent memory leaks
 
+import perfConfig from './perf-config.js';
+
 class IntervalManager {
     constructor() {
         this.intervals = new Map(); // Track all managed intervals
+        this.intervalsByOwner = new Map(); // Track by owner for targeted cleanup
         this.intervalCounter = 0;
-        this.maxIntervals = 15; // Tighter maximum concurrent intervals
+        this.maxIntervals = perfConfig?.getLimit('maxIntervalsGlobal') || 24;
+        this.maxIntervalsPerOwner = perfConfig?.getLimit('maxIntervalsPerOwner') || 4;
         
-        console.log('⏰ Interval Manager initialized');
+        // Performance tracking
+        this.totalCreated = 0;
+        this.totalCleared = 0;
+        this.ownerWarnings = new Set();
+        
+        console.log('⏰ Enhanced Interval Manager initialized');
+        
+        // Expose to performance counters
+        if (perfConfig) {
+            perfConfig.updateCounter('intervals', 0);
+        }
     }
 
     /**
@@ -14,27 +28,63 @@ class IntervalManager {
      * @param {Function} callback - Function to execute
      * @param {number} delay - Delay in milliseconds
      * @param {string} name - Optional name for debugging
-     * @param {Object} options - Additional options
+     * @param {Object} options - Additional options: { owner, category, ttl, maxExecutions }
      * @returns {Object} Interval control object
      */
     createInterval(callback, delay, name = 'unnamed', options = {}) {
-        // Check if we're at maximum intervals
+        const owner = options.owner || 'unknown';
+        const category = options.category || 'general';
+        
+        // Check global limits
         if (this.intervals.size >= this.maxIntervals) {
             console.warn(`⚠️ Maximum intervals reached (${this.maxIntervals}). Cleaning up oldest intervals.`);
             this.cleanupOldestIntervals(5);
+        }
+        
+        // Check per-owner limits
+        const ownerIntervals = this.intervalsByOwner.get(owner) || new Set();
+        if (ownerIntervals.size >= this.maxIntervalsPerOwner) {
+            if (!this.ownerWarnings.has(owner)) {
+                console.warn(`⚠️ Owner "${owner}" has reached max intervals (${this.maxIntervalsPerOwner}). Cleaning up oldest.`);
+                this.ownerWarnings.add(owner);
+            }
+            this.cleanupOldestByOwner(owner, 2);
         }
 
         const intervalId = ++this.intervalCounter;
         const intervalName = `${name}-${intervalId}`;
         
-        // Create the actual interval
+        // TTL calculations
+        const ttl = options.ttl || null; // Time to live in milliseconds
+        const maxExecutions = options.maxExecutions || null;
+        const expiresAt = ttl ? Date.now() + ttl : null;
+        
+        // Create the actual interval with enhanced tracking
         const nativeIntervalId = setInterval(() => {
             try {
-                // Update last execution time
+                // Update execution data
                 const intervalData = this.intervals.get(intervalId);
-                if (intervalData) {
-                    intervalData.lastExecuted = Date.now();
-                    intervalData.executionCount++;
+                if (!intervalData) {
+                    // Interval was cleared, stop execution
+                    clearInterval(nativeIntervalId);
+                    return;
+                }
+                
+                intervalData.lastExecuted = Date.now();
+                intervalData.executionCount++;
+                
+                // Check TTL expiration
+                if (expiresAt && intervalData.lastExecuted > expiresAt) {
+                    console.log(`⏱️ Interval ${intervalName} expired (TTL: ${ttl}ms)`);
+                    this.clearInterval(intervalId);
+                    return;
+                }
+                
+                // Check max executions
+                if (maxExecutions && intervalData.executionCount >= maxExecutions) {
+                    console.log(`🔢 Interval ${intervalName} completed max executions (${maxExecutions})`);
+                    this.clearInterval(intervalId);
+                    return;
                 }
                 
                 // Execute callback
@@ -48,7 +98,7 @@ class IntervalManager {
             }
         }, delay);
 
-        // Store interval data
+        // Store interval data with enhanced tracking
         const intervalData = {
             id: intervalId,
             nativeId: nativeIntervalId,
@@ -58,26 +108,53 @@ class IntervalManager {
             createdAt: Date.now(),
             lastExecuted: Date.now(),
             executionCount: 0,
-            category: options.category || 'general',
-            maxExecutions: options.maxExecutions || null,
+            category: category,
+            owner: owner,
+            ttl: ttl,
+            expiresAt: expiresAt,
+            maxExecutions: maxExecutions,
             maxAge: options.maxAge || null,
             isActive: true
         };
 
+        // Store in main registry
         this.intervals.set(intervalId, intervalData);
         
-        console.log(`⏰ Created interval: ${intervalName} (${delay}ms) - Total: ${this.intervals.size}`);
+        // Track by owner
+        if (!this.intervalsByOwner.has(owner)) {
+            this.intervalsByOwner.set(owner, new Set());
+        }
+        this.intervalsByOwner.get(owner).add(intervalId);
+        
+        // Update counters
+        this.totalCreated++;
+        if (perfConfig) {
+            perfConfig.incrementCounter('intervals');
+        }
+        
+        if (perfConfig?.shouldLog()) {
+            console.log(`⏰ Created interval: ${intervalName} (${delay}ms, owner: ${owner}) - Total: ${this.intervals.size}`);
+        }
 
         // Return control object
         return {
             id: intervalId,
             name: intervalName,
+            owner: owner,
             clear: () => this.clearInterval(intervalId),
             pause: () => this.pauseInterval(intervalId),
             resume: () => this.resumeInterval(intervalId),
             isActive: () => {
                 const data = this.intervals.get(intervalId);
                 return data ? data.isActive : false;
+            },
+            getStats: () => {
+                const data = this.intervals.get(intervalId);
+                return data ? {
+                    executionCount: data.executionCount,
+                    age: Date.now() - data.createdAt,
+                    timeSinceLastExecution: Date.now() - data.lastExecuted
+                } : null;
             }
         };
     }
@@ -92,10 +169,26 @@ class IntervalManager {
         // Clear the native interval
         clearInterval(intervalData.nativeId);
         
-        // Remove from tracking
+        // Remove from owner tracking
+        if (intervalData.owner && this.intervalsByOwner.has(intervalData.owner)) {
+            this.intervalsByOwner.get(intervalData.owner).delete(intervalId);
+            if (this.intervalsByOwner.get(intervalData.owner).size === 0) {
+                this.intervalsByOwner.delete(intervalData.owner);
+            }
+        }
+        
+        // Remove from main tracking
         this.intervals.delete(intervalId);
         
-        console.log(`🗑️ Cleared interval: ${intervalData.name} (Remaining: ${this.intervals.size})`);
+        // Update counters
+        this.totalCleared++;
+        if (perfConfig) {
+            perfConfig.decrementCounter('intervals');
+        }
+        
+        if (perfConfig?.shouldLog()) {
+            console.log(`🗑️ Cleared interval: ${intervalData.name} (Remaining: ${this.intervals.size})`);
+        }
         return true;
     }
 
@@ -138,6 +231,33 @@ class IntervalManager {
     }
 
     /**
+     * Clear all intervals by owner
+     */
+    clearByOwner(owner) {
+        const ownerIntervals = this.intervalsByOwner.get(owner);
+        if (!ownerIntervals) {
+            return 0;
+        }
+        
+        const cleared = [];
+        const intervalIds = Array.from(ownerIntervals);
+        
+        intervalIds.forEach(id => {
+            const data = this.intervals.get(id);
+            if (data) {
+                this.clearInterval(id);
+                cleared.push(data.name);
+            }
+        });
+        
+        if (cleared.length > 0 && perfConfig?.shouldLog()) {
+            console.log(`🗑️ Cleared ${cleared.length} intervals for owner '${owner}':`, cleared);
+        }
+        
+        return cleared.length;
+    }
+    
+    /**
      * Clear all intervals in a specific category
      */
     clearCategory(category) {
@@ -150,11 +270,37 @@ class IntervalManager {
             }
         });
         
-        if (cleared.length > 0) {
+        if (cleared.length > 0 && perfConfig?.shouldLog()) {
             console.log(`🗑️ Cleared ${cleared.length} intervals in category '${category}':`, cleared);
         }
         
         return cleared.length;
+    }
+    
+    /**
+     * Clean up oldest intervals by owner
+     */
+    cleanupOldestByOwner(owner, count = 2) {
+        const ownerIntervals = this.intervalsByOwner.get(owner);
+        if (!ownerIntervals) {
+            return 0;
+        }
+        
+        const sortedIntervals = Array.from(ownerIntervals)
+            .map(id => this.intervals.get(id))
+            .filter(data => data) // Remove any null entries
+            .sort((a, b) => a.createdAt - b.createdAt)
+            .slice(0, count);
+        
+        sortedIntervals.forEach(intervalData => {
+            this.clearInterval(intervalData.id);
+        });
+        
+        if (sortedIntervals.length > 0 && perfConfig?.shouldLog()) {
+            console.log(`🧹 Cleaned up ${sortedIntervals.length} oldest intervals for owner '${owner}'`);
+        }
+        
+        return sortedIntervals.length;
     }
 
     /**
@@ -221,26 +367,40 @@ class IntervalManager {
     getStats() {
         const stats = {
             totalIntervals: this.intervals.size,
+            totalCreated: this.totalCreated,
+            totalCleared: this.totalCleared,
             byCategory: {},
-            byStatus: { active: 0, paused: 0 },
+            byOwner: {},
+            byStatus: { active: 0, paused: 0, expired: 0 },
             averageDelay: 0,
             oldestInterval: null,
-            newestInterval: null
+            newestInterval: null,
+            memoryEstimate: 0
         };
 
         let totalDelay = 0;
         let oldestTime = Infinity;
         let newestTime = 0;
 
+        const now = Date.now();
+        
         this.intervals.forEach(data => {
             // Count by category
             if (!stats.byCategory[data.category]) {
                 stats.byCategory[data.category] = 0;
             }
             stats.byCategory[data.category]++;
+            
+            // Count by owner
+            if (!stats.byOwner[data.owner]) {
+                stats.byOwner[data.owner] = 0;
+            }
+            stats.byOwner[data.owner]++;
 
             // Count by status
-            if (data.isActive) {
+            if (data.expiresAt && now > data.expiresAt) {
+                stats.byStatus.expired++;
+            } else if (data.isActive) {
                 stats.byStatus.active++;
             } else {
                 stats.byStatus.paused++;
@@ -288,15 +448,35 @@ class IntervalManager {
     }
 
     /**
+     * Clear all intervals (alias for emergency stop)
+     */
+    clearAll(reason = 'Manual request') {
+        if (perfConfig?.shouldLog()) {
+            console.log(`🗑️ Clearing all intervals: ${reason}`);
+        }
+        
+        const intervalIds = Array.from(this.intervals.keys());
+        const clearedCount = intervalIds.length;
+        
+        intervalIds.forEach(id => this.clearInterval(id));
+        
+        // Clear tracking maps
+        this.intervalsByOwner.clear();
+        this.ownerWarnings.clear();
+        
+        if (perfConfig?.shouldLog()) {
+            console.log(`✅ Clear all completed: ${clearedCount} intervals cleared`);
+        }
+        
+        return clearedCount;
+    }
+    
+    /**
      * Emergency stop - clear all intervals
      */
     emergencyStop() {
         console.log('🚨 EMERGENCY STOP: Clearing all intervals');
-        
-        const intervalIds = Array.from(this.intervals.keys());
-        intervalIds.forEach(id => this.clearInterval(id));
-        
-        console.log(`🛑 Emergency stop completed: ${intervalIds.length} intervals cleared`);
+        return this.clearAll('Emergency stop');
     }
 
     /**
