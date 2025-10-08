@@ -68,6 +68,28 @@ import { teardownAll } from './runtime/teardown.js';
 import { getPhaseController } from './runtime/phase/PhaseController.js';
 import gsap from 'gsap';
 
+// Initialize feature flags for cross-fade transitions
+if (!window.__ZIKADA_FLAGS__) {
+    window.__ZIKADA_FLAGS__ = {
+        CROSSFADE_TRANSITIONS: true  // Enable smooth cross-fade by default
+    };
+}
+
+// Lazy loading for PhaseStage to avoid circular imports
+let __phaseStage = null;
+async function getPhaseStage() {
+    if (__phaseStage) return __phaseStage;
+    try {
+        const mod = await import('./runtime/phase/PhaseStage.js');
+        __phaseStage = new mod.default();
+        console.log('🎬 PhaseStage cross-fade system loaded');
+        return __phaseStage;
+    } catch (error) {
+        console.error('Failed to load PhaseStage:', error);
+        return null;
+    }
+}
+
 // Ensure GSAP is globally available
 if (typeof window !== 'undefined' && !window.gsap) {
     window.gsap = gsap;
@@ -2187,26 +2209,122 @@ class ChaosInitializer {
             ['galaxy', () => this.phaseGalaxy()]
         ]);
 
-        // Install transition executor that uses our blackout and cleanup
+        // Install enhanced transition executor with cross-fade support
         this.phaseController.setTransitionExecutor(async ({ prev, next, signal }) => {
             // Guard against missing next
             if (!next || !this._phaseMap.has(next)) return;
+            
+            const useXfade = (window.__ZIKADA_FLAGS__?.CROSSFADE_TRANSITIONS ?? true) === true;
+            const runPhase = () => this._phaseMap.get(next)?.();
+            
+            console.log(`🎬 Phase transition: ${prev} → ${next} (cross-fade: ${useXfade})`);
+            console.log('🔍 CROSSFADE_TRANSITIONS flag:', window.__ZIKADA_FLAGS__?.CROSSFADE_TRANSITIONS);
+            
+            // Phase preparation hook (lightweight operations before transition)
+            const prepare = async (slotEl) => {
+                try {
+                    console.log('🔧 Phase preparation starting...');
+                    // Disable expensive effects before switch to prevent visual conflicts
+                    this.disableParticleEffect();
+                    this.disablePlasmaEffect();
+                    console.log('🔧 Phase preparation completed - effects disabled');
+                } catch (error) {
+                    console.warn('⚠️ Phase preparation warning:', error);
+                }
+            };
+            
+            // Phase cleanup hook (after transition completes)
+            const cleanupPrev = async () => {
+                try {
+                    console.log('🧹 Phase cleanup starting...');
+                    this.transitionOut(); // existing overlay cleanup and registry kills
+                    console.log('🧹 Phase cleanup completed - overlays cleaned');
+                } catch (error) {
+                    console.warn('⚠️ Phase cleanup warning:', error);
+                }
+            };
+            
+            if (useXfade) {
+                // Use smooth cross-fade system
+                console.log('✅ Using cross-fade transition path');
+                try {
+                    const stage = await getPhaseStage();
+                    console.log('🎬 PhaseStage loaded:', !!stage);
+                    if (stage) {
+                        const timings = {
+                            outMs: parseInt(getComputedStyle(document.documentElement)
+                                .getPropertyValue('--phase-xfade-out-ms')) || 320,
+                            inMs: parseInt(getComputedStyle(document.documentElement)
+                                .getPropertyValue('--phase-xfade-in-ms')) || 380
+                        };
+                        console.log('⏱️ Cross-fade timings:', timings);
+                        
+                        await stage.crossFade({
+                            nextPhase: async () => {
+                                console.log(`🎭 Executing phase: ${next}`);
+                                console.log('🎨 Body filter before phase:', document.body.style.filter || 'none');
+                                runPhase();
+                                console.log('🎨 Body filter after phase:', document.body.style.filter || 'none');
+                            },
+                            prepare,
+                            cleanupPrev,
+                            timings,
+                            signal
+                        });
+                        console.log('✅ Cross-fade completed successfully');
+                    } else {
+                        throw new Error('PhaseStage unavailable');
+                    }
+                } catch (error) {
+                    console.error('❌ Cross-fade failed, falling back to blackout:', error);
+                    // Fallback to blackout transition
+                    this._legacyBlackoutTransition(runPhase, prepare, cleanupPrev, signal);
+                }
+            } else {
+                console.log('🔙 Using legacy blackout transition path');
+                // Legacy blackout transition (preserved for compatibility)
+                this._legacyBlackoutTransition(runPhase, prepare, cleanupPrev, signal);
+            }
+            
+            // Notify scene change completion
+            try {
+                window.vjReceiver?.sendMessage?.({ type: 'scene_changed', scene: next, timestamp: Date.now() });
+            } catch (error) {
+                console.warn('Scene change notification failed:', error);
+            }
+        });
+    }
+    
+    /**
+     * Legacy blackout transition for compatibility/fallback
+     */
+    async _legacyBlackoutTransition(runPhase, prepare, cleanupPrev, signal) {
+        try {
+            console.log('🔄 Using legacy blackout transition');
             // Fade to black (longer, smoother)
             try { this.showBlackout(1); } catch(_) {}
             await new Promise(r => setTimeout(r, 550));
             if (signal?.aborted) return;
+            
+            // Run preparation
+            try { await prepare?.(); } catch(_) {}
+            if (signal?.aborted) return;
+            
             // Cleanup previous overlays
-            this.transitionOut();
+            try { await cleanupPrev?.(); } catch(_) {}
             if (signal?.aborted) return;
+            
             // Run target phase
-            try { this._phaseMap.get(next)?.(); } catch (e) { console.warn('Phase runner error', next, e); }
-            // Notify
-            try { window.vjReceiver?.sendMessage?.({ type: 'scene_changed', scene: next, timestamp: Date.now() }); } catch(_) {}
+            try { runPhase(); } catch (e) { console.warn('Phase runner error (legacy):', e); }
             if (signal?.aborted) return;
+            
             // Fade in (longer, smoother)
             await new Promise(r => setTimeout(r, 700));
             try { this.hideBlackout(); } catch(_) {}
-        });
+        } catch (error) {
+            console.error('Legacy blackout transition failed:', error);
+            try { this.hideBlackout(); } catch(_) {}
+        }
     }
 
     startAnimationPhases() {

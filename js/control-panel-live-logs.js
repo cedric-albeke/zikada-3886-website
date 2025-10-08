@@ -51,9 +51,9 @@ export function mountLiveLogsUI({
     return btn;
   };
 
-  const chipInfo = mkChip('INFO', 'log');
-  const chipWarn = mkChip('WARN', 'warn');
-  const chipError = mkChip('ERROR', 'error');
+  const chipInfo = mkChip('I', 'log');
+  const chipWarn = mkChip('W', 'warn');
+  const chipError = mkChip('E', 'error');
   toolbar.appendChild(chipInfo);
   toolbar.appendChild(chipWarn);
   toolbar.appendChild(chipError);
@@ -67,17 +67,26 @@ export function mountLiveLogsUI({
     return btn;
   };
 
-  const btnPause = mkBtn('Pause', 'btn-pause', () => {
+  const btnPause = mkBtn('⏸', 'btn-pause', () => {
     state.paused = !state.paused;
-    btnPause.textContent = state.paused ? 'Resume' : 'Pause';
+    btnPause.textContent = state.paused ? '▶' : '⏸';
   });
-  const btnClear = mkBtn('Clear', 'btn-clear', () => {
+  btnPause.setAttribute('title', 'Pause/Resume logs');
+  btnPause.setAttribute('aria-label', 'Pause or resume log streaming');
+  
+  const btnClear = mkBtn('CLEAR', 'btn-clear', () => {
     stream.innerHTML = '';
   });
-  const btnScroll = mkBtn('Autoscroll: ON', 'btn-scroll', () => {
+  btnClear.setAttribute('title', 'Clear all logs');
+  btnClear.setAttribute('aria-label', 'Clear all log messages');
+  
+  const btnScroll = mkBtn('↓ ON', 'btn-scroll', () => {
     state.autoscroll = !state.autoscroll;
-    btnScroll.textContent = `Autoscroll: ${state.autoscroll ? 'ON' : 'OFF'}`;
+    btnScroll.textContent = `↓ ${state.autoscroll ? 'ON' : 'OFF'}`;
   });
+  btnScroll.setAttribute('title', 'Toggle autoscroll');
+  btnScroll.setAttribute('aria-label', 'Toggle automatic scrolling to latest logs');
+  
   toolbar.appendChild(btnPause);
   toolbar.appendChild(btnScroll);
   toolbar.appendChild(btnClear);

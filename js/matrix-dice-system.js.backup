@@ -28,7 +28,7 @@ class MatrixDiceSystem {
         this.isRolling = false;
         this.autoRollEnabled = false;
         this.autoRollInterval = null;
-        this.autoRollDelay = 10000; // 10 seconds
+        this.autoRollDelay = 3000; // 3 seconds
         
         this.threshold = 90;
         this.maxHistoryLength = 100;
@@ -110,7 +110,6 @@ class MatrixDiceSystem {
         // Visual feedback for good rolls
         if (finalValue >= this.threshold) {
             this.celebrateWin();
-            this.broadcastMatrixMessage(finalValue);
         }
         
         this.isRolling = false;
@@ -193,45 +192,6 @@ class MatrixDiceSystem {
         console.log('🎯 Dice win celebration!');
     }
     
-    broadcastMatrixMessage(value) {
-        // Get random message from pool
-        const messages = [
-            'SYSTEM BREACH DETECTED',
-            'NEURAL LINK ESTABLISHED',
-            'QUANTUM FLUX STABILIZED',
-            'REALITY MATRIX ALIGNED',
-            'CONSCIOUSNESS EXPANDED',
-            'DIMENSION SHIFT COMPLETE',
-            'MATRIX OVERRIDE ENGAGED',
-            'COGNITIVE PATTERNS SYNCED',
-            'FREQUENCY HARMONIZED',
-            'DATA STREAM OPTIMIZED'
-        ];
-        const message = messages[Math.floor(Math.random() * messages.length)];
-        
-        // Display in dice panel
-        const messageText = document.getElementById('diceMessageText');
-        if (messageText) {
-            messageText.textContent = message;
-            messageText.classList.add('active');
-            setTimeout(() => messageText.classList.remove('active'), 3000);
-        }
-        
-        // Broadcast to animation page via BroadcastChannel
-        try {
-            const channel = new BroadcastChannel('3886_vj_control');
-            channel.postMessage({
-                type: 'matrix_message',
-                message: message,
-                roll: value,
-                timestamp: Date.now()
-            });
-            console.log(`🎲 Matrix message broadcast: "${message}" (roll: ${value})`);
-        } catch (error) {
-            console.warn('Failed to broadcast matrix message:', error);
-        }
-    }
-    
     setAutoRoll(enabled) {
         this.autoRollEnabled = enabled;
         
@@ -247,44 +207,37 @@ class MatrixDiceSystem {
                 clearInterval(this.autoRollInterval);
                 this.autoRollInterval = null;
             }
-            console.log('⏹️ Auto-roll disabled');
+            console.log('⏸️ Auto-roll disabled');
         }
-    }
-    
-    wait(ms) {
-        return new Promise(resolve => setTimeout(resolve, ms));
     }
     
     saveStats() {
         try {
-            const data = {
-                stats: this.stats,
-                history: this.rollHistory.slice(0, 10) // Save only last 10 rolls
-            };
-            localStorage.setItem('matrixDiceStats', JSON.stringify(data));
+            localStorage.setItem('3886_dice_stats', JSON.stringify(this.stats));
+            localStorage.setItem('3886_dice_history', JSON.stringify(this.rollHistory));
         } catch (error) {
-            console.warn('Could not save dice stats:', error);
+            console.warn('Failed to save dice stats:', error);
         }
     }
     
     loadStats() {
         try {
-            const saved = localStorage.getItem('matrixDiceStats');
-            if (saved) {
-                const data = JSON.parse(saved);
-                if (data.stats) {
-                    this.stats = { ...this.stats, ...data.stats };
-                }
-                if (data.history && Array.isArray(data.history)) {
-                    this.rollHistory = data.history;
-                }
+            const savedStats = localStorage.getItem('3886_dice_stats');
+            const savedHistory = localStorage.getItem('3886_dice_history');
+            
+            if (savedStats) {
+                this.stats = { ...this.stats, ...JSON.parse(savedStats) };
+            }
+            
+            if (savedHistory) {
+                this.rollHistory = JSON.parse(savedHistory);
             }
         } catch (error) {
-            console.warn('Could not load dice stats:', error);
+            console.warn('Failed to load dice stats:', error);
         }
     }
     
-    reset() {
+    resetStats() {
         this.stats = {
             totalRolls: 0,
             wins: 0,
@@ -294,77 +247,90 @@ class MatrixDiceSystem {
         this.rollHistory = [];
         this.saveStats();
         this.updateDisplay();
-        this.setDiceNumber('?');
-        console.log('🎲 Dice system reset');
+        console.log('🔄 Dice stats reset');
+    }
+    
+    wait(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+    
+    // Public API
+    getStats() {
+        return { ...this.stats };
+    }
+    
+    getHistory() {
+        return [...this.rollHistory];
+    }
+    
+    setThreshold(value) {
+        this.threshold = Math.max(1, Math.min(100, value));
+        console.log(`🎯 Dice threshold set to: ${this.threshold}`);
     }
 }
 
-// ============================================================================
-// CONNECTION STATUS MANAGER - Handles connection states and prevents freeze
-// ============================================================================
-
+/**
+ * Connection Status Manager - Fixes reload freeze issue
+ */
 class ConnectionStatusManager {
     constructor() {
         this.status = 'offline';
         this.uptime = 0;
         this.uptimeInterval = null;
-        this.isReloading = false;
         this.reloadTimeout = null;
+        this.isReloading = false;
         
         this.init();
     }
     
     init() {
-        console.log('🔌 Connection Status Manager initialized');
-        this.bindEvents();
+        console.log('🔗 Connection Status Manager initialized');
         this.startUptimeCounter();
-        
-        // Detect page load/refresh
-        if (performance.navigation.type === performance.navigation.TYPE_RELOAD) {
-            this.handleReload();
-        } else {
-            // Set to online after brief delay on initial load
-            setTimeout(() => this.setStatus('online'), 1000);
-        }
+        this.bindReloadEvents();
+        this.updateDisplay();
     }
     
-    bindEvents() {
-        // Listen for beforeunload to set reloading state
-        window.addEventListener('beforeunload', () => {
-            this.handleReload();
-        });
+    bindReloadEvents() {
+        // System reload button
+        const reloadBtn = document.getElementById('systemReload');
+        if (reloadBtn) {
+            reloadBtn.addEventListener('click', () => this.handleReload());
+        }
         
-        // Listen for page visibility changes
+        // Page visibility change
         document.addEventListener('visibilitychange', () => {
-            if (document.hidden) {
-                this.setStatus('offline');
-            } else if (!this.isReloading) {
-                this.setStatus('online');
+            if (!document.hidden && this.isReloading) {
+                // Page became visible again after reload
+                this.handleReloadComplete();
             }
         });
         
-        // Listen for online/offline events
-        window.addEventListener('online', () => {
-            if (!this.isReloading) {
-                this.setStatus('online');
+        // Window focus events
+        window.addEventListener('focus', () => {
+            if (this.isReloading) {
+                this.handleReloadComplete();
             }
-        });
-        
-        window.addEventListener('offline', () => {
-            this.setStatus('offline');
         });
     }
     
     handleReload() {
-        this.isReloading = true;
         this.setStatus('reloading');
+        this.isReloading = true;
         
-        // Prevent infinite reloading state with timeout
+        console.log('🔄 Page reload initiated');
+        
+        // Set timeout to handle stuck reload state
         this.reloadTimeout = setTimeout(() => {
-            this.handleReloadComplete();
-        }, 5000); // Maximum 5 seconds in reloading state
+            if (this.isReloading) {
+                console.warn('⚠️ Reload timeout - forcing status reset');
+                this.handleReloadComplete();
+            }
+        }, 5000);
         
-        console.log('🔄 Reload detected, setting status to reloading');
+        // Perform the actual reload
+        setTimeout(() => {
+            window.location.reload();
+        }, 500);
     }
     
     handleReloadComplete() {

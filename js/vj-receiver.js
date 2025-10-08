@@ -170,7 +170,8 @@ class VJReceiver {
         });
         
         vjMessaging.on(MESSAGE_TYPES.SYSTEM_RESET, () => {
-            setBlackout(false);
+            // For system reset via messaging, use gentle transition
+            setBlackout(false); // Clear any existing blackout
             this.resetAllSystems();
         });
         
@@ -306,7 +307,7 @@ class VJReceiver {
         }
     }
 
-    handleMessage(data) {
+    async handleMessage(data) {
         // console.log('📨 Received control message:', data);
 
         switch(data.type) {
@@ -566,11 +567,20 @@ class VJReceiver {
                 break;
 
             case 'emergency_stop':
+                // Cancel any ongoing cross-fade transitions for immediate emergency stop
+                try {
+                    const { default: PhaseStage } = await import('./runtime/phase/PhaseStage.js');
+                    PhaseStage.prototype.cancel?.();
+                } catch (_) {
+                    // PhaseStage not available, continue with normal emergency stop
+                }
                 this.emergencyStop();
                 break;
 
             case 'system_reset':
                 console.log('🔄 Processing system_reset');
+                // For system reset, prefer gentle transition unless in emergency mode
+                setBlackout(false); // Ensure blackout is cleared
                 this.resetAllSystems();
                 break;
 

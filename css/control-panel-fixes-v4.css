@@ -251,6 +251,69 @@
 }
 
 /* ============================================================================
+   MATRIX DICE MESSAGE DISPLAY - Compact Win Message UI
+   ============================================================================ */
+
+/* Dice Message Container */
+.dice-message {
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    padding: 6px 8px !important;
+    border-radius: calc(var(--panel-radius) - 1px) !important;
+    background: rgba(0, 255, 133, 0.06) !important;
+    border: 1px solid rgba(0, 255, 133, 0.22) !important;
+    margin-top: 6px !important;
+    transition: all 0.3s ease !important;
+}
+
+.dice-message .message-label {
+    font-family: "Inconsolata", monospace !important;
+    font-size: 9px !important;
+    letter-spacing: 0.12em !important;
+    color: var(--cp-accent) !important;
+    opacity: 0.9 !important;
+    white-space: nowrap !important;
+    flex-shrink: 0 !important;
+}
+
+#diceMessageText {
+    flex: 1 !important;
+    min-width: 0 !important;
+    font-family: "Space Mono", monospace !important;
+    font-weight: 600 !important;
+    font-size: clamp(10px, 1.3vw, 12px) !important;
+    color: #eafff4 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    transition: color 0.25s ease, text-shadow 0.25s ease, transform 0.2s ease !important;
+}
+
+/* Visual ping when a new message arrives - follows WARP.md rules */
+#diceMessageText.active {
+    color: var(--cp-accent) !important;
+    text-shadow: 0 0 8px rgba(0, 255, 133, 0.60), 0 0 16px rgba(0, 255, 133, 0.25) !important;
+    transform: scale(1.02) !important; /* Allowed by WARP.md - subtle scale only */
+}
+
+/* Compact tweaks for narrow screens */
+@media (max-width: 479px) {
+    .dice-message {
+        padding: 5px 6px !important;
+        gap: 6px !important;
+    }
+    
+    .dice-message .message-label {
+        font-size: 8px !important;
+    }
+    
+    #diceMessageText {
+        font-size: 10px !important;
+    }
+}
+
+/* ============================================================================
    FPS COUNTER ENHANCEMENT - Color Coding for Performance Status
    ============================================================================ */
 

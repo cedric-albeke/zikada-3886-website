@@ -56,6 +56,7 @@
   width: 100%;
   padding: var(--hdr-pad-y) var(--hdr-pad-x);
   min-width: 0; /* Prevent grid container overflow */
+  min-height: calc(120px + 20px); /* Increased by 20px for better spacing */
 }
 
 /* Critical: Apply min-width: 0 to all grid children to prevent overflow */
