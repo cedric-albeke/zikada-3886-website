@@ -750,8 +750,8 @@ class ChaosEngine {
                 } else {
                     this.filmPass.enabled = true;
                     if (this.filmPass.uniforms) {
-                        this.filmPass.uniforms.nIntensity.value = 0.12;
-                        this.filmPass.uniforms.sIntensity.value = 0.01;
+                        if (this.filmPass.uniforms.nIntensity) this.filmPass.uniforms.nIntensity.value = 0.12;
+                        if (this.filmPass.uniforms.sIntensity) this.filmPass.uniforms.sIntensity.value = 0.01;
                     }
                 }
                 break;
@@ -766,8 +766,8 @@ class ChaosEngine {
                 } else {
                     this.filmPass.enabled = true;
                     if (this.filmPass.uniforms) {
-                        this.filmPass.uniforms.nIntensity.value = 0.2;
-                        this.filmPass.uniforms.sIntensity.value = 0.015;
+                        if (this.filmPass.uniforms.nIntensity) this.filmPass.uniforms.nIntensity.value = 0.2;
+                        if (this.filmPass.uniforms.sIntensity) this.filmPass.uniforms.sIntensity.value = 0.015;
                     }
                 }
                 break;
@@ -779,8 +779,8 @@ class ChaosEngine {
                 else {
                     this.filmPass.enabled = true;
                     if (this.filmPass.uniforms) {
-                        this.filmPass.uniforms.nIntensity.value = 0.35;
-                        this.filmPass.uniforms.sIntensity.value = 0.025;
+                        if (this.filmPass.uniforms.nIntensity) this.filmPass.uniforms.nIntensity.value = 0.35;
+                        if (this.filmPass.uniforms.sIntensity) this.filmPass.uniforms.sIntensity.value = 0.025;
                     }
                 }
                 break;
