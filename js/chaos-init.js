@@ -1,22 +1,4 @@
 /**
- * EMERGENCY PRELOADER GUARD - DEFER CHAOS ENGINE UNTIL PRELOADER IS DISMISSED
- */
-if (document.querySelector('.pre-loader') && document.readyState === 'loading') {
-    console.warn('[CHAOS GUARD] Preloader detected, deferring entire chaos engine');
-    // Expose manual chaos enable for when preloader is dismissed
-    window.__chaosDeferred = true;
-    window.__enableChaos = () => {
-        console.log('[CHAOS GUARD] Manual enable triggered');
-        window.__chaosDeferred = false;
-        import('./chaos-init.js').then(module => {
-            console.log('[CHAOS GUARD] Chaos engine reloaded');
-        }).catch(e => console.error('Failed to reload chaos engine', e));
-    };
-    // Stop execution of this file
-    throw new Error('[CHAOS GUARD] Deferred - use window.__enableChaos() to manually start');
-}
-
-/**
  * ZIKADA 3886 Chaos Initializer - Safe Version
  * 
  * This version has been updated to use safe managers to prevent memory leaks:
@@ -53,8 +35,6 @@ import vjReceiver from './vj-receiver.js';
 import performanceOptimizer from './performance-optimizer.js';
 import VisualEffectsController from './visual-effects-complete.js';
 import createPerformanceProfileManager from './performance/profile-manager.js';
-import emergencyDOMCleanup from './emergency-dom-cleanup.js';
-import domThrottlingSystem from './dom-throttling-system.js';
 
 // Use safe feature flags system
 const featureFlags = window.SAFE_FEATURE_FLAGS || {
@@ -988,36 +968,6 @@ class ChaosInitializer {
         
         // Defer WebGL-related initializations until after Chaos Engine is initialized
         // (renderer must exist)
-        
-        // Initialize DOM Throttling System
-        try {
-            console.log('😦 Starting DOM Throttling System...');
-            // The throttling system is already auto-initialized in the module
-            // Just ensure it's available and expose for debugging
-            window.domThrottlingSystem = domThrottlingSystem;
-            console.log('✅ DOM Throttling System active');
-            
-            if (this.debugMetrics) {
-                console.log('🧪 Debug mode: DOM throttling stats via window.domThrottlingSystem.getStats()');
-            }
-        } catch (error) {
-            console.warn('⚠️ DOM Throttling System failed to initialize:', error);
-        }
-        
-        // Initialize Emergency DOM Cleanup System
-        try {
-            console.log('🧹 Starting Emergency DOM Cleanup System...');
-            // The cleanup system is already auto-initialized in the module
-            // Just ensure it's available and expose for debugging
-            window.emergencyDOMCleanup = emergencyDOMCleanup;
-            console.log('✅ Emergency DOM Cleanup System active');
-            
-            if (this.debugMetrics) {
-                console.log('🧪 Debug mode: DOM cleanup available via window.emergencyDOMCleanup.getStats()');
-            }
-        } catch (error) {
-            console.warn('⚠️ Emergency DOM Cleanup failed to initialize:', error);
-        }
         
         // Initialize Performance Degradation Ladder
         try {

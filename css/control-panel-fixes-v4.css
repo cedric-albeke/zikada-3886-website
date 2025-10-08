@@ -1,0 +1,364 @@
+/**
+ * ============================================================================
+ * CONTROL PANEL FIXES V4 - UI Polish and Functionality Fixes
+ * ============================================================================
+ * 
+ * Fixes for the 3886 VJ Control Panel:
+ * - Unified 4px border-radius across all panel containers
+ * - Merged Kill+Reset button styling
+ * - Remove forbidden hover movement (translateX/Y)
+ * - Matrix Dice panel restored
+ * - Consistent dark cyberpunk aesthetic
+ * 
+ * Version: 4.0.0
+ * Date: 2025-10-08
+ * Load Order: Must be loaded LAST to override all other styles
+ */
+
+/* ============================================================================
+   UNIFIED DESIGN TOKENS - 4px Border-Radius System
+   ============================================================================ */
+
+:root {
+    /* Unified border-radius - overrides all other values */
+    --panel-radius: 4px !important;
+    --cp-panel-radius: 4px !important;
+    --radius: 4px !important;
+    
+    /* Matrix theme colors - consistent values */
+    --cp-accent: #00ff85;
+    --cp-bg: #070b07;
+    --matrix-danger: #ff4444;
+    --matrix-warning: #ffaa00;
+    --matrix-info: #00aaff;
+}
+
+/* ============================================================================
+   BORDER-RADIUS UNIFICATION - Apply 4px to All Panel Containers
+   ============================================================================ */
+
+/* Main panel containers */
+.cp-section,
+.panel,
+.panel-container,
+.panel--dense,
+.panel--wide,
+.section,
+.card,
+.toolbar,
+.matrix-section {
+    border-radius: var(--panel-radius) !important;
+}
+
+/* Nested elements get slightly smaller radius */
+.panel__body,
+.panel__header,
+.card__body,
+.card__header,
+.metric-cell-compact,
+.connection-status-compact,
+.midi-activity-compact {
+    border-radius: calc(var(--panel-radius) - 1px) !important;
+}
+
+/* Button elements */
+.matrix-control-btn,
+.mode-btn,
+.trigger-btn,
+.macro-btn,
+.scene-btn,
+.anim-trigger-btn,
+.effect-toggle-btn,
+.layer-toggle-btn,
+.master-btn,
+.midi-learn-compact,
+.midi-action-compact {
+    border-radius: var(--panel-radius) !important;
+}
+
+/* Form elements */
+.tempo-slider,
+.bpm-input,
+.midi-device-dropdown {
+    border-radius: calc(var(--panel-radius) - 1px) !important;
+}
+
+/* ============================================================================
+   NO HOVER MOVEMENT - Remove Forbidden translateX/Y Animations
+   ============================================================================ */
+
+/* Remove all translateY hover effects - forbidden per project rules */
+.matrix-control-btn:hover,
+.trigger-btn:hover,
+.macro-btn:hover,
+.scene-btn:hover,
+.system-toggle-btn:hover,
+.master-btn:hover,
+.anim-trigger-btn:hover {
+    transform: scale(1.02) !important; /* Only scale allowed, no translate */
+}
+
+/* Mode buttons should not have any transform on hover */
+.mode-btn:hover {
+    transform: none !important;
+}
+
+/* ============================================================================
+   MERGED KILL+RESET BUTTON - Danger Styling with Combined Functionality
+   ============================================================================ */
+
+.kill-reset-btn {
+    color: var(--matrix-danger) !important;
+    background: rgba(255, 68, 68, 0.15) !important;
+    border: 2px solid rgba(255, 68, 68, 0.4) !important;
+    border-radius: var(--panel-radius) !important;
+    transition: background-color 140ms ease, box-shadow 140ms ease, transform 140ms ease !important;
+}
+
+.kill-reset-btn:hover {
+    background: rgba(255, 68, 68, 0.22) !important;
+    box-shadow: 0 0 16px rgba(255, 68, 68, 0.3) !important;
+    transform: scale(1.02) !important; /* Allowed subtle scale, no translateX/Y */
+}
+
+.kill-reset-btn:disabled {
+    opacity: 0.5 !important;
+    cursor: not-allowed !important;
+    transform: none !important;
+}
+
+.kill-reset-btn.is-busy {
+    animation: kill-reset-pulse 1.5s infinite !important;
+}
+
+@keyframes kill-reset-pulse {
+    0%, 100% { 
+        opacity: 1; 
+        box-shadow: 0 0 16px rgba(255, 68, 68, 0.3);
+    }
+    50% { 
+        opacity: 0.7; 
+        box-shadow: 0 0 24px rgba(255, 68, 68, 0.5);
+    }
+}
+
+/* ============================================================================
+   MATRIX DICE PANEL - Restored and Styled
+   ============================================================================ */
+
+/* Ensure Matrix Dice panel is visible and properly styled */
+.matrix-dice {
+    display: flex !important;
+    flex-direction: column !important;
+    min-height: 120px !important;
+    background: var(--cp-bg) !important;
+    border: 1px solid rgba(0, 255, 133, 0.25) !important;
+    border-radius: var(--panel-radius) !important;
+}
+
+.dice-title {
+    color: var(--cp-accent) !important;
+    font-family: "Space Mono", monospace !important;
+    font-size: 10px !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.8px !important;
+    text-transform: uppercase !important;
+    margin-bottom: 8px !important;
+    padding-bottom: 4px !important;
+    border-bottom: 1px solid rgba(0, 255, 133, 0.1) !important;
+}
+
+.dice-container {
+    display: flex !important;
+    align-items: center !important;
+    gap: 12px !important;
+    flex: 1 !important;
+}
+
+.dice-countdown-ring {
+    position: relative !important;
+    flex-shrink: 0 !important;
+}
+
+.countdown-text {
+    position: absolute !important;
+    top: 50% !important;
+    left: 50% !important;
+    transform: translate(-50%, -50%) !important;
+    color: var(--cp-accent) !important;
+    font-family: "Space Mono", monospace !important;
+    font-weight: 700 !important;
+    font-size: 16px !important;
+}
+
+.dice-info {
+    flex: 1 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 6px !important;
+    min-width: 0 !important;
+}
+
+.dice-stats {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    font-size: 8px !important;
+    color: rgba(0, 255, 133, 0.8) !important;
+    font-family: "Space Mono", monospace !important;
+}
+
+.dice-threshold {
+    color: var(--matrix-warning) !important;
+    font-weight: 700 !important;
+}
+
+.dice-last {
+    color: var(--cp-accent) !important;
+}
+
+.last-label {
+    color: rgba(0, 255, 133, 0.6) !important;
+    margin-right: 4px !important;
+}
+
+.last-value {
+    font-weight: 700 !important;
+}
+
+.dice-message {
+    padding: 4px 6px !important;
+    background: rgba(0, 255, 133, 0.05) !important;
+    border: 1px solid rgba(0, 255, 133, 0.15) !important;
+    border-radius: calc(var(--panel-radius) - 1px) !important;
+}
+
+.message-label {
+    font-size: 7px !important;
+    color: rgba(0, 255, 133, 0.6) !important;
+    font-family: "Space Mono", monospace !important;
+    margin-bottom: 2px !important;
+}
+
+.message-text {
+    font-size: 9px !important;
+    color: var(--cp-accent) !important;
+    font-family: "Space Mono", monospace !important;
+    font-weight: 700 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+}
+
+/* ============================================================================
+   FPS COUNTER ENHANCEMENT - Color Coding for Performance Status
+   ============================================================================ */
+
+[data-metric="fps"],
+#fpsCounter {
+    font-family: "Space Mono", monospace !important;
+    font-weight: 700 !important;
+    color: var(--cp-accent) !important;
+    transition: color 0.3s ease !important;
+}
+
+/* FPS color coding based on performance */
+[data-metric="fps"].warning,
+#fpsCounter.warning {
+    color: var(--matrix-warning) !important;
+}
+
+[data-metric="fps"].danger,
+#fpsCounter.danger {
+    color: var(--matrix-danger) !important;
+}
+
+/* ============================================================================
+   HEADER DEDUPLICATION - Ensure Single Section Header
+   ============================================================================ */
+
+/* Hide duplicate headers if they exist */
+.controls-perf-title:not(:first-of-type),
+.section-title:not(:first-of-type) {
+    display: none !important;
+}
+
+/* Ensure the remaining header is properly styled */
+.controls-perf-title {
+    font-family: "Space Mono", monospace !important;
+    font-size: 10px !important;
+    color: var(--cp-accent) !important;
+    font-weight: 700 !important;
+    letter-spacing: 1px !important;
+    text-transform: uppercase !important;
+    margin-bottom: 8px !important;
+    padding-bottom: 4px !important;
+    border-bottom: 1px solid rgba(0, 255, 133, 0.1) !important;
+}
+
+/* ============================================================================
+   ACCESSIBILITY IMPROVEMENTS
+   ============================================================================ */
+
+/* Better focus indicators */
+button:focus-visible,
+select:focus-visible,
+input:focus-visible {
+    outline: 2px solid var(--cp-accent) !important;
+    outline-offset: 2px !important;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+    :root {
+        --cp-accent: #00ffaa !important;
+        --matrix-danger: #ff6666 !important;
+    }
+}
+
+/* Reduce motion for users who prefer it */
+@media (prefers-reduced-motion: reduce) {
+    * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+    
+    .kill-reset-btn.is-busy {
+        animation: none !important;
+    }
+}
+
+/* ============================================================================
+   RESPONSIVE ADJUSTMENTS
+   ============================================================================ */
+
+/* Mobile: Ensure buttons are touch-friendly */
+@media (max-width: 768px) {
+    .matrix-control-btn,
+    .kill-reset-btn {
+        min-height: 44px !important;
+        min-width: 44px !important;
+        touch-action: manipulation !important;
+    }
+}
+
+/* ============================================================================
+   DEBUG UTILITIES (Remove in production)
+   ============================================================================ */
+
+/* Uncomment to debug layout issues */
+/*
+.matrix-header {
+    border: 2px solid red !important;
+}
+
+.matrix-section {
+    border: 1px solid blue !important;
+}
+
+[data-metric="fps"] {
+    background: yellow !important;
+    color: black !important;
+}
+*/

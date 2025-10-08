@@ -15,6 +15,10 @@
     <link href="css/live-logs.css?v=1.0.0" rel="stylesheet">
     <!-- Header Redesign (LAST - overrides all other styles) -->
     <link href="css/control-panel-header-redesign.css?v=1.0.0" rel="stylesheet">
+    <!-- Header Layout Fix (FINAL - fixes visual layout issues) -->
+    <link href="css/control-panel-header-layout-fix.css?v=1.0.0" rel="stylesheet">
+    <!-- Control Panel Fixes V4 (ULTIMATE - fixes all UI and functionality issues) -->
+    <link href="css/control-panel-fixes-v4.css?v=4.0.0" rel="stylesheet">
 </head>
 <body>
     <div class="control-panel">
@@ -85,15 +89,10 @@
                     <!-- System Controls Column -->
                     <div class="system-controls-column">
                         <div class="controls-grid">
-                            <button class="matrix-control-btn kill-btn" id="emergencyStop" title="Emergency Kill">
-                                <span class="btn-glyph">☠</span>
-                                <span class="btn-label">KILL</span>
-                                <span class="btn-code">[ESC]</span>
-                            </button>
-                            <button class="matrix-control-btn reset-btn" id="systemReset" title="System Reset">
-                                <span class="btn-glyph">↻</span>
-                                <span class="btn-label">RESET</span>
-                                <span class="btn-code">[RST]</span>
+                            <button class="matrix-control-btn kill-reset-btn" id="systemKillReset" title="Kill and Reset System" aria-label="Kill and Reset System">
+                                <span class="btn-glyph">☠↻</span>
+                                <span class="btn-label">KILL+RESET</span>
+                                <span class="btn-code">[ESC+RST]</span>
                             </button>
                             <button class="matrix-control-btn reload-btn" id="systemReload" title="Full Reload">
                                 <span class="btn-glyph">⟳</span>
@@ -113,7 +112,7 @@
                         <div class="metrics-grid-compact">
                             <div class="metric-cell-compact">
                                 <div class="metric-label">FPS</div>
-                                <div id="fpsCounter" class="metric-value">60</div>
+                                <div id="fpsCounter" data-metric="fps" class="metric-value">60</div>
                                 <div class="metric-bar"><span class="bar-fill fps-bar"></span></div>
                             </div>
                             <div class="metric-cell-compact">
