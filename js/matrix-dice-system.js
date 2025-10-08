@@ -28,7 +28,7 @@ class MatrixDiceSystem {
         this.isRolling = false;
         this.autoRollEnabled = false;
         this.autoRollInterval = null;
-        this.autoRollDelay = 3000; // 3 seconds
+        this.autoRollDelay = 10000; // 10 seconds
         
         this.threshold = 90;
         this.maxHistoryLength = 100;
@@ -110,6 +110,7 @@ class MatrixDiceSystem {
         // Visual feedback for good rolls
         if (finalValue >= this.threshold) {
             this.celebrateWin();
+            this.broadcastMatrixMessage(finalValue);
         }
         
         this.isRolling = false;
@@ -190,6 +191,45 @@ class MatrixDiceSystem {
         }
         
         console.log('🎯 Dice win celebration!');
+    }
+    
+    broadcastMatrixMessage(value) {
+        // Get random message from pool
+        const messages = [
+            'SYSTEM BREACH DETECTED',
+            'NEURAL LINK ESTABLISHED',
+            'QUANTUM FLUX STABILIZED',
+            'REALITY MATRIX ALIGNED',
+            'CONSCIOUSNESS EXPANDED',
+            'DIMENSION SHIFT COMPLETE',
+            'MATRIX OVERRIDE ENGAGED',
+            'COGNITIVE PATTERNS SYNCED',
+            'FREQUENCY HARMONIZED',
+            'DATA STREAM OPTIMIZED'
+        ];
+        const message = messages[Math.floor(Math.random() * messages.length)];
+        
+        // Display in dice panel
+        const messageText = document.getElementById('diceMessageText');
+        if (messageText) {
+            messageText.textContent = message;
+            messageText.classList.add('active');
+            setTimeout(() => messageText.classList.remove('active'), 3000);
+        }
+        
+        // Broadcast to animation page via BroadcastChannel
+        try {
+            const channel = new BroadcastChannel('3886_vj_control');
+            channel.postMessage({
+                type: 'matrix_message',
+                message: message,
+                roll: value,
+                timestamp: Date.now()
+            });
+            console.log(`🎲 Matrix message broadcast: "${message}" (roll: ${value})`);
+        } catch (error) {
+            console.warn('Failed to broadcast matrix message:', error);
+        }
     }
     
     setAutoRoll(enabled) {
