@@ -1,0 +1,408 @@
+/**
+ * ============================================================================
+ * CONTROL PANEL HEADER REFINEMENTS - V5 Layout and Functionality Fixes
+ * ============================================================================
+ * 
+ * Addresses specific UI improvements based on user feedback:
+ * - Redesigned compact Matrix Dice System with rolling animations
+ * - Console panel expanded to full height
+ * - Adjusted panel widths (smaller MIDI, larger Live Preview)
+ * - Smaller Kill+Reset and Reload buttons
+ * - Fixed connection status freeze on reload
+ * 
+ * Version: 5.0.0
+ * Date: 2025-10-08
+ * Load Order: Must be loaded LAST to override all other header styles
+ */
+
+/* ============================================================================
+   UPDATED HEADER GRID LAYOUT - Adjusted Column Proportions
+   ============================================================================ */
+
+.matrix-header {
+    /* Updated grid proportions: Preview larger, MIDI smaller, Console taller */
+    display: grid !important;
+    grid-template-columns: 
+        minmax(300px, 1.4fr)     /* Live Preview - increased from 1.0fr */
+        minmax(280px, 1.0fr)     /* Live Console - maintained */
+        minmax(200px, 0.6fr)     /* Matrix Dice - reduced from 0.8fr */
+        minmax(360px, 1.6fr)     /* System Controls + Performance - maintained */
+        minmax(240px, 0.8fr);    /* MIDI Control - reduced from 1.3fr */
+    
+    align-items: stretch !important;
+    gap: var(--hdr-gap, 12px) !important;
+    min-height: 160px !important;
+    max-height: 200px; /* Prevent excessive height growth */
+}
+
+/* ============================================================================
+   CONSOLE PANEL - FULL HEIGHT UTILIZATION
+   ============================================================================ */
+
+.matrix-live-console {
+    display: flex !important;
+    flex-direction: column !important;
+    min-height: 120px !important;
+    max-height: none !important; /* Remove height restriction */
+}
+
+/* Ensure console content uses full height */
+.matrix-live-console .live-logs-container {
+    flex: 1 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+}
+
+.matrix-live-console .logs-display {
+    flex: 1 !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    max-height: none !important;
+    padding: 4px 6px !important;
+    scrollbar-width: thin !important;
+    scrollbar-color: rgba(0, 255, 133, 0.3) transparent !important;
+}
+
+/* Console scrollbar styling */
+.matrix-live-console .logs-display::-webkit-scrollbar {
+    width: 4px !important;
+}
+
+.matrix-live-console .logs-display::-webkit-scrollbar-track {
+    background: rgba(0, 255, 133, 0.1) !important;
+}
+
+.matrix-live-console .logs-display::-webkit-scrollbar-thumb {
+    background: rgba(0, 255, 133, 0.4) !important;
+    border-radius: 2px !important;
+}
+
+.matrix-live-console .logs-display::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 255, 133, 0.6) !important;
+}
+
+/* ============================================================================
+   MATRIX DICE SYSTEM - COMPACT REDESIGN WITH ANIMATIONS
+   ============================================================================ */
+
+.matrix-dice {
+    min-width: 180px !important;
+    max-width: 220px !important;
+    padding: 10px !important;
+}
+
+.dice-compact-container {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 8px !important;
+    height: 100% !important;
+}
+
+/* Dice Display Area */
+.dice-display {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 6px !important;
+}
+
+.dice-face {
+    width: 40px !important;
+    height: 40px !important;
+    background: linear-gradient(135deg, rgba(0, 255, 133, 0.15), rgba(0, 255, 133, 0.05)) !important;
+    border: 2px solid rgba(0, 255, 133, 0.4) !important;
+    border-radius: 8px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    position: relative !important;
+    overflow: hidden !important;
+    transition: all 0.3s ease !important;
+}
+
+.dice-face::before {
+    content: '';
+    position: absolute;
+    top: -2px;
+    left: -100%;
+    width: 100%;
+    height: calc(100% + 4px);
+    background: linear-gradient(90deg, transparent, rgba(0, 255, 133, 0.2), transparent);
+    transition: left 0.6s ease;
+}
+
+.dice-face.rolling {
+    animation: diceRoll 0.8s ease-in-out !important;
+    border-color: #00ff85 !important;
+    box-shadow: 0 0 15px rgba(0, 255, 133, 0.5) !important;
+}
+
+.dice-face.rolling::before {
+    left: 100%;
+}
+
+@keyframes diceRoll {
+    0% { transform: rotateY(0deg) rotateX(0deg); }
+    25% { transform: rotateY(90deg) rotateX(45deg); }
+    50% { transform: rotateY(180deg) rotateX(90deg); }
+    75% { transform: rotateY(270deg) rotateX(135deg); }
+    100% { transform: rotateY(360deg) rotateX(180deg); }
+}
+
+.dice-number {
+    font-family: 'Space Mono', monospace !important;
+    font-size: 18px !important;
+    font-weight: 700 !important;
+    color: #00ff85 !important;
+    transition: all 0.2s ease !important;
+}
+
+.dice-face.rolling .dice-number {
+    animation: numberFlicker 0.8s ease-in-out !important;
+}
+
+@keyframes numberFlicker {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+}
+
+.dice-roll-btn {
+    padding: 4px 12px !important;
+    background: rgba(0, 255, 133, 0.1) !important;
+    border: 1px solid rgba(0, 255, 133, 0.3) !important;
+    border-radius: 4px !important;
+    color: rgba(0, 255, 133, 0.8) !important;
+    font-family: 'Space Mono', monospace !important;
+    font-size: 8px !important;
+    font-weight: 700 !important;
+    cursor: pointer !important;
+    transition: all 0.2s ease !important;
+    text-transform: uppercase !important;
+}
+
+.dice-roll-btn:hover {
+    background: rgba(0, 255, 133, 0.2) !important;
+    border-color: #00ff85 !important;
+    color: #00ff85 !important;
+    transform: scale(1.02) !important;
+}
+
+.dice-roll-btn:active {
+    transform: scale(0.98) !important;
+}
+
+/* Compact Stats */
+.dice-stats-compact {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 3px !important;
+    font-size: 7px !important;
+    font-family: 'Space Mono', monospace !important;
+}
+
+.stat-row {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    padding: 1px 4px !important;
+    background: rgba(0, 255, 133, 0.05) !important;
+    border-radius: 2px !important;
+}
+
+.stat-label {
+    color: rgba(0, 255, 133, 0.6) !important;
+    font-weight: 600 !important;
+    text-transform: uppercase !important;
+}
+
+.stat-value {
+    color: #00ff85 !important;
+    font-weight: 700 !important;
+}
+
+.stat-value.highlight {
+    animation: statHighlight 0.5s ease !important;
+}
+
+@keyframes statHighlight {
+    0%, 100% { color: #00ff85; }
+    50% { color: #00ffff; text-shadow: 0 0 8px #00ffff; }
+}
+
+/* Auto Roll Toggle */
+.dice-auto-row {
+    margin-top: auto !important;
+    padding-top: 6px !important;
+    border-top: 1px solid rgba(0, 255, 133, 0.1) !important;
+}
+
+.dice-auto-toggle {
+    display: flex !important;
+    align-items: center !important;
+    gap: 4px !important;
+    cursor: pointer !important;
+    font-size: 7px !important;
+    font-family: 'Space Mono', monospace !important;
+    color: rgba(0, 255, 133, 0.7) !important;
+}
+
+.dice-auto-toggle input[type="checkbox"] {
+    width: 12px !important;
+    height: 12px !important;
+    appearance: none !important;
+    background: rgba(0, 255, 133, 0.1) !important;
+    border: 1px solid rgba(0, 255, 133, 0.3) !important;
+    border-radius: 2px !important;
+    cursor: pointer !important;
+    transition: all 0.2s ease !important;
+}
+
+.dice-auto-toggle input[type="checkbox"]:checked {
+    background: rgba(0, 255, 133, 0.3) !important;
+    border-color: #00ff85 !important;
+}
+
+.dice-auto-toggle input[type="checkbox"]:checked::after {
+    content: '✓' !important;
+    display: block !important;
+    color: #00ff85 !important;
+    font-size: 8px !important;
+    text-align: center !important;
+    line-height: 10px !important;
+}
+
+.toggle-text {
+    font-weight: 600 !important;
+    text-transform: uppercase !important;
+}
+
+/* ============================================================================
+   SMALLER SYSTEM CONTROL BUTTONS
+   ============================================================================ */
+
+.matrix-control-btn {
+    padding: 6px 8px !important; /* Reduced from 8px 12px */
+    min-height: 32px !important; /* Reduced from default */
+    font-size: 9px !important; /* Slightly smaller text */
+}
+
+.matrix-control-btn .btn-glyph {
+    font-size: 14px !important; /* Reduced from 18px */
+}
+
+.matrix-control-btn .btn-label {
+    font-size: 8px !important; /* Reduced from 10px */
+}
+
+.matrix-control-btn .btn-code {
+    font-size: 7px !important; /* Reduced from 8px */
+}
+
+.controls-grid {
+    display: flex !important;
+    flex-direction: row !important; /* Side by side for space efficiency */
+    gap: 4px !important;
+    margin-bottom: 6px !important;
+}
+
+/* ============================================================================
+   CONNECTION STATUS - FIX RELOAD FREEZE ISSUE
+   ============================================================================ */
+
+.connection-status-compact {
+    transition: all 0.3s ease !important;
+}
+
+.connection-status-compact.reloading .status-text {
+    color: #ffaa00 !important;
+    animation: reloadPulse 1s infinite !important;
+}
+
+@keyframes reloadPulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+}
+
+.connection-status-compact.online .status-text {
+    color: #00ff85 !important;
+}
+
+.connection-status-compact.offline .status-text {
+    color: #ff4444 !important;
+}
+
+/* ============================================================================
+   RESPONSIVE ADJUSTMENTS - MAINTAIN FUNCTIONALITY ACROSS BREAKPOINTS
+   ============================================================================ */
+
+@media (max-width: 1400px) {
+    .matrix-header {
+        grid-template-columns: 
+            minmax(260px, 1.3fr)
+            minmax(240px, 0.9fr)
+            minmax(180px, 0.5fr)
+            minmax(320px, 1.5fr)
+            minmax(220px, 0.7fr);
+    }
+}
+
+@media (max-width: 1200px) {
+    .matrix-header {
+        grid-template-columns: 1.4fr 1.6fr 1.0fr;
+        grid-template-areas: 
+            "preview controls midi";
+    }
+    
+    .matrix-identity { grid-area: preview; }
+    .matrix-controls-perf { grid-area: controls; }
+    .matrix-midi { grid-area: midi; }
+    
+    /* Hide dice and console on smaller screens */
+    .matrix-live-console,
+    .matrix-dice {
+        display: none !important;
+    }
+}
+
+@media (max-width: 900px) {
+    .matrix-header {
+        grid-template-columns: 1fr 1fr;
+        grid-template-areas: 
+            "preview controls"
+            "midi midi";
+    }
+    
+    .matrix-identity { grid-area: preview; }
+    .matrix-controls-perf { grid-area: controls; }
+    .matrix-midi { grid-area: midi; }
+}
+
+/* ============================================================================
+   DEBUG AND TESTING UTILITIES
+   ============================================================================ */
+
+/* Uncomment for visual debugging */
+/*
+.matrix-header {
+    border: 2px solid red !important;
+}
+
+.matrix-header > * {
+    border: 1px solid blue !important;
+    position: relative;
+}
+
+.matrix-header > *::before {
+    content: attr(class);
+    position: absolute;
+    top: 0;
+    left: 0;
+    font-size: 8px;
+    background: yellow;
+    color: black;
+    padding: 2px;
+    z-index: 1000;
+}
+*/
