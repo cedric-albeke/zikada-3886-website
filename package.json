@@ -10,6 +10,7 @@
     "kill-servers": "kill-port 3886 || echo Port 3886 clean",
     "clear-cache": "rimraf node_modules/.vite && rimraf dist && echo Cache cleared",
     "build": "vite build",
+    "start": "npx http-server dist -p ${PORT:-3886} -a 0.0.0.0",
     "serve": "npx http-server . -p 3886",
     "preview": "vite preview --port 3886",
     "poster:capture": "npm run build && node scripts/poster-capture.js",
