@@ -11,6 +11,12 @@
   --overlay-fade-ms: 350ms;
   --phase-fade-ms: 600ms;
   --overlay-z-index: 99999;
+  
+  /* Cross-fade transition system variables */
+  --phase-xfade-out-ms: 320ms;
+  --phase-xfade-in-ms: 380ms;
+  --phase-xfade-ease-out: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --phase-xfade-ease-in: cubic-bezier(0.22, 0.61, 0.36, 1);
 }
 
 /* ============================================
@@ -95,6 +101,38 @@
 }
 
 /* ============================================
+   CROSS-FADE STAGE FOR SMOOTH TRANSITIONS
+   ============================================ */
+
+/* Cross-fade stage with two composited slots for smooth scene transitions */
+#phase-stage {
+  position: fixed;
+  inset: 0;
+  z-index: calc(var(--overlay-z-index) - 1);
+  pointer-events: none;
+  isolation: isolate;
+  contain: paint;
+}
+
+.phase-slot {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity var(--phase-xfade-in-ms) var(--phase-xfade-ease-in);
+  will-change: opacity;
+  backface-visibility: hidden;
+}
+
+.phase-slot.active {
+  opacity: 1;
+}
+
+.phase-slot.fade-out {
+  transition: opacity var(--phase-xfade-out-ms) var(--phase-xfade-ease-out);
+  opacity: 0;
+}
+
+/* ============================================
    REDUCED MOTION SUPPORT
    ============================================ */
 
@@ -111,9 +149,15 @@
     transition: none !important;
   }
   
+  .phase-slot {
+    transition: none !important;
+  }
+  
   :root {
     --overlay-fade-ms: 0ms;
     --phase-fade-ms: 0ms;
+    --phase-xfade-out-ms: 0ms;
+    --phase-xfade-in-ms: 0ms;
   }
 }
 

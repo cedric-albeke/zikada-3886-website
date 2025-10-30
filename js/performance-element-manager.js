@@ -1,3 +1,5 @@
+import perfConfig from './perf-config.js';
+
 // Safe PerformanceElementManager with proper purge method and lifecycle management
 class PerformanceElementManager {
     constructor() {
@@ -8,6 +10,11 @@ class PerformanceElementManager {
         this.performanceState = 'optimal'; // optimal, degraded, emergency
         this.cleanupHistory = [];
         this.maxHistorySize = 100;
+        
+        // Enhanced lifecycle tracking
+        this.createdCount = 0;
+        this.destroyedCount = 0;
+        this.initialNodeCount = document.querySelectorAll('*').length;
         
         // Performance monitoring
         this.stats = {
@@ -45,6 +52,118 @@ class PerformanceElementManager {
         this.startMonitoring();
         
         console.log('✅ SafePerformanceElementManager initialized');
+        
+        // Update performance counter
+        if (typeof perfConfig !== 'undefined') {
+            perfConfig.updateCounter('domNodes', this.initialNodeCount);
+        }
+    }
+    
+    // Enhanced lifecycle helpers
+    createTracked(type = 'div', category = 'effect', styles = {}, metadata = {}) {
+        const element = document.createElement(type);
+        const elementId = `perf-${category}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        
+        // Apply styles efficiently
+        this.applyStyles(element, styles);
+        
+        // Add performance tracking classes and attributes
+        element.classList.add('perf-managed', `perf-${category}`);
+        element.setAttribute('data-perf-id', elementId);
+        element.setAttribute('data-perf-created', Date.now().toString());
+        
+        // Track the element
+        const trackingMetadata = {
+            ...metadata,
+            category,
+            source: 'createTracked',
+            elementId
+        };
+        
+        this.track(element, trackingMetadata);
+        
+        // Update counters
+        this.createdCount++;
+        if (typeof perfConfig !== 'undefined') {
+            perfConfig.incrementCounter('domNodes');
+        }
+        
+        if (typeof perfConfig !== 'undefined' && perfConfig.shouldLog()) {
+            console.log(`✨ Created ${category} element: ${elementId} (Total: ${this.trackedElements.size})`);
+        }
+        
+        // Return element with disposer function
+        const disposer = () => this.destroyTracked(element);
+        element._disposer = disposer;
+        
+        return { element, dispose: disposer };
+    }
+    
+    destroyTracked(elementOrId) {
+        let element;
+        
+        if (typeof elementOrId === 'string') {
+            // Find by ID
+            element = document.querySelector(`[data-perf-id="${elementOrId}"]`);
+        } else {
+            // Direct element reference
+            element = elementOrId;
+        }
+        
+        if (!element) {
+            if (typeof perfConfig !== 'undefined' && perfConfig.shouldLog()) {
+                console.warn(`⚠️ destroyTracked: element not found`);
+            }
+            return false;
+        }
+        
+        // Remove from DOM if still attached
+        try {
+            if (element.parentNode && !element.hasAttribute('data-permanent')) {
+                element.remove();
+            }
+        } catch (error) {
+            if (typeof perfConfig !== 'undefined' && perfConfig.shouldLog()) {
+                console.warn('⚠️ Error removing element during destroyTracked:', error);
+            }
+        }
+        
+        // Clean up metadata and tracking
+        const metadata = this.elementMetadata.get(element);
+        if (metadata) {
+            // Kill animations if any are registered
+            if (metadata.animations) {
+                metadata.animations.forEach(tween => {
+                    if (tween && tween.kill) {
+                        tween.kill();
+                    }
+                });
+            }
+            
+            // Clear intervals if any are registered
+            if (metadata.intervals) {
+                metadata.intervals.forEach(intervalId => {
+                    clearInterval(intervalId);
+                });
+            }
+        }
+        
+        // Untrack
+        const wasTracked = this.untrack(element);
+        
+        if (wasTracked) {
+            this.destroyedCount++;
+            if (typeof perfConfig !== 'undefined') {
+                perfConfig.decrementCounter('domNodes');
+            }
+            
+            if (typeof perfConfig !== 'undefined' && perfConfig.shouldLog()) {
+                const elementId = element.getAttribute('data-perf-id') || 'unknown';
+                console.log(`🗑️ Destroyed tracked element: ${elementId}`);
+            }
+        }
+        
+        return wasTracked;
     }
 
     track(element, metadata = {}) {

@@ -1,0 +1,594 @@
+/**
+ * ============================================================================
+ * Control Panel Header Layout Fix
+ * ============================================================================
+ * 
+ * Comprehensive fix for visual layout issues in the matrix header:
+ * - Replaces rigid grid columns with responsive minmax-based layout
+ * - Improves section spacing and utilizes full width 
+ * - Fixes cramped MIDI section and controls-performance balance
+ * - Maintains dark cyberpunk aesthetic with no hover movement animations
+ * 
+ * Version: 1.0.0
+ * Date: 2025-10-08
+ * Load Order: Must be loaded AFTER control-panel-header-redesign.css
+ */
+
+/* ============================================================================
+   CSS CUSTOM PROPERTIES - Scalable Design System
+   ============================================================================ */
+
+:root {
+  /* Responsive spacing using clamp for fluid scaling */
+  --hdr-gap: clamp(12px, 1.3vw, 20px);
+  --hdr-pad-y: clamp(8px, 1.0vw, 14px);
+  --hdr-pad-x: clamp(12px, 1.4vw, 18px);
+  --hdr-border: 1px;
+  --hdr-radius: clamp(6px, 0.6vw, 10px);
+  
+  /* Enhanced matrix theme colors with better contrast */
+  --matrix-bg-primary: rgba(0, 17, 0, 0.85);
+  --matrix-bg-secondary: rgba(0, 34, 17, 0.6);
+  --matrix-border-primary: rgba(0, 255, 133, 0.25);
+  --matrix-border-secondary: rgba(0, 255, 133, 0.12);
+  --matrix-accent: #00ff85;
+  --matrix-text-primary: #ffffff;
+  --matrix-text-secondary: rgba(255, 255, 255, 0.7);
+  --matrix-text-muted: rgba(255, 255, 255, 0.45);
+}
+
+/* ============================================================================
+   HEADER GRID OVERHAUL - Full Width Utilization with Fluid Columns
+   ============================================================================ */
+
+.matrix-header {
+  /* Override existing rigid grid with responsive minmax-based layout */
+  display: grid;
+  grid-template-columns: 
+    minmax(240px, 1.0fr)     /* Live Preview */
+    minmax(300px, 1.2fr)     /* Live Console (hidden but maintain space) */
+    minmax(360px, 1.5fr)     /* System Controls + Performance */
+    minmax(200px, 0.8fr)     /* Dice System (hidden) */
+    minmax(300px, 1.3fr);    /* MIDI Control (expanded) */
+  
+  align-items: stretch;
+  gap: var(--hdr-gap);
+  width: 100%;
+  padding: var(--hdr-pad-y) var(--hdr-pad-x);
+  min-width: 0; /* Prevent grid container overflow */
+  min-height: calc(120px + 20px); /* Increased by 20px for better spacing */
+}
+
+/* Critical: Apply min-width: 0 to all grid children to prevent overflow */
+.matrix-header > * {
+  min-width: 0;
+  overflow: hidden; /* Prevent content from breaking out of containers */
+}
+
+/* ============================================================================
+   ENHANCED SECTION CONTAINERS - Improved Visual Hierarchy
+   ============================================================================ */
+
+.matrix-section {
+  min-width: 0;
+  padding: var(--hdr-pad-y) var(--hdr-pad-x);
+  background: var(--matrix-bg-primary);
+  border: var(--hdr-border) solid var(--matrix-border-primary);
+  border-radius: var(--hdr-radius);
+  backdrop-filter: blur(2px) saturate(120%);
+  transition: border-color 0.3s ease, background-color 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Subtle hover enhancement without movement (per project rules) */
+.matrix-section:hover {
+  border-color: var(--matrix-accent);
+  background: var(--matrix-bg-secondary);
+}
+
+/* Ensure all section children respect container constraints */
+.matrix-section > * {
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* Section titles - consistent styling */
+.matrix-section .preview-title,
+.matrix-section .dice-title,
+.matrix-section .midi-title,
+.matrix-section .controls-perf-title {
+  font-family: 'Space Mono', monospace;
+  font-size: clamp(9px, 0.7vw, 11px);
+  color: var(--matrix-accent);
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ============================================================================
+   SYSTEM CONTROLS + PERFORMANCE - Balanced Two-Column Layout
+   ============================================================================ */
+
+.matrix-controls-perf {
+  min-width: 0;
+}
+
+.controls-perf-container {
+  display: grid;
+  grid-template-columns: minmax(150px, 1fr) minmax(140px, 1fr);
+  gap: calc(var(--hdr-gap) - 4px);
+  align-items: start;
+  width: 100%;
+  min-width: 0;
+}
+
+/* System controls column improvements */
+.system-controls-column {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.system-controls-column .controls-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.system-controls-column .matrix-control-btn {
+  background: var(--matrix-bg-secondary);
+  border: 1px solid var(--matrix-border-secondary);
+  border-radius: calc(var(--hdr-radius) - 2px);
+  padding: 6px 8px;
+  min-height: 28px;
+  font-size: clamp(8px, 0.65vw, 10px);
+  color: var(--matrix-text-secondary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+/* No hover movement per project rules - only color/scale changes */
+.system-controls-column .matrix-control-btn:hover {
+  background: var(--matrix-bg-primary);
+  border-color: var(--matrix-accent);
+  color: var(--matrix-accent);
+  transform: scale(1.02); /* Allowed subtle scale */
+}
+
+.system-controls-column .performance-modes {
+  display: flex;
+  gap: 3px;
+  border-top: 1px solid var(--matrix-border-secondary);
+  padding-top: 6px;
+}
+
+.system-controls-column .mode-btn {
+  flex: 1;
+  background: var(--matrix-bg-secondary);
+  border: 1px solid var(--matrix-border-secondary);
+  border-radius: calc(var(--hdr-radius) - 3px);
+  padding: 4px 2px;
+  font-size: clamp(7px, 0.6vw, 9px);
+  color: var(--matrix-text-muted);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: center;
+  min-width: 0;
+}
+
+.system-controls-column .mode-btn:hover {
+  border-color: var(--matrix-accent);
+  color: var(--matrix-accent);
+}
+
+.system-controls-column .mode-btn.active {
+  background: rgba(0, 255, 133, 0.15);
+  border-color: var(--matrix-accent);
+  color: var(--matrix-accent);
+}
+
+/* Performance metrics column improvements */
+.perf-metrics-column {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.metrics-grid-compact {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.metric-cell-compact {
+  background: var(--matrix-bg-secondary);
+  border: 1px solid var(--matrix-border-secondary);
+  border-radius: calc(var(--hdr-radius) - 2px);
+  padding: 4px 6px;
+  text-align: center;
+  transition: all 0.2s ease;
+  min-width: 0;
+}
+
+.metric-cell-compact:hover {
+  border-color: var(--matrix-border-primary);
+  background: var(--matrix-bg-primary);
+}
+
+.metric-cell-compact .metric-label {
+  font-family: 'Space Mono', monospace;
+  font-size: clamp(7px, 0.6vw, 9px);
+  color: var(--matrix-text-muted);
+  font-weight: 400;
+  letter-spacing: 0.5px;
+  margin-bottom: 2px;
+  white-space: nowrap;
+}
+
+.metric-cell-compact .metric-value {
+  font-family: 'Space Mono', monospace;
+  font-size: clamp(10px, 0.8vw, 12px);
+  color: var(--matrix-accent);
+  font-weight: 700;
+  margin-bottom: 2px;
+  min-height: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.metric-cell-compact .metric-bar {
+  height: 2px;
+  background: rgba(0, 255, 133, 0.1);
+  border-radius: 1px;
+  overflow: hidden;
+  position: relative;
+}
+
+.metric-cell-compact .bar-fill {
+  height: 100%;
+  background: var(--matrix-accent);
+  border-radius: 1px;
+  width: 0%;
+  transition: width 0.3s ease;
+}
+
+/* Connection status improvements */
+.connection-status-compact {
+  background: var(--matrix-bg-secondary);
+  border: 1px solid var(--matrix-border-secondary);
+  border-radius: calc(var(--hdr-radius) - 2px);
+  padding: 6px 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.connection-status-compact .status-text {
+  font-family: 'Space Mono', monospace;
+  font-size: clamp(8px, 0.65vw, 10px);
+  color: #ff4444;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.connection-status-compact .uptime-display {
+  margin-top: 2px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.connection-status-compact #systemUptime {
+  font-family: 'Space Mono', monospace;
+  font-size: clamp(7px, 0.6vw, 9px);
+  color: var(--matrix-accent);
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* ============================================================================
+   MIDI SECTION - Enhanced Width and Wrap Behavior
+   ============================================================================ */
+
+.matrix-midi {
+  min-width: 0;
+}
+
+.midi-compact-container {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  min-width: 0;
+}
+
+/* MIDI status and device rows - improved wrapping */
+.midi-status-row,
+.midi-device-row,
+.midi-actions-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  min-width: 0;
+}
+
+.midi-device-dropdown {
+  flex: 1;
+  min-width: 120px;
+  max-width: 100%;
+  background: var(--matrix-bg-secondary);
+  border: 1px solid var(--matrix-border-secondary);
+  border-radius: calc(var(--hdr-radius) - 2px);
+  padding: 4px 6px;
+  font-family: 'Space Mono', monospace;
+  font-size: clamp(8px, 0.65vw, 10px);
+  color: var(--matrix-text-secondary);
+  cursor: pointer;
+}
+
+.midi-learn-compact,
+.midi-action-compact {
+  background: var(--matrix-bg-secondary);
+  border: 1px solid var(--matrix-border-secondary);
+  border-radius: calc(var(--hdr-radius) - 2px);
+  padding: 4px 8px;
+  font-family: 'Space Mono', monospace;
+  font-size: clamp(7px, 0.6vw, 9px);
+  color: var(--matrix-text-muted);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.midi-learn-compact:hover,
+.midi-action-compact:hover {
+  border-color: var(--matrix-accent);
+  color: var(--matrix-accent);
+  transform: scale(1.02); /* Allowed subtle scale */
+}
+
+/* MIDI activity display */
+.midi-activity-compact {
+  background: var(--matrix-bg-secondary);
+  border: 1px solid var(--matrix-border-secondary);
+  border-radius: calc(var(--hdr-radius) - 2px);
+  padding: 4px 6px;
+  min-height: 24px;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.activity-display-compact .activity-text-compact {
+  font-family: 'Space Mono', monospace;
+  font-size: clamp(7px, 0.6vw, 9px);
+  color: var(--matrix-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Status indicators */
+.device-status-compact,
+.clock-status-compact {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.midi-dot,
+.clock-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ff4444;
+  flex-shrink: 0;
+}
+
+.status-text,
+.clock-text {
+  font-family: 'Space Mono', monospace;
+  font-size: clamp(7px, 0.6vw, 9px);
+  color: var(--matrix-text-muted);
+  font-weight: 700;
+}
+
+/* ============================================================================
+   RESPONSIVE BEHAVIOR - Maintains Clarity Across Breakpoints
+   ============================================================================ */
+
+/* Large desktops: Enhanced spacing and proportions */
+@media (min-width: 1800px) {
+  .matrix-header {
+    grid-template-columns: 
+      minmax(280px, 1.0fr)
+      minmax(360px, 1.2fr)
+      minmax(450px, 1.6fr)
+      minmax(240px, 0.8fr)
+      minmax(380px, 1.4fr);
+  }
+  
+  :root {
+    --hdr-gap: 22px;
+    --hdr-pad-y: 16px;
+    --hdr-pad-x: 20px;
+  }
+}
+
+/* Mid-desktop: Maintain 5 columns with adjusted proportions */
+@media (max-width: 1400px) {
+  .matrix-header {
+    grid-template-columns: 
+      minmax(220px, 1.0fr)
+      minmax(280px, 1.1fr)
+      minmax(320px, 1.4fr)
+      minmax(180px, 0.7fr)
+      minmax(280px, 1.2fr);
+  }
+}
+
+/* Compact desktop: Reduce to 3 columns */
+@media (max-width: 1200px) {
+  .matrix-header {
+    grid-template-columns: 1.2fr 1.6fr 1.2fr;
+    grid-template-areas: 
+      "preview controls midi";
+  }
+  
+  .matrix-identity { grid-area: preview; }
+  .matrix-controls-perf { grid-area: controls; }
+  .matrix-midi { grid-area: midi; }
+  
+  /* Hide less critical sections on smaller screens */
+  .matrix-live-console,
+  .matrix-dice {
+    display: none;
+  }
+  
+  /* Stack controls-perf internally */
+  .controls-perf-container {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+}
+
+/* Tablet: 2 columns */
+@media (max-width: 900px) {
+  .matrix-header {
+    grid-template-columns: 1fr 1fr;
+    grid-template-areas: 
+      "preview controls"
+      "midi midi";
+  }
+  
+  .matrix-identity { grid-area: preview; }
+  .matrix-controls-perf { grid-area: controls; }
+  .matrix-midi { grid-area: midi; }
+}
+
+/* Mobile: Single column stack */
+@media (max-width: 600px) {
+  .matrix-header {
+    grid-template-columns: 1fr;
+    grid-template-areas: 
+      "preview"
+      "controls"
+      "midi";
+    gap: 12px;
+    padding: 8px;
+  }
+  
+  .matrix-identity { grid-area: preview; }
+  .matrix-controls-perf { grid-area: controls; }
+  .matrix-midi { grid-area: midi; }
+  
+  /* Adjust internal layouts for mobile */
+  .midi-status-row,
+  .midi-device-row,
+  .midi-actions-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .midi-device-dropdown {
+    min-width: 0;
+    width: 100%;
+  }
+}
+
+/* ============================================================================
+   CROSS-BROWSER COMPATIBILITY FIXES
+   ============================================================================ */
+
+/* Ensure consistent grid behavior across browsers */
+.matrix-header {
+  -ms-grid-columns: auto;
+  grid-auto-flow: column;
+}
+
+/* Safari-specific fixes for grid overflow */
+@supports (-webkit-appearance: none) {
+  .matrix-header > * {
+    overflow: hidden;
+    max-width: 100%;
+  }
+}
+
+/* Firefox-specific fixes for flexbox in grid */
+@-moz-document url-prefix() {
+  .controls-perf-container,
+  .midi-compact-container {
+    min-width: 0;
+    width: 100%;
+  }
+}
+
+/* ============================================================================
+   ACCESSIBILITY AND PERFORMANCE
+   ============================================================================ */
+
+/* Reduce motion for users who prefer it */
+@media (prefers-reduced-motion: reduce) {
+  .matrix-section,
+  .matrix-control-btn,
+  .midi-learn-compact,
+  .midi-action-compact,
+  .metric-cell-compact {
+    transition: none;
+  }
+  
+  .bar-fill {
+    transition: none;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  :root {
+    --matrix-border-primary: rgba(0, 255, 133, 0.8);
+    --matrix-border-secondary: rgba(0, 255, 133, 0.4);
+  }
+}
+
+/* Focus indicators for accessibility */
+.matrix-section button:focus-visible,
+.midi-device-dropdown:focus-visible {
+  outline: 2px solid var(--matrix-accent);
+  outline-offset: 2px;
+}
+
+/* ============================================================================
+   DEBUG UTILITIES (Remove in production)
+   ============================================================================ */
+
+/* Uncomment to debug grid layout issues */
+/*
+.matrix-header {
+  border: 2px solid red !important;
+}
+
+.matrix-header > * {
+  border: 1px solid blue !important;
+}
+*/

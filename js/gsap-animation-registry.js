@@ -1,11 +1,33 @@
 // GSAP Animation Registry - Tracks and manages all GSAP animations to prevent accumulation
 
 import gsap from 'gsap';
+import perfConfig from './perf-config.js';
 import intervalManager from './interval-manager.js';
-import { createLogger } from './utils/logger.js';
 
-// Create namespaced logger
-const log = createLogger('anim');
+// Enhanced logging with performance config
+const shouldLog = () => perfConfig && perfConfig.shouldLog();
+const log = {
+    info: (msg, data) => shouldLog() && console.log(`[anim] ${msg}`, data || ''),
+    debug: (msg, data) => shouldLog() && console.log(`[anim] ${msg}`, data || ''),
+    warn: (msg, data) => console.warn(`[anim] ${msg}`, data || ''),
+    error: (msg, data) => console.error(`[anim] ${msg}`, data || ''),
+    once: (key, fn) => {
+        if (!log._onceCache) log._onceCache = new Set();
+        if (!log._onceCache.has(key)) {
+            log._onceCache.add(key);
+            fn();
+        }
+    },
+    throttle: (key, delay, fn) => {
+        if (!log._throttleCache) log._throttleCache = new Map();
+        const now = Date.now();
+        const lastCall = log._throttleCache.get(key) || 0;
+        if (now - lastCall >= delay) {
+            log._throttleCache.set(key, now);
+            fn();
+        }
+    }
+};
 
 // Ensure GSAP is globally available
 if (typeof window !== 'undefined' && !window.gsap) {
@@ -15,15 +37,23 @@ if (typeof window !== 'undefined' && !window.gsap) {
 class GSAPAnimationRegistry {
     constructor() {
         this.animations = new Map(); // Track all animations
+        this.animationsByOwner = new Map(); // Track by owner for targeted cleanup
+        this.animationsByElement = new WeakMap(); // Track by element for element-specific cleanup
         this.animationCounter = 0;
-        this.maxAnimations = 100; // Reduced from 150 to prevent performance issues
+        this.maxAnimations = perfConfig?.getLimit('maxActiveAnimations') || 48;
         this.categories = {
-            'phase': { maxAnimations: 20, priority: 1 }, // Reduced from 30
-            'effect': { maxAnimations: 25, priority: 2 }, // Reduced from 40
-            'ui': { maxAnimations: 15, priority: 3 }, // Reduced from 20
-            'background': { maxAnimations: 20, priority: 4 }, // Reduced from 30
-            'particle': { maxAnimations: 30, priority: 5 } // Reduced from 50
+            'phase': { maxAnimations: Math.floor(this.maxAnimations * 0.25), priority: 1 },
+            'effect': { maxAnimations: Math.floor(this.maxAnimations * 0.35), priority: 2 },
+            'ui': { maxAnimations: Math.floor(this.maxAnimations * 0.15), priority: 3 },
+            'background': { maxAnimations: Math.floor(this.maxAnimations * 0.20), priority: 4 },
+            'particle': { maxAnimations: Math.floor(this.maxAnimations * 0.05), priority: 5 }
         };
+        
+        // Performance tracking
+        this.isPaused = false;
+        this.pausedAnimations = new Set();
+        this.dropRequestCount = 0;
+        this.queuedAnimations = [];
         
         // Logging controls
         this.verbose = !!(window.__3886_DEBUG && window.__3886_DEBUG.gsapRegistryVerbose);
@@ -70,6 +100,15 @@ class GSAPAnimationRegistry {
             return count < cfg.maxAnimations;
         };
 
+        // Helper to clean registry-specific properties from vars
+        const cleanVars = (vars) => {
+            if (!vars) return vars;
+            const cleaned = { ...vars };
+            delete cleaned._regCategory;
+            delete cleaned._regSoftCap;
+            return cleaned;
+        };
+
         // Patch gsap.to
         gsap.to = function(targets, vars = {}) {
             const category = resolveCategory(vars);
@@ -77,7 +116,9 @@ class GSAPAnimationRegistry {
                 if (registry.verbose) console.log(`⏳ Skipping creation in category '${category}' (soft cap reached)`);
                 return registry.createNoopTween();
             }
-            const tween = originalTo.call(this, targets, vars);
+            // Remove custom registry properties before passing to GSAP
+            const cleanedVars = cleanVars(vars);
+            const tween = originalTo.call(this, targets, cleanedVars);
             if (tween && registry) {
                 registry.registerAnimation(tween, 'auto-to', category);
             }
@@ -91,7 +132,8 @@ class GSAPAnimationRegistry {
                 if (registry.verbose) console.log(`⏳ Skipping creation in category '${category}' (soft cap reached)`);
                 return registry.createNoopTween();
             }
-            const tween = originalFrom.call(this, targets, vars);
+            const cleanedVars = cleanVars(vars);
+            const tween = originalFrom.call(this, targets, cleanedVars);
             if (tween && registry) {
                 registry.registerAnimation(tween, 'auto-from', category);
             }
@@ -105,7 +147,9 @@ class GSAPAnimationRegistry {
                 if (registry.verbose) console.log(`⏳ Skipping creation in category '${category}' (soft cap reached)`);
                 return registry.createNoopTween();
             }
-            const tween = originalFromTo.call(this, targets, fromVars, toVars);
+            const cleanedFromVars = cleanVars(fromVars);
+            const cleanedToVars = cleanVars(toVars);
+            const tween = originalFromTo.call(this, targets, cleanedFromVars, cleanedToVars);
             if (tween && registry) {
                 registry.registerAnimation(tween, 'auto-fromTo', category);
             }
@@ -119,7 +163,8 @@ class GSAPAnimationRegistry {
                 if (registry.verbose) console.log(`⏳ Skipping creation in category '${category}' (soft cap reached)`);
                 return registry.createNoopTimeline();
             }
-            const timeline = originalTimeline.call(this, vars);
+            const cleanedVars = cleanVars(vars);
+            const timeline = originalTimeline.call(this, vars); // Keep original vars for timeline as it handles custom props
             if (timeline && registry) {
                 registry.registerAnimation(timeline, 'auto-timeline', category);
             }
@@ -142,6 +187,35 @@ class GSAPAnimationRegistry {
         };
 
         log.debug('GSAP methods patched for auto-registration');
+        
+        // Listen for performance events
+        this.setupPerformanceListeners();
+    }
+    
+    setupPerformanceListeners() {
+        // Listen for soft degrade events
+        window.addEventListener('perf:soft-degrade', () => {
+            this.pauseAll('Soft degrade requested');
+        });
+        
+        window.addEventListener('perf:restore', () => {
+            this.resumeAll('Performance restored');
+        });
+        
+        window.addEventListener('perf:emergency-stop', () => {
+            this.killAll('Emergency stop requested');
+        });
+        
+        // Listen for page visibility changes
+        document.addEventListener('visibilitychange', () => {
+            if (perfConfig?.isFeatureEnabled('pauseOnHidden')) {
+                if (document.visibilityState === 'hidden') {
+                    this.pauseAll('Page hidden');
+                } else if (document.visibilityState === 'visible') {
+                    this.resumeAll('Page visible');
+                }
+            }
+        });
     }
 
     /**
@@ -553,17 +627,35 @@ class GSAPAnimationRegistry {
     /**
      * Pause all animations
      */
-    pauseAll() {
+    pauseAll(reason = 'Manual request') {
+        this.isPaused = true;
         gsap.globalTimeline.pause();
-        log.info('All GSAP animations paused');
+        
+        // Track paused animations
+        this.animations.forEach((data, id) => {
+            if (data.animation && !data.animation.paused()) {
+                this.pausedAnimations.add(id);
+            }
+        });
+        
+        if (shouldLog()) {
+            log.info(`All GSAP animations paused: ${reason}`);
+        }
     }
 
     /**
      * Resume all animations
      */
-    resumeAll() {
+    resumeAll(reason = 'Manual request') {
+        this.isPaused = false;
         gsap.globalTimeline.resume();
-        log.info('All GSAP animations resumed');
+        
+        // Clear paused tracking
+        this.pausedAnimations.clear();
+        
+        if (shouldLog()) {
+            log.info(`All GSAP animations resumed: ${reason}`);
+        }
     }
 
     /**
@@ -642,19 +734,36 @@ class GSAPAnimationRegistry {
     }
 
     /**
-     * Emergency stop - kill all animations
+     * Kill all animations
      */
-    emergencyStop() {
-        log.error('EMERGENCY STOP: Killing all GSAP animations');
+    killAll(reason = 'Manual request') {
+        if (shouldLog()) {
+            log.info(`Killing all GSAP animations: ${reason}`);
+        }
         
-        // Kill global timeline
+        // Kill global timeline first
         gsap.killTweensOf('*');
         
         // Clear our registry
         const animationIds = Array.from(this.animations.keys());
         animationIds.forEach(id => this.killAnimation(id));
         
-        log.error(`Emergency stop completed: ${animationIds.length} animations killed`);
+        // Clear tracking sets
+        this.pausedAnimations.clear();
+        
+        if (shouldLog()) {
+            log.info(`Kill all completed: ${animationIds.length} animations removed`);
+        }
+        
+        return animationIds.length;
+    }
+    
+    /**
+     * Emergency stop - kill all animations
+     */
+    emergencyStop() {
+        log.error('EMERGENCY STOP: Killing all GSAP animations');
+        return this.killAll('Emergency stop');
     }
 
     /**

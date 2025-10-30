@@ -170,7 +170,8 @@ class VJReceiver {
         });
         
         vjMessaging.on(MESSAGE_TYPES.SYSTEM_RESET, () => {
-            setBlackout(false);
+            // For system reset via messaging, use gentle transition
+            setBlackout(false); // Clear any existing blackout
             this.resetAllSystems();
         });
         
@@ -306,7 +307,7 @@ class VJReceiver {
         }
     }
 
-    handleMessage(data) {
+    async handleMessage(data) {
         // console.log('📨 Received control message:', data);
 
         switch(data.type) {
@@ -566,11 +567,20 @@ class VJReceiver {
                 break;
 
             case 'emergency_stop':
+                // Cancel any ongoing cross-fade transitions for immediate emergency stop
+                try {
+                    const { default: PhaseStage } = await import('./runtime/phase/PhaseStage.js');
+                    PhaseStage.prototype.cancel?.();
+                } catch (_) {
+                    // PhaseStage not available, continue with normal emergency stop
+                }
                 this.emergencyStop();
                 break;
 
             case 'system_reset':
                 console.log('🔄 Processing system_reset');
+                // For system reset, prefer gentle transition unless in emergency mode
+                setBlackout(false); // Ensure blackout is cleared
                 this.resetAllSystems();
                 break;
 
@@ -2767,13 +2777,29 @@ class VJReceiver {
             this.fpsMonitorRAF = null;
         }
 
-        // Monitor FPS with automatic emergency stop
+        // Performance constants
+        this.LOW_FPS_THRESHOLD = 10;
+        this.RECOVERY_FPS_THRESHOLD = 50;
+        this.SUSTAINED_RECOVERY_DURATION = 30; // seconds
+        this.MIN_RESTART_INTERVAL = 60000; // 60 seconds minimum between restarts
+        
+        // Initialize performance state tracking
+        this.performanceState = {
+            degradeLevel: 0,           // 0=normal, 1=light, 2=moderate, 3=aggressive
+            lowFpsCount: 0,           // consecutive seconds below threshold
+            recoveryCount: 0,         // consecutive seconds above recovery threshold
+            lastRestartTime: 0,       // timestamp of last restart
+            restartCount: 0,          // total restart count for backoff
+            degradeStartTime: 0,      // when degrade began
+            maxDegradeLevel: 0,       // highest level reached in session
+            fpsHistory: [],           // rolling FPS history for averaging
+            fpsHistorySize: 30        // 30 second history
+        };
+
+        // Monitor FPS with soft degradation ladder
         let lastTime = performance.now();
         let frames = 0;
         let fps = 60;
-        let lowFpsCount = 0;
-        const LOW_FPS_THRESHOLD = 10;
-        const LOW_FPS_DURATION = 5; // seconds
 
         const measureFPS = () => {
             frames++;
@@ -2790,22 +2816,44 @@ class VJReceiver {
                 frames = 0;
                 lastTime = currentTime;
                 
-                // AUTO EMERGENCY STOP: Check for critically low FPS
-                if (fps < LOW_FPS_THRESHOLD) {
-                    lowFpsCount++;
-                    console.warn(`⚠️ Low FPS detected: ${fps.toFixed(1)} (${lowFpsCount}/${LOW_FPS_DURATION}s)`);
+                // Update FPS history for averaging
+                this.performanceState.fpsHistory.push(fps);
+                if (this.performanceState.fpsHistory.length > this.performanceState.fpsHistorySize) {
+                    this.performanceState.fpsHistory.shift();
+                }
+                
+                // Calculate average FPS for more stable decision making
+                const avgFPS = this.performanceState.fpsHistory.reduce((a, b) => a + b, 0) / this.performanceState.fpsHistory.length;
+                
+                // SOFT DEGRADATION LOGIC: Progressive performance management
+                if (fps < this.LOW_FPS_THRESHOLD) {
+                    this.performanceState.lowFpsCount++;
+                    this.performanceState.recoveryCount = 0;
                     
-                    if (lowFpsCount >= LOW_FPS_DURATION) {
-                        console.log('🚨 AUTO EMERGENCY STOP: FPS below 10 for 5+ seconds!');
-                        this.emergencyStop();
-                        lowFpsCount = 0; // Reset counter after emergency stop
+                    // Log state transitions concisely
+                    if (this.performanceState.lowFpsCount === 1) {
+                        console.warn(`⚠️ Performance issue detected: FPS ${fps.toFixed(1)} (avg: ${avgFPS.toFixed(1)})`);
+                    }
+                    
+                    // Apply soft degradation steps
+                    this.applySoftDegradation();
+                    
+                } else if (avgFPS > this.RECOVERY_FPS_THRESHOLD) {
+                    // Performance recovery logic
+                    this.performanceState.recoveryCount++;
+                    
+                    if (this.performanceState.recoveryCount >= this.SUSTAINED_RECOVERY_DURATION && this.performanceState.degradeLevel > 0) {
+                        console.log(`✅ Sustained recovery detected: avg FPS ${avgFPS.toFixed(1)} for ${this.SUSTAINED_RECOVERY_DURATION}s`);
+                        this.restorePerformanceLevel();
+                    }
+                    
+                    // Reset low FPS counter on recovery
+                    if (this.performanceState.lowFpsCount > 0) {
+                        this.performanceState.lowFpsCount = 0;
                     }
                 } else {
-                    // Reset low FPS counter when performance recovers
-                    if (lowFpsCount > 0) {
-                        console.log('✅ FPS recovered, resetting low FPS counter');
-                        lowFpsCount = 0;
-                    }
+                    // Neutral zone - reset recovery counter but maintain current degrade level
+                    this.performanceState.recoveryCount = 0;
                 }
             }
 
@@ -2815,7 +2863,233 @@ class VJReceiver {
 
         this.fpsMonitorRAF = requestAnimationFrame(measureFPS);
         
-        console.log('📈 Performance monitoring started with auto-emergency stop (FPS < 10 for 5s)');
+        console.log('📈 Performance monitoring started with soft degradation (FPS < 10 triggers progressive optimization)');
+    }
+    
+    /**
+     * Apply progressive soft degradation based on performance issues
+     */
+    applySoftDegradation() {
+        const { lowFpsCount, degradeLevel, lastRestartTime, restartCount } = this.performanceState;
+        const now = Date.now();
+        
+        // Step 1: Light degradation (after 3 seconds of low FPS)
+        if (lowFpsCount >= 3 && degradeLevel < 1) {
+            this.performanceState.degradeLevel = 1;
+            this.performanceState.degradeStartTime = now;
+            this.performanceState.maxDegradeLevel = Math.max(this.performanceState.maxDegradeLevel, 1);
+            
+            console.log('🔽 Step 1: Light cleanup + disabling text effects');
+            
+            // Execute preventive DOM cleanup
+            if (window.emergencyDOMCleanup) {
+                window.emergencyDOMCleanup.executePreventiveCleanup();
+            }
+            
+            // Disable text scramble updates
+            if (window.textEffects && typeof window.textEffects.pause === 'function') {
+                window.textEffects.pause();
+            }
+            
+            // Pause background glows
+            if (window.backgroundAnimator && typeof window.backgroundAnimator.pauseGlow === 'function') {
+                window.backgroundAnimator.pauseGlow();
+            }
+            
+            // Dispatch soft degrade event for other systems
+            window.dispatchEvent(new CustomEvent('perf:soft-degrade', { detail: { level: 1 } }));
+        }
+        
+        // Step 2: Moderate degradation (after 6 seconds of low FPS)
+        else if (lowFpsCount >= 6 && degradeLevel < 2) {
+            this.performanceState.degradeLevel = 2;
+            this.performanceState.maxDegradeLevel = Math.max(this.performanceState.maxDegradeLevel, 2);
+            
+            console.log('🔽 Step 2: DOM cleanup + pausing animations');
+            
+            // Execute more aggressive DOM cleanup
+            if (window.emergencyDOMCleanup) {
+                // Check current node count and trigger cleanup if needed
+                const nodeCount = document.querySelectorAll('*').length;
+                if (nodeCount > 35000) {
+                    window.emergencyDOMCleanup.executeEmergencyCleanup();
+                } else {
+                    window.emergencyDOMCleanup.executePreventiveCleanup();
+                }
+            }
+            
+            // Pause all non-visible animations
+            if (window.gsapAnimationRegistry && typeof window.gsapAnimationRegistry.pauseAll === 'function') {
+                window.gsapAnimationRegistry.pauseAll('Step 2 degrade');
+            }
+            
+            // Reduce particle systems
+            if (window.fxController) {
+                const currentParticles = window.fxController.getIntensity('particles');
+                window.fxController.setIntensity({ particles: currentParticles * 0.5 });
+            }
+            
+            window.dispatchEvent(new CustomEvent('perf:soft-degrade', { detail: { level: 2 } }));
+        }
+        
+        // Step 3: Aggressive degradation (after 10 seconds of low FPS)
+        else if (lowFpsCount >= 10 && degradeLevel < 3) {
+            this.performanceState.degradeLevel = 3;
+            this.performanceState.maxDegradeLevel = Math.max(this.performanceState.maxDegradeLevel, 3);
+            
+            console.log('🔽 Step 3: Aggressive DOM cleanup + effect reduction');
+            
+            // Force emergency DOM cleanup regardless of node count
+            if (window.emergencyDOMCleanup) {
+                window.emergencyDOMCleanup.executeEmergencyCleanup();
+            }
+            
+            // Lower Lottie quality or pause non-critical Lottie
+            if (window.lottieAnimations && typeof window.lottieAnimations.setLowQualityMode === 'function') {
+                window.lottieAnimations.setLowQualityMode(true);
+            }
+            
+            // Pause intervals in non-essential categories
+            if (window.intervalManager && typeof window.intervalManager.pauseCategory === 'function') {
+                window.intervalManager.pauseCategory('effect');
+                window.intervalManager.pauseCategory('particle');
+            }
+            
+            // Reduce all effects to minimum
+            if (window.fxController) {
+                window.fxController.setIntensity({ 
+                    glitch: 0.1, 
+                    particles: 0.1, 
+                    distortion: 0.1, 
+                    noise: 0.1 
+                });
+            }
+            
+            window.dispatchEvent(new CustomEvent('perf:soft-degrade', { detail: { level: 3 } }));
+        }
+        
+        // Last resort: Aggressive DOM cleanup + Hard restart (after 15 seconds - reduced from 20)
+        else if (lowFpsCount >= 15 && degradeLevel >= 3) {
+            // Execute aggressive DOM cleanup first
+            if (window.emergencyDOMCleanup) {
+                console.log('🔥 Executing aggressive DOM cleanup before restart...');
+                window.emergencyDOMCleanup.executeAggressiveCleanup();
+            }
+            
+            // Apply exponential backoff to prevent restart loops
+            const timeSinceLastRestart = now - lastRestartTime;
+            const minInterval = this.MIN_RESTART_INTERVAL * Math.pow(2, Math.min(restartCount, 4)); // Cap at 16x interval
+            
+            if (timeSinceLastRestart >= minInterval) {
+                this.performanceState.lastRestartTime = now;
+                this.performanceState.restartCount++;
+                
+                console.warn(`🚨 Hard restart triggered after ${lowFpsCount}s of issues (attempt ${restartCount + 1}, next restart blocked for ${(minInterval/1000).toFixed(0)}s)`);
+                
+                // Only restart if we haven't restarted too recently
+                this.executeHardRestart();
+                
+                // Reset degradation state after restart
+                this.performanceState.degradeLevel = 0;
+                this.performanceState.lowFpsCount = 0;
+            } else {
+                const waitTime = Math.ceil((minInterval - timeSinceLastRestart) / 1000);
+                if (lowFpsCount % 5 === 0) { // Log every 5 seconds to avoid spam
+                    console.log(`⏳ Restart blocked by backoff, waiting ${waitTime}s more`);
+                }
+            }
+        }
+    }
+    
+    /**
+     * Restore performance level after sustained recovery
+     */
+    restorePerformanceLevel() {
+        const { degradeLevel } = this.performanceState;
+        
+        if (degradeLevel === 0) return; // Already at normal level
+        
+        console.log(`🔼 Restoring from degrade level ${degradeLevel} after sustained recovery`);
+        
+        // Restore in reverse order
+        if (degradeLevel >= 3) {
+            // Restore aggressive optimizations
+            if (window.lottieAnimations && typeof window.lottieAnimations.setLowQualityMode === 'function') {
+                window.lottieAnimations.setLowQualityMode(false);
+            }
+            
+            if (window.intervalManager && typeof window.intervalManager.resumeCategory === 'function') {
+                window.intervalManager.resumeCategory('effect');
+                window.intervalManager.resumeCategory('particle');
+            }
+            
+            // Restore effect intensities gradually
+            if (window.fxController) {
+                window.fxController.setIntensity({ 
+                    glitch: 0.5, 
+                    particles: 0.5, 
+                    distortion: 0.5, 
+                    noise: 0.5 
+                });
+            }
+        }
+        
+        if (degradeLevel >= 2) {
+            // Resume animations
+            if (window.gsapAnimationRegistry && typeof window.gsapAnimationRegistry.resumeAll === 'function') {
+                window.gsapAnimationRegistry.resumeAll('Performance restored');
+            }
+        }
+        
+        if (degradeLevel >= 1) {
+            // Restore text effects and background glows
+            if (window.textEffects && typeof window.textEffects.resume === 'function') {
+                window.textEffects.resume();
+            }
+            
+            if (window.backgroundAnimator && typeof window.backgroundAnimator.resumeGlow === 'function') {
+                window.backgroundAnimator.resumeGlow();
+            }
+        }
+        
+        // Dispatch restore event
+        window.dispatchEvent(new CustomEvent('perf:restore', { detail: { fromLevel: degradeLevel } }));
+        
+        // Reset state
+        this.performanceState.degradeLevel = 0;
+        this.performanceState.recoveryCount = 0;
+        this.performanceState.degradeStartTime = 0;
+        
+        console.log('✅ Performance level fully restored');
+    }
+    
+    /**
+     * Execute hard restart as last resort with proper cleanup
+     */
+    executeHardRestart() {
+        console.log('🔄 Executing hard restart as last resort');
+        
+        // Emit emergency stop for immediate cleanup
+        window.dispatchEvent(new CustomEvent('perf:emergency-stop'));
+        
+        // Use existing emergency stop logic but avoid infinite recursion
+        try {
+            this.emergencyStop();
+            
+            // Restart essential systems after a delay
+            setTimeout(() => {
+                if (typeof this.restartEssentialAnimations === 'function') {
+                    this.restartEssentialAnimations();
+                }
+            }, 1000);
+        } catch (error) {
+            console.error('❌ Hard restart failed:', error);
+            // Final fallback - full page reload
+            setTimeout(() => {
+                console.warn('🌀 Hard restart failed, triggering page reload');
+                window.location.reload();
+            }, 2000);
+        }
     }
 
     sendPerformanceData() {
@@ -2842,6 +3116,7 @@ class VJReceiver {
 
     sendDetailedPerformanceData() {
         // Gather detailed performance data from all systems
+        const nodeCount = document.querySelectorAll('*').length;
         const detailedData = {
             type: 'detailed_performance_update',
             animations: window.gsapAnimationRegistry ? window.gsapAnimationRegistry.animations.size : 0,
@@ -2850,6 +3125,8 @@ class VJReceiver {
             activeFx: this.activeFx, // Include activeFx counter
             fps: window.safePerformanceMonitor ? window.safePerformanceMonitor.metrics.fps : 0,
             memory: performance.memory ? performance.memory.usedJSHeapSize : 0,
+            domNodes: nodeCount, // Add DOM node count
+            degradeLevel: this.performanceState?.degradeLevel || 0, // Add degradation level
             timestamp: Date.now()
         };
 
