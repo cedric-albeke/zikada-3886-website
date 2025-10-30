@@ -371,6 +371,20 @@
                 </div>
             </section>
 
+            <!-- Performance Dashboard Section -->
+            <section class="cp-section performance-section">
+                <h2 class="cp-section__title">Performance Monitoring</h2>
+                <div class="cp-section__content">
+                    <div class="performance-controls">
+                        <button class="control-btn" id="perfDashboardToggle">
+                            <span class="btn-icon">📊</span>
+                            <span class="btn-text">Performance Dashboard</span>
+                            <span class="btn-status">V2</span>
+                        </button>
+                    </div>
+                </div>
+            </section>
+
             <!-- ============================================
                  SCENE SELECT
                  ============================================ -->
@@ -532,6 +546,10 @@
     <!-- ============================================
          JAVASCRIPT - Control Panel Logic
          ============================================ -->
+    <!-- Animation Manager - MUST LOAD FIRST -->
+    <script type="module" src="./js/animation-manager.js"></script>
+    <script type="module" src="./js/performance-dashboard-v2.js"></script>
+    
     <!-- MIDI Support Scripts -->
     <script src="./js/midi-controller.js"></script>
     <script src="./js/midi-action-catalog.js"></script>
@@ -562,6 +580,9 @@
         // Import trigger effect orchestrator for CHROMA, SPOTLIGHT, SHIMMER
         import './js/trigger-effect-orchestrator.js';
         
+        // Import animation manager for animation system
+        import { initAnimationManager } from './js/animation-manager.js';
+        
         // Profile badge removed - duplicate controls prevention
         
         // Initialize MIDI support
@@ -577,7 +598,109 @@
                 });
                 console.log('🎹 Global MIDI Controller initialized');
             }
+            
+            // Initialize Animation Manager
+            const animationManager = initAnimationManager();
+            if (animationManager) {
+                console.log('🎬 Animation Manager initialized');
+                window.animationManager = animationManager;
+            }
+            
+            // Setup Animation System Toggle
+            setupAnimationSystemToggle();
+            
+            // Setup Animation Trigger Buttons
+            setupAnimationTriggerButtons();
+            
+            // Setup performance dashboard toggle
+            setupPerformanceDashboardToggle();
         });
+        
+        // Setup Animation System Toggle
+        function setupAnimationSystemToggle() {
+            const animeToggle = document.getElementById('animeToggle');
+            if (!animeToggle) return;
+            
+            animeToggle.addEventListener('click', () => {
+                const currentState = animeToggle.getAttribute('data-state');
+                const newState = currentState === 'enabled' ? 'disabled' : 'enabled';
+                const isEnabled = newState === 'enabled';
+                
+                // Update button state
+                animeToggle.setAttribute('data-state', newState);
+                animeToggle.querySelector('.toggle-status').textContent = newState.toUpperCase();
+                
+                // Toggle active class
+                if (isEnabled) {
+                    animeToggle.classList.add('active');
+                } else {
+                    animeToggle.classList.remove('active');
+                }
+                
+                // Send message to main page via VJ messaging
+                if (window.vjMessaging) {
+                    window.vjMessaging.sendMessage({
+                        type: isEnabled ? 'anime_enable' : 'anime_disable',
+                        timestamp: Date.now()
+                    });
+                }
+                
+                console.log(`🎬 Animation system ${newState}`);
+            });
+        }
+        
+        // Setup Animation Trigger Buttons
+        function setupAnimationTriggerButtons() {
+            const animTriggerBtns = document.querySelectorAll('.anim-trigger-btn');
+            
+            animTriggerBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const animeId = btn.dataset.anime;
+                    if (!animeId) return;
+                    
+                    console.log(`🎭 Triggering animation: ${animeId}`);
+                    
+                    // Visual feedback
+                    btn.classList.add('active');
+                    setTimeout(() => btn.classList.remove('active'), 500);
+                    
+                    // Send message to main page via VJ messaging
+                    if (window.vjMessaging) {
+                        window.vjMessaging.sendMessage({
+                            type: 'anime_trigger',
+                            effect: animeId,
+                            id: animeId,
+                            timestamp: Date.now()
+                        });
+                    }
+                    
+                    // Also trigger directly if animation manager is available
+                    if (window.animationManager && typeof window.animationManager.trigger === 'function') {
+                        window.animationManager.trigger(animeId)
+                            .then(success => {
+                                console.log(`✅ Animation ${animeId} completed: ${success}`);
+                            })
+                            .catch(error => {
+                                console.error(`❌ Animation ${animeId} failed:`, error);
+                            });
+                    }
+                });
+            });
+        }
+        
+        // Setup Performance Dashboard Toggle
+        function setupPerformanceDashboardToggle() {
+            const perfDashboardToggle = document.getElementById('perfDashboardToggle');
+            if (!perfDashboardToggle) return;
+            
+            perfDashboardToggle.addEventListener('click', () => {
+                if (window.performanceDashboardV2) {
+                    window.performanceDashboardV2.toggle();
+                } else {
+                    console.warn('Performance Dashboard V2 not available');
+                }
+            });
+        }
     </script>
 </body>
 </html>

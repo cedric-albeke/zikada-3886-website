@@ -1,0 +1,185 @@
+# Dokploy Deployment Configuration for ZIKADA 3886 Website
+# Optimized for production deployment with performance monitoring
+
+version: '3.8'
+
+services:
+  zikada-3886:
+    image: node:18-alpine
+    container_name: zikada-3886-website
+    restart: unless-stopped
+    
+    # Environment variables
+    environment:
+      - NODE_ENV=production
+      - PORT=3886
+      - HOST=0.0.0.0
+      - VITE_BASE_URL=/
+      - VITE_APP_VERSION=${GIT_COMMIT_SHA:-latest}
+      - VITE_BUILD_TIME=${BUILD_TIME}
+    
+    # Port mapping
+    ports:
+      - "3886:3886"
+    
+    # Volume mounts
+    volumes:
+      - ./dist:/app/dist:ro
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./logs:/app/logs
+    
+    # Health check
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3886/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+        reservations:
+          memory: 256M
+          cpus: '0.25'
+    
+    # Logging
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    
+    # Security
+    security_opt:
+      - no-new-privileges:true
+    
+    # User
+    user: "1000:1000"
+    
+    # Working directory
+    working_dir: /app
+    
+    # Command
+    command: >
+      sh -c "
+        echo 'Starting ZIKADA 3886 Website...' &&
+        echo 'Environment: ${NODE_ENV}' &&
+        echo 'Port: ${PORT}' &&
+        echo 'Version: ${VITE_APP_VERSION}' &&
+        echo 'Build Time: ${VITE_BUILD_TIME}' &&
+        npx http-server dist -p ${PORT} -a 0.0.0.0 --cors --gzip --brotli --cache 31536000
+      "
+
+  # Nginx reverse proxy for better performance
+  nginx:
+    image: nginx:alpine
+    container_name: zikada-3886-nginx
+    restart: unless-stopped
+    
+    ports:
+      - "80:80"
+      - "443:443"
+    
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+      - ./logs/nginx:/var/log/nginx
+    
+    depends_on:
+      - zikada-3886
+    
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: '0.25'
+        reservations:
+          memory: 64M
+          cpus: '0.1'
+
+  # Performance monitoring
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: zikada-3886-prometheus
+    restart: unless-stopped
+    
+    ports:
+      - "9090:9090"
+    
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=7d'
+      - '--web.enable-lifecycle'
+    
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.25'
+        reservations:
+          memory: 128M
+          cpus: '0.1'
+
+  # Grafana for visualization
+  grafana:
+    image: grafana/grafana:latest
+    container_name: zikada-3886-grafana
+    restart: unless-stopped
+    
+    ports:
+      - "3000:3000"
+    
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_INSTALL_PLUGINS=grafana-piechart-panel
+    
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+    
+    depends_on:
+      - prometheus
+    
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.25'
+        reservations:
+          memory: 128M
+          cpus: '0.1'
+
+volumes:
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+
+networks:
+  default:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

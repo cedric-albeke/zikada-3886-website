@@ -3650,61 +3650,90 @@ class ChaosInitializer {
 
     addSubtleColorVariations() {
         // Kill any existing color variation animations first to prevent stacking
-        gsap.killTweensOf('.logo-text, .text-3886', 'filter');
-        gsap.killTweensOf('.glow', 'filter');
-        gsap.killTweensOf('#cyber-grid', 'filter');
+        // Guard against null/undefined targets to avoid GSAP errors
+        const safeKill = (selector, props) => {
+            try {
+                if (!selector) return;
+                const hasTargets = typeof selector === 'string'
+                    ? document.querySelector(selector) !== null
+                    : !!selector;
+                if (!hasTargets) return;
+                gsap.killTweensOf(selector, props);
+            } catch (_) {
+                // Swallow to avoid breaking init on missing nodes
+            }
+        };
 
-        // Reset filter to base state before starting animations
-        gsap.set('.logo-text, .text-3886', {
-            filter: 'none',
-            clearProps: 'filter'
-        });
+        safeKill('.logo-text, .text-3886', 'filter');
+        safeKill('.glow', 'filter');
+        safeKill('#cyber-grid', 'filter');
+
+        // Resolve targets once to avoid race conditions and null conversions
+        const textNodes = document.querySelectorAll('.logo-text, .text-3886');
+        const glowNodes = document.querySelectorAll('.glow');
+        const gridNodes = document.querySelectorAll('#cyber-grid');
+
+        // Reset filter to base state before starting animations (only if targets exist)
+        if (textNodes && textNodes.length) {
+            try {
+                gsap.set(textNodes, {
+                    filter: 'none',
+                    clearProps: 'filter'
+                });
+            } catch (_) {}
+        }
 
         // Preserve ZIKADA text original green colors - NO hue rotation
-        const textColorTimeline = gsap.timeline({ repeat: -1 });
-        textColorTimeline
-            .to('.logo-text, .text-3886', {
+        if (textNodes && textNodes.length) {
+            const textColorTimeline = gsap.timeline({ repeat: -1 });
+            textColorTimeline
+                .to(textNodes, {
                 filter: 'brightness(100%) saturate(100%) contrast(100%)',
                 duration: 0
             })
-            .to('.logo-text, .text-3886', {
+            .to(textNodes, {
                 filter: 'brightness(105%) saturate(110%) contrast(105%)',  // Slight enhancement only
                 duration: 18,
                 ease: 'sine.inOut'
             })
-            .to('.logo-text, .text-3886', {
+            .to(textNodes, {
                 filter: 'brightness(98%) saturate(105%) contrast(102%)',   // Subtle dimming
                 duration: 15,
                 ease: 'sine.inOut'
             })
-            .to('.logo-text, .text-3886', {
+            .to(textNodes, {
                 filter: 'brightness(102%) saturate(108%) contrast(103%)',  // Back to enhanced
                 duration: 12,
                 ease: 'sine.inOut'
             })
-            .to('.logo-text, .text-3886', {
+            .to(textNodes, {
                 filter: 'brightness(100%) saturate(100%) contrast(100%)',
                 duration: 10,
                 ease: 'sine.inOut'
             });
+        }
 
         // Very subtle color pulse for cicada logo
-        gsap.to('.glow', {
+        if (glowNodes && glowNodes.length) {
+            gsap.to(glowNodes, {
             filter: 'hue-rotate(12deg) saturate(115%) brightness(105%)',
             duration: 12,
             yoyo: true,
             repeat: -1,
             ease: 'sine.inOut'
-        });
+            });
+        }
 
         // Subtle color shift for grid
-        gsap.to('#cyber-grid', {
+        if (gridNodes && gridNodes.length) {
+            gsap.to(gridNodes, {
             filter: 'hue-rotate(20deg)',
             duration: 20,
             yoyo: true,
             repeat: -1,
             ease: 'sine.inOut'
-        });
+            });
+        }
     }
 }
 
