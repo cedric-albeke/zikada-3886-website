@@ -9,11 +9,22 @@ import fxController from './fx-controller.js';
 async function fetchManifest() {
   try {
     const res = await fetch('/lotties/manifest.json', { cache: 'no-cache' });
-    if (!res.ok) return [];
-    const json = await res.json();
+    if (!res.ok || res.status === 404) {
+      // Manifest is optional - return empty array silently
+      return [];
+    }
+    const text = await res.text();
+    if (!text || text.trim().length === 0) {
+      return [];
+    }
+    const json = JSON.parse(text);
     return Array.isArray(json) ? json : (Array.isArray(json?.effects) ? json.effects : []);
   } catch (e) {
-    console.warn('Lottie manifest not found (optional):', e?.message || e);
+    // Only log if it's not a 404/network error (which are expected for missing files)
+    const errorMsg = String(e?.message || e || '');
+    if (!errorMsg.includes('404') && !errorMsg.includes('Not Found') && !errorMsg.includes('Failed to fetch')) {
+      // Might be a JSON parse error, but we'll still fail silently
+    }
     return [];
   }
 }
@@ -39,9 +50,17 @@ function createPlayer(entry) {
   const baseStyle = `position: fixed; inset: 0; pointer-events: none; will-change: opacity, transform; contain: layout paint size; mix-blend-mode: ${blend}; z-index: ${z}; opacity: 0; transform: scale(0.97);`;
   player.style.cssText = entry.style || baseStyle;
 
-  // Basic error logging to help diagnose missing assets
+  // Silently handle errors for missing assets - they're optional resources
   player.addEventListener('error', (e) => {
-    console.warn('Lottie player error for', entry.id, entry.src, e?.detail || e);
+    // Hide the player element if the file fails to load
+    try {
+      if (player.parentElement) {
+        player.parentElement.style.display = 'none';
+      }
+      player.style.display = 'none';
+    } catch (err) {
+      // Ignore cleanup errors
+    }
   });
 
   return player;

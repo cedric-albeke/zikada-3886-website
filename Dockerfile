@@ -38,6 +38,11 @@ RUN addgroup -g 1000 -S nodejs && \
 # Copy built application from builder stage
 COPY --from=builder --chown=zikada:nodejs /app/dist ./dist
 
+# Copy static assets not handled by Vite (animations, lotties, videos)
+COPY --from=builder --chown=zikada:nodejs /app/animations ./dist/animations
+COPY --from=builder --chown=zikada:nodejs /app/lotties ./dist/lotties
+COPY --from=builder --chown=zikada:nodejs /app/videos ./dist/videos
+
 # Copy package.json for version info
 COPY --from=builder --chown=zikada:nodejs /app/package.json ./
 

@@ -36,30 +36,78 @@ class StabilityManager {
     setupErrorHandling() {
         // Global error handler
         window.addEventListener('error', (event) => {
-            this.handleError('JavaScript Error', event.error, {
-                filename: event.filename,
-                lineno: event.lineno,
-                colno: event.colno
-            });
-        });
-        
-        // Unhandled promise rejection handler
-        window.addEventListener('unhandledrejection', (event) => {
-            this.handleError('Unhandled Promise Rejection', event.reason);
-        });
-        
-        // Resource loading error handler
-        window.addEventListener('error', (event) => {
-            // We can silently ignore optional resources that are safe to fail
+            // Check if this is a resource loading error for optional resources
             const optionalResourcePatterns = [
                 /manifest\.json$/i,
                 /\.lottie$/i,
                 /beehive-loop\.mp4$/i,
                 /\/animations\/lottie\//i,
-                /\/lotties\//i
+                /\/lotties\//i,
+                /zikada\.io.*(manifest|lottie|beehive)/i
             ];
             
-            const src = event.target.src || event.target.href || '';
+            const src = event.target?.src || event.target?.href || event.filename || '';
+            const isOptionalResource = optionalResourcePatterns.some(pattern => pattern.test(src));
+            
+            // Silently ignore optional resources
+            if (isOptionalResource && event.target !== window) {
+                event.preventDefault();
+                event.stopPropagation();
+                return false;
+            }
+            
+            // Only handle non-optional errors
+            if (!isOptionalResource) {
+                this.handleError('JavaScript Error', event.error, {
+                    filename: event.filename,
+                    lineno: event.lineno,
+                    colno: event.colno
+                });
+            }
+        }, true);
+        
+        // Unhandled promise rejection handler
+        window.addEventListener('unhandledrejection', (event) => {
+            const reason = event.reason;
+            const reasonStr = String(reason || '');
+            
+            // Check if this is a fetch error for optional resources
+            const optionalResourcePatterns = [
+                /manifest\.json$/i,
+                /\.lottie$/i,
+                /beehive-loop\.mp4$/i,
+                /\/animations\/lottie\//i,
+                /\/lotties\//i,
+                /zikada\.io.*(manifest|lottie|beehive)/i,
+                /404.*Not Found/i,
+                /Failed to fetch/i
+            ];
+            
+            const isOptionalResource = optionalResourcePatterns.some(pattern => 
+                pattern.test(reasonStr || reason?.message || reason?.stack || '')
+            );
+            
+            // Silently ignore optional resource fetch errors
+            if (isOptionalResource) {
+                event.preventDefault();
+                return;
+            }
+            
+            this.handleError('Unhandled Promise Rejection', reason);
+        });
+        
+        // Resource loading error handler (for DOM elements like img, script, etc.)
+        window.addEventListener('error', (event) => {
+            const optionalResourcePatterns = [
+                /manifest\.json$/i,
+                /\.lottie$/i,
+                /beehive-loop\.mp4$/i,
+                /\/animations\/lottie\//i,
+                /\/lotties\//i,
+                /zikada\.io.*(manifest|lottie|beehive)/i
+            ];
+            
+            const src = event.target?.src || event.target?.href || '';
             const isOptionalResource = optionalResourcePatterns.some(pattern => pattern.test(src));
             
             if (event.target !== window && !isOptionalResource) {
@@ -71,6 +119,12 @@ class StabilityManager {
             // Silently ignore optional resources (Lottie files, manifest, beehive video)
         }, true);
         
+        // Intercept fetch() calls to suppress errors for optional resources
+        this.setupFetchInterceptor();
+        
+        // Intercept console.error to suppress dotlottie-player errors
+        this.setupConsoleInterceptor();
+        
         // GSAP error handling
         this.setupGSAPErrorHandling();
         
@@ -79,6 +133,85 @@ class StabilityManager {
         
         // Three.js error handling
         this.setupThreeJSErrorHandling();
+    }
+    
+    setupFetchInterceptor() {
+        const originalFetch = window.fetch;
+        const optionalResourcePatterns = [
+            /manifest\.json$/i,
+            /\.lottie$/i,
+            /beehive-loop\.mp4$/i,
+            /\/animations\/lottie\//i,
+            /\/lotties\//i,
+            /zikada\.io.*(manifest|lottie|beehive)/i
+        ];
+        
+        window.fetch = async function(...args) {
+            const url = args[0];
+            const urlStr = typeof url === 'string' ? url : url?.url || url?.toString() || '';
+            const isOptionalResource = optionalResourcePatterns.some(pattern => pattern.test(urlStr));
+            
+            try {
+                const response = await originalFetch.apply(this, args);
+                // If it's an optional resource and failed, return empty response without logging
+                if (isOptionalResource && !response.ok && response.status === 404) {
+                    // Return a mock Response to prevent errors downstream
+                    return new Response(null, { 
+                        status: 404, 
+                        statusText: 'Not Found',
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+                }
+                return response;
+            } catch (error) {
+                // Silently handle fetch errors for optional resources
+                if (isOptionalResource) {
+                    // Return a mock Response to prevent errors downstream
+                    return new Response(null, { 
+                        status: 404, 
+                        statusText: 'Not Found',
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+                }
+                throw error;
+            }
+        };
+    }
+    
+    setupConsoleInterceptor() {
+        const originalError = console.error;
+        const originalWarn = console.warn;
+        
+        // Only suppress specific known error messages from dotlottie-player and related libraries
+        const suppressPatterns = [
+            /\[dotLottie-common\]:.*Error loading animation/i,
+            /Failed to load dotLottie.*404/i,
+            /Failed to load.*lottie.*404/i,
+            /GET.*manifest\.json.*404/i,
+            /GET.*\.lottie.*404/i,
+            /GET.*beehive-loop\.mp4.*404/i,
+            /net::ERR_ABORTED.*404.*(lottie|manifest|beehive)/i
+        ];
+        
+        console.error = function(...args) {
+            const message = args.join(' ');
+            const shouldSuppress = suppressPatterns.some(pattern => pattern.test(message));
+            
+            // Only suppress specific known error messages
+            if (!shouldSuppress) {
+                originalError.apply(console, args);
+            }
+        };
+        
+        console.warn = function(...args) {
+            const message = args.join(' ');
+            const shouldSuppress = suppressPatterns.some(pattern => pattern.test(message));
+            
+            // Only suppress specific known warning messages
+            if (!shouldSuppress) {
+                originalWarn.apply(console, args);
+            }
+        };
     }
     
     setupGSAPErrorHandling() {

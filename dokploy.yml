@@ -1,5 +1,12 @@
 # Dokploy Deployment Configuration for ZIKADA 3886 Website
-# Optimized for production deployment with performance monitoring
+# Optimized for production deployment with Traefik reverse proxy
+# Traefik handles SSL/TLS certificates automatically via Let's Encrypt
+#
+# Required Environment Variables (set in Dokploy UI):
+#   - DOMAIN: Your domain name (e.g., example.com)
+#
+# Note: The certificate resolver name may vary based on your Dokploy organization.
+# If 'letsencrypt' doesn't work, try 'le' or check your organization's Traefik config.
 
 version: '3.8'
 
@@ -18,15 +25,39 @@ services:
       - VITE_APP_VERSION=${GIT_COMMIT_SHA:-latest}
       - VITE_BUILD_TIME=${BUILD_TIME}
     
-    # Port mapping
-    ports:
-      - "3886:3886"
+    # Port mapping (internal only - Traefik handles external routing)
+    expose:
+      - "3886"
     
     # Volume mounts
     volumes:
       - ./dist:/app/dist:ro
-      - ./nginx.conf:/etc/nginx/nginx.conf:ro
       - ./logs:/app/logs
+    
+    # Traefik labels for automatic routing and Let's Encrypt certificates
+    labels:
+      # Enable Traefik for this service
+      - "traefik.enable=true"
+      
+      # HTTP Router - Only redirects non-ACME paths to HTTPS
+      # This allows Let's Encrypt ACME challenge to work on HTTP (Traefik handles ACME internally)
+      - "traefik.http.routers.zikada-3886-http.rule=Host(`${DOMAIN}`) && !PathPrefix(`/.well-known/acme-challenge`)"
+      - "traefik.http.routers.zikada-3886-http.entrypoints=web"
+      - "traefik.http.routers.zikada-3886-http.middlewares=redirect-to-https"
+      - "traefik.http.routers.zikada-3886-http.priority=1"
+      
+      # HTTPS Router with Let's Encrypt
+      - "traefik.http.routers.zikada-3886-https.rule=Host(`${DOMAIN}`)"
+      - "traefik.http.routers.zikada-3886-https.entrypoints=websecure"
+      - "traefik.http.routers.zikada-3886-https.tls=true"
+      - "traefik.http.routers.zikada-3886-https.tls.certresolver=letsencrypt"
+      
+      # Service configuration
+      - "traefik.http.services.zikada-3886.loadbalancer.server.port=3886"
+      
+      # Redirect HTTP to HTTPS middleware (excludes ACME challenge via router rule above)
+      - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"
+      - "traefik.http.middlewares.redirect-to-https.redirectscheme.permanent=true"
     
     # Health check
     healthcheck:
@@ -74,39 +105,8 @@ services:
         npx http-server dist -p ${PORT} -a 0.0.0.0 --cors --gzip --brotli --cache 31536000
       "
 
-  # Nginx reverse proxy for better performance
-  nginx:
-    image: nginx:alpine
-    container_name: zikada-3886-nginx
-    restart: unless-stopped
-    
-    ports:
-      - "80:80"
-      - "443:443"
-    
-    volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./ssl:/etc/nginx/ssl:ro
-      - ./logs/nginx:/var/log/nginx
-    
-    depends_on:
-      - zikada-3886
-    
-    healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-    
-    # Resource limits
-    deploy:
-      resources:
-        limits:
-          memory: 128M
-          cpus: '0.25'
-        reservations:
-          memory: 64M
-          cpus: '0.1'
+  # Note: Nginx service removed - Dokploy uses Traefik as reverse proxy
+  # Traefik automatically handles SSL/TLS certificates via Let's Encrypt
 
   # Performance monitoring
   prometheus:
@@ -179,7 +179,8 @@ volumes:
 
 networks:
   default:
-    driver: bridge
-    ipam:
-      config:
-        - subnet: 172.20.0.0/16
+    external: true
+    # Network name: Find it by running on Dokploy server:
+    # docker inspect $(docker ps -q --filter "name=traefik") --format='{{range $net, $conf := .NetworkSettings.Networks}}{{$net}}{{end}}'
+    # Common names: dokploy-network, traefik-network, dokploy_traefik
+    name: dokploy-network

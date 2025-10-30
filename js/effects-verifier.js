@@ -99,7 +99,7 @@ class EffectsVerifier {
     async loadLottieManifest() {
         try {
             const response = await fetch('/lotties/manifest.json');
-            if (!response.ok) {
+            if (!response.ok || response.status === 404) {
                 // Manifest is optional - return empty array silently
                 return [];
             }
@@ -107,9 +107,16 @@ class EffectsVerifier {
             if (!text || text.trim().length === 0) {
                 return [];
             }
-            return JSON.parse(text);
+            const parsed = JSON.parse(text);
+            return Array.isArray(parsed) ? parsed : [];
         } catch (error) {
             // Manifest is optional - suppress error logging to avoid console spam
+            // Only log if it's not a 404 or network error (which are expected)
+            const errorMsg = error?.message || String(error || '');
+            if (!errorMsg.includes('404') && !errorMsg.includes('Not Found') && !errorMsg.includes('Failed to fetch')) {
+                // This might be a JSON parsing error, which could indicate a real problem
+                // But we'll still return empty array to prevent crashes
+            }
             return [];
         }
     }
