@@ -99,9 +99,17 @@ class EffectsVerifier {
     async loadLottieManifest() {
         try {
             const response = await fetch('/lotties/manifest.json');
-            return await response.json();
+            if (!response.ok) {
+                // Manifest is optional - return empty array silently
+                return [];
+            }
+            const text = await response.text();
+            if (!text || text.trim().length === 0) {
+                return [];
+            }
+            return JSON.parse(text);
         } catch (error) {
-            console.warn('Could not load Lottie manifest:', error);
+            // Manifest is optional - suppress error logging to avoid console spam
             return [];
         }
     }

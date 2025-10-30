@@ -260,6 +260,15 @@ class LottieAnimations {
                 container.setAttribute('loop', '');
             }
             // Don't autoplay - we'll control this with chaos engine
+            
+            // Add error handler to suppress console spam for missing files
+            container.addEventListener('error', (e) => {
+                // Silently handle missing Lottie files - they're optional resources
+                const wrapper = container.parentElement;
+                if (wrapper) {
+                    wrapper.style.display = 'none';
+                }
+            }, { once: true });
 
             const config = this.config[name];
             const wrapperDiv = document.createElement('div');

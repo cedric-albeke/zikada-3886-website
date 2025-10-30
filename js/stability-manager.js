@@ -50,12 +50,25 @@ class StabilityManager {
         
         // Resource loading error handler
         window.addEventListener('error', (event) => {
-            if (event.target !== window) {
+            // We can silently ignore optional resources that are safe to fail
+            const optionalResourcePatterns = [
+                /manifest\.json$/i,
+                /\.lottie$/i,
+                /beehive-loop\.mp4$/i,
+                /\/animations\/lottie\//i,
+                /\/lotties\//i
+            ];
+            
+            const src = event.target.src || event.target.href || '';
+            const isOptionalResource = optionalResourcePatterns.some(pattern => pattern.test(src));
+            
+            if (event.target !== window && !isOptionalResource) {
                 this.handleError('Resource Loading Error', null, {
                     type: event.target.tagName,
-                    src: event.target.src || event.target.href
+                    src: src
                 });
             }
+            // Silently ignore optional resources (Lottie files, manifest, beehive video)
         }, true);
         
         // GSAP error handling
