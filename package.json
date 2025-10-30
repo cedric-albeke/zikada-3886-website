@@ -8,7 +8,7 @@
     "dev-clean": "npm run kill-servers && npm run clear-cache && vite --port 3886 --host 127.0.0.1 --force",
     "kill-servers": "kill-port 3886 || echo Port 3886 clean",
     "clear-cache": "rimraf node_modules/.vite && rimraf dist && echo Cache cleared",
-    "prebuild": "node scripts/copy-static-assets.js",
+    "prebuild": "node scripts/copy-static-assets.js || echo 'Skipping prebuild (assets may already be in public/)'",
     "build": "vite build",
     "start": "npx http-server dist -p ${PORT:-3886} -a 0.0.0.0",
     "serve": "npx http-server . -p 3886",

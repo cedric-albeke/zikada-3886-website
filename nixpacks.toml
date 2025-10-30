@@ -1,0 +1,24 @@
+# Nixpacks Configuration for ZIKADA 3886 Website
+# Attempt to configure a working build with Nixpacks
+
+[phases.setup]
+nixPkgs = ["nodejs_18", "npm"]
+
+[phases.install]
+cmds = [
+  "npm ci"
+]
+
+[phases.build]
+cmds = [
+  "npm run build"
+]
+
+[start]
+cmd = "npm run start"
+
+[variables]
+NODE_ENV = "production"
+PORT = "3886"
+HOST = "0.0.0.0"
+
