@@ -2,7 +2,6 @@
   "name": "zikada-3886-website",
   "version": "1.0.0",
   "description": "ZIKADA 3886 Records - Psy & Techno Website",
-  "main": "index.html",
   "type": "module",
   "scripts": {
     "dev": "npm run kill-servers && npm run clear-cache && vite --port 3886 --host 127.0.0.1 --force",
