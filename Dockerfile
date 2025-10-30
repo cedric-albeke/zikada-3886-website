@@ -13,8 +13,8 @@ RUN apk add --no-cache git
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies
-RUN npm ci --only=production && npm cache clean --force
+# Install ALL dependencies (including devDependencies for building)
+RUN npm ci && npm cache clean --force
 
 # Copy source code
 COPY . .
@@ -33,7 +33,8 @@ RUN npm run build && \
     ls -la dist/animations/lottie/ 2>/dev/null | head -5 || echo "⚠️ animations/lottie not found" && \
     ls -la dist/lotties/ 2>/dev/null | head -3 || echo "⚠️ lotties not found" && \
     ls -la dist/videos/ 2>/dev/null | head -3 || echo "⚠️ videos not found" && \
-    echo "✅ Asset verification complete"
+    echo "✅ Asset verification complete" && \
+    rm -rf node_modules
 
 # Production stage
 FROM node:18-alpine AS production
@@ -41,7 +42,7 @@ FROM node:18-alpine AS production
 # Set working directory
 WORKDIR /app
 
-# Install http-server globally
+# Install only http-server for serving (smaller image)
 RUN npm install -g http-server
 
 # Create non-root user
