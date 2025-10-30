@@ -19,8 +19,21 @@ RUN npm ci --only=production && npm cache clean --force
 # Copy source code
 COPY . .
 
+# Copy static assets to public/ so Vite includes them in build
+# Vite automatically copies everything from public/ to dist/ during build
+# This ensures animations, lotties, and videos are included in the production build
+RUN if [ -d "animations" ]; then mkdir -p public && cp -r animations public/; fi && \
+    if [ -d "lotties" ]; then mkdir -p public && cp -r lotties public/; fi && \
+    if [ -d "videos" ]; then mkdir -p public && cp -r videos public/; fi && \
+    echo "✅ Static assets copied to public/ for Vite build"
+
 # Build the application
-RUN npm run build
+RUN npm run build && \
+    echo "📦 Build completed. Verifying assets..." && \
+    ls -la dist/animations/lottie/ 2>/dev/null | head -5 || echo "⚠️ animations/lottie not found" && \
+    ls -la dist/lotties/ 2>/dev/null | head -3 || echo "⚠️ lotties not found" && \
+    ls -la dist/videos/ 2>/dev/null | head -3 || echo "⚠️ videos not found" && \
+    echo "✅ Asset verification complete"
 
 # Production stage
 FROM node:18-alpine AS production
@@ -35,13 +48,8 @@ RUN npm install -g http-server
 RUN addgroup -g 1000 -S nodejs && \
     adduser -S zikada -u 1000 -G nodejs
 
-# Copy built application from builder stage
+# Copy built application from builder stage (includes assets from public/)
 COPY --from=builder --chown=zikada:nodejs /app/dist ./dist
-
-# Copy static assets not handled by Vite (animations, lotties, videos)
-COPY --from=builder --chown=zikada:nodejs /app/animations ./dist/animations
-COPY --from=builder --chown=zikada:nodejs /app/lotties ./dist/lotties
-COPY --from=builder --chown=zikada:nodejs /app/videos ./dist/videos
 
 # Copy package.json for version info
 COPY --from=builder --chown=zikada:nodejs /app/package.json ./

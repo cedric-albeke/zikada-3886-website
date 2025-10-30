@@ -1,0 +1,22 @@
+# Nixpacks Configuration for ZIKADA 3886 Website
+# Ensures static assets (animations, lotties, videos) are included in the build
+
+[phases.setup]
+nixPkgs = ["nodejs_18", "npm"]
+
+[phases.install]
+cmds = [
+  "npm ci --only=production"
+]
+
+[phases.build]
+cmds = [
+  # npm run build will automatically run the 'prebuild' script first
+  # which copies animations, lotties, and videos to public/
+  # Vite then automatically copies everything from public/ to dist/ during build
+  "npm run build"
+]
+
+[start]
+cmd = "npx http-server dist -p ${PORT:-3886} -a 0.0.0.0 --cors --gzip --brotli --cache 31536000"
+
