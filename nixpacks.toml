@@ -2,7 +2,7 @@
 # Attempt to configure a working build with Nixpacks
 
 [phases.setup]
-nixPkgs = ["nodejs_18", "npm"]
+nixPkgs = ["nodejs_18"]
 
 [phases.install]
 cmds = [
