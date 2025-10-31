@@ -600,6 +600,9 @@
             
             // Setup performance dashboard toggle
             setupPerformanceDashboardToggle();
+            
+            // Listen for anime status updates from main page
+            setupAnimeStatusListener();
         });
         
         // Setup Animation System Toggle
@@ -607,17 +610,27 @@
             const animeToggle = document.getElementById('animeToggle');
             if (!animeToggle) return;
             
-            // Check localStorage for persisted state
-            try {
-                const savedState = localStorage.getItem('3886_anime_enabled');
-                if (savedState === '1') {
-                    animeToggle.setAttribute('data-state', 'enabled');
-                    animeToggle.querySelector('.toggle-status').textContent = 'ENABLED';
-                    animeToggle.classList.add('active');
+            // Sync toggle state with localStorage
+            function syncToggleState() {
+                try {
+                    const savedState = localStorage.getItem('3886_anime_enabled');
+                    const isEnabled = savedState === '1';
+                    
+                    animeToggle.setAttribute('data-state', isEnabled ? 'enabled' : 'disabled');
+                    animeToggle.querySelector('.toggle-status').textContent = isEnabled ? 'ENABLED' : 'DISABLED';
+                    
+                    if (isEnabled) {
+                        animeToggle.classList.add('active');
+                    } else {
+                        animeToggle.classList.remove('active');
+                    }
+                } catch (e) {
+                    console.warn('Could not read animation state from localStorage:', e);
                 }
-            } catch (e) {
-                console.warn('Could not read animation state from localStorage:', e);
             }
+            
+            // Initial sync
+            syncToggleState();
             
             // Prevent multiple event listeners
             if (animeToggle.dataset.listenerAttached === 'true') return;
@@ -628,7 +641,7 @@
                 const newState = currentState === 'enabled' ? 'disabled' : 'enabled';
                 const isEnabled = newState === 'enabled';
                 
-                // Update button state
+                // Update button state immediately for visual feedback
                 animeToggle.setAttribute('data-state', newState);
                 animeToggle.querySelector('.toggle-status').textContent = newState.toUpperCase();
                 
@@ -637,6 +650,17 @@
                     animeToggle.classList.add('active');
                 } else {
                     animeToggle.classList.remove('active');
+                }
+                
+                // Update localStorage immediately
+                try {
+                    if (isEnabled) {
+                        localStorage.setItem('3886_anime_enabled', '1');
+                    } else {
+                        localStorage.removeItem('3886_anime_enabled');
+                    }
+                } catch (e) {
+                    console.warn('Could not update localStorage:', e);
                 }
                 
                 // Send message to main page via VJ messaging
@@ -648,6 +672,31 @@
                 }
                 
                 console.log(`🎬 Animation system ${newState}`);
+            });
+            
+            // Store sync function globally for use by listener
+            window._syncAnimeToggleState = syncToggleState;
+        }
+        
+        // Setup listener for anime status updates from main page
+        function setupAnimeStatusListener() {
+            // Listen for anime_status messages from main page
+            if (window.vjMessaging && window.vjMessaging.on) {
+                window.vjMessaging.on('anime_status', (payload) => {
+                    // Sync toggle state when main page confirms change
+                    if (window._syncAnimeToggleState) {
+                        console.log(`🔄 Syncing toggle state from main page: ${payload.action}`);
+                        window._syncAnimeToggleState();
+                    }
+                });
+            }
+            
+            // Also listen for localStorage changes (cross-tab sync)
+            window.addEventListener('storage', (e) => {
+                if (e.key === '3886_anime_enabled' && window._syncAnimeToggleState) {
+                    console.log('🔄 Storage change detected, syncing toggle state');
+                    window._syncAnimeToggleState();
+                }
             });
         }
         
