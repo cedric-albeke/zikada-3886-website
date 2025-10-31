@@ -603,7 +603,7 @@ class RandomAnimations {
             const bg = document.querySelector('.bg');
             if (bg && Math.random() > 0.7) {
                 gsap.to(bg, {
-                    filter: 'brightness(1.3) saturate(1.5)',
+                    filter: 'brightness(1.03) saturate(1.05)',  // REDUCED from 1.3/1.5 to prevent bright flashes
                     duration: 0.3,
                     yoyo: true,
                     repeat: 1,

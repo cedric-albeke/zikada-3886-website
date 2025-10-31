@@ -212,14 +212,14 @@ class MatrixMessages {
         gsap.timeline()
             .to(this.messageElement, {
                 scale: 1.02,
-                filter: 'blur(0.5px) brightness(1.2)',
+                filter: 'blur(0.5px) brightness(1.05)',  // REDUCED from 1.2 to prevent flash
                 duration: 0.1,
                 ease: 'power2.in'
             })
             .to(this.messageElement, {
                 scaleY: 0.02,
                 opacity: 0,
-                filter: 'blur(8px) brightness(1.2)',  // Reduced from 2 to avoid white flash
+                filter: 'blur(8px) brightness(1.05)',  // REDUCED from 1.2 to prevent flash
                 duration: 0.3,
                 ease: 'power3.in',
                 onComplete: () => {

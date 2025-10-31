@@ -20,8 +20,8 @@ class SafeFeatureFlags {
         this.TEXT_SCRAMBLE_ENABLED = this.getFlag(urlParams, 'scramble', 'TEXT_SCRAMBLE_ENABLED', true); // Enabled by default
         this.DATA_CORRUPTION_ENABLED = this.getFlag(urlParams, 'corruption', 'DATA_CORRUPTION_ENABLED', false); // DOM bloat
         // Animation group switches (gate heavy DOM effects)
-        this.EXTENDED_ANIMATIONS_ENABLED = this.getFlag(urlParams, 'extanim', 'EXTENDED_ANIMATIONS_ENABLED', true);
-        this.RANDOM_ANIMATIONS_ENABLED = this.getFlag(urlParams, 'randanim', 'RANDOM_ANIMATIONS_ENABLED', true);
+        this.EXTENDED_ANIMATIONS_ENABLED = this.getFlag(urlParams, 'extanim', 'EXTENDED_ANIMATIONS_ENABLED', false); // DISABLED by default - causes DOM explosion
+        this.RANDOM_ANIMATIONS_ENABLED = this.getFlag(urlParams, 'randanim', 'RANDOM_ANIMATIONS_ENABLED', false);  // DISABLED by default - causes DOM explosion
         
         // Performance limits
         this.MAX_CONCURRENT_FX = parseInt(urlParams.get('maxfx') || localStorage.getItem('MAX_CONCURRENT_FX') || '6');

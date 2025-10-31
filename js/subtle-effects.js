@@ -446,20 +446,20 @@ class SubtleEffects {
             // REMOVED rotation - was causing instability
             // Keep text stable
 
-            // Brightness pulse
+            // Gentle brightness pulse (REDUCED to prevent bright flashes)
             gsap.to(text3886, {
-                filter: 'brightness(130%) contrast(110%)',
+                filter: 'brightness(103%) contrast(105%)',
                 duration: 4,
                 yoyo: true,
                 repeat: -1,
                 ease: 'power2.inOut'
             });
 
-            // Occasional strong pulse
+            // Occasional subtle pulse (REDUCED intensity)
             const pulse3886 = () => {
                 gsap.to(text3886, {
-                    scale: 1.15,
-                    filter: 'brightness(150%) blur(0.5px)',
+                    scale: 1.03,
+                    filter: 'brightness(105%) blur(0.3px)',
                     duration: 0.3,
                     ease: 'power2.out',
                     onComplete: () => {

@@ -135,34 +135,50 @@ class AnimeEnhancedEffects {
 
     // Effect 1: Floating Particles (OPTIMIZED)
     createFloatingParticles() {
-        const particleContainer = document.createElement('div');
+        // Use safe element creation for performance tracking
+        const pem = window.performanceElementManager;
+        const particleContainer = pem?.createElement 
+            ? pem.createElement('div', 'particle', {
+                position: 'fixed',
+                top: '0',
+                left: '0',
+                width: '100%',
+                height: '100%',
+                pointerEvents: 'none',
+                zIndex: '5',
+                opacity: '0.6'
+            })
+            : document.createElement('div');
+        
         particleContainer.className = 'anime-particles';
-        particleContainer.style.cssText = `
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            z-index: 5;
-            opacity: 0.6;
-        `;
-        document.body.appendChild(particleContainer);
 
         const particleCount = 10; // Reduced from 30
         const particles = [];
 
         for (let i = 0; i < particleCount; i++) {
-            const particle = document.createElement('div');
-            particle.style.cssText = `
-                position: absolute;
-                width: 4px;
-                height: 4px;
-                background: radial-gradient(circle, rgba(0,255,133,0.8) 0%, transparent 70%);
-                border-radius: 50%;
-                left: ${Math.random() * 100}%;
-                top: ${Math.random() * 100}%;
-            `;
+            const particle = pem?.createElement
+                ? pem.createElement('div', 'particle', {
+                    position: 'absolute',
+                    width: '4px',
+                    height: '4px',
+                    background: 'radial-gradient(circle, rgba(0,255,133,0.8) 0%, transparent 70%)',
+                    borderRadius: '50%',
+                    left: `${Math.random() * 100}%`,
+                    top: `${Math.random() * 100}%`
+                }, { autoAppend: false })
+                : document.createElement('div');
+            
+            if (!pem?.createElement) {
+                particle.style.cssText = `
+                    position: absolute;
+                    width: 4px;
+                    height: 4px;
+                    background: radial-gradient(circle, rgba(0,255,133,0.8) 0%, transparent 70%);
+                    border-radius: 50%;
+                    left: ${Math.random() * 100}%;
+                    top: ${Math.random() * 100}%;
+                `;
+            }
             particleContainer.appendChild(particle);
             particles.push(particle);
         }

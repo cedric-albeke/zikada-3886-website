@@ -837,10 +837,11 @@ class ChaosInitializer {
     }
 
     /**
-     * Disabled safe filter feature: apply requested filter directly
+     * Safe filter application with brightness/contrast capping to prevent bright flashes
      */
     safeApplyFilter(target, filterValue, duration = 2) {
-        this.applyFilterNow(target, filterValue, duration);
+        const sanitizedFilter = this.validateFilter(filterValue);
+        this.applyFilterNow(target, sanitizedFilter, duration);
     }
 
     /**
@@ -879,11 +880,37 @@ class ChaosInitializer {
     }
 
     /**
-     * Validate and sanitize filter values to prevent grey screens
+     * Validate and sanitize filter values to prevent bright flashes
+     * CRITICAL: Caps brightness at 1.05, contrast at 1.1, saturation at 1.2
      */
     validateFilter(filterValue) {
-        // Safe filter feature removed: return the requested value as-is
-        return filterValue || 'none';
+        if (!filterValue || filterValue === 'none') return 'none';
+        
+        // Extract numeric values from filter string and clamp them
+        let sanitized = filterValue;
+        
+        // Cap brightness at 1.05 (prevent bright flashes)
+        sanitized = sanitized.replace(/brightness\(([\d.]+)\)/g, (match, value) => {
+            const num = parseFloat(value);
+            const capped = Math.min(num, 1.05);
+            return `brightness(${capped})`;
+        });
+        
+        // Cap contrast at 1.1 (prevent harsh visual spikes)
+        sanitized = sanitized.replace(/contrast\(([\d.]+)\)/g, (match, value) => {
+            const num = parseFloat(value);
+            const capped = Math.min(num, 1.1);
+            return `contrast(${capped})`;
+        });
+        
+        // Cap saturation at 1.2 (prevent color overstimulation)
+        sanitized = sanitized.replace(/saturate\(([\d.]+)\)/g, (match, value) => {
+            const num = parseFloat(value);
+            const capped = Math.min(num, 1.2);
+            return `saturate(${capped})`;
+        });
+        
+        return sanitized || 'none';
     }
 
     /**
@@ -1140,6 +1167,9 @@ class ChaosInitializer {
 
         // Start animation watchdog to ensure animations never stop
         this.startAnimationWatchdog();
+
+        // Start periodic DOM cleanup to prevent accumulation
+        this.startPeriodicDOMCleanup();
 
         // DISABLED: Grey flash prevention was causing performance catastrophe
         // this.startGreyFlashPrevention();
@@ -2457,6 +2487,39 @@ class ChaosInitializer {
 
         // Store interval ID for cleanup
         this.watchdogIntervalId = watchdogIntervalId;
+    }
+
+    startPeriodicDOMCleanup() {
+        // Periodic cleanup of unmanaged DOM elements every 2 minutes
+        // This prevents accumulation from anime-enhanced-effects and other unmanaged modules
+        this.domCleanupInterval = setInterval(() => {
+            const beforeCount = document.querySelectorAll('*').length;
+            
+            // Use VJ receiver's aggressive cleanup if available
+            if (window.vjReceiver && typeof window.vjReceiver.aggressiveDOMCleanup === 'function') {
+                window.vjReceiver.aggressiveDOMCleanup();
+            } else {
+                // Fallback cleanup
+                this.cleanupPhaseElements();
+                
+                // Clean up anime-enhanced-effects elements
+                const animeElements = document.querySelectorAll('.anime-particles, .anime-data-streams, .anime-energy-pulse, .anime-text-glow');
+                animeElements.forEach(el => {
+                    if (!el.hasAttribute('data-permanent')) {
+                        try { el.remove(); } catch {}
+                    }
+                });
+            }
+            
+            const afterCount = document.querySelectorAll('*').length;
+            const removed = beforeCount - afterCount;
+            
+            if (removed > 0) {
+                console.log(`🧹 Periodic DOM cleanup: removed ${removed} elements (${beforeCount} → ${afterCount})`);
+            }
+        }, 120000); // Every 2 minutes
+        
+        console.log('📊 Periodic DOM cleanup scheduler started (every 2 minutes)');
     }
 
     phaseIntense() {

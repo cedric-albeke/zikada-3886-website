@@ -2242,7 +2242,7 @@ class VJReceiver {
         
         // Remove ALL temporary elements
         const selectors = [
-            'div[style*="position: fixed"]:not(.pre-loader):not(.control-panel):not(#chaos-canvas)',
+            'div[style*="position: fixed"]:not(.pre-loader):not(.control-panel):not(#chaos-canvas):not(#visual-effects-container)',
             'div[style*="position: absolute"][style*="z-index"]',
             '.matrix-char',
             '.phase-overlay',
@@ -2255,11 +2255,24 @@ class VJReceiver {
             '.chromatic-pulse',
             '.warp-effect',
             '.vhs-overlay',
+            '.anime-particles',
+            '.anime-text-glow',
+            '.anime-data-streams',
+            '.anime-energy-pulse',
+            '.anime-cyber-grid',
+            '.anime-holographic-scan',
             '[data-temp="true"]',
             '[data-temporary="true"]:not([data-permanent="true"])',
             '[data-effect="true"]',
             '[data-animation="true"]',
-            '.extended-effects-root > *'  // Clear all children of extended effects container
+            '.extended-effects-root > *',  // Clear all children of extended effects container
+            '.glitch-burst',  // Random animations
+            '.neon-pulse',   // Random animations
+            '.digital-rain-drop',  // Random animations
+            '.geometric-pattern',  // Random animations
+            '.wave-distortion',  // Random animations
+            '.digital-artifact',  // Random animations
+            '.corruption-wave'  // Random animations
         ];
         
         let removed = 0;
