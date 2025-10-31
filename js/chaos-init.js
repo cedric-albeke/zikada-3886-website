@@ -2422,11 +2422,12 @@ class ChaosInitializer {
                 // Don't force trigger immediately
             }
 
-            if (extendedAnimations && !extendedAnimations.isRunning) {
-                console.log('🔧 Restarting stopped extended animations...');
-                extendedAnimations.isRunning = true;
-                // Don't force trigger immediately
-            }
+            // DISABLED: Extended animations cause DOM explosion and performance collapse
+            // Do NOT restart them even if stopped
+            // if (extendedAnimations && !extendedAnimations.isRunning) {
+            //     console.log('🔧 Restarting stopped extended animations...');
+            //     extendedAnimations.isRunning = true;
+            // }
 
             // Check if phase animations are completely stopped
             if (!this.phaseRunning) {
