@@ -1691,6 +1691,11 @@ class ChaosInitializer {
     }
 
     addScanlines() {
+        // Check if scanlines already exist
+        if (document.querySelector('.scanlines')) {
+            return; // Already exists, don't create duplicate
+        }
+        
         const scanlines = safeCreateElement('div', 'effect', {
             position: 'fixed',
             top: '0',
@@ -1710,6 +1715,7 @@ class ChaosInitializer {
             mixBlendMode: 'multiply'
         });
         scanlines.className = 'scanlines';
+        scanlines.setAttribute('data-permanent', 'true'); // Mark as permanent
         document.body.appendChild(scanlines);
 
         // Use GSAP registry if available, otherwise direct GSAP
@@ -2089,6 +2095,11 @@ class ChaosInitializer {
     }
 
     addDataStreams() {
+        // Check if data streams already exist
+        if (document.querySelector('.data-streams')) {
+            return; // Already exists, don't create duplicate
+        }
+        
         const container = safeCreateElement('div', 'stream', {
             position: 'fixed',
             top: '0',
@@ -2100,6 +2111,7 @@ class ChaosInitializer {
             overflow: 'hidden'
         });
         container.className = 'data-streams';
+        container.setAttribute('data-permanent', 'true'); // Mark as permanent
         document.body.appendChild(container);
 
         // Create vertical data streams with managed elements
@@ -2113,6 +2125,7 @@ class ChaosInitializer {
                 background: 'linear-gradient(transparent, #00ff85, transparent)',
                 opacity: `${Math.random() * 0.3 + 0.1}`
             }, { autoAppend: false });
+            stream.setAttribute('data-permanent', 'true'); // Mark as permanent
             container.appendChild(stream);
 
             // Use GSAP registry if available, otherwise direct GSAP
@@ -2187,25 +2200,24 @@ class ChaosInitializer {
             ['galaxy', () => this.phaseGalaxy()]
         ]);
 
-        // Install transition executor that uses our blackout and cleanup
+        // Install transition executor with instant transitions (no blackout)
         this.phaseController.setTransitionExecutor(async ({ prev, next, signal }) => {
             // Guard against missing next
             if (!next || !this._phaseMap.has(next)) return;
-            // Fade to black (longer, smoother)
-            try { this.showBlackout(1); } catch(_) {}
-            await new Promise(r => setTimeout(r, 550));
-            if (signal?.aborted) return;
-            // Cleanup previous overlays
+            
+            // Cleanup previous overlays immediately
             this.transitionOut();
             if (signal?.aborted) return;
+            
+            // Brief pause for cleanup to complete
+            await new Promise(r => setTimeout(r, 100));
+            if (signal?.aborted) return;
+            
             // Run target phase
             try { this._phaseMap.get(next)?.(); } catch (e) { console.warn('Phase runner error', next, e); }
+            
             // Notify
             try { window.vjReceiver?.sendMessage?.({ type: 'scene_changed', scene: next, timestamp: Date.now() }); } catch(_) {}
-            if (signal?.aborted) return;
-            // Fade in (longer, smoother)
-            await new Promise(r => setTimeout(r, 700));
-            try { this.hideBlackout(); } catch(_) {}
         });
     }
 
@@ -2452,59 +2464,94 @@ class ChaosInitializer {
         window.dispatchEvent(new CustomEvent('animationPhase', { detail: { phase: 'intense' } }));
 
         // Gentle rotation increase
-        gsap.to('.bg', {
-            rotationZ: '+=90',  // Reduced from 180
-            duration: 8,  // Slower
-            ease: 'power2.inOut'
-        });
+        try {
+            const bgElement = document.querySelector('.bg');
+            if (bgElement) {
+                gsap.to(bgElement, {
+                    rotationZ: '+=90',  // Reduced from 180
+                    duration: 8,  // Slower
+                    ease: 'power2.inOut'
+                });
+            }
+        } catch (e) {
+            console.warn('phaseIntense: Failed to animate .bg', e);
+        }
 
         // Subtle particle effects
-        if (window.chaosEngine && window.chaosEngine.particles) {
-            gsap.to(window.chaosEngine.particles.material, {
-                opacity: 0.6,  // Reduced from 0.9
-                size: 0.8,  // Reduced from 1
-                duration: 3
-            });
+        if (window.chaosEngine && window.chaosEngine.particles && window.chaosEngine.particles.material) {
+            try {
+                gsap.to(window.chaosEngine.particles.material, {
+                    opacity: 0.6,  // Reduced from 0.9
+                    size: 0.8,  // Reduced from 1
+                    duration: 3
+                });
+            } catch (e) {
+                console.warn('phaseIntense: Failed to animate particles', e);
+            }
         }
 
         // Very subtle vibration instead of shake
-        gsap.to(document.body, {
-            x: 1,
-            y: 1,
-            duration: 0.5,  // Slower for smoothness
-            yoyo: true,
-            repeat: 10,
-            ease: 'sine.inOut'
-        });
+        try {
+            if (document.body) {
+                gsap.to(document.body, {
+                    x: 1,
+                    y: 1,
+                    duration: 0.5,  // Slower for smoothness
+                    yoyo: true,
+                    repeat: 10,
+                    ease: 'sine.inOut'
+                });
+            }
+        } catch (e) {
+            console.warn('phaseIntense: Failed to animate body', e);
+        }
     }
 
     phaseCalm() {
         // Phase: Calm
 
         // Slow everything down
-        gsap.to('.bg', {
-            rotationZ: '+=30',
-            duration: 15,
-            ease: 'sine.inOut'
-        });
+        try {
+            const bgElement = document.querySelector('.bg');
+            if (bgElement) {
+                gsap.to(bgElement, {
+                    rotationZ: '+=30',
+                    duration: 15,
+                    ease: 'sine.inOut'
+                });
+            }
+        } catch (e) {
+            console.warn('phaseCalm: Failed to animate .bg', e);
+        }
 
         // Reduce effects
-        if (window.chaosEngine && window.chaosEngine.particles) {
-            gsap.to(window.chaosEngine.particles.material, {
-                opacity: 0.3,
-                size: 0.3,
-                duration: 5
-            });
+        if (window.chaosEngine && window.chaosEngine.particles && window.chaosEngine.particles.material) {
+            try {
+                gsap.to(window.chaosEngine.particles.material, {
+                    opacity: 0.3,
+                    size: 0.3,
+                    duration: 5
+                });
+            } catch (e) {
+                console.warn('phaseCalm: Failed to animate particles', e);
+            }
         }
 
         // Add subtle breathing effect to main elements
-        gsap.to('.logo-text-wrapper, .image-wrapper', {
-            scale: 1.02,  // Reduced from 1.05
-            duration: 4,
-            yoyo: true,
-            repeat: 2,
-            ease: 'sine.inOut'
-        });
+        try {
+            const elements = document.querySelectorAll('.logo-text-wrapper, .image-wrapper');
+            if (elements.length > 0) {
+                gsap.to(elements, {
+                    scale: 1.02,  // Reduced from 1.05
+                    duration: 4,
+                    yoyo: true,
+                    repeat: 2,
+                    ease: 'sine.inOut'
+                });
+            }
+        } catch (e) {
+            console.warn('phaseCalm: Failed to animate logo elements', e);
+        }
     }
 
     phaseGlitch() {
@@ -2548,13 +2595,20 @@ class ChaosInitializer {
         this.safeApplyFilter(document.body, 'hue-rotate(-30deg) saturate(1.3) brightness(1.05)', 3);
 
         // Very subtle pulsing
-        gsap.to('.logo-text-wrapper, .image-wrapper, .text-3886', {
-            scale: 1.02,  // Even more subtle
-            duration: 2,  // Much slower for smooth flow
-            repeat: 10,
-            yoyo: true,
-            ease: 'sine.inOut'  // Smoother easing
-        });
+        try {
+            const elements = document.querySelectorAll('.logo-text-wrapper, .image-wrapper, .text-3886');
+            if (elements.length > 0) {
+                gsap.to(elements, {
+                    scale: 1.02,  // Even more subtle
+                    duration: 2,  // Much slower for smooth flow
+                    repeat: 10,
+                    yoyo: true,
+                    ease: 'sine.inOut'  // Smoother easing
+                });
+            }
+        } catch (e) {
+            console.warn('phaseTechno: Failed to animate elements', e);
+        }
     }
 
     phaseMatrix() {

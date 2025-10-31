@@ -13,10 +13,11 @@ export default defineConfig({
     // Use default esbuild minification to avoid optional terser dependency
     minify: 'esbuild',
     rollupOptions: {
-      // Ensure multi-page build includes the control panel
+      // Ensure multi-page build includes the control panels
       input: {
         main: resolve(__dirname, 'index.html'),
-        controlPanel: resolve(__dirname, 'control-panel.html')
+        controlPanel: resolve(__dirname, 'control-panel.html'),
+        controlPanelV3: resolve(__dirname, 'control-panel-v3.html')
       },
       output: {
         manualChunks: {

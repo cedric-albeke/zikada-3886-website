@@ -586,30 +586,39 @@ class AnimeEnhancedEffects {
 
         // Additional glitch effects
         const elements = document.querySelectorAll('.image-wrapper, .logo-text, .text-3886');
+        
+        // Skip if no elements found
+        if (elements.length === 0) {
+            return;
+        }
 
-        const glitchBurst = anime({
-            targets: elements,
-            translateX: () => anime.random(-10, 10),
-            translateY: () => anime.random(-10, 10),
-            rotate: () => anime.random(-5, 5),
-            duration: 100,
-            direction: 'alternate',
-            loop: 3,
-            easing: 'steps(2)',
-            complete: () => {
-                // Reset transforms
-                anime.set(elements, {
-                    translateX: 0,
-                    translateY: 0,
-                    rotate: 0
-                });
-            }
-        });
+        try {
+            const glitchBurst = anime({
+                targets: elements,
+                translateX: () => anime.random(-10, 10),
+                translateY: () => anime.random(-10, 10),
+                rotate: () => anime.random(-5, 5),
+                duration: 100,
+                direction: 'alternate',
+                loop: 3,
+                easing: 'steps(2)',
+                complete: () => {
+                    // Reset transforms
+                    anime.set(elements, {
+                        translateX: 0,
+                        translateY: 0,
+                        rotate: 0
+                    });
+                }
+            });
 
-        animeManager.register(glitchBurst, {
-            critical: false,
-            label: 'glitch-burst'
-        });
+            animeManager.register(glitchBurst, {
+                critical: false,
+                label: 'glitch-burst'
+            });
+        } catch (e) {
+            console.warn('triggerGlitchBurst: Failed to create glitch animation', e);
+        }
     }
 
     // Trigger dice animation

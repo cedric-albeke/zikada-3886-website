@@ -42,7 +42,7 @@ class AnimationManager {
             },
 'matrix-flash': {
                 target: '.matrix-rain, .chaos-matrix, #data-streams-overlay, .data-streams',
-                fallbackTarget: 'body',
+                fallbackTarget: null, // Don't fallback to body for matrix effects
                 type: 'opacity',
                 duration: 200,
                 opacitySequence: [1, 0, 1, 0, 1],
@@ -50,7 +50,7 @@ class AnimationManager {
             },
 'matrix-rain': {
                 target: '.matrix-rain, .chaos-matrix, #data-streams-overlay, .data-streams',
-                fallbackTarget: 'body',
+                fallbackTarget: null, // Don't fallback to body for matrix effects
                 type: 'composite',
                 duration: 2000,
                 effects: ['opacity', 'scale'],
@@ -60,7 +60,7 @@ class AnimationManager {
             },
 'matrix-glitch': {
                 target: '.matrix-rain, .chaos-matrix, #data-streams-overlay, .data-streams',
-                fallbackTarget: 'body',
+                fallbackTarget: null, // Don't fallback to body for matrix effects
                 type: 'glitch',
                 duration: 1000,
                 cleanup: true

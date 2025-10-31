@@ -1,0 +1,72 @@
+[
+  {
+    "id": "sunBurst",
+    "src": "/animations/lottie/Sacred-Geometry.lottie",
+    "loop": true,
+    "speed": 1,
+    "tune": { "speed": 0.9, "opacity": 0.35, "blend": "screen", "z": 6 }
+  },
+  {
+    "id": "cosmicDust",
+    "src": "/animations/lottie/Morphing-Particle-Loader.lottie",
+    "loop": true,
+    "speed": 0.8,
+    "tune": { "speed": 0.7, "opacity": 0.3, "blend": "screen", "z": 4 }
+  },
+  {
+    "id": "abstraction",
+    "src": "/animations/lottie/Abstraction.lottie",
+    "loop": true,
+    "speed": 0.9,
+    "tune": { "speed": 0.8, "opacity": 0.40, "blend": "screen", "z": 5 }
+  },
+  {
+    "id": "hexagon",
+    "src": "/animations/lottie/Impossible-Hexagon-black.lottie",
+    "loop": true,
+    "speed": 1.0,
+    "tune": { "speed": 0.9, "opacity": 0.35, "blend": "screen", "z": 6 }
+  },
+  {
+    "id": "planetLogo",
+    "src": "/animations/lottie/Planet-Logo.lottie",
+    "loop": true,
+    "speed": 1.0,
+    "tune": { "speed": 0.9, "opacity": 0.40, "blend": "screen", "z": 6 }
+  },
+  {
+    "id": "circuitRound",
+    "src": "/animations/lottie/circuit-round-ani.lottie",
+    "loop": true,
+    "speed": 0.9,
+    "tune": { "speed": 0.85, "opacity": 0.30, "blend": "screen", "z": 5 }
+  },
+  {
+    "id": "circularDots",
+    "src": "/animations/lottie/circular-dots.lottie",
+    "loop": true,
+    "speed": 1.0,
+    "tune": { "speed": 1.0, "opacity": 0.25, "blend": "screen", "z": 4 }
+  },
+  {
+    "id": "geometricLines",
+    "src": "/animations/lottie/geometrical-lines.lottie",
+    "loop": true,
+    "speed": 0.9,
+    "tune": { "speed": 0.9, "opacity": 0.30, "blend": "screen", "z": 5 }
+  },
+  {
+    "id": "planetRing",
+    "src": "/animations/lottie/planet-ring.lottie",
+    "loop": true,
+    "speed": 0.9,
+    "tune": { "speed": 0.8, "opacity": 0.35, "blend": "screen", "z": 5 }
+  },
+  {
+    "id": "diamond",
+    "src": "/animations/lottie/transparent-diamond-dark.lottie",
+    "loop": true,
+    "speed": 0.8,
+    "tune": { "speed": 0.7, "opacity": 0.28, "blend": "screen", "z": 6 }
+  }
+]
