@@ -864,18 +864,13 @@ class ChaosInitializer {
 
     applyFilterNow(target, filterValue, duration) {
         const finalFilter = filterValue || 'none';
-        if (target === document.body) {
-            gsap.to(document.body, {
-                filter: finalFilter,
-                duration: duration,
-                ease: 'power2.inOut'
-            });
-        } else {
-            gsap.to(target, {
-                filter: finalFilter,
-                duration: duration,
-                ease: 'power2.inOut'
-            });
+        // DISABLED: GSAP filter transitions cause bright flashes during scene switches
+        // Apply filter immediately instead of animating
+        if (target === document.body || target === document.documentElement) {
+            document.body.style.filter = finalFilter;
+            document.documentElement.style.filter = finalFilter;
+        } else if (target && target.style) {
+            target.style.filter = finalFilter;
         }
     }
 
