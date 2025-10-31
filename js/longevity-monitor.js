@@ -259,7 +259,9 @@ class LongevityMonitor {
             if (recent.length === 5 && older.length === 5) {
                 const recentAvg = recent.reduce((a, b) => a + b, 0) / recent.length;
                 const olderAvg = older.reduce((a, b) => a + b, 0) / older.length;
-                if (recentAvg > olderAvg + 20) { // 20MB growth
+                // Only warn if significant growth OR absolute high memory
+                // 100MB growth OR total over 400MB is concerning
+                if ((recentAvg > olderAvg + 100 || recentAvg > 400)) {
                     this.handleMemoryGrowth(recentAvg, olderAvg);
                 }
             }
