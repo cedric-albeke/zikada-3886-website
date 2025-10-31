@@ -22,7 +22,8 @@ class GSAPAnimationRegistry {
             'effect': { maxAnimations: 25, priority: 2 }, // Reduced from 40
             'ui': { maxAnimations: 15, priority: 3 }, // Reduced from 20
             'background': { maxAnimations: 20, priority: 4 }, // Reduced from 30
-            'particle': { maxAnimations: 30, priority: 5 } // Reduced from 50
+            'particle': { maxAnimations: 30, priority: 5 }, // Reduced from 50
+            'stream': { maxAnimations: 5, priority: 6 } // Data streams - very limited
         };
         
         // Logging controls

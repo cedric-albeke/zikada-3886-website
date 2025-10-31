@@ -2283,6 +2283,8 @@ class VJReceiver {
                     if (!el.hasAttribute('data-permanent') && 
                         !el.classList.contains('scanlines') &&
                         !el.classList.contains('data-streams') &&
+                        !el.classList.contains('bg') &&  // Protect .bg element
+                        !el.classList.contains('bg-overlay') &&  // Protect .bg-overlay element
                         !el.id.includes('chaos-canvas') &&
                         !el.id.includes('matrix-rain') &&
                         !el.id.includes('cyber-grid')) {
