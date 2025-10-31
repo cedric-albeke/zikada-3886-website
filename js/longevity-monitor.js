@@ -14,10 +14,10 @@ class LongevityMonitor {
         this.varietyCheckInterval = 60000; // 1 minute
         
         this.thresholds = {
-            fps: { warning: 45, critical: 30 },
-            memory: { warning: 150, critical: 200 }, // MB
-            domNodes: { warning: 6000, critical: 8000 },
-            animations: { warning: 40, critical: 60 },
+            fps: { warning: 30, critical: 15 }, // Relaxed for intensive visual effects
+            memory: { warning: 800, critical: 1000 }, // MB - Significantly increased for animations
+            domNodes: { warning: 10000, critical: 15000 }, // Increased for animations
+            animations: { warning: 100, critical: 200 }, // Increased for visual effects
             healthScore: { warning: 70, critical: 50 }
         };
         

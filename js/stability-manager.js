@@ -767,8 +767,10 @@ class StabilityManager {
     }
     
     aggressiveDOMCleanup() {
-        // Remove all temporary elements
-        const tempElements = document.querySelectorAll('[data-temp], .anime-*, .glitch-*');
+        // Remove all temporary elements (using attribute selectors instead of wildcard class selectors)
+        const tempElements = document.querySelectorAll(
+            '[data-temp], [class^="anime-"], [class*=" anime-"], [class^="glitch-"], [class*=" glitch-"], [class^="corruption-"], [class*=" corruption-"]'
+        );
         tempElements.forEach(el => {
             try {
                 el.remove();
