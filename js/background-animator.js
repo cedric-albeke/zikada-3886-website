@@ -8,6 +8,8 @@ class BackgroundAnimator {
         this.imageWrapper = null;
         this.timeline = null;
         this.initialized = false;
+        this.glowInterval = null; // Track the glow interval
+        this.glitchInterval = null; // Track the glitch interval
     }
 
     init() {
@@ -150,15 +152,30 @@ class BackgroundAnimator {
 
         let colorIndex = 0;
         const shiftGlow = () => {
-            gsap.to(this.bgElement, {
-                boxShadow: `0 0 100px ${glowColors[colorIndex]}`,
-                duration: 4,
-                ease: 'power2.inOut'
-            });
-            colorIndex = (colorIndex + 1) % glowColors.length;
+            // Defensive check: ensure element exists before animating
+            if (!this.bgElement || !document.body.contains(this.bgElement)) {
+                console.warn('⚠️ Background element not available for glow animation, skipping');
+                return;
+            }
+            
+            try {
+                gsap.to(this.bgElement, {
+                    boxShadow: `0 0 100px ${glowColors[colorIndex]}`,
+                    duration: 4,
+                    ease: 'power2.inOut'
+                });
+                colorIndex = (colorIndex + 1) % glowColors.length;
+            } catch (e) {
+                console.warn('⚠️ Error in shiftGlow animation:', e);
+            }
         };
 
-        setInterval(shiftGlow, 4000);
+        // Clear any existing interval before creating a new one
+        if (this.glowInterval) {
+            clearInterval(this.glowInterval);
+        }
+        
+        this.glowInterval = setInterval(shiftGlow, 4000);
         shiftGlow();
     }
 
@@ -224,7 +241,12 @@ class BackgroundAnimator {
 
     // Periodic glitch triggers
     startGlitchSequence() {
-        setInterval(() => {
+        // Clear any existing interval before creating a new one
+        if (this.glitchInterval) {
+            clearInterval(this.glitchInterval);
+        }
+        
+        this.glitchInterval = setInterval(() => {
             if (Math.random() > 0.7) {
                 this.triggerGlitchBurst();
             }
@@ -232,6 +254,16 @@ class BackgroundAnimator {
     }
 
     destroy() {
+        // Clear all intervals
+        if (this.glowInterval) {
+            clearInterval(this.glowInterval);
+            this.glowInterval = null;
+        }
+        if (this.glitchInterval) {
+            clearInterval(this.glitchInterval);
+            this.glitchInterval = null;
+        }
+        
         if (this.timeline) {
             this.timeline.kill();
         }

@@ -599,17 +599,28 @@ class PerformanceOptimizerV2 {
         this.elementCache.clear();
         this.throttledOperations.clear();
         
-        // Remove all temporary elements
+        // Remove all temporary elements (but preserve permanent ones)
         const tempElements = document.querySelectorAll(
             '[data-temp], [class^="anime-"], [class*=" anime-"], [class^="glitch-"], [class*=" glitch-"], [class^="corruption-"], [class*=" corruption-"]'
         );
+        let removedCount = 0;
         tempElements.forEach(el => {
+            // Skip permanent elements
+            if (el.hasAttribute('data-permanent')) {
+                return;
+            }
+            
             try {
                 el.remove();
+                removedCount++;
             } catch (e) {
                 // Ignore removal errors
             }
         });
+        
+        if (removedCount > 0) {
+            console.log(`🧹 Removed ${removedCount} temporary elements (preserved permanent elements)`);
+        }
         
         // Force garbage collection
         if (window.gc) {

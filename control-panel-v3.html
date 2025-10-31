@@ -371,20 +371,6 @@
                 </div>
             </section>
 
-            <!-- Performance Dashboard Section -->
-            <section class="cp-section performance-section">
-                <h2 class="cp-section__title">Performance Monitoring</h2>
-                <div class="cp-section__content">
-                    <div class="performance-controls">
-                        <button class="control-btn" id="perfDashboardToggle">
-                            <span class="btn-icon">📊</span>
-                            <span class="btn-text">Performance Dashboard</span>
-                            <span class="btn-status">V2</span>
-                        </button>
-                    </div>
-                </div>
-            </section>
-
             <!-- ============================================
                  SCENE SELECT
                  ============================================ -->
@@ -620,6 +606,22 @@
         function setupAnimationSystemToggle() {
             const animeToggle = document.getElementById('animeToggle');
             if (!animeToggle) return;
+            
+            // Check localStorage for persisted state
+            try {
+                const savedState = localStorage.getItem('3886_anime_enabled');
+                if (savedState === '1') {
+                    animeToggle.setAttribute('data-state', 'enabled');
+                    animeToggle.querySelector('.toggle-status').textContent = 'ENABLED';
+                    animeToggle.classList.add('active');
+                }
+            } catch (e) {
+                console.warn('Could not read animation state from localStorage:', e);
+            }
+            
+            // Prevent multiple event listeners
+            if (animeToggle.dataset.listenerAttached === 'true') return;
+            animeToggle.dataset.listenerAttached = 'true';
             
             animeToggle.addEventListener('click', () => {
                 const currentState = animeToggle.getAttribute('data-state');

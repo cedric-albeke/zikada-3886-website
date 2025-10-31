@@ -864,18 +864,18 @@ class MatrixMessages {
 
         timeline
             .to(distortion, {
-                backdropFilter: 'blur(5px) contrast(1.5) brightness(1.2)',
+                backdropFilter: 'blur(5px) contrast(1.2) brightness(1.0)',  // Reduced to prevent bright flash
                 scale: 1.05,
                 duration: 0.05
             })
             .to(distortion, {
-                backdropFilter: 'blur(2px) contrast(0.5) brightness(0.8)',
+                backdropFilter: 'blur(2px) contrast(0.8) brightness(0.9)',  // Reduced contrast
                 scale: 0.95,
                 rotateX: 5,
                 duration: 0.05
             })
             .to(distortion, {
-                backdropFilter: 'blur(8px) contrast(1.5) saturate(0.7)',  // Reduced contrast to avoid flash
+                backdropFilter: 'blur(8px) contrast(1.1) saturate(0.7)',  // Reduced contrast to avoid flash
                 scale: 1.1,
                 rotateX: -5,
                 duration: 0.05

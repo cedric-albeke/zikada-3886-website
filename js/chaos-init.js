@@ -3134,21 +3134,35 @@ class ChaosInitializer {
         // Phase: Minimal
 
         // Reduce all effects to minimum
-        gsap.to('.bg', {
-            opacity: 0.03,
-            scale: 2.2,  // Reduced from 2.5
-            duration: 5,
-            ease: 'power2.inOut'
-        });
+        try {
+            const bgElement = document.querySelector('.bg');
+            if (bgElement) {
+                gsap.to(bgElement, {
+                    opacity: 0.03,
+                    scale: 2.2,  // Reduced from 2.5
+                    duration: 5,
+                    ease: 'power2.inOut'
+                });
+            }
+        } catch (e) {
+            console.warn('[phaseMinimal] Error animating .bg:', e);
+        }
 
         // Subtle breathing WITHOUT brightness reduction (prevents grey wash)
-        gsap.to('.logo-text-wrapper, .image-wrapper, .text-3886', {
-            opacity: 0.9, // Use opacity instead of brightness to avoid grey
-            duration: 3,
-            yoyo: true,
-            repeat: 3,
-            ease: 'sine.inOut'
-        });
+        try {
+            const elements = document.querySelectorAll('.logo-text-wrapper, .image-wrapper, .text-3886');
+            if (elements.length > 0) {
+                gsap.to(elements, {
+                    opacity: 0.9, // Use opacity instead of brightness to avoid grey
+                    duration: 3,
+                    yoyo: true,
+                    repeat: 3,
+                    ease: 'sine.inOut'
+                });
+            }
+        } catch (e) {
+            console.warn('[phaseMinimal] Error animating logo elements:', e);
+        }
     }
 
     phaseChaotic() {

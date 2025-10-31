@@ -256,12 +256,37 @@ class SubtleEffects {
     }
 
     triggerMidnightEffect() {
-        // Midnight effect - only 5% chance of occurring
+        // DISABLED: invert(1) causes bright flashes that break immersion
+        // Use subtle dark overlay instead
         if (Math.random() < 0.05) {
-            filterManager.applyImmediate('invert(1)', { duration: 0.2, ease: 'power1.inOut' });
-            setTimeout(() => {
-                filterManager.applyImmediate('none', { duration: 0.3, ease: 'power1.inOut' });
-            }, 1000);
+            const overlay = document.createElement('div');
+            overlay.style.cssText = `
+                position: fixed;
+                inset: 0;
+                pointer-events: none;
+                z-index: 9998;
+                background: rgba(0, 0, 20, 0.6);
+                opacity: 0;
+            `;
+            document.body.appendChild(overlay);
+            
+            try {
+                gsap.to(overlay, {
+                    opacity: 1,
+                    duration: 0.3,
+                    ease: 'power1.inOut',
+                    onComplete: () => {
+                        gsap.to(overlay, {
+                            opacity: 0,
+                            duration: 0.5,
+                            delay: 0.7,
+                            onComplete: () => overlay.remove()
+                        });
+                    }
+                });
+            } catch (e) {
+                overlay.remove();
+            }
         }
     }
 

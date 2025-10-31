@@ -14,8 +14,9 @@ class AnimationManager {
 
         // Animation configurations
         this.animations = {
-'logo-pulse': {
+            'logo-pulse': {
                 target: '.anime-logo-container svg, .image-2',
+                fallbackTarget: null, // Don't fallback if logo elements not found
                 type: 'scale',
                 duration: 600,
                 easing: 'easeOutElastic',
@@ -160,6 +161,128 @@ class AnimationManager {
         this.lastFrameTime = performance.now();
     }
 
+    async ensureElementsExist(animationId, config) {
+        // For matrix animations, ensure matrix overlays exist
+        if (animationId.includes('matrix')) {
+            await this.ensureMatrixOverlays();
+        }
+        
+        // For logo animations, ensure logo container exists
+        if (animationId.includes('logo')) {
+            this.ensureLogoContainer();
+        }
+        
+        // For background animations, ensure background element exists
+        if (animationId.includes('bg-')) {
+            this.ensureBackgroundElement();
+        }
+    }
+
+    ensureMatrixOverlays() {
+        return new Promise((resolve) => {
+            // Check if matrix overlays already exist
+            let matrixRain = document.querySelector('.matrix-rain');
+            let chaosMatrix = document.querySelector('.chaos-matrix');
+            let dataStreams = document.querySelector('.data-streams');
+            
+            if (matrixRain || chaosMatrix || dataStreams) {
+                resolve();
+                return;
+            }
+            
+            console.log('🌧️ Creating matrix overlay for animation');
+            
+            // Create a visible matrix-style overlay
+            const overlay = document.createElement('div');
+            overlay.className = 'chaos-matrix';
+            overlay.id = 'chaos-matrix-temp';
+            overlay.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                pointer-events: none;
+                z-index: 100;
+                background: linear-gradient(180deg, 
+                    rgba(0, 255, 65, 0.1) 0%, 
+                    rgba(0, 255, 65, 0.05) 50%, 
+                    rgba(0, 255, 65, 0.1) 100%);
+                opacity: 0;
+                transition: opacity 0.3s ease;
+            `;
+            
+            // Add matrix-style text content
+            overlay.innerHTML = `
+                <div style="
+                    position: absolute;
+                    top: 50%;
+                    left: 50%;
+                    transform: translate(-50%, -50%);
+                    font-family: 'Courier New', monospace;
+                    font-size: 48px;
+                    color: #00ff41;
+                    text-shadow: 0 0 10px #00ff41, 0 0 20px #00ff41;
+                    letter-spacing: 10px;
+                    animation: matrixPulse 2s ease-in-out infinite;
+                ">
+                    MATRIX
+                </div>
+            `;
+            
+            // Add animation keyframes
+            if (!document.getElementById('matrix-animation-styles')) {
+                const style = document.createElement('style');
+                style.id = 'matrix-animation-styles';
+                style.textContent = `
+                    @keyframes matrixPulse {
+                        0%, 100% { opacity: 0.5; transform: translate(-50%, -50%) scale(1); }
+                        50% { opacity: 1; transform: translate(-50%, -50%) scale(1.1); }
+                    }
+                `;
+                document.head.appendChild(style);
+            }
+            
+            document.body.appendChild(overlay);
+            
+            // Mark as temporary for cleanup
+            overlay.setAttribute('data-temporary', 'true');
+            
+            // Fade in
+            setTimeout(() => {
+                overlay.style.opacity = '1';
+            }, 10);
+            
+            // Small delay to ensure DOM is updated
+            setTimeout(resolve, 100);
+        });
+    }
+
+    ensureLogoContainer() {
+        // Check if logo elements exist
+        let logoContainer = document.querySelector('.anime-logo-container');
+        let logoImage = document.querySelector('.image-2');
+        
+        if (logoContainer || logoImage) {
+            return; // Elements already exist
+        }
+        
+        // If neither exists, we can't create them as they're part of the page structure
+        // But we can log a helpful message
+        console.warn('⚠️ Logo elements not found - logo animations require the main logo to be present');
+    }
+
+    ensureBackgroundElement() {
+        let bgElement = document.querySelector('.bg');
+        
+        if (bgElement) {
+            return; // Element already exists
+        }
+        
+        // Background element is part of the page structure, can't be created dynamically
+        console.warn('⚠️ Background element not found - background animations require .bg element');
+    }
+
     trigger(animationId, options = {}) {
         console.log(`🎭 Triggering animation: ${animationId}`);
 
@@ -240,6 +363,9 @@ class AnimationManager {
         this.activeAnimations.set(animationInstance.id, animationInstance);
 
         try {
+            // Ensure required elements exist before animating
+            await this.ensureElementsExist(animationId, config);
+            
             // Get target elements
             let elements = document.querySelectorAll(config.target);
             if (elements.length === 0 && config.fallbackTarget) {
@@ -301,6 +427,11 @@ class AnimationManager {
             if (config.cleanup) {
                 await this.delay(config.duration || 1000);
                 this.cleanupAnimation(animationInstance);
+            }
+            
+            // Cleanup temporary matrix overlays
+            if (animationId.includes('matrix')) {
+                this.cleanupTemporaryMatrixOverlays();
             }
 
             // Emit diagnostic event
@@ -612,6 +743,27 @@ class AnimationManager {
         }
 
         return results.every(r => r);
+    }
+
+    cleanupTemporaryMatrixOverlays() {
+        // Remove temporary matrix overlays after animation
+        const tempOverlays = document.querySelectorAll('[data-temporary="true"]');
+        tempOverlays.forEach(overlay => {
+            if (overlay.classList.contains('chaos-matrix') || 
+                overlay.classList.contains('matrix-rain') ||
+                overlay.id === 'chaos-matrix-temp') {
+                // Fade out
+                overlay.style.transition = 'opacity 0.5s ease';
+                overlay.style.opacity = '0';
+                
+                // Remove after fade
+                setTimeout(() => {
+                    if (overlay.parentNode) {
+                        overlay.parentNode.removeChild(overlay);
+                    }
+                }, 500);
+            }
+        });
     }
 
     getCleanTransform(element) {

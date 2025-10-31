@@ -557,7 +557,14 @@ class LottieAnimations {
 
         // Delay stopping playback until after fade completes
         this.fadeOutTimers[name] = setTimeout(() => {
-            try { if (player.stop) player.stop(); } catch (e) { /* no-op */ }
+            try { 
+                // Only stop if player is ready and not loading
+                if (player && player.stop && player.currentState !== 'loading') {
+                    player.stop();
+                }
+            } catch (e) { 
+                // Silently handle stop errors during loading
+            }
             this.visibleStates[name] = false;
             window.dispatchEvent(new CustomEvent('lottieAnimationEnd', { detail: { name } }));
         }, durationMs + 50);

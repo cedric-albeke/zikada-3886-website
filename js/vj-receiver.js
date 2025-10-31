@@ -130,6 +130,11 @@ class VJReceiver {
         this.activeFx = 0;
         this.fpsMonitor = null;
         this.localStoragePollingHandle = null; // Track localStorage polling interval
+        
+        // Emergency stop cooldown to prevent death spiral
+        this.lastEmergencyStop = 0;
+        this.emergencyStopCooldown = 15000; // 15 seconds cooldown
+        this.emergencyStopCount = 0;
 
         this.init();
     }
@@ -1184,9 +1189,30 @@ class VJReceiver {
     }
 
     triggerInvertFlicker() {
-        const prev = document.documentElement.style.filter || '';
-        document.documentElement.style.filter = 'invert(1)';
-        setTimeout(() => { document.documentElement.style.filter = prev; }, 120);
+        // DISABLED: Causes bright white flashes that break immersion
+        // Instead, use a subtle dark pulse
+        const overlay = document.createElement('div');
+        overlay.style.cssText = `
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 9999;
+            background: rgba(0, 0, 0, 0.4);
+            opacity: 0;
+        `;
+        document.body.appendChild(overlay);
+        
+        try {
+            gsap.to(overlay, {
+                opacity: 1,
+                duration: 0.05,
+                yoyo: true,
+                repeat: 1,
+                onComplete: () => overlay.remove()
+            });
+        } catch (e) {
+            overlay.remove();
+        }
     }
 
     triggerSpotlightSweep() {
@@ -2065,10 +2091,32 @@ class VJReceiver {
     }
 
     emergencyStop() {
+        // Prevent death spiral: enforce cooldown between emergency stops
+        const now = performance.now();
+        const timeSinceLastStop = now - this.lastEmergencyStop;
+        
+        if (timeSinceLastStop < this.emergencyStopCooldown) {
+            console.warn(`⚠️ Emergency stop on cooldown (${((this.emergencyStopCooldown - timeSinceLastStop) / 1000).toFixed(1)}s remaining)`);
+            
+            // If we're getting repeated emergency stops, increase the cooldown
+            this.emergencyStopCount++;
+            if (this.emergencyStopCount > 3) {
+                this.emergencyStopCooldown = Math.min(60000, this.emergencyStopCooldown * 1.5); // Cap at 60s
+                console.warn(`🚨 Repeated emergency stops detected! Increasing cooldown to ${(this.emergencyStopCooldown / 1000).toFixed(0)}s`);
+            }
+            return;
+        }
+        
+        this.lastEmergencyStop = now;
+        this.emergencyStopCount = 0;
+        
         console.log('🚨 ENHANCED EMERGENCY STOP - Full System Reset!');
         if (window.animeManager && typeof window.animeManager.killAll === 'function') {
             window.animeManager.killAll();
         }
+
+        // 0. AGGRESSIVE DOM CLEANUP FIRST
+        this.aggressiveDOMCleanup();
 
         // 1. COMPLETE ANIMATION CLEANUP
         if (window.gsapAnimationRegistry && typeof window.gsapAnimationRegistry.killByFilter === 'function') {
@@ -2189,8 +2237,59 @@ class VJReceiver {
         }
     }
 
+    aggressiveDOMCleanup() {
+        console.log('🧹 AGGRESSIVE DOM cleanup initiated');
+        
+        // Remove ALL temporary elements
+        const selectors = [
+            'div[style*="position: fixed"]:not(.pre-loader):not(.control-panel):not(#chaos-canvas)',
+            'div[style*="position: absolute"][style*="z-index"]',
+            '.matrix-char',
+            '.phase-overlay',
+            '.flash-overlay',
+            '.glitch-overlay',
+            '.energy-field',
+            '.quantum-particles',
+            '.holographic-shimmer',
+            '.matrix-overlay',
+            '.chromatic-pulse',
+            '.warp-effect',
+            '.vhs-overlay',
+            '[data-temp="true"]',
+            '[data-temporary="true"]:not([data-permanent="true"])',
+            '[data-effect="true"]',
+            '[data-animation="true"]',
+            '.extended-effects-root > *'  // Clear all children of extended effects container
+        ];
+        
+        let removed = 0;
+        selectors.forEach(selector => {
+            try {
+                document.querySelectorAll(selector).forEach(el => {
+                    // Double-check not permanent
+                    if (!el.hasAttribute('data-permanent') && 
+                        !el.classList.contains('scanlines') &&
+                        !el.classList.contains('data-streams') &&
+                        !el.id.includes('chaos-canvas') &&
+                        !el.id.includes('matrix-rain') &&
+                        !el.id.includes('cyber-grid')) {
+                        el.remove();
+                        removed++;
+                    }
+                });
+            } catch (e) {
+                console.warn(`Failed to clean selector ${selector}:`, e);
+            }
+        });
+        
+        console.log(`🧹 Removed ${removed} temporary DOM elements`);
+    }
+
     executePerformanceOptimization() {
         console.log('🧹 VJ Receiver executing performance optimization...');
+        
+        // Aggressive DOM cleanup first
+        this.aggressiveDOMCleanup();
         
         // Trigger cleanup on all performance systems (selective FX focus)
         if (window.gsapAnimationRegistry && typeof window.gsapAnimationRegistry.killByFilter === 'function') {
@@ -2791,19 +2890,30 @@ class VJReceiver {
                 lastTime = currentTime;
                 
                 // AUTO EMERGENCY STOP: Check for critically low FPS
-                if (fps < LOW_FPS_THRESHOLD) {
-                    lowFpsCount++;
-                    console.warn(`⚠️ Low FPS detected: ${fps.toFixed(1)} (${lowFpsCount}/${LOW_FPS_DURATION}s)`);
-                    
-                    if (lowFpsCount >= LOW_FPS_DURATION) {
-                        console.log('🚨 AUTO EMERGENCY STOP: FPS below 10 for 5+ seconds!');
-                        this.emergencyStop();
-                        lowFpsCount = 0; // Reset counter after emergency stop
+                // But only after grace period following an emergency stop
+                const timeSinceLastStop = currentTime - this.lastEmergencyStop;
+                const GRACE_PERIOD = 10000; // 10 seconds grace period after emergency stop
+                
+                if (timeSinceLastStop > GRACE_PERIOD) {
+                    if (fps < LOW_FPS_THRESHOLD) {
+                        lowFpsCount++;
+                        console.warn(`⚠️ Low FPS detected: ${fps.toFixed(1)} (${lowFpsCount}/${LOW_FPS_DURATION}s)`);
+                        
+                        if (lowFpsCount >= LOW_FPS_DURATION) {
+                            console.log('🚨 AUTO EMERGENCY STOP: FPS below 10 for 5+ seconds!');
+                            this.emergencyStop();
+                            lowFpsCount = 0; // Reset counter after emergency stop
+                        }
+                    } else {
+                        // Reset low FPS counter when performance recovers
+                        if (lowFpsCount > 0) {
+                            console.log('✅ FPS recovered, resetting low FPS counter');
+                            lowFpsCount = 0;
+                        }
                     }
                 } else {
-                    // Reset low FPS counter when performance recovers
+                    // During grace period, don't count low FPS
                     if (lowFpsCount > 0) {
-                        console.log('✅ FPS recovered, resetting low FPS counter');
                         lowFpsCount = 0;
                     }
                 }

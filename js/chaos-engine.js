@@ -711,14 +711,24 @@ class ChaosEngine {
     }
 
     handleResize() {
-        const width = window.innerWidth;
-        const height = window.innerHeight;
+        // Defensive checks to prevent errors during reinitialization
+        if (!this.camera || !this.renderer || !this.composer) {
+            console.debug('[ChaosEngine] handleResize called but resources not ready, skipping');
+            return;
+        }
 
-        this.camera.aspect = width / height;
-        this.camera.updateProjectionMatrix();
+        try {
+            const width = window.innerWidth;
+            const height = window.innerHeight;
 
-        this.renderer.setSize(width, height);
-        this.composer.setSize(width, height);
+            this.camera.aspect = width / height;
+            this.camera.updateProjectionMatrix();
+
+            this.renderer.setSize(width, height);
+            this.composer.setSize(width, height);
+        } catch (error) {
+            console.warn('[ChaosEngine] Error during handleResize:', error);
+        }
     }
 
     // Performance adjustment methods

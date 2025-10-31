@@ -3,8 +3,17 @@ import matrixConfig from './matrix-config.js';
 import { register as registerEffect, enforceBudget } from './runtime/effects/EffectManager.js';
 import { createNodePool } from './runtime/dom/NodePool.js';
 
+// EMERGENCY KILL SWITCH - Extended animations cause DOM explosion and performance collapse
+const EXTENDED_ANIMATIONS_ENABLED = false;
+
 class ExtendedAnimations {
     constructor() {
+        if (!EXTENDED_ANIMATIONS_ENABLED) {
+            console.warn('⚠️ Extended animations DISABLED for performance (causes DOM explosion)');
+            this.isRunning = false;
+            return;
+        }
+        
         this.isRunning = false;
         this.currentEffect = null;
         this.container = null;
@@ -33,6 +42,11 @@ class ExtendedAnimations {
     }
 
     init() {
+        if (!EXTENDED_ANIMATIONS_ENABLED) {
+            console.warn('⚠️ Extended animations init() called but DISABLED');
+            return;
+        }
+        
         this.isRunning = true;
         // Create a single container for extended effects
         this.container = document.querySelector('.extended-effects-root');
