@@ -47,7 +47,7 @@ class ChaosEngine {
         this.isInitialized = false;
 
         // Performance optimizations
-        this.particleCount = 800; // Reduced from 2000 for better performance
+        this.particleCount = 500; // PERFORMANCE: Reduced from 800 (was 2000) for better FPS
         this.frameCounter = 0;
         this.updateFrequency = 2; // Update particles every N frames
         this.performanceMode = 'high';
@@ -238,12 +238,17 @@ class ChaosEngine {
 
     setupRenderer() {
         this.renderer = new THREE.WebGLRenderer({
-            antialias: true,
+            antialias: false,  // PERFORMANCE: Disabled antialiasing - reduces GPU load significantly
             alpha: true,
-            powerPreference: "high-performance"
+            powerPreference: "high-performance",
+            precision: 'mediump',  // PERFORMANCE: Use medium precision instead of highp
+            stencil: false,  // PERFORMANCE: Disable stencil buffer if not needed
+            depth: true  // Keep depth buffer for 3D rendering
         });
         this.renderer.setSize(window.innerWidth, window.innerHeight);
-        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        // PERFORMANCE: Cap pixel ratio at 1.5 instead of 2 to reduce pixel count by ~44%
+        // On a 4K display, pixelRatio=2 means rendering 8K worth of pixels!
+        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
         this.renderer.setClearColor(0x000000, 0);
 
         // Insert canvas behind pre-loader content
@@ -420,12 +425,13 @@ class ChaosEngine {
         const renderPass = new RenderPass(this.scene, this.camera);
         this.composer.addPass(renderPass);
 
-        // Bloom pass
+        // PERFORMANCE: Reduce bloom quality for better FPS
+        // Use smaller resolution for bloom pass (half resolution)
         const bloomPass = new UnrealBloomPass(
-            new THREE.Vector2(window.innerWidth, window.innerHeight),
-            1.5, // strength
-            0.4, // radius
-            0.85  // threshold
+            new THREE.Vector2(window.innerWidth * 0.5, window.innerHeight * 0.5),  // Half resolution bloom
+            1.2, // strength (reduced from 1.5)
+            0.3, // radius (reduced from 0.4)
+            0.88  // threshold (increased from 0.85 - less bloom = better performance)
         );
         this.composer.addPass(bloomPass);
 

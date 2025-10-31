@@ -3,13 +3,12 @@ import matrixConfig from './matrix-config.js';
 import { register as registerEffect, enforceBudget } from './runtime/effects/EffectManager.js';
 import { createNodePool } from './runtime/dom/NodePool.js';
 
-// EMERGENCY KILL SWITCH - Extended animations cause DOM explosion and performance collapse
-const EXTENDED_ANIMATIONS_ENABLED = false;
-
 class ExtendedAnimations {
     constructor() {
-        if (!EXTENDED_ANIMATIONS_ENABLED) {
-            console.warn('⚠️ Extended animations DISABLED for performance (causes DOM explosion)');
+        // Check global feature flags for runtime control
+        const flags = (window.SAFE_FLAGS || window.safeFeatureFlags || {});
+        if (flags.EXTENDED_ANIMATIONS_ENABLED === false) {
+            console.warn('⚠️ Extended animations DISABLED by feature flag');
             this.isRunning = false;
             return;
         }
@@ -42,11 +41,12 @@ class ExtendedAnimations {
     }
 
     init() {
-        if (!EXTENDED_ANIMATIONS_ENABLED) {
-            console.warn('⚠️ Extended animations init() called but DISABLED');
+        const flags = (window.SAFE_FLAGS || window.safeFeatureFlags || {});
+        if (flags.EXTENDED_ANIMATIONS_ENABLED === false) {
+            console.warn('⚠️ Extended animations init() called but DISABLED by feature flag');
             return;
         }
-        
+
         this.isRunning = true;
         // Create a single container for extended effects
         this.container = document.querySelector('.extended-effects-root');
@@ -56,8 +56,8 @@ class ExtendedAnimations {
             this.container.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:80;';
             document.body.appendChild(this.container);
         }
-        // Budget guard: warn if > 800 nodes under container
-        this._budgetDisposer = enforceBudget(this.container, 800, ({count,maxNodes}) => {
+        // Budget guard: stricter limit of 500 nodes under container (was 800)
+        this._budgetDisposer = enforceBudget(this.container, 500, ({count,maxNodes}) => {
             console.warn(`ExtendedEffects: node budget exceeded (${count}/${maxNodes}), skipping effect run.`);
         });
         this._installPools();
@@ -82,12 +82,12 @@ class ExtendedAnimations {
             () => this.dataMoshing(),
             () => this.quantumFlicker()
         ];
-        // Register a managed loop: every 8s try an effect 40% of the time
+        // Register a managed loop: every 20s try an effect 25% of the time (balanced resource management)
         this._effectHandle = registerEffect(({ every }) => {
-            const stopEvery = every(8000, () => {
+            const stopEvery = every(20000, () => {
                 if (!this.isRunning) return;
-                if (this.container && this.container.querySelectorAll('*').length > 700) return; // soft clamp
-                if (Math.random() > 0.6) return; // 40% chance to run
+                if (this.container && this.container.querySelectorAll('*').length > 400) return; // strict soft clamp (was 700)
+                if (Math.random() > 0.75) return; // 25% chance to run (was 40%)
                 const effect = effects[Math.floor(Math.random() * effects.length)];
                 try { effect(); } catch (e) { /* ignore */ }
             });

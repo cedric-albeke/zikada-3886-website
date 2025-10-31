@@ -864,8 +864,8 @@ class ChaosInitializer {
 
     applyFilterNow(target, filterValue, duration) {
         const finalFilter = filterValue || 'none';
-        // DISABLED: GSAP filter transitions cause bright flashes during scene switches
-        // Apply filter immediately instead of animating
+        // INSTANT application - GSAP animations cause blackouts/whiteouts during scene switches
+        // Filter values are still sanitized by validateFilter() to prevent bright flashes
         if (target === document.body || target === document.documentElement) {
             document.body.style.filter = finalFilter;
             document.documentElement.style.filter = finalFilter;
@@ -2475,6 +2475,40 @@ class ChaosInitializer {
 
             // REMOVED: Random special logo animation trigger - was creating too many elements
 
+            // Memory monitoring (every check ~30 seconds)
+            if (performance.memory) {
+                const { usedJSHeapSize, jsHeapSizeLimit } = performance.memory;
+                const usagePercent = ((usedJSHeapSize / jsHeapSizeLimit) * 100).toFixed(1);
+
+                // Log every 10 checks (~5 minutes)
+                if (checkCount % 10 === 0) {
+                    const usedMB = (usedJSHeapSize / 1048576).toFixed(2);
+                    const limitMB = (jsHeapSizeLimit / 1048576).toFixed(2);
+                    console.log(`📊 Memory: ${usedMB}MB / ${limitMB}MB (${usagePercent}%)`);
+                }
+
+                // Warn at 75%
+                if (usagePercent > 75 && checkCount % 2 === 0) {
+                    console.warn(`⚠️ High memory usage: ${usagePercent}% - consider reducing animations`);
+                }
+
+                // Emergency cleanup at 85%
+                if (usagePercent > 85) {
+                    console.error(`🚨 Critical memory usage: ${usagePercent}% - triggering emergency cleanup`);
+                    // Force aggressive cleanup
+                    if (window.vjReceiver && typeof window.vjReceiver.aggressiveDOMCleanup === 'function') {
+                        window.vjReceiver.aggressiveDOMCleanup();
+                    }
+                    this.cleanupPhaseElements();
+                }
+
+                // Soft restart at 90%
+                if (usagePercent > 90) {
+                    console.error(`🚨🚨 CRITICAL: Memory at ${usagePercent}% - initiating soft restart`);
+                    setTimeout(() => this.handleSoftRestart(), 2000);
+                }
+            }
+
             if (verbose) {
                 console.log('🔍 Watchdog check completed - performance preserved');
             }
@@ -2485,18 +2519,18 @@ class ChaosInitializer {
     }
 
     startPeriodicDOMCleanup() {
-        // Periodic cleanup of unmanaged DOM elements every 2 minutes
+        // Periodic cleanup of unmanaged DOM elements every 60 seconds (more aggressive)
         // This prevents accumulation from anime-enhanced-effects and other unmanaged modules
         this.domCleanupInterval = setInterval(() => {
             const beforeCount = document.querySelectorAll('*').length;
-            
+
             // Use VJ receiver's aggressive cleanup if available
             if (window.vjReceiver && typeof window.vjReceiver.aggressiveDOMCleanup === 'function') {
                 window.vjReceiver.aggressiveDOMCleanup();
             } else {
                 // Fallback cleanup
                 this.cleanupPhaseElements();
-                
+
                 // Clean up anime-enhanced-effects elements
                 const animeElements = document.querySelectorAll('.anime-particles, .anime-data-streams, .anime-energy-pulse, .anime-text-glow');
                 animeElements.forEach(el => {
@@ -2505,16 +2539,35 @@ class ChaosInitializer {
                     }
                 });
             }
-            
+
+            // Additional cleanup for orphaned GSAP animations
+            if (window.gsapAnimationRegistry && typeof window.gsapAnimationRegistry.size === 'function') {
+                const totalAnims = window.gsapAnimationRegistry.size();
+                if (totalAnims > 100) {
+                    console.warn(`⚠️ High GSAP animation count: ${totalAnims}`);
+                    // Cleanup is handled by registry's own budget system
+                }
+            }
+
             const afterCount = document.querySelectorAll('*').length;
             const removed = beforeCount - afterCount;
-            
+
             if (removed > 0) {
                 console.log(`🧹 Periodic DOM cleanup: removed ${removed} elements (${beforeCount} → ${afterCount})`);
             }
-        }, 120000); // Every 2 minutes
-        
-        console.log('📊 Periodic DOM cleanup scheduler started (every 2 minutes)');
+
+            // Log resource status every 5 cleanups (~5 minutes)
+            if (!this._cleanupCounter) this._cleanupCounter = 0;
+            this._cleanupCounter++;
+            if (this._cleanupCounter % 5 === 0) {
+                const gsapCount = (window.gsapAnimationRegistry && typeof window.gsapAnimationRegistry.size === 'function')
+                    ? window.gsapAnimationRegistry.size()
+                    : 0;
+                console.log(`📊 Resources: ${afterCount} DOM nodes, ${gsapCount} GSAP anims`);
+            }
+        }, 60000); // Every 60 seconds (was 120000)
+
+        console.log('📊 Periodic DOM cleanup scheduler started (every 60 seconds)');
     }
 
     phaseIntense() {
@@ -2528,6 +2581,7 @@ class ChaosInitializer {
             if (bgElement) {
                 gsap.to(bgElement, {
                     rotationZ: '+=90',  // Reduced from 180
+                    scale: 3,  // CRITICAL: Preserve scale to prevent edge reveal
                     duration: 8,  // Slower
                     ease: 'power2.inOut'
                 });
@@ -2575,6 +2629,7 @@ class ChaosInitializer {
             if (bgElement) {
                 gsap.to(bgElement, {
                     rotationZ: '+=30',
+                    scale: 3,  // CRITICAL: Preserve scale to prevent edge reveal
                     duration: 15,
                     ease: 'sine.inOut'
                 });
@@ -3198,7 +3253,7 @@ class ChaosInitializer {
             if (bgElement) {
                 gsap.to(bgElement, {
                     opacity: 0.03,
-                    scale: 2.2,  // Reduced from 2.5
+                    scale: 3,  // CRITICAL: Keep at 3 to prevent edge reveal (was 2.2 - BUG!)
                     duration: 5,
                     ease: 'power2.inOut'
                 });

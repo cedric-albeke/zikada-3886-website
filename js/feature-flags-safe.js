@@ -19,9 +19,9 @@ class SafeFeatureFlags {
         this.MATRIX_RAIN_ENABLED = this.getFlag(urlParams, 'matrix', 'MATRIX_RAIN_ENABLED', true); // Enable by default for visual parity
         this.TEXT_SCRAMBLE_ENABLED = this.getFlag(urlParams, 'scramble', 'TEXT_SCRAMBLE_ENABLED', true); // Enabled by default
         this.DATA_CORRUPTION_ENABLED = this.getFlag(urlParams, 'corruption', 'DATA_CORRUPTION_ENABLED', false); // DOM bloat
-        // Animation group switches (gate heavy DOM effects)
-        this.EXTENDED_ANIMATIONS_ENABLED = this.getFlag(urlParams, 'extanim', 'EXTENDED_ANIMATIONS_ENABLED', false); // DISABLED by default - causes DOM explosion
-        this.RANDOM_ANIMATIONS_ENABLED = this.getFlag(urlParams, 'randanim', 'RANDOM_ANIMATIONS_ENABLED', false);  // DISABLED by default - causes DOM explosion
+        // Animation group switches (gate heavy DOM effects with balanced resource management)
+        this.EXTENDED_ANIMATIONS_ENABLED = this.getFlag(urlParams, 'extanim', 'EXTENDED_ANIMATIONS_ENABLED', true); // Enabled with strict DOM budgets
+        this.RANDOM_ANIMATIONS_ENABLED = this.getFlag(urlParams, 'randanim', 'RANDOM_ANIMATIONS_ENABLED', true);  // Enabled with reduced frequency
         
         // Performance limits
         this.MAX_CONCURRENT_FX = parseInt(urlParams.get('maxfx') || localStorage.getItem('MAX_CONCURRENT_FX') || '6');
@@ -78,8 +78,8 @@ class SafeFeatureFlags {
         
         // Show override instructions
         console.log('');
-        console.log('🎛️  To enable text effects: ?text=1');
-        console.log('🎛️  To enable all: ?fx=1&text=1&matrix=1&scramble=1&corruption=1');
+        console.log('🎛️  To disable animations: ?extanim=0&randanim=0');
+        console.log('🎛️  To enable all: ?fx=1&text=1&matrix=1&scramble=1&corruption=1&extanim=1&randanim=1');
         console.log('🎛️  To debug: ?debugfx=1&debugperf=1');
     }
     

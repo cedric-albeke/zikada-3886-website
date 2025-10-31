@@ -48,8 +48,8 @@ class RandomAnimations {
             this.isRunning = true;
         }
 
-        // Random chance to trigger an animation (reduced)
-        if (Math.random() > 0.5) { // 50% chance (was 70%)
+        // Random chance to trigger an animation (balanced for resource management)
+        if (Math.random() > 0.6) { // 40% chance (reduced from 50% for better control)
             // Pick a random animation that isn't the last one
             let animations = this.animationPool.filter(a => a !== this.lastAnimation);
             const randomAnim = animations[Math.floor(Math.random() * animations.length)];
@@ -57,8 +57,8 @@ class RandomAnimations {
             randomAnim();
         }
 
-        // Random delay between 8-20 seconds (increased from 3-15)
-        const nextDelay = Math.random() * 12000 + 8000;
+        // Random delay between 20-40 seconds (increased from 8-20 for balanced resource usage)
+        const nextDelay = Math.random() * 20000 + 20000;
         setTimeout(() => this.triggerRandomAnimation(), nextDelay);
     }
 

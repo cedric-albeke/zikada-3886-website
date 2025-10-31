@@ -204,44 +204,16 @@ class AnimationManager {
                 height: 100%;
                 pointer-events: none;
                 z-index: 100;
-                background: linear-gradient(180deg, 
-                    rgba(0, 255, 65, 0.1) 0%, 
-                    rgba(0, 255, 65, 0.05) 50%, 
+                background: linear-gradient(180deg,
+                    rgba(0, 255, 65, 0.1) 0%,
+                    rgba(0, 255, 65, 0.05) 50%,
                     rgba(0, 255, 65, 0.1) 100%);
                 opacity: 0;
                 transition: opacity 0.3s ease;
             `;
-            
-            // Add matrix-style text content
-            overlay.innerHTML = `
-                <div style="
-                    position: absolute;
-                    top: 50%;
-                    left: 50%;
-                    transform: translate(-50%, -50%);
-                    font-family: 'Courier New', monospace;
-                    font-size: 48px;
-                    color: #00ff41;
-                    text-shadow: 0 0 10px #00ff41, 0 0 20px #00ff41;
-                    letter-spacing: 10px;
-                    animation: matrixPulse 2s ease-in-out infinite;
-                ">
-                    MATRIX
-                </div>
-            `;
-            
-            // Add animation keyframes
-            if (!document.getElementById('matrix-animation-styles')) {
-                const style = document.createElement('style');
-                style.id = 'matrix-animation-styles';
-                style.textContent = `
-                    @keyframes matrixPulse {
-                        0%, 100% { opacity: 0.5; transform: translate(-50%, -50%) scale(1); }
-                        50% { opacity: 1; transform: translate(-50%, -50%) scale(1.1); }
-                    }
-                `;
-                document.head.appendChild(style);
-            }
+
+            // REMOVED: Centered "MATRIX" text (user requested removal)
+            // Keeping just the green gradient overlay for ambiance
             
             document.body.appendChild(overlay);
             
