@@ -6,6 +6,12 @@ class RandomAnimations {
         this.animationPool = [];
         this.isRunning = false;
         this.lastAnimation = null;
+
+        // CRITICAL FIX: Store interval/timeout IDs for proper cleanup
+        this.particleInterval = null;
+        this.pulseTimeout = null;
+        this.distortTimeout = null;
+        this.randomSequenceTimeout = null;
     }
 
     init() {
@@ -42,10 +48,10 @@ class RandomAnimations {
     }
 
     triggerRandomAnimation() {
+        // CRITICAL FIX: Check if still running before continuing
         if (!this.isRunning) {
-            // Auto-restart if stopped
-            console.log('🔄 Auto-restarting random animations...');
-            this.isRunning = true;
+            console.log('⏹️ Random animations stopped, not scheduling next trigger');
+            return;
         }
 
         // Random chance to trigger an animation (balanced for resource management)
@@ -58,8 +64,9 @@ class RandomAnimations {
         }
 
         // Random delay between 20-40 seconds (increased from 8-20 for balanced resource usage)
+        // CRITICAL FIX: Store timeout ID for cleanup
         const nextDelay = Math.random() * 20000 + 20000;
-        setTimeout(() => this.triggerRandomAnimation(), nextDelay);
+        this.randomSequenceTimeout = setTimeout(() => this.triggerRandomAnimation(), nextDelay);
     }
 
     startRandomSequence() {
@@ -590,15 +597,19 @@ class RandomAnimations {
             });
         };
 
-        // Create particles periodically
-        setInterval(() => {
+        // CRITICAL FIX: Store interval ID for cleanup
+        this.particleInterval = setInterval(() => {
             if (Math.random() > 0.5) createParticle();
         }, 1000);
     }
 
     addEnergyPulses() {
         const pulse = () => {
-            if (!this.isRunning) return;
+            // CRITICAL FIX: Check if still running before continuing
+            if (!this.isRunning) {
+                console.log('⏹️ Energy pulses stopped, not scheduling next pulse');
+                return;
+            }
 
             const bg = document.querySelector('.bg');
             if (bg && Math.random() > 0.7) {
@@ -611,15 +622,20 @@ class RandomAnimations {
                 });
             }
 
-            setTimeout(pulse, Math.random() * 10000 + 5000);
+            // CRITICAL FIX: Store timeout ID for cleanup
+            this.pulseTimeout = setTimeout(pulse, Math.random() * 10000 + 5000);
         };
 
-        setTimeout(pulse, 3000);
+        this.pulseTimeout = setTimeout(pulse, 3000);
     }
 
     addSubtleDistortions() {
         const distort = () => {
-            if (!this.isRunning) return;
+            // CRITICAL FIX: Check if still running before continuing
+            if (!this.isRunning) {
+                console.log('⏹️ Subtle distortions stopped, not scheduling next distortion');
+                return;
+            }
 
             if (Math.random() > 0.8) {
                 const elements = document.querySelectorAll('.logo-text-wrapper, .image-wrapper');
@@ -635,10 +651,11 @@ class RandomAnimations {
                 });
             }
 
-            setTimeout(distort, Math.random() * 8000 + 4000);
+            // CRITICAL FIX: Store timeout ID for cleanup
+            this.distortTimeout = setTimeout(distort, Math.random() * 8000 + 4000);
         };
 
-        setTimeout(distort, 5000);
+        this.distortTimeout = setTimeout(distort, 5000);
     }
 
     // New warp tunnel effect
@@ -838,8 +855,32 @@ class RandomAnimations {
     }
 
     destroy() {
+        console.log('🧹 Destroying random animations and clearing all timers...');
         this.isRunning = false;
         this.activeAnimations.clear();
+
+        // CRITICAL FIX: Clear all stored interval/timeout IDs
+        if (this.particleInterval) {
+            clearInterval(this.particleInterval);
+            this.particleInterval = null;
+        }
+
+        if (this.pulseTimeout) {
+            clearTimeout(this.pulseTimeout);
+            this.pulseTimeout = null;
+        }
+
+        if (this.distortTimeout) {
+            clearTimeout(this.distortTimeout);
+            this.distortTimeout = null;
+        }
+
+        if (this.randomSequenceTimeout) {
+            clearTimeout(this.randomSequenceTimeout);
+            this.randomSequenceTimeout = null;
+        }
+
+        console.log('✅ Random animations destroyed successfully');
     }
 }
 

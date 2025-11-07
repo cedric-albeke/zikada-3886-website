@@ -990,55 +990,10 @@ class ChaosInitializer {
         
         // Defer WebGL-related initializations until after Chaos Engine is initialized
         // (renderer must exist)
-        
-        // Initialize Performance Degradation Ladder
-        try {
-            console.log('📊 Starting Performance Degradation Ladder...');
-            // Initialize with Three.js objects if available
-            let renderer = null, scene = null, composer = null;
-            if (window.chaosEngine) {
-                renderer = window.chaosEngine.renderer;
-                scene = window.chaosEngine.scene;
-                composer = window.chaosEngine.composer;
-            }
-            
-            performanceLadder.start(renderer, scene, composer);
-            console.log('✅ Performance Degradation Ladder active');
-            
-            // Expose for debugging if enabled
-            if (this.debugMetrics) {
-                window.performanceLadder = performanceLadder;
-                window.performanceLadderTest = performanceLadderTest;
-                console.log('🧪 Debug mode: Performance testing available via window.testPerformanceLadder()');
-            }
-        } catch (error) {
-            console.warn('⚠️ Performance Degradation Ladder failed to start:', error);
-        }
-        
-        // Initialize Performance Degradation Ladder
-        try {
-            console.log('📊 Starting Performance Degradation Ladder...');
-            // Initialize with Three.js objects if available
-            let renderer = null, scene = null, composer = null;
-            if (window.chaosEngine) {
-                renderer = window.chaosEngine.renderer;
-                scene = window.chaosEngine.scene;
-                composer = window.chaosEngine.composer;
-            }
-            
-            performanceLadder.start(renderer, scene, composer);
-            console.log('✅ Performance Degradation Ladder active');
-            
-            // Expose for debugging if enabled
-            if (this.debugMetrics) {
-                window.performanceLadder = performanceLadder;
-                window.performanceLadderTest = performanceLadderTest;
-                console.log('🧪 Debug mode: Performance testing available via window.testPerformanceLadder()');
-            }
-        } catch (error) {
-            console.warn('⚠️ Performance Degradation Ladder failed to start:', error);
-        }
-        
+
+        // CRITICAL FIX: Moved Performance Degradation Ladder initialization to AFTER
+        // ChaosEngine initialization (see below after initChaosEngine() call)
+
         // Initialize Smart Preloader
         try {
             console.log('🚀 Starting Smart Preloader...');
@@ -1118,6 +1073,32 @@ class ChaosInitializer {
             console.warn('⚠️ WebGL Resource Manager failed to initialize:', error);
         }
 
+        // CRITICAL FIX: Initialize Performance Degradation Ladder AFTER ChaosEngine is ready
+        // This ensures renderer, scene, and composer are properly initialized
+        try {
+            console.log('📊 Starting Performance Degradation Ladder...');
+            if (window.chaosEngine && window.chaosEngine.renderer) {
+                const renderer = window.chaosEngine.renderer;
+                const scene = window.chaosEngine.scene;
+                const composer = window.chaosEngine.composer;
+
+                performanceLadder.start(renderer, scene, composer);
+                console.log('✅ Performance Degradation Ladder active with valid renderer');
+
+                // Expose for debugging if enabled
+                if (this.debugMetrics) {
+                    window.performanceLadder = performanceLadder;
+                    window.performanceLadderTest = performanceLadderTest;
+                    console.log('🧪 Debug mode: Performance testing available via window.testPerformanceLadder()');
+                }
+            } else {
+                console.warn('⚠️ Performance Degradation Ladder: ChaosEngine not ready, starting with null values');
+                performanceLadder.start(null, null, null);
+            }
+        } catch (error) {
+            console.warn('⚠️ Performance Degradation Ladder failed to start:', error);
+        }
+
         // Start centralized profile manager (adaptive DPR, post-processing, particles, Lottie)
         try {
             const mgr = createPerformanceProfileManager({
@@ -1154,11 +1135,12 @@ class ChaosInitializer {
         // Create global blackout overlay to ensure full coverage for fades/blackouts
         this.ensureBlackoutOverlay();
 
-        // Start animation phases directly
+        // CRITICAL FIX: Increased delay from 2000ms to 5000ms to ensure all DOM elements are ready
+        // This prevents race conditions where phase methods try to animate elements that don't exist yet
         setTimeout(() => {
             console.log('🚀 Starting animation phases...');
             this.startAnimationPhases();
-        }, 2000);
+        }, 5000);
 
         // Start animation watchdog to ensure animations never stop
         this.startAnimationWatchdog();
@@ -2487,13 +2469,13 @@ class ChaosInitializer {
                     console.log(`📊 Memory: ${usedMB}MB / ${limitMB}MB (${usagePercent}%)`);
                 }
 
-                // Warn at 75%
-                if (usagePercent > 75 && checkCount % 2 === 0) {
+                // CRITICAL FIX: Increased threshold from 75% to 85% (browsers often use 80-95% normally)
+                if (usagePercent > 85 && checkCount % 2 === 0) {
                     console.warn(`⚠️ High memory usage: ${usagePercent}% - consider reducing animations`);
                 }
 
-                // Emergency cleanup at 85%
-                if (usagePercent > 85) {
+                // CRITICAL FIX: Increased threshold from 85% to 92% (prevents unnecessary cleanup)
+                if (usagePercent > 92) {
                     console.error(`🚨 Critical memory usage: ${usagePercent}% - triggering emergency cleanup`);
                     // Force aggressive cleanup
                     if (window.vjReceiver && typeof window.vjReceiver.aggressiveDOMCleanup === 'function') {
@@ -2502,8 +2484,8 @@ class ChaosInitializer {
                     this.cleanupPhaseElements();
                 }
 
-                // Soft restart at 90%
-                if (usagePercent > 90) {
+                // CRITICAL FIX: Increased threshold from 90% to 97% (prevents restart loops)
+                if (usagePercent > 97) {
                     console.error(`🚨🚨 CRITICAL: Memory at ${usagePercent}% - initiating soft restart`);
                     setTimeout(() => this.handleSoftRestart(), 2000);
                 }

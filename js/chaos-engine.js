@@ -67,9 +67,13 @@ class ChaosEngine {
         this.meshCount = 0;
         this.lightCount = 0;
 
+        // CRITICAL FIX: Store bound event listener functions for proper removal
+        this.particleAdjustListener = (e) => this.adjustParticleCount(e.detail.count);
+        this.postProcessListener = (e) => this.adjustPostProcessing(e.detail.quality);
+
         // Listen for performance adjustments
-        window.addEventListener('adjustParticles', (e) => this.adjustParticleCount(e.detail.count));
-        window.addEventListener('adjustPostProcessing', (e) => this.adjustPostProcessing(e.detail.quality));
+        window.addEventListener('adjustParticles', this.particleAdjustListener);
+        window.addEventListener('adjustPostProcessing', this.postProcessListener);
     }
     
     // Three.js resource tracking helper methods
@@ -829,9 +833,9 @@ class ChaosEngine {
     }
 
     destroy() {
-        // Remove event listeners
-        window.removeEventListener('adjustParticles', this.adjustParticleCount);
-        window.removeEventListener('adjustPostProcessing', this.adjustPostProcessing);
+        // CRITICAL FIX: Remove event listeners using stored references
+        window.removeEventListener('adjustParticles', this.particleAdjustListener);
+        window.removeEventListener('adjustPostProcessing', this.postProcessListener);
 
         // Dispose tracked geometries
         this.trackedGeometries.forEach(geometry => {
