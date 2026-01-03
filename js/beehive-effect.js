@@ -219,24 +219,25 @@ class BeehiveEffect {
         }
 
         // Add additional mode-specific enhancements
+        // REDUCED: Prevent bright flashes from high contrast
         switch(mode) {
             case 'psychedelic':
-                filters.push('contrast(1.8)');
+                filters.push('contrast(1.3)');  // Reduced from 1.8
                 this.addPsychedelicAnimation();
                 break;
 
             case 'electric':
-                filters.push('contrast(1.5)');
+                filters.push('contrast(1.2)');  // Reduced from 1.5
                 this.addElectricAnimation();
                 break;
 
             case 'matrix':
-                filters.push('contrast(1.3)');
+                filters.push('contrast(1.1)');  // Reduced from 1.3
                 this.addMatrixAnimation();
                 break;
 
             case 'neon':
-                filters.push('contrast(2)');
+                filters.push('contrast(1.2)');  // Reduced from 2
                 this.addNeonAnimation();
                 break;
         }

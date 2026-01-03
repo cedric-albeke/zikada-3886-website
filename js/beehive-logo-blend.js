@@ -130,6 +130,13 @@ class BeehiveLogoBlend {
 
         this.maskElement.appendChild(this.videoElement);
 
+        // Add error handler for missing video file
+        this.videoElement.addEventListener('error', () => {
+            // Silently handle missing video - it's an optional resource
+            console.debug('Video file not available, beehive effect will be disabled');
+            this.videoElement.style.display = 'none';
+        }, { once: true });
+
         // Preload video
         this.videoElement.load();
     }
