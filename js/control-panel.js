@@ -2,6 +2,7 @@
 // Cross-tab communication via BroadcastChannel API
 
 import safePerformanceMonitor from './safe-performance-monitor.js';
+import intervalManager from './interval-manager.js';
 
 class VJControlPanel {
     constructor() {
@@ -96,8 +97,8 @@ class VJControlPanel {
         // Set connection status
         this.setConnectionStatus(true);
 
-        // Ping every 5 seconds
-        setInterval(() => {
+        // Ping every 5 seconds (managed)
+        intervalManager.set('control-panel-ping', () => {
             this.sendMessage({
                 type: 'ping',
                 timestamp: Date.now()
@@ -222,7 +223,7 @@ class VJControlPanel {
 
             // Stop auto mode interval
             if (this.autoModeInterval) {
-                clearInterval(this.autoModeInterval);
+                intervalManager.clear(this.autoModeInterval);
                 this.autoModeInterval = null;
             }
         } else if (scene === 'auto' && !wasInAutoMode) {
@@ -280,7 +281,7 @@ class VJControlPanel {
     startAutoModeSimulator() {
         // Clear existing interval first
         if (this.autoModeInterval) {
-            clearInterval(this.autoModeInterval);
+            intervalManager.clear(this.autoModeInterval);
             this.autoModeInterval = null;
         }
 
@@ -290,7 +291,7 @@ class VJControlPanel {
 
         console.log(`🎬 Starting auto mode simulator with ${this.getAutoModeInterval()}ms interval`);
 
-        this.autoModeInterval = setInterval(() => {
+        this.autoModeInterval = intervalManager.set('control-panel-auto-mode', () => {
             if (this.currentScene === 'auto') {
                 const nextScene = scenes[currentIndex % scenes.length];
                 console.log(`🎲 Auto mode: actually switching to ${nextScene}`);
@@ -328,7 +329,7 @@ class VJControlPanel {
         if (phaseDurationSlider) {
             phaseDurationSlider.addEventListener('input', () => {
                 if (this.autoModeInterval) {
-                    clearInterval(this.autoModeInterval);
+                    intervalManager.clear(this.autoModeInterval);
                     this.startAutoModeSimulator();
                 }
             });
@@ -1128,8 +1129,8 @@ class VJControlPanel {
 
     // Monitoring
     startMonitoring() {
-        // Request performance data periodically
-        setInterval(() => {
+        // Request performance data periodically (managed)
+        intervalManager.set('control-panel-monitoring', () => {
             this.sendMessage({
                 type: 'request_performance',
                 timestamp: Date.now()
@@ -1278,7 +1279,7 @@ class VJControlPanel {
         const uptimeDisplay = document.getElementById('systemUptime');
         if (!uptimeDisplay) return;
 
-        setInterval(() => {
+        intervalManager.set('control-panel-uptime', () => {
             const elapsed = Date.now() - this.startTime;
             const hours = Math.floor(elapsed / (1000 * 60 * 60));
             const minutes = Math.floor((elapsed % (1000 * 60 * 60)) / (1000 * 60));
@@ -1334,7 +1335,7 @@ class VJControlPanel {
         const diceCountdownEl = document.getElementById('diceCountdown');
         if (!diceCountdownEl) return;
 
-        setInterval(() => {
+        intervalManager.set('control-panel-dice-countdown', () => {
             this.diceCountdown--;
             if (this.diceCountdown <= 0) {
                 this.diceCountdown = 5; // Reset to 5 seconds
@@ -1348,7 +1349,7 @@ class VJControlPanel {
         const performanceStatus = document.getElementById('performanceStatus');
 
         if (systemHealth || performanceStatus) {
-            setInterval(() => {
+            intervalManager.set('control-panel-status-indicators', () => {
                 // System Health Logic
                 if (systemHealth) {
                     let healthStatus = 'healthy';
@@ -1431,7 +1432,7 @@ class VJControlPanel {
     }
 
     startPerformanceUpdates() {
-        setInterval(() => {
+        intervalManager.set('control-panel-performance-updates', () => {
             this.updatePerformanceDisplay();
         }, 1000); // Update every second
     }
