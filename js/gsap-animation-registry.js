@@ -56,21 +56,35 @@ class GSAPAnimationRegistry {
         const registry = this;
 
         const resolveCategory = (vars) => (vars && vars._regCategory) || 'effect';
-        const wantsSoftCap = (vars) => !!(vars && vars._regSoftCap === true);
-        
-        // Soft-cap helper (only enforced when explicitly requested)
-        const canCreateInCategory = (category, vars) => {
-            if (!wantsSoftCap(vars)) return true; // default: do not soft-cap unless opted-in
+
+        // HARD CAP - Always enforced to prevent animation accumulation
+        const canCreateAnimation = (category) => {
+            // Check global limit first
+            if (registry.animations.size >= registry.maxAnimations) {
+                // Try emergency cleanup before blocking
+                registry.performEmergencyCleanup();
+                // Still at limit? Block creation
+                if (registry.animations.size >= registry.maxAnimations) {
+                    return false;
+                }
+            }
+
+            // Check category limit
             const cfg = registry.categories[category] || { maxAnimations: 30 };
             const count = registry.getCategoryActiveCount(category);
-            return count < cfg.maxAnimations;
+            if (count >= cfg.maxAnimations) {
+                // Kill oldest in category to make room
+                registry.killOldestInCategory(category);
+            }
+
+            return true;
         };
 
         // Patch gsap.to
         gsap.to = function(targets, vars = {}) {
             const category = resolveCategory(vars);
-            if (!canCreateInCategory(category, vars)) {
-                if (registry.verbose) console.log(`⏳ Skipping creation in category '${category}' (soft cap reached)`);
+            if (!canCreateAnimation(category)) {
+                if (registry.verbose) console.log(`⛔ Blocked animation in category '${category}' (hard cap)`);
                 return registry.createNoopTween();
             }
             const tween = originalTo.call(this, targets, vars);
@@ -83,8 +97,8 @@ class GSAPAnimationRegistry {
         // Patch gsap.from
         gsap.from = function(targets, vars = {}) {
             const category = resolveCategory(vars);
-            if (!canCreateInCategory(category, vars)) {
-                if (registry.verbose) console.log(`⏳ Skipping creation in category '${category}' (soft cap reached)`);
+            if (!canCreateAnimation(category)) {
+                if (registry.verbose) console.log(`⛔ Blocked animation in category '${category}' (hard cap)`);
                 return registry.createNoopTween();
             }
             const tween = originalFrom.call(this, targets, vars);
@@ -97,8 +111,8 @@ class GSAPAnimationRegistry {
         // Patch gsap.fromTo
         gsap.fromTo = function(targets, fromVars = {}, toVars = {}) {
             const category = resolveCategory(toVars);
-            if (!canCreateInCategory(category, toVars)) {
-                if (registry.verbose) console.log(`⏳ Skipping creation in category '${category}' (soft cap reached)`);
+            if (!canCreateAnimation(category)) {
+                if (registry.verbose) console.log(`⛔ Blocked animation in category '${category}' (hard cap)`);
                 return registry.createNoopTween();
             }
             const tween = originalFromTo.call(this, targets, fromVars, toVars);
@@ -111,8 +125,8 @@ class GSAPAnimationRegistry {
         // Patch gsap.timeline
         gsap.timeline = function(vars = {}) {
             const category = resolveCategory(vars);
-            if (!canCreateInCategory(category, vars)) {
-                if (registry.verbose) console.log(`⏳ Skipping creation in category '${category}' (soft cap reached)`);
+            if (!canCreateAnimation(category)) {
+                if (registry.verbose) console.log(`⛔ Blocked timeline in category '${category}' (hard cap)`);
                 return registry.createNoopTimeline();
             }
             const timeline = originalTimeline.call(this, vars);
@@ -291,6 +305,34 @@ class GSAPAnimationRegistry {
             if (data.category === category && data.isActive !== false) count++;
         });
         return count;
+    }
+
+    /**
+     * Kill the oldest animation in a category to make room for new ones
+     */
+    killOldestInCategory(category) {
+        let oldest = null;
+        let oldestId = null;
+
+        this.animations.forEach((data, id) => {
+            if (data.category === category && data.isActive !== false) {
+                // Skip essential animations
+                if (data.isEssential) return;
+                // Skip infinite repeat animations
+                if (data.maxAge === Infinity) return;
+
+                if (!oldest || data.createdAt < oldest.createdAt) {
+                    oldest = data;
+                    oldestId = id;
+                }
+            }
+        });
+
+        if (oldestId !== null) {
+            this.killAnimation(oldestId);
+            return true;
+        }
+        return false;
     }
 
     /**
