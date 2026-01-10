@@ -534,17 +534,8 @@
          ============================================ -->
     <!-- Animation Manager - MUST LOAD FIRST -->
     <script type="module" src="./js/animation-manager.js"></script>
-    <script type="module" src="./js/performance-dashboard-v2.js"></script>
-    
-    <!-- MIDI Support Scripts -->
-    <script src="./js/midi-controller.js"></script>
-    <script src="./js/midi-action-catalog.js"></script>
-    <script src="./js/midi-feedback.js"></script>
-    
+
     <script type="module">
-        // Import performance stats controller
-        import performanceStatsController from './js/performance-stats-controller.js';
-        
         // Import VJ messaging system
         import vjMessaging from './js/vj-messaging.js';
         
@@ -556,16 +547,7 @@
         
         // Import control panel professional (handles communication with main page)
         import './js/control-panel-professional.js';
-        
-        // Import preview client for live preview feature
-        import './js/preview-client.js';
-        
-        // Import trigger effects diagnostic tool
-        import './js/trigger-effects-diagnostic.js';
-        
-        // Import trigger effect orchestrator for CHROMA, SPOTLIGHT, SHIMMER
-        import './js/trigger-effect-orchestrator.js';
-        
+
         // Import animation manager for animation system
         import { initAnimationManager } from './js/animation-manager.js';
         

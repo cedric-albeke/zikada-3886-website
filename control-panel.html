@@ -420,16 +420,8 @@
 
     <!-- Use professional VJ control panel -->
     <script type="module">
-        // Shared FPS bus so control panel and main page agree
-        import './js/performance-bus.js';
-        // Import performance stats controller first (uses bus if present)
-        import performanceStatsController from './js/performance-stats-controller.js';
-        // Optional Lottie UI: inject toggles from /lotties/manifest.json when available
-        import './js/lottie-ui.js';
-        // Then import control panel core
+        // Import control panel core
         import './js/control-panel-professional.js';
-        // Live preview client
-        import './js/preview-client.js';
     </script>
 </body>
 </html>

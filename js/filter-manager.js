@@ -61,46 +61,20 @@ class FilterManager {
   }
 
   // Immediate application for scene transitions or effects
-  // Supports applyImmediate(filter, duration) or applyImmediate(filter, { duration, ease })
+  // FIXED: Apply filters instantly without GSAP animation to prevent scene switch flashes
   applyImmediate(filter, durationOrOpts = 1.2) {
     try {
-      const opts = (typeof durationOrOpts === 'object' && durationOrOpts !== null)
-        ? { duration: Number(durationOrOpts.duration ?? 1.2), ease: String(durationOrOpts.ease || 'power1.inOut') }
-        : { duration: Number(durationOrOpts), ease: 'power1.inOut' };
       const safeFilter = this._sanitize(filter);
-      gsap.killTweensOf(document.body, 'filter');
-      
-      // Atomic transition: neutralize edges when transitioning to/from 'none'
-      const current = window.getComputedStyle(document.body).filter;
 
-      if (current === 'none' && safeFilter !== 'none') {
-        // Start from neutral base to avoid grey flash when applying new filter from none
-        gsap.set(document.body, { filter: 'brightness(1) contrast(1) saturate(1) hue-rotate(0deg)' });
-        gsap.to(document.body, {
-          filter: safeFilter,
-          duration: opts.duration,
-          ease: opts.ease,
-          overwrite: 'auto'
-        });
-      } else if (safeFilter === 'none' && current && current !== 'none') {
-        // Fade to neutral first, then remove filter entirely
-        gsap.to(document.body, {
-          filter: 'brightness(1) contrast(1) saturate(1) hue-rotate(0deg)',
-          duration: Math.max(0.1, opts.duration * 0.5),
-          ease: opts.ease,
-          overwrite: 'auto',
-          onComplete: () => {
-            document.body.style.removeProperty('filter');
-          }
-        });
+      // Kill any existing GSAP filter animations
+      gsap.killTweensOf(document.body, 'filter');
+
+      // Apply filter instantly - no GSAP animation
+      // GSAP filter transitions were causing bright flashes during scene switches
+      if (safeFilter === 'none') {
+        document.body.style.removeProperty('filter');
       } else {
-        // Normal transition between filters
-        gsap.to(document.body, {
-          filter: safeFilter,
-          duration: opts.duration,
-          ease: opts.ease,
-          overwrite: 'auto'
-        });
+        document.body.style.filter = safeFilter;
       }
     } catch (e) {
       // Fallback - use regular style setting

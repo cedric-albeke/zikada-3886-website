@@ -587,9 +587,12 @@ class TextEffects {
     }
 }
 
+// Create singleton instance
+const textEffects = new TextEffects();
+
 // Create global instance for backward compatibility
 if (typeof window !== 'undefined') {
-    window.textEffects = new TextEffects();
+    window.textEffects = textEffects;
 }
 
-export default TextEffects;
+export default textEffects;

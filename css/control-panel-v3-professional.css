@@ -11,9 +11,6 @@
 /* Import V1 base styles for matrix header and core components */
 @import url('control-panel.css');
 
-/* Import trigger effects module */
-@import url('trigger-effects.css');
-
 /* ============================================================================
    OVERRIDES & ENHANCEMENTS
    ============================================================================ */

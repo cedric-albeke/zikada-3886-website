@@ -182,21 +182,19 @@ class ChaosInitializer {
     applyFilterNow(target, filterValue, duration) {
         // Validate filter to prevent problematic values
         const safeFilter = this.validateFilter(filterValue);
-        
-        if (target === document.body) {
+
+        // DISABLED: GSAP filter transitions cause bright flashes during scene switches
+        // Apply filter immediately instead of animating
+        if (target === document.body || target === document.documentElement) {
             this.filterTransitionInProgress = true;
             this.currentBodyFilter = safeFilter;
-            console.log(`🎨 Applying safe filter: ${safeFilter}`);
-            // Route through centralized filter manager for body
-            filterManager.applyImmediate(safeFilter, duration);
+            // Apply instantly - no GSAP animation
+            document.body.style.filter = safeFilter;
+            document.documentElement.style.filter = safeFilter;
             this.filterTransitionInProgress = false;
-        } else {
-            // Non-body targets still animate locally
-            gsap.to(target, {
-                filter: safeFilter,
-                duration: duration,
-                ease: 'power2.inOut'
-            });
+        } else if (target && target.style) {
+            // Non-body targets also apply instantly
+            target.style.filter = safeFilter;
         }
     }
 
