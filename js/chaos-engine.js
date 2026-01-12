@@ -183,8 +183,6 @@ class ChaosEngine {
             this.originalPositions[i] = x;
             this.originalPositions[i + 1] = y;
             this.originalPositions[i + 2] = z;
-            positions[i + 1] = (Math.random() - 0.5) * 100;
-            positions[i + 2] = (Math.random() - 0.5) * 100;
 
             // Techno colors - cyan, magenta, yellow
             const colorChoice = Math.random();

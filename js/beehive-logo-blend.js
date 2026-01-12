@@ -9,6 +9,7 @@ class BeehiveLogoBlend {
         this.videoElement = null;
         this.maskElement = null;
         this.isActive = false;
+        this.isTransitioning = false;
         this.isInitialized = false;
 
         // Effect settings - OPTIMIZED FOR PERFORMANCE
@@ -156,9 +157,10 @@ class BeehiveLogoBlend {
     }
 
     show() {
-        if (this.isActive || !this.logo) return;
+        if (this.isActive || this.isTransitioning || !this.logo) return;
 
         this.isActive = true;
+        this.isTransitioning = true;
 
         // Update position
         this.updateLogoPosition();
@@ -231,6 +233,12 @@ class BeehiveLogoBlend {
     hide() {
         if (!this.isActive) return;
 
+        // CRITICAL: Set isActive false IMMEDIATELY to prevent stuck state
+        this.isActive = false;
+
+        // Kill any existing animations on these elements first
+        gsap.killTweensOf(this.container);
+        gsap.killTweensOf(this.logo);
 
         const tl = gsap.timeline();
 
@@ -245,13 +253,29 @@ class BeehiveLogoBlend {
             duration: this.settings.fadeOutTime,
             ease: 'power2.inOut',
             onComplete: () => {
-                this.container.style.display = 'none';
-                this.container.style.visibility = 'hidden';
-                this.container.style.zIndex = '-1';  // Send to back when inactive
-                this.videoElement.pause();
-                this.isActive = false;
+                this.forceHideContainer();
             }
         }, '<');
+
+        // FAILSAFE: Force hide after fadeOutTime + buffer, even if animation interrupted
+        setTimeout(() => {
+            this.forceHideContainer();
+        }, (this.settings.fadeOutTime * 1000) + 200);
+    }
+
+    // Separate method to force hide - can be called from multiple places
+    forceHideContainer() {
+        if (this.container) {
+            this.container.style.display = 'none';
+            this.container.style.visibility = 'hidden';
+            this.container.style.zIndex = '-1';
+            this.container.style.opacity = '0';
+        }
+        if (this.videoElement) {
+            this.videoElement.pause();
+        }
+        // Clear transition state
+        this.isTransitioning = false;
     }
 
     reactToPhase(phase) {
