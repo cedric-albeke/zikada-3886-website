@@ -60,6 +60,9 @@ export class PerformanceProfileManager {
     this._unsub = null;
     this._fpsSampleTimer = null;
     this._basePixelRatio = null;
+    this._baseParticleCount = Number.isFinite(opts.baseParticleCount)
+      ? opts.baseParticleCount
+      : ((this.engine && typeof this.engine.particleCount === 'number') ? this.engine.particleCount : 800);
     this._lastApplied = null;
   }
 
@@ -192,8 +195,7 @@ export class PerformanceProfileManager {
 
       // Particles: scale relative to engine.particleCount if available
       try {
-        const baseCount = (this.engine && typeof this.engine.particleCount === 'number') ? this.engine.particleCount : 800;
-        const count = Math.max(200, Math.round(baseCount * cfg.particleScale));
+        const count = Math.max(200, Math.round(this._baseParticleCount * cfg.particleScale));
         window.dispatchEvent(new CustomEvent('adjustParticles', { detail: { count } }));
       } catch (_) {}
 

@@ -5,14 +5,27 @@ import gsap from 'gsap';
 
 class PerformanceOptimizer {
     constructor() {
-        this.maxActiveAnimations = 30; // Reduced from 50 for better performance
-        this.maxTotalAnimations = 75; // Reduced from 100
+        this.maxActiveAnimations = 60;
+        this.maxTotalAnimations = 125;
         this.maxDOMNodes = 500;
         this.minFPS = 45; // Increased from 30 for smoother experience
         this.cleanupInterval = null;
         this.optimizationLevel = 0; // 0: none, 1: light, 2: medium, 3: heavy
         this.fpsHistory = [];
         this.fpsHistorySize = 10;
+        this.startedAt = performance.now();
+        this.startupGraceMs = 15000;
+        this.autoMaxOptimizationLevel = 2;
+        this.optimizationRecoveryHoldMs = 12000;
+        this.pendingOptimizationLevel = null;
+        this.pendingOptimizationSince = 0;
+        this.lastOptimizationChangeAt = 0;
+        this.nonEssentialSelectors = [
+            '.holographic-shimmer',
+            '.chromatic-pulse',
+            '.energy-field',
+            '.quantum-particles'
+        ];
 
         console.log('🚀 Performance Optimizer initialized');
     }
@@ -50,32 +63,70 @@ class PerformanceOptimizer {
         // Determine optimization level needed
         let newOptLevel = 0;
 
-        // More aggressive thresholds
-        if (metrics.totalAnimations > 150 || metrics.activeAnimations > 75) {
-            newOptLevel = 3; // Heavy optimization needed
-        } else if (metrics.totalAnimations > 100 || metrics.activeAnimations > 50) {
-            newOptLevel = 2; // Medium optimization
-        } else if (metrics.totalAnimations > 75 || metrics.activeAnimations > 30) {
-            newOptLevel = 1; // Light optimization
+        // Automatic optimization must remain recoverable; level 3 is manual/emergency only.
+        if (metrics.totalAnimations > 190 || metrics.activeAnimations > 105) {
+            newOptLevel = 2;
+        } else if (metrics.totalAnimations > 150 || metrics.activeAnimations > 85) {
+            newOptLevel = 1;
+        } else if (metrics.totalAnimations > this.maxTotalAnimations || metrics.activeAnimations > this.maxActiveAnimations) {
+            newOptLevel = 1;
         }
 
-        // FPS-based optimization with average
-        if (avgFPS < 30) {
-            newOptLevel = 3; // Critical - heavy optimization
-        } else if (avgFPS < 45) {
-            newOptLevel = Math.max(newOptLevel, 2); // At least medium
-        } else if (avgFPS < 55) {
-            newOptLevel = Math.max(newOptLevel, 1); // At least light
+        // FPS-based optimization only after startup warmup and enough samples.
+        const fpsReady = (performance.now() - this.startedAt) >= this.startupGraceMs &&
+            this.fpsHistory.length >= Math.min(5, this.fpsHistorySize);
+        if (fpsReady) {
+            if (avgFPS < 28) {
+                newOptLevel = Math.max(newOptLevel, 2);
+            } else if (avgFPS < 38) {
+                newOptLevel = Math.max(newOptLevel, 1);
+            }
         }
+        newOptLevel = Math.min(newOptLevel, this.autoMaxOptimizationLevel);
 
-        if (newOptLevel !== this.optimizationLevel) {
-            this.applyOptimization(newOptLevel);
+        const stableOptLevel = this.getStableOptimizationLevel(newOptLevel);
+        if (stableOptLevel !== this.optimizationLevel) {
+            this.applyOptimization(stableOptLevel);
         }
 
         // Always clean up excess animations
         if (metrics.totalAnimations > this.maxTotalAnimations) {
             this.cleanupAnimations();
         }
+    }
+
+    getStableOptimizationLevel(targetLevel) {
+        if (targetLevel === this.optimizationLevel) {
+            this.pendingOptimizationLevel = null;
+            this.pendingOptimizationSince = 0;
+            return this.optimizationLevel;
+        }
+
+        // Escalation protects frame rate and can happen immediately.
+        if (targetLevel > this.optimizationLevel) {
+            this.pendingOptimizationLevel = null;
+            this.pendingOptimizationSince = 0;
+            return targetLevel;
+        }
+
+        // Recovery is intentionally slower so level 1/2 does not flap every sample.
+        const now = performance.now();
+        if (this.pendingOptimizationLevel !== targetLevel) {
+            this.pendingOptimizationLevel = targetLevel;
+            this.pendingOptimizationSince = now;
+            return this.optimizationLevel;
+        }
+
+        const stableLongEnough = now - this.pendingOptimizationSince >= this.optimizationRecoveryHoldMs;
+        const changeCooldownElapsed = now - this.lastOptimizationChangeAt >= this.optimizationRecoveryHoldMs;
+
+        if (stableLongEnough && changeCooldownElapsed) {
+            this.pendingOptimizationLevel = null;
+            this.pendingOptimizationSince = 0;
+            return targetLevel;
+        }
+
+        return this.optimizationLevel;
     }
 
     getMetrics() {
@@ -166,6 +217,9 @@ class PerformanceOptimizer {
 
     applyOptimization(level) {
         console.log(`⚙️ Applying optimization level ${level}`);
+        this.pendingOptimizationLevel = null;
+        this.pendingOptimizationSince = 0;
+        this.lastOptimizationChangeAt = performance.now();
         this.optimizationLevel = level;
 
         switch(level) {
@@ -188,15 +242,15 @@ class PerformanceOptimizer {
         // Reduce particle effects
         if (window.chaosEngine?.particles) {
             gsap.set(window.chaosEngine.particles.material, {
-                opacity: 0.5,
-                size: 0.3
+                opacity: 0.65,
+                size: 0.42
             });
         }
 
         // Slow down some animations
         gsap.globalTimeline.getChildren().forEach(tween => {
             if (tween._repeat === -1 && tween.duration() < 2) {
-                tween.timeScale(0.8);
+                tween.timeScale(0.9);
             }
         });
 
@@ -207,81 +261,35 @@ class PerformanceOptimizer {
     applyMediumOptimization() {
         this.applyLightOptimization();
 
-        // Pause non-essential animations
-        const nonEssentialSelectors = [
-            '.holographic-shimmer',
-            '.chromatic-pulse',
-            '.energy-field',
-            '.quantum-particles'
-        ];
-
-        nonEssentialSelectors.forEach(selector => {
-            const elements = document.querySelectorAll(selector);
-            elements.forEach(el => {
-                gsap.killTweensOf(el);
-                gsap.set(el, { opacity: 0 });
-            });
-        });
+        this.softenNonEssentialEffects();
 
         // Reduce animation complexity
         gsap.globalTimeline.getChildren().forEach(tween => {
             if (tween._repeat === -1) {
-                tween.timeScale(0.5);
+                tween.timeScale(0.78);
             }
         });
 
         // Preserve static noise — do not hide
     }
 
+    softenNonEssentialEffects() {
+        this.nonEssentialSelectors.forEach(selector => {
+            document.querySelectorAll(selector).forEach(el => {
+                gsap.to(el, {
+                    opacity: 0.55,
+                    duration: 0.6,
+                    overwrite: 'auto'
+                });
+            });
+        });
+    }
+
     applyHeavyOptimization() {
         this.applyMediumOptimization();
 
-        console.log('🚨 Heavy optimization - killing most animations');
-
-        // Kill all but essential animations
-        const essentialElements = [
-            '.logo-text',
-            '.image-wrapper',
-            '.text-3886',
-            '.bg',
-            '.scanlines',
-            '#static-noise',
-            '#viz-blackout'
-        ];
-
-        gsap.globalTimeline.getChildren().forEach(tween => {
-            // Safe target extraction
-            let targets = [];
-            if (typeof tween.targets === 'function') {
-                targets = tween.targets();
-            } else if (tween.target) {
-                targets = [tween.target];
-            } else if (tween._targets) {
-                targets = tween._targets;
-            }
-
-            let isEssential = false;
-
-            if (targets && targets.length > 0) {
-                targets.forEach(target => {
-                    essentialElements.forEach(selector => {
-                        const element = document.querySelector(selector);
-                        if (element && target === element) {
-                            isEssential = true;
-                        }
-                    });
-                });
-            }
-
-            if (!isEssential && !tween.data?.includes('essential')) {
-                tween.kill();
-            }
-        });
-
-        // Stop phase animations
-        if (window.chaosInit) {
-            window.chaosInit.phaseRunning = false;
-        }
+        console.log('🚨 Heavy optimization - conserving transient effects');
+        this.cleanupAnimations();
 
         // Hide all particle effects
         const particleContainers = document.querySelectorAll(
@@ -305,6 +313,16 @@ class PerformanceOptimizer {
         // Restore animation speeds
         gsap.globalTimeline.getChildren().forEach(tween => {
             tween.timeScale(1);
+        });
+
+        this.nonEssentialSelectors.forEach(selector => {
+            document.querySelectorAll(selector).forEach(el => {
+                gsap.to(el, {
+                    opacity: 1,
+                    duration: 0.8,
+                    overwrite: 'auto'
+                });
+            });
         });
 
         // Restore static noise
@@ -358,7 +376,7 @@ class PerformanceOptimizer {
     setupEventListeners() {
         // Listen for performance warnings
         window.addEventListener('lowPerformance', () => {
-            this.applyOptimization(Math.min(this.optimizationLevel + 1, 3));
+            this.applyOptimization(Math.min(this.optimizationLevel + 1, 2));
         });
 
         // Listen for manual optimization requests
@@ -384,7 +402,7 @@ class PerformanceOptimizer {
 
         // Stop all chaos engine systems
         if (window.chaosInit) {
-            window.chaosInit.phaseRunning = false;
+            window.chaosInit.stopAnimationPhases?.();
         }
 
         // Hide all effects

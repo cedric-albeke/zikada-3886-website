@@ -61,14 +61,14 @@
   <script type="module" src="/js/utils/logger.js"></script>
   <!-- Performance Inspector - Debug tool -->
   <script type="module" src="/js/performance-bus.js"></script>
-  <script type="module" src="/js/performance-inspector.js"></script>
+  <script type="module" src="/js/runtime/animation-runtime.js"></script>
+  <script type="module" src="/js/runtime-debug-loader.js"></script>
   <!-- Safe Performance Monitoring - Non-intrusive -->
   <script type="module" src="/js/safe-performance-monitor.js"></script>
   <!-- Perf Sampler for metrics exposure -->
   <script type="module" src="/js/perf-sampler.js"></script>
   <!-- Timer Instrumentation - Dev-only (load early to catch all timers) -->
   <!-- Enable with ?debug=timers or ?timers=1 -->
-  <script type="module" src="/js/dev/timer-instrumentation.js"></script>
   <!-- Optional Dev Helpers: overlay and effects cycle -->
   <script type="module">
     try {
@@ -103,8 +103,6 @@
   <script type="module" src="/js/chaos-init.js"></script>
   <!-- Diagnostics (read-only) -->
   <script type="module" src="/js/diagnostics.js"></script>
-  <!-- Test Fixes - Verification script for debugging -->
-  <script type="module" src="/js/test-fixes.js"></script>
 </head>
 <body class="body">
   <div id="poster-backdrop" aria-hidden="true"></div>

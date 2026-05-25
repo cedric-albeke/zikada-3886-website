@@ -23,6 +23,8 @@ class LottieAnimations {
         this.displayTimers = {};
         this.fadeOutTimers = {};
         this.visibleStates = {};
+        this.startupTimers = [];
+        this.playerReadyStates = {};
 
         // Animation configurations - centered and full-width circular animations
         this.config = {
@@ -260,6 +262,12 @@ class LottieAnimations {
                 container.setAttribute('loop', '');
             }
             // Don't autoplay - we'll control this with chaos engine
+            this.playerReadyStates[name] = false;
+            ['ready', 'load', 'loaded', 'complete'].forEach(eventName => {
+                container.addEventListener(eventName, () => {
+                    this.playerReadyStates[name] = true;
+                });
+            });
             
             // Add error handler to suppress console spam for missing files
             container.addEventListener('error', (e) => {
@@ -559,9 +567,7 @@ class LottieAnimations {
         this.fadeOutTimers[name] = setTimeout(() => {
             try { 
                 // Only stop if player is ready and not loading
-                if (player && player.stop && player.currentState !== 'loading') {
-                    player.stop();
-                }
+                this.safeStopPlayer(name, player);
             } catch (e) { 
                 // Silently handle stop errors during loading
             }
@@ -570,119 +576,57 @@ class LottieAnimations {
         }, durationMs + 50);
     }
 
+    safeStopPlayer(name, player = this.animations[name]) {
+        if (!player) return;
+        if (String(player.tagName || '').toLowerCase() === 'dotlottie-player') {
+            return;
+        }
+
+        const state = String(player.currentState || player.state || '').toLowerCase();
+        const ready = this.playerReadyStates[name] === true ||
+            (state && state !== 'loading' && state !== 'idle');
+
+        try {
+            if (ready && typeof player.stop === 'function') {
+                player.stop();
+            } else if (typeof player.pause === 'function') {
+                player.pause();
+            }
+        } catch (_) {
+            // dotLottie can reject stop/pause while loading; hidden wrappers are enough until ready.
+        }
+    }
+
+    scheduleLottieCycle(name, initialDelayMs, intervalMs = this.config[name]?.displayInterval) {
+        if (!this.config[name] || !this.animations[name]) return;
+
+        const timerId = setTimeout(() => {
+            this.showAnimation(name);
+            const handle = intervalManager.createInterval(() => {
+                this.showAnimation(name);
+            }, intervalMs, `lottie-${name}`, {
+                category: 'animation',
+                maxAge: Infinity
+            });
+            this.activeIntervals.push(handle);
+        }, initialDelayMs);
+
+        this.startupTimers.push(timerId);
+    }
+
     startAnimationCycles() {
         console.log('🎬 Starting Lottie animation cycles');
 
-        // Limit to 2-3 animations maximum at once
-        // Stagger them more to reduce overlap
-
-        // Planet Logo - main animation
-        setTimeout(() => {
-            this.showAnimation('planetLogo');
-            const handle = intervalManager.createInterval(() => {
-                this.showAnimation('planetLogo');
-            }, this.config.planetLogo.displayInterval, 'lottie-planetLogo', {
-                category: 'animation',
-                maxAge: Infinity // Keep running until explicitly cleared
-            });
-            this.activeIntervals.push(handle);
-        }, 15000); // Start after 15 seconds
-
-        // Planet Ring - secondary animation
-        setTimeout(() => {
-            this.showAnimation('planetRing');
-            const handle = intervalManager.createInterval(() => {
-                this.showAnimation('planetRing');
-            }, this.config.planetRing.displayInterval, 'lottie-planetRing', {
-                category: 'animation',
-                maxAge: Infinity
-            });
-            this.activeIntervals.push(handle);
-        }, 45000); // Start after 45 seconds (increased gap)
-
-        // Abstraction - with very low opacity
-        setTimeout(() => {
-            this.showAnimation('abstraction');
-            const handle = intervalManager.createInterval(() => {
-                this.showAnimation('abstraction');
-            }, this.config.abstraction.displayInterval, 'lottie-abstraction', {
-                category: 'animation',
-                maxAge: Infinity
-            });
-            this.activeIntervals.push(handle);
-        }, 75000); // Start after 75 seconds
-
-        // REMOVED - hexagon animation disabled
-        /*
-        setTimeout(() => {
-            this.showAnimation('hexagon');
-            setInterval(() => {
-                this.showAnimation('hexagon');
-            }, this.config.hexagon.displayInterval * 1.5);
-        }, 105000);
-        */
-
-        // Morphing Particle - reduced frequency
-        setTimeout(() => {
-            this.showAnimation('morphingParticle');
-            const handle = intervalManager.createInterval(() => {
-                this.showAnimation('morphingParticle');
-            }, this.config.morphingParticle.displayInterval * 1.5, 'lottie-morphingParticle', {
-                category: 'animation',
-                maxAge: Infinity
-            });
-            this.activeIntervals.push(handle);
-        }, 135000); // Start after 135 seconds
-
-        // Sacred Geometry is triggered by scroll
-
-        // Transparent Diamond - reduced frequency
-        setTimeout(() => {
-            this.showAnimation('transparentDiamond');
-            const handle = intervalManager.createInterval(() => {
-                this.showAnimation('transparentDiamond');
-            }, this.config.transparentDiamond.displayInterval * 2, 'lottie-transparentDiamond', {
-                category: 'animation',
-                maxAge: Infinity
-            });
-            this.activeIntervals.push(handle);
-        }, 165000); // Start after 165 seconds
-
-        // Circuit Round animation
-        setTimeout(() => {
-            this.showAnimation('circuitRound');
-            const handle = intervalManager.createInterval(() => {
-                this.showAnimation('circuitRound');
-            }, this.config.circuitRound.displayInterval, 'lottie-circuitRound', {
-                category: 'animation',
-                maxAge: Infinity
-            });
-            this.activeIntervals.push(handle);
-        }, 30000); // Start after 30 seconds
-
-        // Geometrical Lines animation
-        setTimeout(() => {
-            this.showAnimation('geometricalLines');
-            const handle = intervalManager.createInterval(() => {
-                this.showAnimation('geometricalLines');
-            }, this.config.geometricalLines.displayInterval, 'lottie-geometricalLines', {
-                category: 'animation',
-                maxAge: Infinity
-            });
-            this.activeIntervals.push(handle);
-        }, 90000); // Start after 90 seconds
-
-        // Circular Dots animation
-        setTimeout(() => {
-            this.showAnimation('circularDots');
-            const handle = intervalManager.createInterval(() => {
-                this.showAnimation('circularDots');
-            }, this.config.circularDots.displayInterval, 'lottie-circularDots', {
-                category: 'animation',
-                maxAge: Infinity
-            });
-            this.activeIntervals.push(handle);
-        }, 120000); // Start after 120 seconds
+        // Keep the first minute visually rich, then let longer intervals breathe.
+        this.scheduleLottieCycle('planetLogo', 12000);
+        this.scheduleLottieCycle('circuitRound', 24000);
+        this.scheduleLottieCycle('planetRing', 36000);
+        this.scheduleLottieCycle('abstraction', 48000);
+        this.scheduleLottieCycle('transparentDiamond', 56000, this.config.transparentDiamond.displayInterval * 1.4);
+        this.scheduleLottieCycle('morphingParticle', 64000, this.config.morphingParticle.displayInterval * 1.3);
+        this.scheduleLottieCycle('geometricalLines', 72000);
+        this.scheduleLottieCycle('circularDots', 82000);
+        this.scheduleLottieCycle('sacredGeometry', 92000);
     }
 
     showAnimation(name) {
@@ -1004,6 +948,11 @@ class LottieAnimations {
         console.log('🧿 LottieAnimations cleanup initiated');
         
         // Clear all managed intervals
+        if (this.startupTimers && this.startupTimers.length > 0) {
+            this.startupTimers.forEach(timerId => clearTimeout(timerId));
+            this.startupTimers = [];
+        }
+
         if (this.activeIntervals && this.activeIntervals.length > 0) {
             this.activeIntervals.forEach(handle => {
                 if (handle && typeof handle.clear === 'function') {
@@ -1018,7 +967,8 @@ class LottieAnimations {
         Object.values(this.animations).forEach(player => {
             if (player) {
                 try {
-                    if (player.stop) player.stop();
+                    const name = Object.keys(this.animations).find(key => this.animations[key] === player);
+                    this.safeStopPlayer(name, player);
                     if (player.destroy) player.destroy();
                 } catch (e) {
                     // Ignore errors during cleanup

@@ -25,7 +25,6 @@ import filterManager from './filter-manager.js';
 import centerpieceLogo from './centerpiece-logo.js';
 import beehiveLogoBlend from './beehive-logo-blend.js';
 import performanceManager from './performance-manager.js';
-import debugConsole from './debug-console.js';
 import sonarEffect from './sonar-effect.js';
 import lottieAnimations from './lottie-animations.js';
 import introAnimations from './intro-animations.js';
@@ -54,13 +53,10 @@ const featureFlags = window.SAFE_FEATURE_FLAGS || {
 import enhancedWatchdog from './enhanced-watchdog.js';
 // import memoryLeakGuardian from './memory-leak-guardian.js'; // DISABLED - causing aggressive cleanup
 import performanceLadder from './performance-degradation-ladder.js';
-import performanceLadderTest from './performance-ladder-test.js';
 import smartPreloader from './smart-preloader.js';
-import smartPreloaderTest from './smart-preloader-test.js';
 import predictivePerformanceAlerting from './predictive-performance-alerting.js';
 import PredictiveTrendAnalysis from './predictive-trend-analysis.js';
 import predictiveLadderIntegration from './predictive-ladder-integration.js';
-import predictiveAlertingTestSuite from './predictive-alerting-tests.js';
 import { threeJSParticleOptimizer } from './threejs-particle-optimizer.js';
 import { webglResourceManager } from './webgl-resource-manager.js';
 import { registerMonitor } from './monitor/dashboard.js';
@@ -79,6 +75,28 @@ const performanceElementManager = window.performanceElementManager || null;
 const intervalManager = window.intervalManager || null;
 const gsapAnimationRegistry = window.gsapAnimationRegistry || null;
 const performanceMonitor = window.performanceMonitor || null;
+const runtimeDebugEnabled = () => {
+    try {
+        const params = new URLSearchParams(window.location.search);
+        return params.get('debug') === '1' ||
+            params.get('debug') === 'true' ||
+            params.get('debugtools') === '1' ||
+            window.localStorage?.getItem('ZIKADA_DEBUG') === '1';
+    } catch (_) {
+        return false;
+    }
+};
+
+const runtimeTestsEnabled = () => {
+    try {
+        const params = new URLSearchParams(window.location.search);
+        return params.get('tests') === '1' ||
+            params.get('runtimetests') === '1' ||
+            window.localStorage?.getItem('ZIKADA_TESTS') === '1';
+    } catch (_) {
+        return false;
+    }
+};
 
 // Safe text effects manager
 const safeTextEffects = window.safeTextEffects || textEffects;
@@ -144,6 +162,24 @@ class ChaosInitializer {
         this.animeEnableListener = null;
         // AUTO phase cadence (default 50s)
         this.phaseDurationMs = 50000;
+        this.lowMotionPhaseMaxDurationMs = 22000;
+        this.lowMotionPhases = new Set([
+            'calm',
+            'glitch',
+            'minimal',
+            'chaotic',
+            'retro',
+            'vaporwave',
+            'cyberpunk',
+            'neon',
+            'aurora',
+            'sunset',
+            'ocean',
+            'forest',
+            'fire',
+            'ice',
+            'galaxy'
+        ]);
         this.phaseTimer = null;
         this.currentPhase = null;
         
@@ -959,6 +995,7 @@ class ChaosInitializer {
 
         // Initialize subsystems
         this.initPerformanceMonitor();
+        window.__3886_PROFILE_MANAGER_ENABLED = true;
         this.initPerformanceManager(); // Initialize performance monitoring first
         
         // Memory Leak Guardian DISABLED - was causing aggressive cleanups
@@ -1006,7 +1043,13 @@ class ChaosInitializer {
                 // Expose for debugging if enabled
                 if (this.debugMetrics) {
                     window.smartPreloader = smartPreloader;
-                    window.smartPreloaderTest = smartPreloaderTest;
+                    if (runtimeTestsEnabled()) {
+                        import('./smart-preloader-test.js')
+                            .then(module => {
+                                window.smartPreloaderTest = module.default;
+                            })
+                            .catch(error => console.warn('Smart preloader tests unavailable:', error));
+                    }
                     console.log('🧪 Debug mode: Preloader testing available via window.testSmartPreloader()');
                 }
             } else {
@@ -1088,7 +1131,13 @@ class ChaosInitializer {
                 // Expose for debugging if enabled
                 if (this.debugMetrics) {
                     window.performanceLadder = performanceLadder;
-                    window.performanceLadderTest = performanceLadderTest;
+                    if (runtimeTestsEnabled()) {
+                        import('./performance-ladder-test.js')
+                            .then(module => {
+                                window.performanceLadderTest = module.default;
+                            })
+                            .catch(error => console.warn('Performance ladder tests unavailable:', error));
+                    }
                     console.log('🧪 Debug mode: Performance testing available via window.testPerformanceLadder()');
                 }
             } else {
@@ -1276,19 +1325,22 @@ class ChaosInitializer {
                 window.predictivePerformanceAlerting = predictivePerformanceAlerting;
                 window.predictiveTrendAnalysis = this.predictiveTrendAnalysis;
                 window.predictiveLadderIntegration = predictiveLadderIntegration;
-                window.predictiveAlertingTestSuite = predictiveAlertingTestSuite;
-                console.log('🧪 Debug mode: Predictive alerting available for testing');
-                
-                // Add test runner to global scope
-                window.runPredictiveTests = async (category = 'all') => {
-                    if (category === 'all') {
-                        return await predictiveAlertingTestSuite.runAllTests();
-                    } else {
-                        return await predictiveAlertingTestSuite.runTestCategory(category);
-                    }
-                };
-                
-                console.log('🧪 Debug: Run tests with window.runPredictiveTests()');
+                if (runtimeTestsEnabled()) {
+                    import('./predictive-alerting-tests.js')
+                        .then(module => {
+                            const predictiveAlertingTestSuite = module.default;
+                            window.predictiveAlertingTestSuite = predictiveAlertingTestSuite;
+                            window.runPredictiveTests = async (category = 'all') => {
+                                if (category === 'all') {
+                                    return await predictiveAlertingTestSuite.runAllTests();
+                                }
+                                return await predictiveAlertingTestSuite.runTestCategory(category);
+                            };
+                            console.log('🧪 Debug: Run tests with window.runPredictiveTests()');
+                        })
+                        .catch(error => console.warn('Predictive alerting tests unavailable:', error));
+                }
+                console.log('🧪 Debug mode: Predictive alerting available for inspection');
             }
             
         } catch (error) {
@@ -2228,6 +2280,14 @@ class ChaosInitializer {
         });
     }
 
+    getPhaseDuration(phaseName) {
+        const configuredDuration = Math.max(5000, Number(this.phaseDurationMs) || 30000);
+        if (this.lowMotionPhases?.has(phaseName)) {
+            return Math.min(configuredDuration, this.lowMotionPhaseMaxDurationMs);
+        }
+        return configuredDuration;
+    }
+
     startAnimationPhases() {
         // Prevent duplicate phase runners
         if (this.phaseRunning && this.phaseTimer) {
@@ -2286,7 +2346,7 @@ class ChaosInitializer {
 
             // schedule next based on configured phaseDurationMs
             this.clearPhaseTimer();
-            this.phaseTimer = setTimeout(runRandomPhase, Math.max(5000, Number(this.phaseDurationMs) || 30000));
+            this.phaseTimer = setTimeout(runRandomPhase, this.getPhaseDuration(choice.name));
         };
 
         runRandomPhase();

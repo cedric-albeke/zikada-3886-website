@@ -49,6 +49,10 @@ class PerformanceOptimizerV2 {
         this.lastFrameTime = 0;
         this.frameCount = 0;
         this.fpsHistory = [];
+        this.startedAt = performance.now();
+        this.startupGraceMs = 15000;
+        this.lowFpsSampleCount = 0;
+        this.requiredLowFpsSamples = 4;
         
         this.init();
     }
@@ -99,9 +103,16 @@ class PerformanceOptimizerV2 {
                     this.fpsHistory.shift();
                 }
                 
-                // Trigger optimizations if FPS is low
-                if (fps < this.cleanupThresholds.fps) {
+                // Trigger optimizations only after sustained low FPS outside startup warmup.
+                if (fps < this.cleanupThresholds.fps && this.isPastStartupGrace()) {
+                    this.lowFpsSampleCount++;
+                } else {
+                    this.lowFpsSampleCount = 0;
+                }
+
+                if (this.lowFpsSampleCount >= this.requiredLowFpsSamples) {
                     this.triggerLowFPSOptimizations();
+                    this.lowFpsSampleCount = 0;
                 }
                 
                 this.frameCount = 0;
@@ -112,6 +123,10 @@ class PerformanceOptimizerV2 {
         };
         
         this.rafId = requestAnimationFrame(measureFPS);
+    }
+
+    isPastStartupGrace() {
+        return performance.now() - this.startedAt >= this.startupGraceMs;
     }
     
     startMemoryMonitoring() {
@@ -319,7 +334,10 @@ class PerformanceOptimizerV2 {
             
             let cleanedCount = 0;
             children.forEach(child => {
-                if (child.isActive && this.isAnimationStale(child)) {
+                const isActive = typeof child.isActive === 'function' ? child.isActive() : false;
+                const isComplete = typeof child.progress === 'function' ? child.progress() >= 1 : false;
+
+                if (!isActive && (isComplete || this.isAnimationStale(child))) {
                     child.kill();
                     cleanedCount++;
                 }
@@ -354,11 +372,48 @@ class PerformanceOptimizerV2 {
     }
     
     isAnimationStale(animation, maxAge = 300000) { // 5 minutes default
-        const startTime = animation._startTime || animation.startTime || 0;
-        if (!startTime) return false;
-        
-        const age = Date.now() - startTime;
+        const createdAt = this.getAnimationWallClockCreatedAt(animation);
+        if (!createdAt) return false;
+
+        const age = Date.now() - createdAt;
         return age > maxAge;
+    }
+
+    getAnimationWallClockCreatedAt(animation) {
+        const now = Date.now();
+        const oldestReasonableTimestamp = Date.UTC(2020, 0, 1);
+        const newestReasonableTimestamp = now + 60000;
+        const candidates = [
+            animation?.createdAt,
+            animation?._createdAt,
+            animation?.vars?.createdAt,
+            animation?.vars?._createdAt,
+            animation?.vars?.created,
+            animation?.data?.createdAt
+        ];
+
+        try {
+            const targets = typeof animation?.targets === 'function'
+                ? animation.targets()
+                : animation?._targets;
+
+            if (Array.isArray(targets)) {
+                targets.forEach(target => {
+                    const created = target?.dataset?.created || target?.dataset?.createdAt;
+                    if (created) candidates.push(created);
+                });
+            }
+        } catch (_) {
+            // Missing/foreign animation targets are simply not age-cleaned.
+        }
+
+        const timestamps = candidates
+            .map(value => Number(value))
+            .filter(value => Number.isFinite(value))
+            .filter(value => value >= oldestReasonableTimestamp && value <= newestReasonableTimestamp);
+
+        if (timestamps.length === 0) return 0;
+        return Math.min(...timestamps);
     }
     
     setupMemoryOptimizations() {
@@ -444,8 +499,8 @@ class PerformanceOptimizerV2 {
         // Clean up DOM
         this.performElementCleanup();
         
-        // Pause non-essential animations
-        this.pauseNonEssentialAnimations();
+        // Soften non-essential animations without freezing CSS state.
+        this.softenNonEssentialAnimations();
     }
     
     triggerMemoryOptimizations() {
@@ -513,17 +568,17 @@ class PerformanceOptimizerV2 {
         document.documentElement.style.setProperty('--animation-quality', 'low');
     }
     
-    pauseNonEssentialAnimations() {
-        // Pause background animations
+    softenNonEssentialAnimations() {
+        // Reduce visual weight of non-essential layers without leaving them paused.
         const backgroundAnims = document.querySelectorAll('[data-bg-animation]');
         backgroundAnims.forEach(el => {
-            el.style.animationPlayState = 'paused';
+            el.style.opacity = '0.35';
         });
         
-        // Pause particle systems
+        // Reduce particle systems instead of pausing them permanently.
         const particles = document.querySelectorAll('.particle-system');
         particles.forEach(el => {
-            el.style.animationPlayState = 'paused';
+            el.style.opacity = '0.35';
         });
     }
     

@@ -15,7 +15,9 @@ class ProfessionalVJControlPanel {
 
         // Dice roll system for matrix messages
         this.diceRollInterval = null;
-        this.diceCountdown = 15;
+        this.diceIntervalSeconds = 12;
+        this.diceCountdown = this.diceIntervalSeconds;
+        this.matrixMessageRollThreshold = 68;
         this.lastDiceRoll = 0;
         this.matrixMessages = MATRIX_MESSAGES;
 
@@ -1559,7 +1561,7 @@ class ProfessionalVJControlPanel {
         // Manual dice roll button (if exists)
         document.getElementById('rollDiceNow')?.addEventListener('click', () => {
             this.rollDice();
-            this.diceCountdown = 15; // Reset countdown after manual roll
+            this.diceCountdown = this.diceIntervalSeconds;
             this.updateDiceCountdownDisplay();
         });
 
@@ -2111,7 +2113,7 @@ class ProfessionalVJControlPanel {
             this.diceCountdown--;
             if (this.diceCountdown <= 0) {
                 this.rollDice();
-                this.diceCountdown = 15;
+                this.diceCountdown = this.diceIntervalSeconds;
             }
             this.updateDiceCountdownDisplay();
         });
@@ -2147,8 +2149,11 @@ class ProfessionalVJControlPanel {
         // Update the display
         this.updateLastDiceRollDisplay();
 
-        // Check if we should trigger a matrix message (>=90)
-        if (roll >= 90) {
+        window.dispatchEvent(new CustomEvent('matrixDiceRoll', {
+            detail: { roll, threshold: this.matrixMessageRollThreshold, source: 'control-panel' }
+        }));
+
+        if (roll >= this.matrixMessageRollThreshold) {
             // Pick a random matrix message
             const randomMessage = this.matrixMessages[Math.floor(Math.random() * this.matrixMessages.length)];
             // Mark as pending until animation page acknowledges
@@ -2193,9 +2198,9 @@ class ProfessionalVJControlPanel {
         // Update countdown SVG circle animation
         const countdownCircle = document.getElementById('countdownCircle');
         if (countdownCircle) {
-            // Calculate stroke-dashoffset based on countdown (0-15 seconds)
+            // Calculate stroke-dashoffset based on countdown.
             const circumference = 176; // 2 * PI * 28 (radius)
-            const progress = (15 - this.diceCountdown) / 15;
+            const progress = (this.diceIntervalSeconds - this.diceCountdown) / this.diceIntervalSeconds;
             const offset = circumference * (1 - progress);
             countdownCircle.style.strokeDashoffset = offset;
 

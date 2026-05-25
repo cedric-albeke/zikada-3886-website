@@ -162,32 +162,37 @@ class GSAPAnimationRegistry {
         let animation;
         const animationId = ++this.animationCounter;
         const animationName = `${name}-${animationId}`;
+        const originalMethods = gsap._3886_originalMethods || {};
+        const originalTo = originalMethods.to || gsap.to;
+        const originalFrom = originalMethods.from || gsap.from;
+        const originalFromTo = originalMethods.fromTo || gsap.fromTo;
+        const originalTimeline = originalMethods.timeline || gsap.timeline;
 
         // Create animation based on method
         switch (method) {
             case 'to':
-                animation = gsap.to(targets, {
+                animation = originalTo.call(gsap, targets, {
                     ...vars,
                     onComplete: this.wrapCallback(vars.onComplete, animationId),
                     onUpdate: this.wrapCallback(vars.onUpdate, animationId)
                 });
                 break;
             case 'from':
-                animation = gsap.from(targets, {
+                animation = originalFrom.call(gsap, targets, {
                     ...vars,
                     onComplete: this.wrapCallback(vars.onComplete, animationId),
                     onUpdate: this.wrapCallback(vars.onUpdate, animationId)
                 });
                 break;
             case 'fromTo':
-                animation = gsap.fromTo(targets, options.fromVars || {}, {
+                animation = originalFromTo.call(gsap, targets, options.fromVars || {}, {
                     ...vars,
                     onComplete: this.wrapCallback(vars.onComplete, animationId),
                     onUpdate: this.wrapCallback(vars.onUpdate, animationId)
                 });
                 break;
             case 'timeline':
-                animation = gsap.timeline({
+                animation = originalTimeline.call(gsap, {
                     ...vars,
                     onComplete: this.wrapCallback(vars.onComplete, animationId),
                     onUpdate: this.wrapCallback(vars.onUpdate, animationId)
@@ -195,6 +200,10 @@ class GSAPAnimationRegistry {
                 break;
             default:
                 throw new Error(`Unknown GSAP method: ${method}`);
+        }
+
+        if (animation) {
+            animation._gsapRegistryId = animationId;
         }
 
         // Register the animation
@@ -239,6 +248,7 @@ class GSAPAnimationRegistry {
         }
 
         this.animations.set(animationId, animationData);
+        this.attachCompletionCleanup(animationId);
 
         // Use throttled logging to reduce spam
         log.debug(`Registered animation: ${name} (${category}) - Total: ${this.animations.size}`);
@@ -249,6 +259,39 @@ class GSAPAnimationRegistry {
         });
 
         return animationId;
+    }
+
+    attachCompletionCleanup(animationId) {
+        const animationData = this.animations.get(animationId);
+        const animation = animationData?.animation;
+
+        if (!animationData?.autoCleanup || !animation || typeof animation.eventCallback !== 'function') {
+            return;
+        }
+
+        if (animation._gsapRegistryCleanupAttached) {
+            return;
+        }
+
+        const existingComplete = animation.eventCallback('onComplete');
+        animation._gsapRegistryCleanupAttached = true;
+
+        animation.eventCallback('onComplete', (...args) => {
+            const latestData = this.animations.get(animationId);
+            if (latestData) {
+                latestData.lastUsed = Date.now();
+                latestData.progress = latestData.animation?.progress ? latestData.animation.progress() : 1;
+            }
+
+            if (existingComplete) {
+                existingComplete.apply(animation, args);
+            }
+
+            const completedData = this.animations.get(animationId);
+            if (completedData?.autoCleanup) {
+                setTimeout(() => this.killAnimation(animationId), 100);
+            }
+        });
     }
 
     /**
@@ -673,6 +716,7 @@ class GSAPAnimationRegistry {
             this.performPeriodicCleanup();
         }, interval, 'gsap-periodic-cleanup', {
             category: 'system',
+            essential: true,
             maxAge: Infinity // Keep running until explicitly cleared
         });
 

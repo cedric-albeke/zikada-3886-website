@@ -178,6 +178,11 @@ class ChaosEngine {
 
     setupPerformanceAdaptive() {
         try {
+            if (window.__3886_PROFILE_MANAGER_ENABLED === true) {
+                this._currentProfile = window.performanceProfile || 'managed';
+                return;
+            }
+
             this.basePixelRatio = Math.min(window.devicePixelRatio || 1, 2);
             this.currentPixelRatio = this.basePixelRatio;
             this._currentProfile = 'high';

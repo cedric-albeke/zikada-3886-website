@@ -61,6 +61,7 @@ class IntervalManager {
             category: options.category || 'general',
             maxExecutions: options.maxExecutions || null,
             maxAge: options.maxAge || null,
+            essential: options.essential === true,
             isActive: true
         };
 
@@ -162,6 +163,7 @@ class IntervalManager {
      */
     cleanupOldestIntervals(count = 5) {
         const sortedIntervals = Array.from(this.intervals.values())
+            .filter(data => !data.essential)
             .sort((a, b) => a.createdAt - b.createdAt)
             .slice(0, count);
 
@@ -307,7 +309,7 @@ class IntervalManager {
             () => this.performAutoCleanup(),
             cleanupInterval,
             'auto-cleanup',
-            { category: 'system' }
+            { category: 'system', essential: true }
         );
         
         console.log(`🧹 Auto-cleanup started (every ${cleanupInterval}ms)`);

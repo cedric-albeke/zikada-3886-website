@@ -13,6 +13,9 @@ class MatrixMessages {
         this.scrambleInterval = null;
         this.diceCountdown = 15;
         this.lastRoll = null;
+        this.autoDiceThreshold = 68;
+        this.autoDiceMinCountdown = 8;
+        this.autoDiceMaxCountdown = 14;
 
         // Simple element pools to reduce GC churn
         this._divPool = [];
@@ -272,6 +275,9 @@ class MatrixMessages {
             ? forcedMessage.trim()
             : this.messages[Math.floor(Math.random() * this.messages.length)];
         console.log('📢 Showing matrix message:', message);
+        window.dispatchEvent(new CustomEvent('matrixMessageShown', {
+            detail: { message, lastRoll: this.lastRoll }
+        }));
 
         // Ensure blackout element exists and is properly styled
         if (!this.blackoutElement) {
@@ -893,7 +899,7 @@ class MatrixMessages {
     enableAutonomousDiceMode() {
         if (this._autoDice) return;
         this._autoDice = true;
-        this.diceCountdown = 15;
+        this.diceCountdown = 6;
         if (DEBUG_MATRIX) console.log('🎲 Autonomous MATRIX dice mode: ENABLED');
         // Subscribe to a shared 1Hz ticker to avoid extra intervals
         const sub = this._subscribe1Hz(() => {
@@ -901,13 +907,22 @@ class MatrixMessages {
             if (this.diceCountdown <= 0) {
                 const roll = Math.floor(Math.random() * 100) + 1;
                 this.lastRoll = roll;
-                if (roll >= 90) {
+                window.dispatchEvent(new CustomEvent('matrixDiceRoll', {
+                    detail: { roll, threshold: this.autoDiceThreshold }
+                }));
+                if (roll >= this.autoDiceThreshold) {
                     this.showMessage();
                 }
-                this.diceCountdown = 15;
+                this.diceCountdown = this.nextDiceCountdown();
             }
         });
         this._countdownUnsub = sub;
+    }
+
+    nextDiceCountdown() {
+        const min = Math.max(5, Number(this.autoDiceMinCountdown) || 8);
+        const max = Math.max(min, Number(this.autoDiceMaxCountdown) || 14);
+        return Math.floor(Math.random() * (max - min + 1)) + min;
     }
 
     disableAutonomousDiceMode() {

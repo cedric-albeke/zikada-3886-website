@@ -88,12 +88,14 @@ class PerformanceManager {
     evaluatePerformance() {
         const avgFPS = this.fpsHistory.reduce((a, b) => a + b, 0) / this.fpsHistory.length;
 
-        if (avgFPS < this.thresholds.criticalFPS) {
-            this.setPerformanceMode('low');
-        } else if (avgFPS < this.thresholds.lowFPS) {
-            this.setPerformanceMode('medium');
-        } else {
-            this.setPerformanceMode('high');
+        if (!this.profileManagerOwnsQuality()) {
+            if (avgFPS < this.thresholds.criticalFPS) {
+                this.setPerformanceMode('low');
+            } else if (avgFPS < this.thresholds.lowFPS) {
+                this.setPerformanceMode('medium');
+            } else {
+                this.setPerformanceMode('high');
+            }
         }
 
         // Check memory usage if available
@@ -109,6 +111,10 @@ class PerformanceManager {
         if (elementCount > this.thresholds.elementLimit) {
             this.cleanupExcessElements();
         }
+    }
+
+    profileManagerOwnsQuality() {
+        return window.__3886_PROFILE_MANAGER_ENABLED === true || !!window.performanceProfileManager;
     }
 
     setPerformanceMode(mode) {

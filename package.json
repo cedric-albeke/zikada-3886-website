@@ -10,6 +10,7 @@
     "clear-cache": "rimraf node_modules/.vite && rimraf dist && echo Cache cleared",
     "prebuild": "node scripts/copy-static-assets.js || echo 'Skipping prebuild (assets may already be in public/)'",
     "build": "vite build",
+    "test:runtime": "node scripts/runtime-guardrails.mjs",
     "start": "npx http-server dist -p ${PORT:-3886} -a 0.0.0.0",
     "serve": "npx http-server . -p 3886",
     "preview": "vite preview --port 3886",

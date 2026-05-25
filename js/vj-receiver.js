@@ -164,7 +164,7 @@ class VJReceiver {
                 window.matrixMessages.enableAutonomousDiceMode();
                 this._fallbackDiceEnabled = true;
             }
-        }, 25000);
+        }, 12000);
     }
     
     initVJMessaging() {

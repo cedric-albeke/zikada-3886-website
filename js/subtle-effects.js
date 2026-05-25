@@ -6,9 +6,12 @@ class SubtleEffects {
         this.initialized = false;
         this.glitchElements = [];
         this.floatingParticles = [];
+        this.parallaxRaf = null;
     }
 
     init() {
+        if (this.initialized) return;
+
         this.addFloatingSymbols();
         this.addPeriodicFlicker();
         this.addSubtleParallax();
@@ -109,6 +112,16 @@ class SubtleEffects {
 
         if (!logoText || !imageWrapper) return;
 
+        if (this.parallaxRaf) {
+            cancelAnimationFrame(this.parallaxRaf);
+            this.parallaxRaf = null;
+        }
+
+        const setImageX = gsap.quickSetter(imageWrapper, 'x', 'px');
+        const setImageY = gsap.quickSetter(imageWrapper, 'y', 'px');
+        const setBgX = bg ? gsap.quickSetter(bg, 'x', 'px') : null;
+        const setBgY = bg ? gsap.quickSetter(bg, 'y', 'px') : null;
+
         // Autonomous floating movement instead of mouse tracking
         const animateFloat = () => {
             const time = Date.now() * 0.0005;
@@ -119,24 +132,12 @@ class SubtleEffects {
 
             // Removed x/y transform on logoText to prevent alignment issues
 
-            // Only apply subtle movement to imageWrapper
-            gsap.to(imageWrapper, {
-                x: moveX * 5,  // Reduced movement
-                y: moveY * 3,  // Reduced movement
-                duration: 2,
-                ease: 'power2.out'
-            });
+            setImageX(moveX * 5);
+            setImageY(moveY * 3);
+            setBgX?.(moveX * 5);
+            setBgY?.(moveY * 3);
 
-            if (bg) {
-                gsap.to(bg, {
-                    x: moveX * 5,
-                    y: moveY * 3,
-                    duration: 3,
-                    ease: 'power2.out'
-                });
-            }
-
-            requestAnimationFrame(animateFloat);
+            this.parallaxRaf = requestAnimationFrame(animateFloat);
         };
 
         animateFloat();
@@ -538,6 +539,11 @@ class SubtleEffects {
     }
 
     destroy() {
+        if (this.parallaxRaf) {
+            cancelAnimationFrame(this.parallaxRaf);
+            this.parallaxRaf = null;
+        }
+
         this.initialized = false;
     }
 }
