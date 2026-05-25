@@ -45,21 +45,20 @@ WORKDIR /app
 # Install only http-server for serving (smaller image)
 RUN npm install -g http-server
 
-# Create non-root user
-RUN addgroup -g 1000 -S nodejs && \
-    adduser -S zikada -u 1000 -G nodejs
+# Use the non-root user that ships with the official Node image.
+# Alpine-based Node images already reserve uid/gid 1000 for node.
 
 # Copy built application from builder stage (includes assets from public/)
-COPY --from=builder --chown=zikada:nodejs /app/dist ./dist
+COPY --from=builder --chown=node:node /app/dist ./dist
 
 # Copy package.json for version info
-COPY --from=builder --chown=zikada:nodejs /app/package.json ./
+COPY --from=builder --chown=node:node /app/package.json ./
 
 # Create logs directory
-RUN mkdir -p /app/logs && chown -R zikada:nodejs /app/logs
+RUN mkdir -p /app/logs && chown -R node:node /app/logs
 
 # Switch to non-root user
-USER zikada
+USER node
 
 # Expose port
 EXPOSE 3886
