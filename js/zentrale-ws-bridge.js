@@ -2,6 +2,7 @@ import vjReceiver from './vj-receiver.js';
 
 const DEFAULT_ZENTRALE_WS_URL = 'ws://127.0.0.1:8788/api/bus/ws';
 const MAX_QUEUE = 50;
+const HEARTBEAT_MS = 8000;
 
 function normalizeLegacyMessage(frame) {
   if (frame?.legacy?.type) return frame.legacy;
@@ -17,7 +18,10 @@ class ZentraleWsBridge {
     this.queue = [];
     this.reconnectDelay = 1000;
     this.reconnectTimer = null;
+    this.heartbeatTimer = null;
     this.connected = false;
+    this.rendererId = window.localStorage?.getItem('ZENTRALE_RENDERER_ID') || `zikada-${Date.now().toString(36)}`;
+    window.localStorage?.setItem('ZENTRALE_RENDERER_ID', this.rendererId);
     this.patchReceiverResponses();
     this.connect();
   }
@@ -41,20 +45,34 @@ class ZentraleWsBridge {
   handleOpen() {
     this.connected = true;
     this.reconnectDelay = 1000;
-    this.send({
-      type: 'bus.client',
-      client: 'zikada-renderer',
-      url: window.location.href,
-    });
+    this.sendClientFrame('bus.client');
+    this.startHeartbeat();
     this.flushQueue();
     console.log('[ZENTRALE] WebSocket bridge connected');
   }
 
   handleClose() {
     this.connected = false;
+    window.clearInterval(this.heartbeatTimer);
     window.clearTimeout(this.reconnectTimer);
     this.reconnectTimer = window.setTimeout(() => this.connect(), this.reconnectDelay);
     this.reconnectDelay = Math.min(this.reconnectDelay * 1.6, 10000);
+  }
+
+  sendClientFrame(type = 'bus.client') {
+    this.send({
+      type,
+      client: 'zikada-renderer',
+      role: window.localStorage?.getItem('ZENTRALE_RENDERER_ROLE') || 'program',
+      renderer_id: this.rendererId,
+      label: document.title || 'ZIKADA Renderer',
+      url: window.location.href,
+    });
+  }
+
+  startHeartbeat() {
+    window.clearInterval(this.heartbeatTimer);
+    this.heartbeatTimer = window.setInterval(() => this.sendClientFrame('bus.heartbeat'), HEARTBEAT_MS);
   }
 
   handleMessage(event) {
