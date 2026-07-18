@@ -9,8 +9,7 @@ function ts() {
 }
 
 test.describe.serial('baseline', () => {
-  test('baseline: capture FPS/memory/DOM and overlays for ~120s', async ({ browser }) => {
-  const context = await browser.newContext();
+  test('baseline: capture FPS/memory/DOM and overlays for ~120s', async ({ context }) => {
 
   const control = await context.newPage();
   await control.goto('http://localhost:3886/control-panel.html');

@@ -4,6 +4,20 @@
 // NOTE: Import-safe: no DOM access or instantiation at import time. Use initAnimationManager() or
 // rely on the DOMContentLoaded bootstrap below (browser-only) to create the singleton.
 
+import animationRuntime from './runtime/animation-runtime.js';
+
+const MANAGER_RUNTIME_OWNER = 'animation-manager';
+const MUTATED_STYLE_PROPERTIES = [
+    'transform',
+    'transition',
+    'opacity',
+    'filter',
+    'animation',
+    'animation-delay',
+    'transform-style',
+    'perspective'
+];
+
 class AnimationManager {
     constructor() {
         this.activeAnimations = new Map();
@@ -11,6 +25,14 @@ class AnimationManager {
         this.isProcessingQueue = false;
         this.elementStates = new WeakMap();
         this.animationDefaults = new Map();
+        this.maxQueueSize = 12;
+        this.maxActiveAnimations = 4;
+        this.defaultMaxQueueSize = this.maxQueueSize;
+        this.defaultMaxActiveAnimations = this.maxActiveAnimations;
+        this.generation = 0;
+        this.destroyed = false;
+        this.paused = false;
+        this.safeMode = false;
 
         // Animation configurations
         this.animations = {
@@ -161,10 +183,10 @@ class AnimationManager {
         this.lastFrameTime = performance.now();
     }
 
-    async ensureElementsExist(animationId, config) {
+    async ensureElementsExist(animationId, config, instance) {
         // For matrix animations, ensure matrix overlays exist
         if (animationId.includes('matrix')) {
-            await this.ensureMatrixOverlays();
+            await this.ensureMatrixOverlays(instance);
         }
         
         // For logo animations, ensure logo container exists
@@ -178,7 +200,7 @@ class AnimationManager {
         }
     }
 
-    ensureMatrixOverlays() {
+    ensureMatrixOverlays(instance) {
         return new Promise((resolve) => {
             // Check if matrix overlays already exist
             let matrixRain = document.querySelector('.matrix-rain');
@@ -216,17 +238,18 @@ class AnimationManager {
             // Keeping just the green gradient overlay for ambiance
             
             document.body.appendChild(overlay);
+            animationRuntime.trackNode(instance.owner, overlay);
             
             // Mark as temporary for cleanup
             overlay.setAttribute('data-temporary', 'true');
             
             // Fade in
-            setTimeout(() => {
+            animationRuntime.scheduleTimeout(instance.owner, () => {
                 overlay.style.opacity = '1';
             }, 10);
             
             // Small delay to ensure DOM is updated
-            setTimeout(resolve, 100);
+            this.delay(100, instance).then(resolve);
         });
     }
 
@@ -258,6 +281,10 @@ class AnimationManager {
     trigger(animationId, options = {}) {
         console.log(`🎭 Triggering animation: ${animationId}`);
 
+        if (this.destroyed) {
+            return Promise.resolve(false);
+        }
+
         // Check if animation exists
         const config = this.animations[animationId];
         if (!config) {
@@ -265,13 +292,19 @@ class AnimationManager {
             return Promise.resolve(false);
         }
 
+        // A paused manager remains receptive but never starts new work. This
+        // keeps operator intent ordered without leaving orphaned timers.
+        if (this.paused) {
+            return this.queueAnimation(animationId, options);
+        }
+
         // Handle sequence animations
         if (config.type === 'sequence') {
             return this.triggerSequence(config, options);
         }
 
-        // Add to queue if another animation is running on same target
-        if (this.isTargetBusy(config.target)) {
+        // Bound concurrency even when animations target different surfaces.
+        if (this.isTargetBusy(config.target) || this.activeAnimations.size >= this.maxActiveAnimations) {
             return this.queueAnimation(animationId, options);
         }
 
@@ -292,6 +325,18 @@ class AnimationManager {
 
     queueAnimation(animationId, options) {
         return new Promise((resolve) => {
+            const config = this.animations[animationId];
+            const duplicateIndex = this.animationQueue.findIndex(item =>
+                item.animationId === animationId || this.animations[item.animationId]?.target === config?.target
+            );
+            if (duplicateIndex >= 0) {
+                const [replaced] = this.animationQueue.splice(duplicateIndex, 1);
+                replaced.resolve(false);
+            }
+            if (this.animationQueue.length >= this.maxQueueSize) {
+                const dropped = this.animationQueue.shift();
+                dropped?.resolve(false);
+            }
             this.animationQueue.push({ animationId, options, resolve });
             this.processQueue();
         });
@@ -303,32 +348,69 @@ class AnimationManager {
         }
 
         this.isProcessingQueue = true;
+        const generation = this.generation;
 
-        while (this.animationQueue.length > 0) {
+        while (this.animationQueue.length > 0 && generation === this.generation && !this.destroyed && !this.paused) {
             const { animationId, options, resolve } = this.animationQueue.shift();
             const config = this.animations[animationId];
 
-            if (!this.isTargetBusy(config.target)) {
+            if (config && !this.isTargetBusy(config.target) && this.activeAnimations.size < this.maxActiveAnimations) {
                 const result = await this.executeAnimation(animationId, config, options);
                 resolve(result);
             } else {
                 // Put it back and wait
                 this.animationQueue.unshift({ animationId, options, resolve });
-                await this.delay(100);
+                const continued = await this.delay(50);
+                if (!continued) break;
             }
         }
 
         this.isProcessingQueue = false;
     }
 
+    pauseAll() {
+        this.paused = true;
+        try { window.animeManager?.pauseAll?.(); } catch (_) {}
+        return this.getStats();
+    }
+
+    resumeAll() {
+        if (this.destroyed) return this.getStats();
+        this.paused = false;
+        try { window.animeManager?.resumeAll?.(); } catch (_) {}
+        void this.processQueue();
+        return this.getStats();
+    }
+
+    clearQueue() {
+        const cleared = this.animationQueue.length;
+        this.animationQueue.splice(0).forEach(item => item.resolve(false));
+        return cleared;
+    }
+
+    setSafeMode(enabled = true) {
+        this.safeMode = Boolean(enabled);
+        this.maxActiveAnimations = this.safeMode ? 1 : this.defaultMaxActiveAnimations;
+        this.maxQueueSize = this.safeMode ? 4 : this.defaultMaxQueueSize;
+        if (this.safeMode) {
+            while (this.animationQueue.length > this.maxQueueSize) {
+                this.animationQueue.shift()?.resolve(false);
+            }
+        }
+        return this.getStats();
+    }
+
     async executeAnimation(animationId, config, options = {}) {
         const animationInstance = {
             id: `${animationId}-${Date.now()}`,
+            owner: `animation-manager:${animationId}:${Date.now()}:${Math.random().toString(36).slice(2, 7)}`,
             target: config.target,
             startTime: performance.now(),
             completed: false,
+            controller: new AbortController(),
             config: config,
-            elements: []
+            elements: [],
+            elementSnapshots: new Map()
         };
 
         // Store animation instance
@@ -336,7 +418,11 @@ class AnimationManager {
 
         try {
             // Ensure required elements exist before animating
-            await this.ensureElementsExist(animationId, config);
+            await this.ensureElementsExist(animationId, config, animationInstance);
+            if (animationInstance.controller.signal.aborted) {
+                this.cleanupAnimation(animationInstance, true);
+                return false;
+            }
             
             // Get target elements
             let elements = document.querySelectorAll(config.target);
@@ -353,7 +439,7 @@ class AnimationManager {
             animationInstance.elements = Array.from(elements);
 
             // Store current states before animation
-            this.storeCurrentStates(animationInstance.elements);
+            this.storeCurrentStates(animationInstance);
 
             // Execute based on animation type
             switch (config.type) {
@@ -391,20 +477,23 @@ class AnimationManager {
                     await this.animatePerspective(animationInstance);
                     break;
             }
-
-            // Mark as completed
-            animationInstance.completed = true;
+            if (animationInstance.controller.signal.aborted) {
+                this.cleanupAnimation(animationInstance, true);
+                return false;
+            }
 
             // Cleanup if needed
             if (config.cleanup) {
-                await this.delay(config.duration || 1000);
                 this.cleanupAnimation(animationInstance);
             }
             
             // Cleanup temporary matrix overlays
             if (animationId.includes('matrix')) {
-                this.cleanupTemporaryMatrixOverlays();
+                await this.cleanupTemporaryMatrixOverlays(animationInstance);
             }
+
+            // Only release the target after every delayed cleanup completed.
+            animationInstance.completed = true;
 
             // Emit diagnostic event
             try {
@@ -414,21 +503,33 @@ class AnimationManager {
             return true;
         } catch (error) {
             console.error(`Animation ${animationId} failed:`, error);
-            this.cleanupAnimation(animationInstance);
+            this.cleanupAnimation(animationInstance, true);
             try {
                 window.dispatchEvent(new CustomEvent('triggerResult', { detail: { id: animationId, success: false, target: config?.target || '', count: animationInstance.elements?.length || 0, error: String(error?.message || error) } }));
             } catch {}
             return false;
         } finally {
             // Remove from active animations
+            animationRuntime.disposeOwner(animationInstance.owner);
             this.activeAnimations.delete(animationInstance.id);
         }
     }
 
-    storeCurrentStates(elements) {
-        elements.forEach(el => {
-            const currentTransform = el.style.transform || '';
-            el.dataset.preAnimationTransform = currentTransform;
+    storeCurrentStates(instance) {
+        instance.elements.forEach(el => {
+            const properties = {};
+            MUTATED_STYLE_PROPERTIES.forEach(property => {
+                properties[property] = {
+                    value: el.style.getPropertyValue(property),
+                    priority: el.style.getPropertyPriority(property)
+                };
+            });
+            instance.elementSnapshots.set(el, {
+                properties,
+                hadPreAnimationTransform: Object.prototype.hasOwnProperty.call(el.dataset, 'preAnimationTransform'),
+                preAnimationTransform: el.dataset.preAnimationTransform
+            });
+            el.dataset.preAnimationTransform = el.style.transform || '';
         });
     }
 
@@ -448,8 +549,8 @@ class AnimationManager {
             if (window.animeManager && typeof window.animeManager.register === 'function') {
                 window.animeManager.register(animation, { label: instance.id });
             }
-
-            await animation.finished;
+            this.trackAnimeInstance(instance, animation);
+            if (!await this.waitForAnime(instance, animation, (config.duration || 600) * (config.repeat ? 2 : 1) + 250)) return;
         } else {
             // CSS fallback
             elements.forEach(el => {
@@ -458,14 +559,14 @@ class AnimationManager {
                 el.style.transform = `${currentTransform} scale(${config.scale})`;
             });
 
-            await this.delay(config.duration);
+            if (!await this.delay(config.duration, instance)) return;
 
             if (config.yoyo) {
                 elements.forEach(el => {
                     const currentTransform = this.getCleanTransform(el);
                     el.style.transform = currentTransform;
                 });
-                await this.delay(config.duration);
+                if (!await this.delay(config.duration, instance)) return;
             }
         }
 
@@ -487,8 +588,8 @@ class AnimationManager {
             if (window.animeManager && typeof window.animeManager.register === 'function') {
                 window.animeManager.register(animation, { label: instance.id });
             }
-
-            await animation.finished;
+            this.trackAnimeInstance(instance, animation);
+            if (!await this.waitForAnime(instance, animation, (config.duration || 1000) + 250)) return;
         } else {
             elements.forEach(el => {
                 const currentTransform = this.getCleanTransform(el);
@@ -496,11 +597,11 @@ class AnimationManager {
                 el.style.transform = `${currentTransform} rotate(${config.rotation}deg)`;
             });
 
-            await this.delay(config.duration);
+            if (!await this.delay(config.duration, instance)) return;
         }
 
         if (config.resetAfter) {
-            await this.delay(100);
+            if (!await this.delay(100, instance)) return;
             this.resetElements(elements);
         }
     }
@@ -522,7 +623,7 @@ class AnimationManager {
                 const y = (Math.random() - 0.5) * intensity * 2;
                 el.style.transition = `transform ${shakeTime}ms ease-out`;
                 el.style.transform = `${originalTransform} translate(${x}px, ${y}px)`;
-                await this.delay(shakeTime);
+                if (!await this.delay(shakeTime, instance)) return;
             }
 
             // Reset to original position
@@ -539,11 +640,11 @@ class AnimationManager {
             el.style.transition = `transform ${config.duration / 2}ms ease-in-out`;
             el.style.transform = `${originalTransform} scale(${config.scale})`;
 
-            await this.delay(config.duration / 2);
+            if (!await this.delay(config.duration / 2, instance)) return;
 
             el.style.transform = originalTransform;
 
-            await this.delay(config.duration / 2);
+            if (!await this.delay(config.duration / 2, instance)) return;
         }
     }
 
@@ -555,7 +656,7 @@ class AnimationManager {
             el.style.filter = config.filter;
         });
 
-        await this.delay(config.duration);
+        if (!await this.delay(config.duration, instance)) return;
 
         elements.forEach(el => {
             el.style.filter = '';
@@ -572,7 +673,7 @@ class AnimationManager {
                 el.style.transition = `opacity ${stepDuration}ms ease-out`;
                 el.style.opacity = opacity;
             });
-            await this.delay(stepDuration);
+            if (!await this.delay(stepDuration, instance)) return;
         }
 
         // Reset opacity
@@ -592,7 +693,7 @@ class AnimationManager {
             let iterations = 0;
             const maxIterations = 30;
 
-            const interval = setInterval(() => {
+            const interval = animationRuntime.scheduleInterval(instance.owner, () => {
                 el.textContent = originalText.split('').map((char, index) => {
                     if (index < iterations) {
                         return originalText[index];
@@ -602,13 +703,17 @@ class AnimationManager {
 
                 iterations++;
                 if (iterations > maxIterations) {
-                    clearInterval(interval);
+                    interval.clear();
                     el.textContent = originalText;
                 }
             }, duration / maxIterations);
+            animationRuntime.trackDisposer(instance.owner, () => {
+                interval.clear();
+                el.textContent = originalText;
+            });
         }
 
-        await this.delay(duration);
+        await this.delay(duration, instance);
     }
 
     async animateWave(instance) {
@@ -618,7 +723,7 @@ class AnimationManager {
 
         if (window.anime) {
             elements.forEach((el, i) => {
-                window.anime({
+                const animation = window.anime({
                     targets: el,
                     translateY: [
                         { value: amplitude * Math.sin(i * 0.5), duration: duration / 4 },
@@ -628,6 +733,7 @@ class AnimationManager {
                     ],
                     easing: 'easeInOutSine'
                 });
+                this.trackAnimeInstance(instance, animation, [el]);
             });
         } else {
             // CSS wave animation
@@ -640,7 +746,7 @@ class AnimationManager {
             this.ensureWaveKeyframes(amplitude);
         }
 
-        await this.delay(duration);
+        if (!await this.delay(duration, instance)) return;
 
         elements.forEach(el => {
             el.style.animation = '';
@@ -657,7 +763,7 @@ class AnimationManager {
             el.style.animation = `glitch ${config.duration}ms steps(1)`;
         });
 
-        await this.delay(config.duration);
+        if (!await this.delay(config.duration, instance)) return;
 
         elements.forEach(el => {
             el.style.animation = '';
@@ -693,13 +799,13 @@ class AnimationManager {
             el.style.transform = `rotateY(${config.rotateY}deg)`;
         });
 
-        await this.delay(config.duration / 2);
+        if (!await this.delay(config.duration / 2, instance)) return;
 
         elements.forEach(el => {
             el.style.transform = '';
         });
 
-        await this.delay(config.duration / 2);
+        await this.delay(config.duration / 2, instance);
     }
 
     async triggerSequence(config, options) {
@@ -710,32 +816,26 @@ class AnimationManager {
             results.push(result);
 
             if (config.stagger) {
-                await this.delay(config.stagger);
+                if (!await this.delay(config.stagger)) return false;
             }
         }
 
         return results.every(r => r);
     }
 
-    cleanupTemporaryMatrixOverlays() {
+    async cleanupTemporaryMatrixOverlays(instance) {
         // Remove temporary matrix overlays after animation
-        const tempOverlays = document.querySelectorAll('[data-temporary="true"]');
-        tempOverlays.forEach(overlay => {
-            if (overlay.classList.contains('chaos-matrix') || 
+        const tempOverlays = Array.from(document.querySelectorAll('[data-temporary="true"]')).filter(overlay =>
+            overlay.classList.contains('chaos-matrix') ||
                 overlay.classList.contains('matrix-rain') ||
-                overlay.id === 'chaos-matrix-temp') {
-                // Fade out
-                overlay.style.transition = 'opacity 0.5s ease';
-                overlay.style.opacity = '0';
-                
-                // Remove after fade
-                setTimeout(() => {
-                    if (overlay.parentNode) {
-                        overlay.parentNode.removeChild(overlay);
-                    }
-                }, 500);
-            }
+                overlay.id === 'chaos-matrix-temp'
+        );
+        tempOverlays.forEach(overlay => {
+            overlay.style.transition = 'opacity 0.5s ease';
+            overlay.style.opacity = '0';
         });
+        if (tempOverlays.length) await this.delay(500, instance);
+        tempOverlays.forEach(overlay => overlay.remove());
     }
 
     getCleanTransform(element) {
@@ -753,26 +853,47 @@ class AnimationManager {
         return '';
     }
 
-    resetElements(elements) {
+    resetElements(elements, snapshots = null) {
         elements.forEach(el => {
-            const initial = this.elementStates.get(el);
-            if (initial) {
-                el.style.transform = initial.transform === 'none' ? '' : initial.transform;
-                el.style.opacity = initial.opacity;
-                el.style.filter = initial.filter === 'none' ? '' : initial.filter;
+            const snapshot = snapshots?.get(el);
+            if (snapshot) {
+                MUTATED_STYLE_PROPERTIES.forEach(property => {
+                    const saved = snapshot.properties[property];
+                    if (saved?.value) {
+                        el.style.setProperty(property, saved.value, saved.priority || '');
+                    } else {
+                        el.style.removeProperty(property);
+                    }
+                });
+                if (snapshot.hadPreAnimationTransform) {
+                    el.dataset.preAnimationTransform = snapshot.preAnimationTransform || '';
+                } else {
+                    delete el.dataset.preAnimationTransform;
+                }
             } else {
-                el.style.transform = '';
-                el.style.opacity = '';
-                el.style.filter = '';
+                const initial = this.elementStates.get(el);
+                if (initial) {
+                    el.style.transform = initial.transform === 'none' ? '' : initial.transform;
+                    el.style.opacity = initial.opacity;
+                    el.style.filter = initial.filter === 'none' ? '' : initial.filter;
+                } else {
+                    el.style.transform = '';
+                    el.style.opacity = '';
+                    el.style.filter = '';
+                }
+                el.style.transition = '';
+                el.style.animation = '';
+                el.style.animationDelay = '';
+                el.style.transformStyle = '';
+                el.style.perspective = '';
+                delete el.dataset.preAnimationTransform;
             }
-            el.style.transition = '';
-            delete el.dataset.preAnimationTransform;
         });
     }
 
-    cleanupAnimation(instance) {
-        if (instance.config.resetAfter && instance.elements) {
-            this.resetElements(instance.elements);
+    cleanupAnimation(instance, force = false) {
+        if ((force || instance.config.cleanup || instance.config.resetAfter) && instance.elements) {
+            this.resetElements(instance.elements, instance.elementSnapshots);
         }
     }
 
@@ -788,6 +909,7 @@ class AnimationManager {
                 }
             `;
             document.head.appendChild(style);
+            animationRuntime.trackNode(MANAGER_RUNTIME_OWNER, style);
         }
     }
 
@@ -820,22 +942,100 @@ class AnimationManager {
                 }
             `;
             document.head.appendChild(style);
+            animationRuntime.trackNode(MANAGER_RUNTIME_OWNER, style);
         }
     }
 
-    delay(ms) {
-        return new Promise(resolve => setTimeout(resolve, ms));
+    trackAnimeInstance(instance, animation, targets = instance.elements) {
+        if (!animation) return;
+        animationRuntime.trackDisposer(instance.owner, () => {
+            try { animation.pause?.(); } catch (_) {}
+            try { window.anime?.remove?.(targets); } catch (_) {}
+        });
+    }
+
+    async waitForAnime(instance, animation, maxDuration) {
+        const outcome = await Promise.race([
+            Promise.resolve(animation.finished).then(() => 'finished', () => 'failed'),
+            this.delay(maxDuration, instance).then(completed => completed ? 'timeout' : 'cancelled')
+        ]);
+        if (outcome === 'finished') return true;
+        if (outcome === 'timeout') {
+            console.warn(`Animation ${instance.id} exceeded its ${maxDuration}ms deadline`);
+            instance.controller.abort('deadline');
+        }
+        return false;
+    }
+
+    delay(ms, instance = null) {
+        const owner = instance?.owner || MANAGER_RUNTIME_OWNER;
+        const signal = instance?.controller?.signal;
+        return new Promise(resolve => {
+            let settled = false;
+            let timeoutToken = null;
+            let disposerToken = null;
+            const finish = value => {
+                if (settled) return;
+                settled = true;
+                signal?.removeEventListener('abort', onAbort);
+                timeoutToken?.clear();
+                const currentDisposer = disposerToken;
+                disposerToken = null;
+                currentDisposer?.clear();
+                resolve(value);
+            };
+            const onAbort = () => finish(false);
+            timeoutToken = animationRuntime.scheduleTimeout(owner, () => finish(true), Math.max(0, ms));
+            disposerToken = animationRuntime.trackDisposer(owner, () => finish(false));
+            if (signal?.aborted) {
+                finish(false);
+            } else {
+                signal?.addEventListener('abort', onAbort, { once: true });
+            }
+        });
     }
 
     // Clean up all active animations
     cleanup() {
+        this.generation++;
+        animationRuntime.disposeOwner(MANAGER_RUNTIME_OWNER);
         this.activeAnimations.forEach(animation => {
+            animation.controller?.abort('manager-cleanup');
+            animationRuntime.disposeOwner(animation.owner);
             if (animation.elements) {
-                this.resetElements(animation.elements);
+                this.resetElements(animation.elements, animation.elementSnapshots);
             }
         });
         this.activeAnimations.clear();
-        this.animationQueue = [];
+        this.animationQueue.splice(0).forEach(item => item.resolve(false));
+        document.querySelectorAll('[data-temporary="true"]').forEach(node => node.remove());
+    }
+
+    reset() {
+        this.destroyed = false;
+        this.paused = false;
+        this.setSafeMode(false);
+        this.cleanup();
+        this.captureInitialStates();
+    }
+
+    destroy() {
+        this.destroyed = true;
+        this.cleanup();
+    }
+
+    getStats() {
+        return {
+            active: this.activeAnimations.size,
+            queued: this.animationQueue.length,
+            processingQueue: this.isProcessingQueue,
+            paused: this.paused,
+            safeMode: this.safeMode,
+            limits: {
+                maxActive: this.maxActiveAnimations,
+                maxQueued: this.maxQueueSize
+            }
+        };
     }
 }
 

@@ -102,7 +102,7 @@ class MIDIController {
             return true;
             
         } catch (error) {
-            console.error('🎹 MIDI Access denied or failed:', error);
+            console.warn('🎹 MIDI Access unavailable:', error);
             this.onError('PERMISSION_DENIED', error.message);
             return false;
         }
@@ -599,7 +599,10 @@ class MIDIController {
     }
     
     onError(code, message) {
-        console.error('🎹 MIDI Error:', code, message);
+        const log = code === 'PERMISSION_DENIED' || code === 'NOT_SUPPORTED'
+            ? console.warn
+            : console.error;
+        log('🎹 MIDI Error:', code, message);
         this.dispatchEvent('error', { code, message });
     }
     

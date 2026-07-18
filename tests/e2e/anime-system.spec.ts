@@ -5,11 +5,10 @@ async function waitForOnline(control) {
 }
 
 test.describe('Anime System Control', () => {
-  test('Enable -> Disable -> Emergency Stop flow updates engine and UI', async ({ browser }) => {
-    const context = await browser.newContext();
+  test('Enable -> Disable -> Emergency Stop flow updates engine and UI', async ({ context }) => {
 
     const control = await context.newPage();
-    await control.goto('http://localhost:3886/control-panel.html');
+    await control.goto('http://localhost:3886/control-panel-v3.html');
 
     const main = await context.newPage();
     await main.goto('http://localhost:3886/');
@@ -21,27 +20,32 @@ test.describe('Anime System Control', () => {
       return await main.evaluate(() => typeof (window as any).chaosInit?.loadAnimeStack === 'function');
     }).toBeTruthy();
 
+    const animeToggle = control.locator('#animeToggle');
+    await expect(animeToggle).toHaveAttribute('data-state', 'disabled');
+
     // Click ENABLE
-    await control.locator('#animeEnable').click();
+    await animeToggle.click();
 
     // Expect vjReceiver.animeEnabled to become true
     await expect.poll(async () => {
       return await main.evaluate(() => Boolean((window as any).vjReceiver?.animeEnabled));
     }).toBeTruthy();
 
-    // UI should reflect ENABLED (allow a little extra time for ack)
-    await expect.poll(async () => {
-      return await control.locator('#animeStatus').textContent();
-    }).toMatch(/ENABLED/i);
+    // UI should reflect ON (allow a little extra time for ack)
+    await expect(animeToggle).toHaveAttribute('data-state', 'enabled');
+    await expect(animeToggle).toHaveAttribute('aria-pressed', 'true');
+    await expect(animeToggle.locator('.toggle-status')).toHaveText('ON');
 
     // Click DISABLE
-    await control.locator('#animeDisable').click();
+    await animeToggle.click();
 
     await expect.poll(async () => {
       return await main.evaluate(() => Boolean((window as any).vjReceiver?.animeEnabled));
     }).toBeFalsy();
 
-    await expect(control.locator('#animeStatus')).toHaveText(/DISABLED/i);
+    await expect(animeToggle).toHaveAttribute('data-state', 'disabled');
+    await expect(animeToggle).toHaveAttribute('aria-pressed', 'false');
+    await expect(animeToggle.locator('.toggle-status')).toHaveText('OFF');
 
     // Click EMERGENCY (kill) — support both ids just in case
     const kill = control.locator('#animeKill');
@@ -57,6 +61,8 @@ test.describe('Anime System Control', () => {
       return await main.evaluate(() => Boolean((window as any).vjReceiver?.animeEnabled));
     }).toBeFalsy();
 
-    await expect(control.locator('#animeStatus')).toHaveText(/DISABLED|KILLED|EMERGENCY/i);
+    await expect(animeToggle).toHaveAttribute('data-state', 'disabled');
+    await expect(animeToggle).toHaveAttribute('aria-pressed', 'false');
+    await expect(animeToggle.locator('.toggle-status')).toHaveText('OFF');
   });
 });

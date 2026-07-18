@@ -1,8 +1,12 @@
 // Performance sampler: subscribes to performanceBus and samples memory/DOM/overlays.
 // Exposes window.__zikadaPerf with getSnapshot() and subscribe(cb).
 
+import animationRuntime from './runtime/animation-runtime.js';
+
 (function(){
   if (window.__zikadaPerf) return;
+  const runtimeOwner = 'perf-sampler';
+  animationRuntime.disposeOwner(runtimeOwner);
 
   const state = {
     fps: 0,
@@ -20,33 +24,21 @@
   // Subscribe to performance bus if present
   try {
     if (window.performanceBus?.subscribe) {
-      window.performanceBus.subscribe((m) => {
+      const updateFromBus = (m) => {
         if (typeof m?.fps === 'number') state.fps = m.fps;
         if (typeof m?.frameTime === 'number') state.frameTime = m.frameTime;
+        if (typeof m?.memoryBytes === 'number') state.mem = m.memoryBytes;
+        if (typeof m?.domNodes === 'number') state.dom = m.domNodes;
+        if (typeof m?.overlays === 'number') state.overlays = m.overlays;
+        if (typeof m?.activeFx === 'number') state.activeFx = m.activeFx;
         state.timestamp = Date.now();
         notify();
-      });
+      };
+      const unsubscribe = window.performanceBus.subscribe(updateFromBus);
+      animationRuntime.trackDisposer(runtimeOwner, unsubscribe);
+      updateFromBus(window.performanceBus.metrics);
     }
   } catch {}
-
-  // Periodic sampler for memory/DOM/overlays/activeFx
-  setInterval(() => {
-    try {
-      state.mem = (performance && performance.memory && performance.memory.usedJSHeapSize) ? performance.memory.usedJSHeapSize : 0;
-    } catch {}
-    try {
-      state.dom = document.querySelectorAll('*').length;
-    } catch {}
-    try {
-      const fxRoot = document.getElementById('fx-root');
-      state.overlays = fxRoot ? fxRoot.children.length : 0;
-    } catch {}
-    try {
-      state.activeFx = (window.vjReceiver && typeof window.vjReceiver.activeFx === 'number') ? window.vjReceiver.activeFx : 0;
-    } catch {}
-    state.timestamp = Date.now();
-    notify();
-  }, 1000);
 
   window.__zikadaPerf = {
     getSnapshot: () => ({ ...state }),

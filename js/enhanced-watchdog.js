@@ -11,60 +11,12 @@
 
 import featureFlags from './feature-flags.js';
 import performanceLadder from './performance-degradation-ladder.js';
-
-// Sentinel WebGL canvas system to prevent "Canvas has an existing context of a different type" errors
-let __wd_sentinelCanvas = null;
-let __wd_gl = null;
-
-function __wd_getSentinelCanvas() {
-    if (__wd_sentinelCanvas) return __wd_sentinelCanvas;
-    
-    if (typeof OffscreenCanvas !== 'undefined') {
-        __wd_sentinelCanvas = new OffscreenCanvas(1, 1);
-    } else {
-        const c = document.createElement('canvas');
-        c.width = 1;
-        c.height = 1;
-        c.style.position = 'absolute';
-        c.style.left = '-9999px';
-        c.style.top = '-9999px';
-        c.setAttribute('data-zikada-watchdog-sentinel', 'true');
-        document.body.appendChild(c);
-        __wd_sentinelCanvas = c;
-    }
-    
-    return __wd_sentinelCanvas;
-}
-
-function __wd_obtainWebGL() {
-    if (__wd_gl) return __wd_gl;
-    
-    const c = __wd_getSentinelCanvas();
-    if (!c || typeof c.getContext !== 'function') return null;
-    
-    const attrs = {
-        alpha: false,
-        antialias: false,
-        depth: false,
-        stencil: false,
-        preserveDrawingBuffer: false,
-        powerPreference: 'low-power',
-        desynchronized: true,
-        failIfMajorPerformanceCaveat: true
-    };
-    
-    try {
-        __wd_gl = c.getContext('webgl2', attrs) || c.getContext('webgl', attrs) || c.getContext('experimental-webgl', attrs);
-    } catch (e) {
-        console.warn('[ZIKADA][watchdog] WebGL obtain failed, continuing without GL:', e && e.message);
-        __wd_gl = null;
-    }
-    
-    return __wd_gl;
-}
+import animationRuntime from './runtime/animation-runtime.js';
+import performanceBus from './performance-bus.js';
 
 class EnhancedWatchdog {
     constructor() {
+        this.runtimeOwner = 'enhanced-watchdog';
         this.isActive = false;
         this.debugMode = featureFlags.isEnabled('debugMetrics');
         
@@ -72,12 +24,12 @@ class EnhancedWatchdog {
         this.lastRAFTime = performance.now();
         this.rafHeartbeatInterval = null;
         this.rafStallCount = 0;
-        this.maxRAFStallTime = 250; // ms - alert if no RAF within this window
+        this.maxRAFStallTime = 2000; // central FPS bus publishes once per second
         
         // Event Loop Lag Monitoring
         this.eventLoopMonitor = null;
         this.lastEventLoopCheck = performance.now();
-        this.eventLoopLagThreshold = 50; // ms
+        this.eventLoopLagThreshold = 250; // ms beyond the 500ms health cadence
         this.eventLoopLagCount = 0;
         
         // WebGL Context Recovery
@@ -108,7 +60,8 @@ class EnhancedWatchdog {
      */
     startWatchdog() {
         if (this.isActive) return;
-        
+
+        animationRuntime.disposeOwner(this.runtimeOwner);
         this.isActive = true;
         
         // Start RAF heartbeat monitoring
@@ -133,46 +86,17 @@ class EnhancedWatchdog {
      * RAF Heartbeat Monitor - Detects animation stalls
      */
     startRAFHeartbeat() {
-        const heartbeatCheck = () => {
-            if (!this.isActive) return;
-            
-            const now = performance.now();
-            const timeSinceLastRAF = now - this.lastRAFTime;
-            
-            // Check if RAF hasn't been called within threshold
-            if (timeSinceLastRAF > this.maxRAFStallTime && document.visibilityState === 'visible') {
-                this.rafStallCount++;
-                
-                if (this.debugMode) {
-                    console.warn(`🔧 RAF stall detected: ${Math.round(timeSinceLastRAF)}ms since last RAF`);
-                }
-                
-                // Progressive response to RAF stalls
-                if (this.rafStallCount === 1) {
-                    this.handleRAFStall('light');
-                } else if (this.rafStallCount >= 3) {
-                    this.handleRAFStall('severe');
-                }
-            } else if (timeSinceLastRAF <= this.maxRAFStallTime) {
-                // RAF is healthy, reset stall count
-                this.rafStallCount = 0;
-            }
-        };
-        
-        this.rafHeartbeatInterval = setInterval(heartbeatCheck, 100); // Check every 100ms
-        
-        // Track RAF calls
-        this.patchRAF();
+        const unsubscribe = performanceBus.subscribe(() => {
+            if (this.isActive) this.lastRAFTime = performance.now();
+        });
+        animationRuntime.trackDisposer(this.runtimeOwner, unsubscribe);
+        this.lastRAFTime = performance.now();
+        this.rafHeartbeatInterval = null;
+        this.rafHeartbeatLoop = null;
     }
     
     patchRAF() {
-        if (window._originalRAF) return; // Already patched
-        
-        window._originalRAF = window.requestAnimationFrame;
-        window.requestAnimationFrame = (callback) => {
-            this.lastRAFTime = performance.now();
-            return window._originalRAF(callback);
-        };
+        // Intentionally empty: watchdogs must observe RAF, never replace it.
     }
     
     /**
@@ -183,9 +107,21 @@ class EnhancedWatchdog {
             if (!this.isActive) return;
             
             const now = performance.now();
-            const expectedInterval = 100; // We schedule every 100ms
+            const expectedInterval = 500;
             const actualInterval = now - this.lastEventLoopCheck;
             const lag = actualInterval - expectedInterval;
+            const timeSinceLastRAF = now - this.lastRAFTime;
+
+            if (timeSinceLastRAF > this.maxRAFStallTime && document.visibilityState === 'visible') {
+                this.rafStallCount++;
+                if (this.debugMode) {
+                    console.warn(`🔧 RAF stall detected: ${Math.round(timeSinceLastRAF)}ms since last metric frame`);
+                }
+                if (this.rafStallCount === 1) this.handleRAFStall('light');
+                else if (this.rafStallCount >= 3) this.handleRAFStall('severe');
+            } else {
+                this.rafStallCount = 0;
+            }
             
             if (lag > this.eventLoopLagThreshold) {
                 this.eventLoopLagCount++;
@@ -204,40 +140,38 @@ class EnhancedWatchdog {
             this.lastEventLoopCheck = now;
         };
         
-        this.eventLoopMonitor = setInterval(checkEventLoopLag, 100);
+        this.eventLoopMonitor = animationRuntime.scheduleInterval(this.runtimeOwner, checkEventLoopLag, 500);
     }
     
     /**
      * WebGL Context Loss and Recovery
      */
     setupWebGLRecovery() {
-        // Use sentinel WebGL context instead of trying to get context from existing canvas
-        this.webglContext = __wd_obtainWebGL();
-        
-        if (!this.webglContext) {
-            console.log('🔧 WebGL context not available, operating in fallback mode');
-            // Set up fallback monitoring using rAF and PerformanceObserver
-            this.setupFallbackWebGLMonitoring();
-            return;
-        }
-        
-        // Get the sentinel canvas for event listeners
-        this.webglCanvas = __wd_getSentinelCanvas();
+        // Observe the renderer's real canvas. Creating a sentinel WebGL context
+        // consumed an extra GPU context per page and made headless pressure worse.
+        this.webglCanvas = window.chaosEngine?.renderer?.domElement || document.querySelector('#chaos-canvas, canvas[data-engine-canvas]');
         
         if (this.webglCanvas) {
-            // Listen for context loss on sentinel canvas
-            this.webglCanvas.addEventListener('webglcontextlost', (e) => {
+            this.webglContext = window.chaosEngine?.renderer?.getContext?.() || null;
+            this.listen('webglcontextlost', (e) => {
                 e.preventDefault();
                 this.handleWebGLContextLoss();
-            });
+            }, this.webglCanvas);
             
-            // Listen for context restoration
-            this.webglCanvas.addEventListener('webglcontextrestored', () => {
+            this.listen('webglcontextrestored', () => {
                 this.handleWebGLContextRestore();
-            });
+            }, this.webglCanvas);
             
-            console.log('🔧 WebGL context recovery handlers installed on sentinel canvas');
+            console.log('🔧 WebGL context recovery handlers installed on renderer canvas');
+        } else {
+            this.setupFallbackWebGLMonitoring();
         }
+    }
+
+    listen(type, handler, target = window) {
+        target.addEventListener(type, handler);
+        animationRuntime.trackDisposer(this.runtimeOwner, () => target.removeEventListener(type, handler));
+        return handler;
     }
     
     /**
@@ -260,6 +194,7 @@ class EnhancedWatchdog {
                 });
                 
                 observer.observe({ entryTypes: ['measure', 'mark'] });
+                animationRuntime.trackDisposer(this.runtimeOwner, () => observer.disconnect());
                 console.log('🔧 Fallback WebGL monitoring via PerformanceObserver');
             } catch (error) {
                 console.log('🔧 PerformanceObserver not available, minimal fallback mode');
@@ -308,8 +243,8 @@ class EnhancedWatchdog {
             return false;
         };
         
-        window.addEventListener('error', this.globalErrorHandler);
-        window.addEventListener('unhandledrejection', this.globalErrorHandler);
+        this.listen('error', this.globalErrorHandler);
+        this.listen('unhandledrejection', this.globalErrorHandler);
     }
     
     /**
@@ -352,7 +287,7 @@ class EnhancedWatchdog {
         // Schedule recovery with backoff
         const backoffTime = this.recoveryBackoffTimes[Math.min(this.webglRecoveryAttempts, this.recoveryBackoffTimes.length - 1)];
         
-        setTimeout(() => {
+        animationRuntime.scheduleTimeout(this.runtimeOwner, () => {
             this.attemptWebGLRecovery();
         }, backoffTime);
     }
@@ -381,15 +316,11 @@ class EnhancedWatchdog {
             return;
         }
         
-        // Reset sentinel canvas and try to get new WebGL context
-        __wd_gl = null;
-        __wd_sentinelCanvas = null;
-        
-        this.webglContext = __wd_obtainWebGL();
-        
-        if (this.webglContext) {
-            console.log('🔧 WebGL context recovered manually via sentinel canvas');
-            this.webglCanvas = __wd_getSentinelCanvas();
+        this.webglCanvas = window.chaosEngine?.renderer?.domElement || this.webglCanvas;
+        this.webglContext = window.chaosEngine?.renderer?.getContext?.() || null;
+
+        if (this.webglCanvas?.isConnected) {
+            console.log('🔧 WebGL renderer canvas available for scene rebuild');
             this.handleWebGLContextRestore();
         } else {
             console.log('🔧 WebGL context recovery failed, continuing in fallback mode');
@@ -408,7 +339,7 @@ class EnhancedWatchdog {
         window.dispatchEvent(rebuildEvent);
         
         // Give systems time to rebuild, then resume normal operation
-        setTimeout(() => {
+        animationRuntime.scheduleTimeout(this.runtimeOwner, () => {
             console.log('🔧 WebGL scene rebuild complete');
         }, 1000);
     }
@@ -440,10 +371,10 @@ class EnhancedWatchdog {
         
         // Schedule recovery check
         if (this.recoveryTimer) {
-            clearTimeout(this.recoveryTimer);
+            this.recoveryTimer.clear?.();
         }
         
-        this.recoveryTimer = setTimeout(() => {
+        this.recoveryTimer = animationRuntime.scheduleTimeout(this.runtimeOwner, () => {
             this.checkRecoveryConditions();
         }, 10000); // Check recovery in 10 seconds
     }
@@ -472,7 +403,7 @@ class EnhancedWatchdog {
             window.dispatchEvent(recoveryEvent);
         } else {
             // Schedule another check
-            this.recoveryTimer = setTimeout(() => {
+            this.recoveryTimer = animationRuntime.scheduleTimeout(this.runtimeOwner, () => {
                 this.checkRecoveryConditions();
             }, 5000);
         }
@@ -512,17 +443,17 @@ class EnhancedWatchdog {
      * Trigger soft restart (reload without full page refresh)
      */
     triggerSoftRestart() {
-        console.log('🔧 Triggering soft restart due to critical failures');
+        console.log('🔧 Requesting scoped recovery due to critical failures');
         
         const restartEvent = new CustomEvent('app:soft-restart');
         window.dispatchEvent(restartEvent);
-        
-        // If soft restart doesn't work, hard reload as last resort
-        setTimeout(() => {
-            if (this.isRecovering || this.rafStallCount > 5) {
-                console.log('🔧 Soft restart failed - performing hard reload');
-                window.location.reload();
-            }
+
+        // Recovery must never create a reload loop or discard authored visual
+        // work. Continue observing; the profile manager lowers per-frame cost
+        // while explicit renderer owners handle their own rebuilds.
+        this.recoveryTimer?.clear?.();
+        this.recoveryTimer = animationRuntime.scheduleTimeout(this.runtimeOwner, () => {
+            this.checkRecoveryConditions();
         }, 5000);
     }
     
@@ -531,23 +462,11 @@ class EnhancedWatchdog {
      */
     stopWatchdog() {
         this.isActive = false;
-        
-        if (this.rafHeartbeatInterval) {
-            clearInterval(this.rafHeartbeatInterval);
-        }
-        
-        if (this.eventLoopMonitor) {
-            clearInterval(this.eventLoopMonitor);
-        }
-        
-        if (this.recoveryTimer) {
-            clearTimeout(this.recoveryTimer);
-        }
-        
-        if (this.globalErrorHandler) {
-            window.removeEventListener('error', this.globalErrorHandler);
-            window.removeEventListener('unhandledrejection', this.globalErrorHandler);
-        }
+        animationRuntime.disposeOwner(this.runtimeOwner);
+        this.rafHeartbeatInterval = null;
+        this.rafHeartbeatLoop = null;
+        this.eventLoopMonitor = null;
+        this.recoveryTimer = null;
         
         console.log('🔧 Enhanced Watchdog stopped');
     }
@@ -557,7 +476,7 @@ class EnhancedWatchdog {
      */
     coordinateWithPerformanceLadder() {
         // Listen for performance events from the ladder
-        window.addEventListener('performance:state:changed', (event) => {
+        this.listen('performance:state:changed', (event) => {
             const { from, to, type, fps } = event.detail;
             
             if (this.debugMode) {
@@ -572,14 +491,14 @@ class EnhancedWatchdog {
         });
         
         // Listen for recovery events
-        window.addEventListener('performance:recovery:started', (event) => {
+        this.listen('performance:recovery:started', (event) => {
             if (this.debugMode) {
                 console.log('🔧 Watchdog: Performance recovery started - reducing monitoring sensitivity');
             }
             this.isRecoveringPerformance = true;
         });
         
-        window.addEventListener('performance:recovery:cancelled', (event) => {
+        this.listen('performance:recovery:cancelled', (event) => {
             if (this.debugMode) {
                 console.log('🔧 Watchdog: Performance recovery cancelled - resuming normal monitoring');
             }
@@ -598,12 +517,12 @@ class EnhancedWatchdog {
         // to avoid cascading performance issues
         
         const baseSensitivity = {
-            S0: { rafStallTime: 250, eventLoopThreshold: 50 },  // Normal sensitivity
-            S1: { rafStallTime: 300, eventLoopThreshold: 60 },  // Slightly more lenient
-            S2: { rafStallTime: 400, eventLoopThreshold: 80 },  // More lenient
-            S3: { rafStallTime: 500, eventLoopThreshold: 100 }, // Very lenient
-            S4: { rafStallTime: 750, eventLoopThreshold: 150 }, // Emergency mode
-            S5: { rafStallTime: 1000, eventLoopThreshold: 200 } // Survival mode
+            S0: { rafStallTime: 2000, eventLoopThreshold: 250 },
+            S1: { rafStallTime: 2250, eventLoopThreshold: 300 },
+            S2: { rafStallTime: 2500, eventLoopThreshold: 350 },
+            S3: { rafStallTime: 3000, eventLoopThreshold: 450 },
+            S4: { rafStallTime: 4000, eventLoopThreshold: 600 },
+            S5: { rafStallTime: 5000, eventLoopThreshold: 800 }
         };
         
         const sensitivity = baseSensitivity[performanceState] || baseSensitivity.S0;
@@ -620,40 +539,15 @@ class EnhancedWatchdog {
      * Set up FPS reporting to performance ladder
      */
     setupFPSReporting() {
-        let lastFPSReport = 0;
-        const fpsReportInterval = 100; // Report every 100ms
-        
-        // Track FPS using requestAnimationFrame timing
-        let frameCount = 0;
-        let lastTime = performance.now();
-        
-        const reportFPS = () => {
+        const reportFPS = ({ fps }) => {
             if (!this.isActive) return;
-            
-            const now = performance.now();
-            frameCount++;
-            
-            // Report FPS every 100ms
-            if (now - lastFPSReport >= fpsReportInterval) {
-                const deltaTime = now - lastTime;
-                const fps = frameCount * (1000 / deltaTime);
-                
-                // Send to performance ladder
-                if (performanceLadder && performanceLadder.updateFPS) {
-                    performanceLadder.updateFPS(Math.min(fps, 120)); // Cap at 120 FPS for sanity
-                }
-                
-                // Reset counters
-                frameCount = 0;
-                lastTime = now;
-                lastFPSReport = now;
-            }
-            
-            requestAnimationFrame(reportFPS);
+            if (window.__3886_PROFILE_MANAGER_ENABLED === true) return;
+            performanceLadder?.updateFPS?.(Math.min(Number(fps) || 0, 120));
         };
-        
-        // Start FPS reporting
-        requestAnimationFrame(reportFPS);
+
+        const unsubscribe = performanceBus.subscribe(reportFPS);
+        animationRuntime.trackDisposer(this.runtimeOwner, unsubscribe);
+        this.fpsReportingLoop = null;
         
         if (this.debugMode) {
             console.log('🔧 FPS reporting to performance ladder started');

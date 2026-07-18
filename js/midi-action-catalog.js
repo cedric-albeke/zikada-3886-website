@@ -5,8 +5,14 @@
  * triggered via MIDI controllers, with proper routing to existing VJ systems.
  */
 
+import animationRuntime from './runtime/animation-runtime.js';
+
+let midiCatalogSequence = 0;
+
 class MIDIActionCatalog {
     constructor(options = {}) {
+        this.runtimeOwner = `midi-action-catalog:${++midiCatalogSequence}`;
+        this.trailOwner = `${this.runtimeOwner}:trail`;
         this.mode = options.mode || 'auto'; // 'direct', 'broadcast', 'auto'
         this.channel = null;
         
@@ -397,14 +403,16 @@ class MIDIActionCatalog {
     startTriggerInterval(effect, interval) {
         this.stopTriggerInterval(effect);
         this.triggerIntervals = this.triggerIntervals || {};
-        this.triggerIntervals[effect] = setInterval(() => {
+        const owner = `${this.runtimeOwner}:repeat:${effect}`;
+        this.triggerIntervals[effect] = owner;
+        animationRuntime.scheduleInterval(owner, () => {
             this.triggerEffect(effect);
         }, interval);
     }
     
     stopTriggerInterval(effect) {
         if (this.triggerIntervals && this.triggerIntervals[effect]) {
-            clearInterval(this.triggerIntervals[effect]);
+            animationRuntime.disposeOwner(this.triggerIntervals[effect]);
             delete this.triggerIntervals[effect];
         }
     }
@@ -412,15 +420,18 @@ class MIDIActionCatalog {
     // Trail effect implementation
     createTrailEffect() {
         if (this.trailCanvas) return;
-        
+
+        animationRuntime.disposeOwner(this.trailOwner);
         this.trailCanvas = document.createElement('canvas');
         this.trailCanvas.style.cssText = `
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             pointer-events: none; z-index: 9999; mix-blend-mode: screen;
         `;
-        this.trailCanvas.width = window.innerWidth;
-        this.trailCanvas.height = window.innerHeight;
+        const scale = window.performanceProfileManager?.currentProfile === 'high' ? 0.5 : 0.35;
+        this.trailCanvas.width = Math.max(1, Math.floor(window.innerWidth * scale));
+        this.trailCanvas.height = Math.max(1, Math.floor(window.innerHeight * scale));
         document.body.appendChild(this.trailCanvas);
+        animationRuntime.trackNode(this.trailOwner, this.trailCanvas);
         
         const ctx = this.trailCanvas.getContext('2d');
         const drawTrail = () => {
@@ -432,21 +443,16 @@ class MIDIActionCatalog {
             ctx.globalAlpha = 0.9;
             ctx.drawImage(this.trailCanvas, 2, 2);
             
-            if (this.trailActive) {
-                requestAnimationFrame(drawTrail);
-            }
         };
         
         this.trailActive = true;
-        drawTrail();
+        animationRuntime.scheduleRafLoop(this.trailOwner, drawTrail, { maxFps: 24 });
     }
     
     removeTrailEffect() {
         this.trailActive = false;
-        if (this.trailCanvas) {
-            this.trailCanvas.remove();
-            this.trailCanvas = null;
-        }
+        animationRuntime.disposeOwner(this.trailOwner);
+        this.trailCanvas = null;
     }
     
     // ==================== DIAGNOSTICS ====================
@@ -480,6 +486,15 @@ class MIDIActionCatalog {
             realtime: ['speed', 'bpm'],
             system: ['anime_enable', 'anime_disable', 'diagnostics']
         };
+    }
+
+    destroy() {
+        Object.values(this.triggerIntervals || {}).forEach(owner => animationRuntime.disposeOwner(owner));
+        this.triggerIntervals = {};
+        this.removeTrailEffect();
+        animationRuntime.disposeOwner(this.runtimeOwner);
+        this.channel?.close?.();
+        this.channel = null;
     }
 }
 

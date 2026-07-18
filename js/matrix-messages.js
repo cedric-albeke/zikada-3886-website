@@ -1,6 +1,50 @@
 import gsap from 'gsap';
 import MATRIX_MESSAGES from './matrix-message-pool.js';
+import backgroundAnimator from './background-animator.js';
+import animationRuntime from './runtime/animation-runtime.js';
 const DEBUG_MATRIX = false;
+const MATRIX_ACTIVE_CLASS = 'matrix-message-active';
+const MATRIX_PREPARING_CLASS = 'matrix-message-preparing';
+const PRE_GLITCH_DURATION_MS = 560;
+const MATRIX_MESSAGE_OWNER = 'matrix-message:sequence';
+const MATRIX_SCRAMBLE_OWNER = 'matrix-message:scramble';
+const MATRIX_FAILSAFE_OWNER = 'matrix-message:failsafe';
+const MATRIX_RESTORE_OWNER = 'matrix-message:restore';
+const MATRIX_TICKER_OWNER = 'matrix-message:one-hz';
+const MATRIX_LAYER_Z = Object.freeze({
+    preGlitch: 99999,
+    blackout: 100000,
+    effects: 100001,
+    message: 100002
+});
+
+const queryOne = (selector, root = document) => {
+    if (!root || !selector) return null;
+    try {
+        const proto = root.nodeType === 9 ? Document.prototype : Element.prototype;
+        return proto.querySelector.call(root, selector);
+    } catch (_) {
+        try {
+            return root.querySelector(selector);
+        } catch (_) {
+            return null;
+        }
+    }
+};
+
+const queryAll = (selector, root = document) => {
+    if (!root || !selector) return [];
+    try {
+        const proto = root.nodeType === 9 ? Document.prototype : Element.prototype;
+        return Array.from(proto.querySelectorAll.call(root, selector));
+    } catch (_) {
+        try {
+            return Array.from(root.querySelectorAll(selector) || []);
+        } catch (_) {
+            return [];
+        }
+    }
+};
 
 class MatrixMessages {
     constructor() {
@@ -11,9 +55,15 @@ class MatrixMessages {
         this.messageElement = null;
         this.isActive = false;
         this.scrambleInterval = null;
+        this.messageTimeouts = new Set();
+        this.failsafeTimeout = null;
+        this.blackoutElement = null;
+        this.preGlitchElement = null;
+        this.blackoutTween = null;
+        this.messageTimeline = null;
         this.diceCountdown = 15;
         this.lastRoll = null;
-        this.autoDiceThreshold = 68;
+        this.autoDiceThreshold = 90;
         this.autoDiceMinCountdown = 8;
         this.autoDiceMaxCountdown = 14;
 
@@ -23,11 +73,16 @@ class MatrixMessages {
     }
 
     createBlackoutElement() {
-        // Use a dedicated matrix blackout overlay to avoid z-index conflicts with viz-blackout
-        this.blackoutElement = document.createElement('div');
-        this.blackoutElement.className = 'matrix-blackout';
-        // Style mirrors styleMessages() but we ensure presence even if CSS hasn’t loaded yet
-        this.blackoutElement.style.cssText = `
+        const existing = this.blackoutElement?.isConnected
+            ? this.blackoutElement
+            : queryOne('.matrix-blackout');
+        const blackout = existing || document.createElement('div');
+
+        blackout.className = 'matrix-blackout';
+        blackout.dataset.permanent = 'true';
+        blackout.dataset.matrixLayer = 'blackout';
+        // Style mirrors styleMessages() but ensures presence even if CSS has not loaded yet.
+        blackout.style.cssText = `
             position: fixed !important;
             top: 0 !important;
             left: 0 !important;
@@ -36,24 +91,83 @@ class MatrixMessages {
             background: #000000 !important;
             opacity: 0;
             pointer-events: none !important;
-            z-index: 9998 !important;
+            z-index: ${MATRIX_LAYER_Z.blackout} !important;
             transition: opacity 0.6s cubic-bezier(0.4, 0, 0.2, 1);
             display: none;
         `;
-        document.body.appendChild(this.blackoutElement);
+        if (blackout.parentElement !== document.body) {
+            document.body.appendChild(blackout);
+        }
+
+        this.blackoutElement = blackout;
+        this.pruneDuplicateLayers('.matrix-blackout', blackout);
+        return blackout;
+    }
+
+    createMessageElement() {
+        const current = this.messageElement?.isConnected ? this.messageElement : null;
+        const bodyLayer = queryOne(':scope > .matrix-messages', document.body);
+        const firstExisting = queryOne('.matrix-messages');
+        const messageElement = current || bodyLayer || firstExisting || document.createElement('div');
+
+        messageElement.className = 'matrix-messages';
+        messageElement.dataset.permanent = 'true';
+        messageElement.dataset.matrixLayer = 'message';
+        if (messageElement.parentElement !== document.body) {
+            document.body.appendChild(messageElement);
+        }
+
+        this.messageElement = messageElement;
+        this.pruneDuplicateLayers('.matrix-messages', messageElement);
+        return messageElement;
+    }
+
+    createPreGlitchElement() {
+        const existing = this.preGlitchElement?.isConnected
+            ? this.preGlitchElement
+            : queryOne('.matrix-pre-glitch');
+        const element = existing || document.createElement('div');
+
+        element.className = 'matrix-pre-glitch';
+        element.dataset.permanent = 'true';
+        element.dataset.matrixLayer = 'pre-glitch';
+        if (element.parentElement !== document.body) {
+            document.body.appendChild(element);
+        }
+
+        this.preGlitchElement = element;
+        this.pruneDuplicateLayers('.matrix-pre-glitch', element);
+        return element;
+    }
+
+    pruneDuplicateLayers(selector, keepElement) {
+        queryAll(selector).forEach((element) => {
+            if (element === keepElement) return;
+            try { gsap.killTweensOf(element); } catch (_) {}
+            element.remove();
+        });
+    }
+
+    scheduleMessageTimeout(callback, delay) {
+        let timeoutToken = null;
+        timeoutToken = animationRuntime.scheduleTimeout(MATRIX_MESSAGE_OWNER, () => {
+            this.messageTimeouts.delete(timeoutToken);
+            callback();
+        }, delay);
+        this.messageTimeouts.add(timeoutToken);
+        return timeoutToken;
+    }
+
+    clearMessageTimeouts() {
+        animationRuntime.disposeOwner(MATRIX_MESSAGE_OWNER);
+        this.messageTimeouts.clear();
     }
 
     init() {
-        // Create blackout overlay
-        this.createBlackoutElement();
-
-        // Create message container
-        this.messageElement = document.createElement('div');
-        this.messageElement.className = 'matrix-messages';
-        document.body.appendChild(this.messageElement);
-
-        // Style the message element
         this.styleMessages();
+        this.createPreGlitchElement();
+        this.createBlackoutElement();
+        this.createMessageElement();
 
         // Do NOT auto-start internal dice/message cycle here.
         // Messages are driven by the control panel via vj-receiver to keep both views in sync.
@@ -63,7 +177,13 @@ class MatrixMessages {
     }
 
     styleMessages() {
-        const style = document.createElement('style');
+        let style = document.getElementById('matrix-message-layer-styles');
+        if (!style) {
+            style = document.createElement('style');
+            style.id = 'matrix-message-layer-styles';
+            document.head.appendChild(style);
+        }
+
         style.textContent = `
             /* Blackout overlay - 100% darken everything else */
             .matrix-blackout {
@@ -75,14 +195,67 @@ class MatrixMessages {
                 background: #000000 !important;
                 opacity: 0;
                 pointer-events: none !important;
-                z-index: 9998 !important;
+                z-index: ${MATRIX_LAYER_Z.blackout} !important;
                 transition: opacity 0.4s ease-in-out;
                 display: none;
             }
 
             .matrix-blackout.active {
-                opacity: 0.85 !important;  /* Semi-transparent blackout - allows some see-through */
+                opacity: 0.88 !important;
                 display: block !important;
+            }
+
+            .matrix-pre-glitch {
+                position: fixed;
+                inset: 0;
+                display: none;
+                opacity: 0;
+                pointer-events: none;
+                z-index: ${MATRIX_LAYER_Z.preGlitch};
+                background:
+                    linear-gradient(90deg, rgba(0, 255, 133, 0.08), transparent 24%, rgba(255, 0, 170, 0.06) 76%, transparent),
+                    repeating-linear-gradient(0deg, transparent 0 5px, rgba(0, 255, 133, 0.08) 6px, transparent 7px 11px);
+                mix-blend-mode: screen;
+                will-change: opacity, clip-path, transform;
+            }
+
+            .matrix-pre-glitch.active {
+                display: block;
+                animation: matrixSignalAcquire ${PRE_GLITCH_DURATION_MS}ms steps(2, end) both;
+            }
+
+            @keyframes matrixSignalAcquire {
+                0% { opacity: 0; clip-path: inset(48% 0 48% 0); transform: translateX(0); }
+                18% { opacity: 0.32; clip-path: inset(12% 0 66% 0); transform: translateX(-3px); }
+                38% { opacity: 0.16; clip-path: inset(62% 0 8% 0); transform: translateX(2px); }
+                60% { opacity: 0.42; clip-path: inset(22% 0 31% 0); transform: translateX(-1px); }
+                82% { opacity: 0.25; clip-path: inset(4% 0 5% 0); transform: translateX(1px); }
+                100% { opacity: 0; clip-path: inset(0); transform: translateX(0); }
+            }
+
+            body.${MATRIX_PREPARING_CLASS} .image-wrapper,
+            body.${MATRIX_PREPARING_CLASS} .logo-text-wrapper,
+            body.${MATRIX_PREPARING_CLASS} .text-3886 {
+                animation: matrixSourceAcquire ${PRE_GLITCH_DURATION_MS}ms steps(2, end) both;
+                will-change: transform, filter;
+            }
+
+            @keyframes matrixSourceAcquire {
+                0%, 100% { transform: translate(0, 0); filter: none; }
+                20% { transform: translate(-2px, 0); filter: hue-rotate(8deg) saturate(1.15); }
+                42% { transform: translate(2px, 1px); filter: hue-rotate(-12deg) contrast(1.12); }
+                64% { transform: translate(-1px, -1px); filter: hue-rotate(16deg) saturate(1.2); }
+                82% { transform: translate(1px, 0); filter: hue-rotate(-6deg) contrast(1.08); }
+            }
+
+            @media (prefers-reduced-motion: reduce) {
+                .matrix-pre-glitch.active,
+                body.${MATRIX_PREPARING_CLASS} .image-wrapper,
+                body.${MATRIX_PREPARING_CLASS} .logo-text-wrapper,
+                body.${MATRIX_PREPARING_CLASS} .text-3886 {
+                    animation-timing-function: ease-out;
+                    animation-iteration-count: 1;
+                }
             }
 
             .matrix-messages {
@@ -102,7 +275,9 @@ class MatrixMessages {
                 opacity: 0;
                 white-space: nowrap;
                 pointer-events: none;
-                z-index: 9999;
+                z-index: ${MATRIX_LAYER_Z.message} !important;
+                max-width: min(92vw, 1200px);
+                overflow-wrap: anywhere;
                 text-transform: uppercase;
             }
 
@@ -166,11 +341,23 @@ class MatrixMessages {
                     analogTear 0.5s ease-in-out 1,  /* Single smooth tear */
                     rgbGlitch 0.3s ease-in-out 1;  /* Single subtle glitch */
             }
+
+            body.${MATRIX_ACTIVE_CLASS} .image-wrapper,
+            body.${MATRIX_ACTIVE_CLASS} .image-2,
+            body.${MATRIX_ACTIVE_CLASS} .logo-text-wrapper,
+            body.${MATRIX_ACTIVE_CLASS} .text-3886 {
+                opacity: 0.18 !important;
+                filter: blur(1px) brightness(0.35) !important;
+                -webkit-filter: blur(1px) brightness(0.35) !important;
+                transition: opacity 160ms ease, filter 160ms ease;
+            }
         `;
-        document.head.appendChild(style);
     }
 
     scrambleText(element, text, duration = 1000) {
+        animationRuntime.disposeOwner(MATRIX_SCRAMBLE_OWNER);
+        this.scrambleInterval = null;
+
         const chars = text.split('');
         const scrambleChars = this.scrambleChars.split('');
         let iterations = 0;
@@ -179,7 +366,7 @@ class MatrixMessages {
         element.textContent = '';
         element.classList.add('active', 'glitching');
 
-        this.scrambleInterval = setInterval(() => {
+        this.scrambleInterval = animationRuntime.scheduleInterval(MATRIX_SCRAMBLE_OWNER, () => {
             element.textContent = chars
                 .map((char, index) => {
                     if (char === ' ') return ' ';
@@ -191,7 +378,8 @@ class MatrixMessages {
                 .join('');
 
             if (iterations >= maxIterations) {
-                clearInterval(this.scrambleInterval);
+                animationRuntime.disposeOwner(MATRIX_SCRAMBLE_OWNER);
+                this.scrambleInterval = null;
                 element.textContent = text;
                 element.classList.remove('glitching');
 
@@ -199,7 +387,7 @@ class MatrixMessages {
                 // No more flashing at the end
 
                 // Keep message visible for a moment
-                setTimeout(() => {
+                this.scheduleMessageTimeout(() => {
                     this.fadeOutMessage();
                 }, 2500);
             }
@@ -208,11 +396,17 @@ class MatrixMessages {
     }
 
     fadeOutMessage() {
+        if (!this.isActive || !this.messageElement) return;
+
         // Trigger ending reactive effects
         this.triggerReactiveEffects('end');
 
         // Smooth fade out effect with subtle glitch
-        gsap.timeline()
+        if (this.messageTimeline) {
+            this.messageTimeline.kill();
+        }
+
+        this.messageTimeline = gsap.timeline()
             .to(this.messageElement, {
                 scale: 1.02,
                 filter: 'blur(0.5px) brightness(1.05)',  // REDUCED from 1.2 to prevent flash
@@ -228,26 +422,11 @@ class MatrixMessages {
                 onComplete: () => {
                     this.messageElement.classList.remove('active');
                     this.messageElement.style.opacity = '0';
-                    // Force immediate blackout removal
-                    if (this.blackoutElement) {
-                        // Kill any existing animations on blackout
-                        try { gsap.killTweensOf(this.blackoutElement); } catch(_) {}
-                        // Animate fade out
-                        gsap.to(this.blackoutElement, {
-                            opacity: 0,
-                            duration: 0.4,
-                            ease: 'power2.inOut',
-                            onComplete: () => {
-                                // For shared overlay, do not remove from DOM
-                                this.blackoutElement.style.display = 'none';
-                                this.blackoutElement.style.opacity = '0';
-                            }
-                        });
-                    }
+                    this.deactivateBlackout();
                     this.isActive = false;
                     // Clear failsafe since we completed normally
                     if (this.failsafeTimeout) {
-                        clearTimeout(this.failsafeTimeout);
+                        animationRuntime.disposeOwner(MATRIX_FAILSAFE_OWNER);
                         this.failsafeTimeout = null;
                     }
                     this.restoreElements();
@@ -255,17 +434,76 @@ class MatrixMessages {
             });
     }
 
+    activateBlackout() {
+        const blackout = this.createBlackoutElement();
+        try { gsap.killTweensOf(blackout); } catch (_) {}
+        if (this.blackoutTween) {
+            this.blackoutTween.kill();
+            this.blackoutTween = null;
+        }
+
+        document.body.classList.add(MATRIX_ACTIVE_CLASS);
+        blackout.classList.add('active');
+        blackout.style.display = 'block';
+        blackout.style.background = 'rgba(0, 0, 0, 0.96)';
+        blackout.style.zIndex = String(MATRIX_LAYER_Z.blackout);
+        blackout.style.opacity = '0.72';
+        this.blackoutTween = gsap.to(blackout, {
+            opacity: 0.88,
+            duration: 0.22,
+            ease: 'power2.out'
+        });
+        return blackout;
+    }
+
+    deactivateBlackout() {
+        document.body.classList.remove(MATRIX_ACTIVE_CLASS);
+        if (!this.blackoutElement?.isConnected) return;
+
+        const blackout = this.blackoutElement;
+        try { gsap.killTweensOf(blackout); } catch (_) {}
+        blackout.classList.remove('active');
+        this.blackoutTween = gsap.to(blackout, {
+            opacity: 0,
+            duration: 0.35,
+            ease: 'power2.inOut',
+            onComplete: () => {
+                blackout.style.display = 'none';
+                blackout.style.opacity = '0';
+            }
+        });
+    }
+
+    startPreGlitch(onComplete) {
+        const preGlitch = this.createPreGlitchElement();
+        document.body.classList.add(MATRIX_PREPARING_CLASS);
+        preGlitch.classList.remove('active');
+        // Restart the finite CSS animation without leaving a long-running layer behind.
+        void preGlitch.offsetWidth;
+        preGlitch.classList.add('active');
+        preGlitch.style.display = 'block';
+
+        this.scheduleMessageTimeout(() => {
+            document.body.classList.remove(MATRIX_PREPARING_CLASS);
+            preGlitch.classList.remove('active');
+            preGlitch.style.display = 'none';
+            preGlitch.style.opacity = '0';
+            onComplete();
+        }, PRE_GLITCH_DURATION_MS);
+    }
+
     showMessage(forcedMessage) {
         if (this.isActive) return;
 
         this.isActive = true;
+        this.clearMessageTimeouts();
         // Clear any existing failsafe timeout
-        if (this.failsafeTimeout) {
-            clearTimeout(this.failsafeTimeout);
-        }
+        animationRuntime.disposeOwner(MATRIX_FAILSAFE_OWNER);
+        this.failsafeTimeout = null;
         
         // Set failsafe cleanup after 10 seconds (message should complete in ~5 seconds)
-        this.failsafeTimeout = setTimeout(() => {
+        this.failsafeTimeout = animationRuntime.scheduleTimeout(MATRIX_FAILSAFE_OWNER, () => {
+            this.failsafeTimeout = null;
             console.log('⚠️ Matrix message failsafe cleanup triggered');
             this.forceCleanup();
         }, 10000);
@@ -274,42 +512,36 @@ class MatrixMessages {
         let message = typeof forcedMessage === 'string' && forcedMessage.trim().length > 0
             ? forcedMessage.trim()
             : this.messages[Math.floor(Math.random() * this.messages.length)];
-        console.log('📢 Showing matrix message:', message);
-        window.dispatchEvent(new CustomEvent('matrixMessageShown', {
+        console.log('📢 Preparing matrix message:', message);
+        window.dispatchEvent(new CustomEvent('matrixMessagePreparing', {
             detail: { message, lastRoll: this.lastRoll }
         }));
 
         // Ensure blackout element exists and is properly styled
-        if (!this.blackoutElement) {
-            this.createBlackoutElement();
-        }
+        this.createPreGlitchElement();
+        this.createBlackoutElement();
+        this.createMessageElement();
 
         // Ensure message sits above the blackout
         if (this.messageElement && this.blackoutElement) {
-            const z = parseInt(getComputedStyle(this.blackoutElement).zIndex || '9998', 10);
-            this.messageElement.style.zIndex = String(Math.max(z + 1, 9999));
+            const z = parseInt(getComputedStyle(this.blackoutElement).zIndex || String(MATRIX_LAYER_Z.blackout), 10);
+            this.messageElement.style.zIndex = String(Math.max(z + 1, MATRIX_LAYER_Z.message));
         }
-
-        // Trigger reactive effects on other elements
-        this.triggerReactiveEffects('start');
-
-        // Activate blackout with semi-transparent overlay
-        if (this.blackoutElement) {
-            try { gsap.killTweensOf(this.blackoutElement); } catch(_) {}
-            this.blackoutElement.style.display = 'block';
-            gsap.to(this.blackoutElement, { opacity: 0.85, duration: 0.6, ease: 'power2.inOut' });
-            this.blackoutElement.style.background = 'rgba(0, 0, 0, 0.95)';
-        }
-
-        // Subtle entrance effect - removed heavy glitch
-        // this.createAnalogGlitch();  // Disabled for less strobe
 
         // Reset message element
         this.messageElement.style.opacity = '0';
-        this.messageElement.classList.add('active');
+        this.messageElement.classList.remove('active', 'glitching');
 
-        // Smooth digital fade in - removed violent effects
-        setTimeout(() => {
+        this.startPreGlitch(() => {
+            if (!this.isActive) return;
+
+            this.activateBlackout();
+            this.triggerReactiveEffects('start');
+            window.dispatchEvent(new CustomEvent('matrixMessageShown', {
+                detail: { message, lastRoll: this.lastRoll }
+            }));
+            this.messageElement.classList.add('active');
+
             // Minimal entrance effect
             // this.createDataBurst();  // Disabled for less strobe
 
@@ -325,7 +557,7 @@ class MatrixMessages {
             ];
 
             glitchSteps.forEach(step => {
-                setTimeout(() => {
+                this.scheduleMessageTimeout(() => {
                     this.messageElement.style.opacity = step.opacity;
                     this.messageElement.style.transform = step.transform;
                     this.messageElement.style.filter = step.filter;
@@ -349,7 +581,7 @@ class MatrixMessages {
 
             // Add screen distortion
             this.distortScreen();
-        }, 30);
+        });
     }
 
     createAnalogGlitch() {
@@ -361,7 +593,7 @@ class MatrixMessages {
             height: 3px;
             background: rgba(0, 255, 133, 0.6);  // Changed from white to green
             opacity: 0.3;  // Reduced opacity
-            z-index: 10000;
+            z-index: ${MATRIX_LAYER_Z.effects};
             pointer-events: none;
             top: ${Math.random() * window.innerHeight}px;
         `;
@@ -384,7 +616,7 @@ class MatrixMessages {
             width: 100%;
             height: 100%;
             pointer-events: none;
-            z-index: 9999;
+            z-index: ${MATRIX_LAYER_Z.effects};
             mix-blend-mode: screen;
         `;
 
@@ -418,10 +650,16 @@ class MatrixMessages {
         }
 
         document.body.appendChild(rgbSplit);
-        setTimeout(() => this._releaseDiv(rgbSplit), 300);
+        this.scheduleMessageTimeout(() => this._releaseDiv(rgbSplit), 300);
 
         // Static noise burst
-        const staticNoise = this._getCanvas(window.innerWidth, window.innerHeight);
+        // A small noise texture scaled by CSS is visually equivalent for this
+        // 200ms burst and avoids allocating/filling a full-viewport bitmap.
+        const noiseScale = window.performanceProfileManager?.currentProfile === 'high' ? 0.3 : 0.2;
+        const staticNoise = this._getCanvas(
+            Math.min(640, window.innerWidth * noiseScale),
+            Math.min(360, window.innerHeight * noiseScale)
+        );
         staticNoise.style.cssText = `
             position: fixed;
             top: 0;
@@ -429,7 +667,7 @@ class MatrixMessages {
             width: 100%;
             height: 100%;
             pointer-events: none;
-            z-index: 10001;
+            z-index: ${MATRIX_LAYER_Z.effects};
             opacity: 0.5;
         `;
 
@@ -460,10 +698,10 @@ class MatrixMessages {
 
     triggerReactiveEffects(phase) {
         // Get main elements
-        const logoWrapper = document.querySelector('.logo-text-wrapper');
-        const imageWrapper = document.querySelector('.image-wrapper');
-        const bgElement = document.querySelector('.bg');
-        const text3886 = document.querySelector('.text-3886');
+        const logoWrapper = queryOne('.logo-text-wrapper');
+        const imageWrapper = queryOne('.image-wrapper');
+        const bgElement = queryOne('.bg');
+        const text3886 = queryOne('.text-3886');
 
         if (phase === 'start') {
             // Violent reaction when message appears
@@ -492,7 +730,7 @@ class MatrixMessages {
             if (bgElement) {
                 // Background tears and distorts - keep opacity LOW
                 gsap.to(bgElement, {
-                    scale: 3.2,  // Reduced scale change
+                    scale: backgroundAnimator.resolveSurfaceScale(3.2),
                     rotation: '+=15',  // Less rotation
                     opacity: 0.06,  // Keep it subtle even during effects
                     filter: 'blur(3px) hue-rotate(90deg)',  // Less extreme
@@ -500,7 +738,7 @@ class MatrixMessages {
                     ease: 'power2.inOut',
                     onComplete: () => {
                         gsap.to(bgElement, {
-                            scale: 2.8,
+                            scale: backgroundAnimator.resolveSurfaceScale(2.8),
                             rotation: '-=10',
                             opacity: 0.05,  // Return to subtle
                             filter: 'blur(1px) hue-rotate(45deg)',
@@ -578,10 +816,10 @@ class MatrixMessages {
 
     restoreElements() {
         // Smoothly restore all elements to normal
-        const logoWrapper = document.querySelector('.logo-text-wrapper');
-        const imageWrapper = document.querySelector('.image-wrapper');
-        const bgElement = document.querySelector('.bg');
-        const text3886 = document.querySelector('.text-3886');
+        const logoWrapper = queryOne('.logo-text-wrapper');
+        const imageWrapper = queryOne('.image-wrapper');
+        const bgElement = queryOne('.bg');
+        const text3886 = queryOne('.text-3886');
 
         const restoreDuration = 1.5;  // Slower restoration for smoother transition
 
@@ -617,7 +855,7 @@ class MatrixMessages {
             });
 
             // Also restore the image itself
-            const image = document.querySelector('.image-2');
+            const image = queryOne('.image-2');
             if (image) {
                 gsap.to(image, {
                     opacity: 1,
@@ -629,7 +867,7 @@ class MatrixMessages {
 
         if (bgElement) {
             gsap.to(bgElement, {
-                scale: 3,
+                scale: backgroundAnimator.resolveSurfaceScale(3),
                 opacity: 0.05,  // Keep it subtle
                 filter: 'none',
                 duration: restoreDuration,
@@ -651,7 +889,7 @@ class MatrixMessages {
     }
 
     shakeScreen(intense = false) {
-        const preLoader = document.querySelector('.pre-loader');
+        const preLoader = queryOne('.pre-loader');
         if (!preLoader) return;
 
         // Much more subtle shake
@@ -689,7 +927,7 @@ class MatrixMessages {
                     rgba(255,255,255,${Math.random() * 0.2 + 0.1}),
                     transparent);
                 pointer-events: none;
-                z-index: 10003;
+                z-index: ${MATRIX_LAYER_Z.effects};
                 mix-blend-mode: overlay;
                 filter: blur(0.5px);
             `;
@@ -719,7 +957,7 @@ class MatrixMessages {
                 transparent 70%);
             border-radius: 50%;
             pointer-events: none;
-            z-index: 10002;
+            z-index: ${MATRIX_LAYER_Z.effects};
             transform: translate(-50%, -50%);
             mix-blend-mode: screen;
         `;
@@ -750,7 +988,7 @@ class MatrixMessages {
                 height: ${height}px;
                 background: rgba(0,255,133,${Math.random() * 0.2 + 0.1});
                 pointer-events: none;
-                z-index: 10001;
+                z-index: ${MATRIX_LAYER_Z.effects};
                 mix-blend-mode: screen;
                 transform: skewX(${Math.random() * 15 - 7.5}deg);
                 filter: blur(0.5px);
@@ -781,7 +1019,7 @@ class MatrixMessages {
             top: 0;
             left: 0;
             pointer-events: none;
-            z-index: 10004;
+            z-index: ${MATRIX_LAYER_Z.effects};
             opacity: 0.8;
             mix-blend-mode: screen;
         `;
@@ -827,7 +1065,7 @@ class MatrixMessages {
                 rgba(0,0,255,0.3) 75%,
                 transparent 100%);
             pointer-events: none;
-            z-index: 10005;
+            z-index: ${MATRIX_LAYER_Z.effects};
             mix-blend-mode: screen;
             transform: skewX(30deg);
         `;
@@ -857,7 +1095,7 @@ class MatrixMessages {
             width: 100%;
             height: 100%;
             pointer-events: none;
-            z-index: 10003;
+            z-index: ${MATRIX_LAYER_Z.effects};
             backdrop-filter: blur(0px) contrast(1);
             transform: scale(1) perspective(1000px) rotateX(0deg);
         `;
@@ -943,8 +1181,27 @@ class MatrixMessages {
         
         // Clear failsafe timeout
         if (this.failsafeTimeout) {
-            clearTimeout(this.failsafeTimeout);
+            animationRuntime.disposeOwner(MATRIX_FAILSAFE_OWNER);
             this.failsafeTimeout = null;
+        }
+
+        this.clearMessageTimeouts();
+        document.body.classList.remove(MATRIX_ACTIVE_CLASS);
+        document.body.classList.remove(MATRIX_PREPARING_CLASS);
+
+        if (this.preGlitchElement) {
+            this.preGlitchElement.classList.remove('active');
+            this.preGlitchElement.style.display = 'none';
+            this.preGlitchElement.style.opacity = '0';
+        }
+
+        if (this.messageTimeline) {
+            this.messageTimeline.kill();
+            this.messageTimeline = null;
+        }
+        if (this.blackoutTween) {
+            this.blackoutTween.kill();
+            this.blackoutTween = null;
         }
         
         // Kill all animations
@@ -954,23 +1211,21 @@ class MatrixMessages {
             this.messageElement.style.opacity = '0';
         }
         
-        // Remove blackout completely
+        // Hide blackout but keep the permanent layer connected for the next message.
         if (this.blackoutElement) {
             gsap.killTweensOf(this.blackoutElement);
             this.blackoutElement.classList.remove('active');
             this.blackoutElement.style.display = 'none';
             this.blackoutElement.style.opacity = '0';
-            if (this.blackoutElement.parentNode) {
-                this.blackoutElement.remove();
+            this.blackoutElement.style.zIndex = String(MATRIX_LAYER_Z.blackout);
+            if (this.blackoutElement.parentElement !== document.body) {
+                document.body.appendChild(this.blackoutElement);
             }
-            this.blackoutElement = null;
         }
         
         // Clear scramble interval
-        if (this.scrambleInterval) {
-            clearInterval(this.scrambleInterval);
-            this.scrambleInterval = null;
-        }
+        animationRuntime.disposeOwner(MATRIX_SCRAMBLE_OWNER);
+        this.scrambleInterval = null;
         
         this.isActive = false;
         
@@ -983,7 +1238,7 @@ class MatrixMessages {
         ];
         
         elements.forEach(selector => {
-            const el = document.querySelector(selector);
+            const el = queryOne(selector);
             if (el) {
                 el.style.opacity = '1';
                 el.style.transform = '';
@@ -996,7 +1251,8 @@ class MatrixMessages {
         
         // Reapply current FX settings after a short delay
         if (window.fxController) {
-            setTimeout(() => {
+            animationRuntime.disposeOwner(MATRIX_RESTORE_OWNER);
+            animationRuntime.scheduleTimeout(MATRIX_RESTORE_OWNER, () => {
                 Object.keys(window.fxController.intensities).forEach(key => {
                     window.fxController._applySideEffect(key, window.fxController.intensities[key]);
                 });
@@ -1005,17 +1261,12 @@ class MatrixMessages {
     }
 
     destroy() {
-        // Clean up scramble interval
-        if (this.scrambleInterval) {
-            clearInterval(this.scrambleInterval);
-            this.scrambleInterval = null;
-        }
-        
-        // Clean up failsafe timeout
-        if (this.failsafeTimeout) {
-            clearTimeout(this.failsafeTimeout);
-            this.failsafeTimeout = null;
-        }
+        this.forceCleanup();
+        [MATRIX_MESSAGE_OWNER, MATRIX_SCRAMBLE_OWNER, MATRIX_FAILSAFE_OWNER, MATRIX_RESTORE_OWNER]
+            .forEach(owner => animationRuntime.disposeOwner(owner));
+        this.messageTimeouts.clear();
+        this.scrambleInterval = null;
+        this.failsafeTimeout = null;
         
         // Disable autonomous dice mode (cleans up subscription)
         this.disableAutonomousDiceMode();
@@ -1035,37 +1286,32 @@ export default new MatrixMessages();
 (function ensureOneHzTicker(){
     if (window.__oneHzTicker) return;
     const subs = new Set();
-    
-    // Import interval-manager dynamically for managed intervals
     let intervalHandle = null;
-    import('./interval-manager.js').then(module => {
-        const intervalManager = module.default;
-        
-        intervalHandle = intervalManager.createInterval(() => {
+
+    const start = () => {
+        if (intervalHandle || subs.size === 0) return;
+        intervalHandle = animationRuntime.scheduleInterval(MATRIX_TICKER_OWNER, () => {
             subs.forEach(fn => { try { fn(); } catch(_) {} });
-        }, 1000, 'matrix-oneHz-ticker', {
-            category: 'system',
-            maxAge: Infinity // Keep running indefinitely
-        });
-    }).catch(err => {
-        console.warn('Failed to load interval-manager, falling back to raw setInterval:', err);
-        // Fallback to raw interval if interval-manager is not available
-        intervalHandle = { nativeId: setInterval(() => {
-            subs.forEach(fn => { try { fn(); } catch(_) {} });
-        }, 1000) };
-    });
+        }, 1000);
+    };
+
+    const stop = () => {
+        animationRuntime.disposeOwner(MATRIX_TICKER_OWNER);
+        intervalHandle = null;
+    };
     
     window.__oneHzTicker = {
-        subscribe(fn){ subs.add(fn); return () => subs.delete(fn); },
-        _stop(){ 
-            if (intervalHandle) {
-                if (typeof intervalHandle.clear === 'function') {
-                    intervalHandle.clear();
-                } else if (intervalHandle.nativeId) {
-                    clearInterval(intervalHandle.nativeId);
-                }
-                intervalHandle = null;
-            }
+        subscribe(fn){
+            subs.add(fn);
+            start();
+            return () => {
+                subs.delete(fn);
+                if (subs.size === 0) stop();
+            };
+        },
+        _stop(){
+            subs.clear();
+            stop();
         }
     };
 })();

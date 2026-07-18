@@ -2,8 +2,16 @@
 // Advanced animations for ZIKADA 3886 website
 
 import animeManager from './anime-init.js';
+import animationRuntime from './runtime/animation-runtime.js';
 
 const anime = animeManager.anime;
+const RUNTIME_OWNER = 'anime-enhanced-effects';
+const PLASMA_RUNTIME_OWNER = 'anime-enhanced-effects:plasma';
+const HOLOGRAPHIC_RUNTIME_OWNER = 'anime-enhanced-effects:holographic';
+const MATRIX_RUNTIME_OWNER = 'anime-enhanced-effects:matrix';
+const AUTO_STROBE_RUNTIME_OWNER = 'anime-enhanced-effects:auto-strobe';
+const ELECTRIC_ARC_RUNTIME_OWNER = 'anime-enhanced-effects:electric-arcs';
+const BOOT_RUNTIME_OWNER = 'anime-enhanced-effects:boot';
 
 class AnimeEnhancedEffects {
     constructor() {
@@ -16,11 +24,14 @@ class AnimeEnhancedEffects {
         this.isAutoMode = true;  // Default to auto mode
         this.autoModeTimer = null;
         this.lastMessageId = null;
+        this.eventController = null;
 
         console.log('🎨 Anime Enhanced Effects initialized');
     }
 
     init() {
+        if (this.enabled) return;
+        animationRuntime.disposeOwner(RUNTIME_OWNER);
         // Always enable anime effects - part of the core experience
         this.enabled = true;
         this.setupEventListeners();
@@ -29,20 +40,23 @@ class AnimeEnhancedEffects {
     }
 
     setupEventListeners() {
+        this.eventController?.abort();
+        this.eventController = new AbortController();
+        const { signal } = this.eventController;
         // Listen for animation phase changes
         window.addEventListener('animationPhase', (e) => {
             this.handlePhaseChange(e.detail.phase);
-        });
+        }, { signal });
 
         // Listen for matrix messages
         window.addEventListener('matrixMessage', () => {
             this.triggerGlitchBurst();
-        });
+        }, { signal });
 
         // Listen for dice rolls
         window.addEventListener('diceRoll', () => {
             this.triggerDiceAnimation();
-        });
+        }, { signal });
 
         // Prefer BroadcastChannel path via vj-receiver. If BC exists, skip LS-based listeners.
         if (!window.BroadcastChannel) {
@@ -56,10 +70,10 @@ class AnimeEnhancedEffects {
                         // Ignore JSON parse errors
                     }
                 }
-            });
+            }, { signal });
 
             // Also poll localStorage for same-tab communication (legacy fallback)
-            setInterval(() => {
+            animationRuntime.scheduleInterval(RUNTIME_OWNER, () => {
                 const messageData = localStorage.getItem('3886_vj_message');
                 if (messageData) {
                     try {
@@ -109,10 +123,12 @@ class AnimeEnhancedEffects {
         // Initialize ONLY lightweight, well-positioned effects
         // Reduced for performance - commenting out heavy effects
 
-        this.createFloatingParticles();  // Keep - lightweight
+        // Three.js already owns the particle family. A second DOM renderer
+        // duplicated the visual and its compositor cost.
         // this.createTextMorphing();     // Keep text glow but lightweight
         this.createHolographicEffect();  // Keep - adds depth
-        this.createDataStreamEffect();   // Keep - signature effect
+        // chaos-init owns the data-stream family; avoid a second fullscreen
+        // implementation with the same authored visual role.
         // this.createEnergyPulse();      // Skip - too many rings
         this.createGlitchTimeline();     // Keep - triggered only
         // this.createCyberGrid();        // Skip - heavy on GPU
@@ -122,7 +138,9 @@ class AnimeEnhancedEffects {
         // DON'T auto-create strobe circles - controlled via panel
         // this.createStrobeCircles();
         // this.createDNAHelix();         // Skip - unnecessary
-        this.createPlasmaField();        // Keep but optimize
+        // Plasma is created on first admission. Keeping a dormant filtered
+        // fullscreen canvas allocated made the compositor pay for an effect
+        // that was not visually active.
         // this.createGeometricMandala(); // Skip - redundant
         // this.createElectricArcs();     // Skip - too random
         // this.createWarpTunnel();       // Skip - overlaps with main effects
@@ -348,7 +366,7 @@ class AnimeEnhancedEffects {
                         el.style.transform = '';
                     });
                     // Schedule next scan in 30-45 seconds
-                    setTimeout(triggerHolographicScan, 30000 + Math.random() * 15000);
+                    animationRuntime.scheduleTimeout(HOLOGRAPHIC_RUNTIME_OWNER, triggerHolographicScan, 30000 + Math.random() * 15000);
                 }
             });
 
@@ -359,7 +377,9 @@ class AnimeEnhancedEffects {
         };
 
         // Start the first scan after 10-20 seconds
-        setTimeout(triggerHolographicScan, 10000 + Math.random() * 10000);
+        animationRuntime.disposeOwner(HOLOGRAPHIC_RUNTIME_OWNER);
+        animationRuntime.trackNode(HOLOGRAPHIC_RUNTIME_OWNER, holoContainer);
+        animationRuntime.scheduleTimeout(HOLOGRAPHIC_RUNTIME_OWNER, triggerHolographicScan, 10000 + Math.random() * 10000);
     }
 
     // Effect 4: Data Stream Effect (OPTIMIZED)
@@ -732,7 +752,9 @@ class AnimeEnhancedEffects {
         }
 
         // Remove overlay after effect
-        setTimeout(() => {
+        animationRuntime.disposeOwner(MATRIX_RUNTIME_OWNER);
+        animationRuntime.trackNode(MATRIX_RUNTIME_OWNER, matrixOverlay);
+        animationRuntime.scheduleTimeout(MATRIX_RUNTIME_OWNER, () => {
             matrixOverlay.remove();
         }, 4000);
     }
@@ -867,19 +889,16 @@ class AnimeEnhancedEffects {
 
     // Setup auto mode effects
     setupAutoModeEffects() {
-        // Clear any existing timer
-        if (this.autoModeTimer) {
-            clearInterval(this.autoModeTimer);
-        }
+        animationRuntime.disposeOwner(AUTO_STROBE_RUNTIME_OWNER);
 
         // Periodic strobe circle appearances in auto mode
-        this.autoModeTimer = setInterval(() => {
+        this.autoModeTimer = animationRuntime.scheduleInterval(AUTO_STROBE_RUNTIME_OWNER, () => {
             // Only create strobe circles if in auto mode and not already active
             if (this.isAutoMode && !this.activeStrobeCircles) {
                 this.createStrobeCircles();
 
                 // Auto-remove strobe circles after 15-20 seconds
-                setTimeout(() => {
+                animationRuntime.scheduleTimeout(AUTO_STROBE_RUNTIME_OWNER, () => {
                     this.removeStrobeCircles();
                 }, 15000 + Math.random() * 5000);
             }
@@ -949,150 +968,119 @@ class AnimeEnhancedEffects {
         animeManager.register(helixRotate, { critical: false, label: 'dna-helix-rotate' });
     }
 
-    // Create Plasma Field (FIXED - now controlled by FX system)
+    // Create a soft, low-resolution plasma field on first use. Radial gradients
+    // retain the atmospheric look without a per-pixel trig pass or fullscreen
+    // CSS blur on every frame.
     createPlasmaField() {
+        const existing = document.getElementById('plasma-field-canvas');
+        if (existing) return existing;
+
         const plasmaCanvas = document.createElement('canvas');
         plasmaCanvas.className = 'anime-plasma-field';
-        plasmaCanvas.id = 'plasma-field-canvas'; // Add ID for FX control
-        plasmaCanvas.width = 400;  // Higher res for quality
-        plasmaCanvas.height = 400;
+        plasmaCanvas.id = 'plasma-field-canvas';
+        plasmaCanvas.width = 192;
+        plasmaCanvas.height = 192;
         plasmaCanvas.style.cssText = `
             position: fixed;
-            top: 0;
-            left: 0;
+            inset: 0;
             width: 100%;
             height: 100%;
             pointer-events: none;
-            z-index: 2;  // Above .bg (z-index:1) but below primary content
-            opacity: 0;  // Start hidden - controlled by FX system
-            display: none; // Start hidden
+            z-index: 2;
+            opacity: 0;
+            display: none;
             mix-blend-mode: screen;
-            filter: blur(20px);  // Heavy blur for atmospheric effect
-            transform: scale(1.2);  // Slightly larger to avoid edge artifacts
-            transform-origin: center center;
+            filter: none;
         `;
 
-        // Prefer FX root container; fallback to body
         const fxRoot = document.getElementById('fx-root');
-        if (fxRoot) {
-            fxRoot.appendChild(plasmaCanvas);
-        } else if (document.body.firstChild) {
-            document.body.insertBefore(plasmaCanvas, document.body.firstChild);
-        } else {
-            document.body.appendChild(plasmaCanvas);
-        }
+        (fxRoot || document.body).appendChild(plasmaCanvas);
         plasmaCanvas.setAttribute('data-fx-overlay', 'plasma');
 
-        const ctx = plasmaCanvas.getContext('2d');
-        let time = 0;
-        let animationId = null;
+        const ctx = plasmaCanvas.getContext('2d', { alpha: true });
+        let animationToken = null;
         let isRunning = false;
 
-        const drawPlasma = () => {
-            if (!isRunning) return;
-            const imageData = ctx.createImageData(400, 400);
-            const data = imageData.data;
+        const drawPlasma = (frameTime = performance.now()) => {
+            if (!isRunning || !ctx) return;
+            const width = plasmaCanvas.width;
+            const height = plasmaCanvas.height;
+            const time = frameTime * 0.00018;
+            const colors = [
+                [0, 255, 210],
+                [20, 120, 255],
+                [125, 45, 255],
+                [0, 220, 150],
+                [35, 185, 255]
+            ];
 
-            // Optimized plasma with larger patterns for background
-            for (let x = 0; x < 400; x += 2) {  // Skip pixels for performance
-                for (let y = 0; y < 400; y += 2) {
-                    const value = Math.sin(x / 32.0) + Math.sin(y / 24.0) +
-                                 Math.sin((x + y) / 48.0) + Math.sin(Math.sqrt(x * x + y * y) / 32.0) +
-                                 4 + time;
-
-                    const index = (y * 400 + x) * 4;
-                    // Cyan/green/blue atmospheric colors
-                    const r = Math.sin(value * Math.PI) * 30;
-                    const g = Math.sin(value * Math.PI + 2) * 127 + 128;
-                    const b = Math.sin(value * Math.PI + 4) * 127 + 128;
-
-                    // Fill 2x2 block for performance
-                    for (let dx = 0; dx < 2 && x + dx < 400; dx++) {
-                        for (let dy = 0; dy < 2 && y + dy < 400; dy++) {
-                            const idx = ((y + dy) * 400 + (x + dx)) * 4;
-                            data[idx] = r;
-                            data[idx + 1] = g;
-                            data[idx + 2] = b;
-                            data[idx + 3] = 255;
-                        }
-                    }
-                }
-            }
-
-            ctx.putImageData(imageData, 0, 0);
-            time += 0.02;  // Slower for subtle movement
-
-            animationId = requestAnimationFrame(drawPlasma);
+            ctx.clearRect(0, 0, width, height);
+            ctx.globalCompositeOperation = 'screen';
+            colors.forEach((color, index) => {
+                const phase = time + index * 1.37;
+                const x = width * (0.5 + Math.sin(phase * (0.8 + index * 0.07)) * 0.38);
+                const y = height * (0.5 + Math.cos(phase * (0.65 + index * 0.05)) * 0.38);
+                const radius = width * (0.28 + (index % 3) * 0.06);
+                const gradient = ctx.createRadialGradient(x, y, 0, x, y, radius);
+                gradient.addColorStop(0, `rgba(${color[0]}, ${color[1]}, ${color[2]}, 0.72)`);
+                gradient.addColorStop(0.45, `rgba(${color[0]}, ${color[1]}, ${color[2]}, 0.24)`);
+                gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+                ctx.fillStyle = gradient;
+                ctx.fillRect(0, 0, width, height);
+            });
+            ctx.globalCompositeOperation = 'source-over';
         };
 
-        // Control functions for FX system integration
         const startPlasma = () => {
-            if (!isRunning) {
-                isRunning = true;
-                plasmaCanvas.style.display = 'block';
-                anime({
-                    targets: plasmaCanvas,
-                    opacity: 0.15,
-                    duration: 1000,
-                    easing: 'easeInOutQuad'
-                });
-                drawPlasma();
-            }
+            if (isRunning) return;
+            isRunning = true;
+            anime.remove?.(plasmaCanvas);
+            plasmaCanvas.style.display = 'block';
+            plasmaCanvas.style.opacity = '0';
+            drawPlasma();
+
+            const profile = window.performanceProfileManager?.currentProfile || window.performanceProfile || 'high';
+            const maxFps = profile === 'low' ? 12 : profile === 'medium' ? 18 : 24;
+            animationRuntime.disposeOwner(PLASMA_RUNTIME_OWNER);
+            animationToken = animationRuntime.scheduleRafLoop(PLASMA_RUNTIME_OWNER, drawPlasma, { maxFps });
+
+            anime({
+                targets: plasmaCanvas,
+                opacity: 0.15,
+                duration: 1000,
+                easing: 'easeInOutQuad'
+            });
         };
 
         const stopPlasma = () => {
-            if (isRunning) {
-                isRunning = false;
-                if (animationId) {
-                    cancelAnimationFrame(animationId);
+            isRunning = false;
+            animationToken?.clear?.();
+            animationToken = null;
+            animationRuntime.disposeOwner(PLASMA_RUNTIME_OWNER);
+            anime.remove?.(plasmaCanvas);
+            anime({
+                targets: plasmaCanvas,
+                opacity: 0,
+                duration: 600,
+                easing: 'easeInOutQuad',
+                complete: () => {
+                    plasmaCanvas.style.display = 'none';
                 }
-                anime({
-                    targets: plasmaCanvas,
-                    opacity: 0,
-                    duration: 1000,
-                    easing: 'easeInOutQuad',
-                    complete: () => {
-                        plasmaCanvas.style.display = 'none';
-                    }
-                });
-            }
+            });
         };
 
-        // Store control functions on the canvas element for FX access
         plasmaCanvas.startEffect = startPlasma;
         plasmaCanvas.stopEffect = stopPlasma;
 
-        // Keep-alive: if external cleanup removes the canvas while plasma is enabled, recreate quickly
-        const keepAlive = setInterval(() => {
-            const enabled = !!(window.fxController && window.fxController.effectStates && window.fxController.effectStates.plasma);
-            if (enabled && !document.getElementById('plasma-field-canvas')) {
-                try {
-                    if (fxRoot) fxRoot.appendChild(plasmaCanvas);
-                    else document.body.appendChild(plasmaCanvas);
-                    startPlasma();
-                } catch {}
-            }
-        }, 2000);
-        plasmaCanvas._keepAlive = keepAlive;
-
-        // Register with FX controller if available
         if (window.fxController) {
             window.fxController.registerEffect('plasma', {
                 enable: startPlasma,
-                disable: () => { try { stopPlasma(); } finally { try { clearInterval(plasmaCanvas._keepAlive); } catch {} } },
+                disable: stopPlasma,
                 element: plasmaCanvas
             });
         }
 
-        // Check if plasma should be enabled
-        setTimeout(() => {
-            const effectBtn = document.querySelector('.effect-toggle-btn[data-effect="plasma"]');
-            if (effectBtn && effectBtn.getAttribute('data-state') === 'on') {
-                startPlasma();
-            } else if (window.fxController && window.fxController.getIntensity('plasma') > 0) {
-                startPlasma();
-            }
-        }, 1000);
+        return plasmaCanvas;
     }
 
     // Create Geometric Mandala
@@ -1199,7 +1187,9 @@ class AnimeEnhancedEffects {
         };
 
         // Create arcs periodically
-        setInterval(() => {
+        animationRuntime.disposeOwner(ELECTRIC_ARC_RUNTIME_OWNER);
+        animationRuntime.trackNode(ELECTRIC_ARC_RUNTIME_OWNER, arcContainer);
+        animationRuntime.scheduleInterval(ELECTRIC_ARC_RUNTIME_OWNER, () => {
             if (Math.random() > 0.7) {
                 createArc();
             }
@@ -1255,6 +1245,14 @@ class AnimeEnhancedEffects {
     // Destroy all animations
     destroy() {
         this.pauseAll();
+        this.eventController?.abort();
+        this.eventController = null;
+        animationRuntime.disposeOwner(RUNTIME_OWNER);
+        animationRuntime.disposeOwner(PLASMA_RUNTIME_OWNER);
+        animationRuntime.disposeOwner(HOLOGRAPHIC_RUNTIME_OWNER);
+        animationRuntime.disposeOwner(MATRIX_RUNTIME_OWNER);
+        animationRuntime.disposeOwner(AUTO_STROBE_RUNTIME_OWNER);
+        animationRuntime.disposeOwner(ELECTRIC_ARC_RUNTIME_OWNER);
 
         // Remove created elements
         const elements = document.querySelectorAll(
@@ -1279,10 +1277,10 @@ const animeEnhancedEffects = new AnimeEnhancedEffects();
 // Auto-initialize if anime is enabled
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
-        setTimeout(() => animeEnhancedEffects.init(), 1000);
-    });
+        animationRuntime.scheduleTimeout(BOOT_RUNTIME_OWNER, () => animeEnhancedEffects.init(), 1000);
+    }, { once: true });
 } else {
-    setTimeout(() => animeEnhancedEffects.init(), 1000);
+    animationRuntime.scheduleTimeout(BOOT_RUNTIME_OWNER, () => animeEnhancedEffects.init(), 1000);
 }
 
 // Expose to window for control

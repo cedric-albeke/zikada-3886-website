@@ -16,19 +16,24 @@ async function waitForOnline(control, main?) {
 
 async function effectBtn(control, effect) {
   const sel = `.effect-toggle-btn[data-effect="${effect}"]`;
-  const btn = control.locator(sel);
+  const btn = control.locator(`${sel}:visible`);
   await expect(btn).toHaveCount(1);
   return btn;
 }
 
 test.describe('Effects & Layers Gallery', () => {
-  test('data-streams, plasma, particles, rgb split, chromatic, film grain', async ({ browser }) => {
-    const context = await browser.newContext();
+  test('data-streams, plasma, particles, rgb split, chromatic, film grain', async ({ context }) => {
     const control = await context.newPage();
-    await control.goto('http://localhost:3886/control-panel.html');
+    await control.goto('http://localhost:3886/control-panel-v3.html');
     const main = await context.newPage();
     await main.goto('http://localhost:3886/');
 await waitForOnline(control, main);
+
+    // The AAA panel intentionally keeps the full FX bank in a drawer. Open it
+    // through the same visible control an operator uses before exercising the
+    // individual toggles.
+    await control.locator('[data-drawer-toggle="effectsLibrary"]').click();
+    await expect(control.locator('#effectsLibrary')).toBeVisible();
 
     // Ensure fx-root exists
     await expect.poll(async () => await main.evaluate(() => !!document.getElementById('fx-root'))).toBeTruthy();
@@ -36,12 +41,8 @@ await waitForOnline(control, main);
     // --- Data Streams ---
     {
       const btn = await effectBtn(control, 'dataStreams');
-      let state = await btn.getAttribute('data-state');
+      const state = await btn.getAttribute('data-state');
       if (state !== 'on') {
-        await btn.click();
-      } else {
-        // Force re-enable to trigger overlay creation
-        await btn.click();
         await btn.click();
       }
       await expect.poll(async () => {
@@ -59,9 +60,6 @@ await waitForOnline(control, main);
       const btn = await effectBtn(control, 'plasma');
       const state = await btn.getAttribute('data-state');
       if (state !== 'on') {
-        await btn.click();
-      } else {
-        await btn.click();
         await btn.click();
       }
       // Prefer existence, but also assert state turned on to catch wiring
@@ -123,12 +121,22 @@ await waitForOnline(control, main);
       const state = await btn.getAttribute('data-state');
       if (state !== 'on') await btn.click();
       await expect.poll(async () => {
-        return await main.evaluate(() => !!document.getElementById('grain-overlay'));
+        return await main.evaluate(() => Boolean(
+          (window as any).ambientCanvasRenderer?.getStats?.().channels.filmGrain.enabled
+        ));
       }).toBeTruthy();
     }
-    // animation style exists
-    await expect.poll(async () => {
-      return await main.evaluate(() => !!document.getElementById('grain-anim-style'));
-    }).toBeTruthy();
+    const sharedGrain = await main.evaluate(() => ({
+      legacyStyle: Boolean(document.getElementById('grain-anim-style')),
+      legacyOverlay: Boolean(document.getElementById('grain-overlay')),
+      ambientCanvases: document.querySelectorAll('#ambient-effects-canvas').length,
+      ambientRafs: (window as any).ambientCanvasRenderer?.getStats?.().owners?.rafLoops || 0
+    }));
+    expect(sharedGrain).toEqual({
+      legacyStyle: false,
+      legacyOverlay: false,
+      ambientCanvases: 1,
+      ambientRafs: 1
+    });
   });
 });

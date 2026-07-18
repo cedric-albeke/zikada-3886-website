@@ -1,21 +1,42 @@
 // EffectManager: register long-lived loops and enforce budgets
+import animationRuntime from '../animation-runtime.js';
+
 const _effects = new Map();
 let _nextId = 1;
 
 export function register(start) {
   const id = _nextId++;
+  const owner = `effect-manager:${id}`;
   let stopped = false;
-  const local = { raf: null, interval: null, timeouts: new Set(), nodesProduced: 0, container: null };
+  const local = { owner, nodesProduced: 0, container: null };
   function loop(fn) {
-    function tick(){ if (stopped) return; try { fn(); } catch(_){} local.raf = requestAnimationFrame(tick); }
-    local.raf = requestAnimationFrame(tick); return () => cancelAnimationFrame(local.raf);
+    const token = animationRuntime.scheduleRafLoop(owner, () => {
+      if (!stopped) fn();
+    });
+    return () => token.clear();
   }
-  function every(ms, fn) { local.interval = setInterval(()=>{ if(!stopped) try{fn();}catch(_){} }, ms); return () => clearInterval(local.interval); }
-  function timeout(ms, fn) { const t = setTimeout(()=>{ local.timeouts.delete(t); if(!stopped) try{fn();}catch(_){} }, ms); local.timeouts.add(t); return () => { clearTimeout(t); local.timeouts.delete(t); }; }
-  const stop = () => { stopped = true; if (local.raf) cancelAnimationFrame(local.raf); if (local.interval) clearInterval(local.interval); for (const t of local.timeouts) clearTimeout(t); };
+  function every(ms, fn) {
+    const token = animationRuntime.scheduleInterval(owner, () => {
+      if (!stopped) fn();
+    }, ms);
+    return () => token.clear();
+  }
+  function timeout(ms, fn) {
+    const token = animationRuntime.scheduleTimeout(owner, () => {
+      if (!stopped) fn();
+    }, ms);
+    return () => token.clear();
+  }
   const ctx = { loop, every, timeout, setContainer(c){local.container=c;}, addNodesProduced(n){local.nodesProduced+=Number(n)||0;} };
   const cleanup = start(ctx);
-  _effects.set(id, { stop: () => { try { cleanup && cleanup(); } catch(_){} stop(); }, meta: local });
+  const stop = () => {
+    if (stopped) return;
+    stopped = true;
+    try { cleanup && cleanup(); } catch(_){}
+    animationRuntime.disposeOwner(owner);
+    _effects.delete(id);
+  };
+  _effects.set(id, { stop, meta: local });
   return { id, stop: _effects.get(id).stop };
 }
 

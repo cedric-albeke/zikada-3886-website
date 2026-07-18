@@ -1,4 +1,7 @@
 import gsap from 'gsap';
+import animationRuntime from './runtime/animation-runtime.js';
+
+const RUNTIME_OWNER = 'random-animations';
 
 class RandomAnimations {
     constructor() {
@@ -15,10 +18,32 @@ class RandomAnimations {
     }
 
     init() {
+        if (this.isRunning) return;
+        animationRuntime.disposeOwner(RUNTIME_OWNER);
+        this.isRunning = true;
         this.setupAnimationPool();
         this.startRandomSequence();
         this.addAmbientEffects();
-        this.isRunning = true;
+    }
+
+    scheduleTimeout(callback, delay) {
+        return animationRuntime.scheduleTimeout(RUNTIME_OWNER, callback, delay);
+    }
+
+    appendNode(node) {
+        node.dataset.randomFx = 'true';
+        document.body.appendChild(node);
+        return node;
+    }
+
+    getProfileScale() {
+        if (this.performanceProfile === 'low') return 0.35;
+        if (this.performanceProfile === 'medium') return 0.7;
+        return 1;
+    }
+
+    scaledCount(count, minimum = 1) {
+        return Math.max(minimum, Math.round(count * this.getProfileScale()));
     }
 
     setupAnimationPool() {
@@ -55,7 +80,10 @@ class RandomAnimations {
         }
 
         // Random chance to trigger an animation (balanced for resource management)
-        if (Math.random() > 0.6) { // 40% chance (reduced from 50% for better control)
+        const triggerChance = this.performanceProfile === 'low'
+            ? 0.14
+            : (this.performanceProfile === 'medium' ? 0.28 : 0.4);
+        if (Math.random() < triggerChance) {
             // Pick a random animation that isn't the last one
             let animations = this.animationPool.filter(a => a !== this.lastAnimation);
             const randomAnim = animations[Math.floor(Math.random() * animations.length)];
@@ -65,13 +93,16 @@ class RandomAnimations {
 
         // Random delay between 20-40 seconds (increased from 8-20 for balanced resource usage)
         // CRITICAL FIX: Store timeout ID for cleanup
-        const nextDelay = Math.random() * 20000 + 20000;
-        this.randomSequenceTimeout = setTimeout(() => this.triggerRandomAnimation(), nextDelay);
+        const cadenceScale = this.performanceProfile === 'low'
+            ? 1.6
+            : (this.performanceProfile === 'medium' ? 1.25 : 1);
+        const nextDelay = (Math.random() * 20000 + 20000) * cadenceScale;
+        this.randomSequenceTimeout = this.scheduleTimeout(() => this.triggerRandomAnimation(), nextDelay);
     }
 
     startRandomSequence() {
         // Start after initial delay
-        setTimeout(() => this.triggerRandomAnimation(), 2000);
+        this.randomSequenceTimeout = this.scheduleTimeout(() => this.triggerRandomAnimation(), 2000);
     }
 
     dataGlitchWave() {
@@ -96,7 +127,7 @@ class RandomAnimations {
             transform: skewY(${Math.random() * 10 - 5}deg);
             mix-blend-mode: multiply;
         `;
-        document.body.appendChild(wave);
+        this.appendNode(wave);
 
         gsap.to(wave, {
             x: window.innerWidth * 2,
@@ -121,7 +152,7 @@ class RandomAnimations {
             transform: translate(-50%, -50%);
             box-shadow: 0 0 30px rgba(0,255,133,0.5);
         `;
-        document.body.appendChild(pulse);
+        this.appendNode(pulse);
 
         // Use same value for width and height to keep it circular
         const targetSize = Math.random() * 500 + 300;
@@ -137,7 +168,7 @@ class RandomAnimations {
     }
 
     digitalRain() {
-        const drops = Math.floor(Math.random() * 10 + 5);
+        const drops = this.scaledCount(Math.floor(Math.random() * 10 + 5), 3);
 
         for (let i = 0; i < drops; i++) {
             const drop = document.createElement('div');
@@ -156,7 +187,7 @@ class RandomAnimations {
                 z-index: 4;
                 text-shadow: 0 0 5px rgba(147, 51, 234, 0.3);
             `;
-            document.body.appendChild(drop);
+            this.appendNode(drop);
 
             gsap.to(drop, {
                 y: window.innerHeight + 200,
@@ -201,7 +232,7 @@ class RandomAnimations {
 
             shape.style.left = Math.random() * window.innerWidth + 'px';
             shape.style.top = Math.random() * window.innerHeight + 'px';
-            document.body.appendChild(shape);
+            this.appendNode(shape);
 
             gsap.to(shape, {
                 rotation: Math.random() * 720 - 360,
@@ -234,7 +265,7 @@ class RandomAnimations {
             mix-blend-mode: multiply;
             opacity: 0;
         `;
-        document.body.appendChild(overlay);
+        this.appendNode(overlay);
 
         gsap.to(overlay, {
             opacity: 1,
@@ -277,7 +308,7 @@ class RandomAnimations {
                 transparent 4px
             );
         `;
-        document.body.appendChild(cascade);
+        this.appendNode(cascade);
 
         gsap.to(cascade, {
             y: window.innerHeight,
@@ -322,7 +353,7 @@ class RandomAnimations {
         path.setAttribute('filter', 'url(#glow)');
 
         svg.appendChild(path);
-        document.body.appendChild(svg);
+        this.appendNode(svg);
 
         gsap.to(path, {
             opacity: 0,
@@ -373,7 +404,7 @@ class RandomAnimations {
             transform: translate(-50%, -50%) scale(0);
             filter: blur(5px);
         `;
-        document.body.appendChild(warp);
+        this.appendNode(warp);
 
         gsap.to(warp, {
             scale: Math.random() * 5 + 3,
@@ -401,7 +432,7 @@ class RandomAnimations {
             z-index: 8;
             backdrop-filter: invert(0);
         `;
-        document.body.appendChild(glitchOverlay);
+        this.appendNode(glitchOverlay);
 
         gsap.to(glitchOverlay, {
             backdropFilter: 'invert(0.05) hue-rotate(45deg)',  // Reduced from 0.1 to 0.05 and 90deg to 45deg
@@ -425,7 +456,7 @@ class RandomAnimations {
             z-index: 9;
             backdrop-filter: hue-rotate(0deg);
         `;
-        document.body.appendChild(shift);
+        this.appendNode(shift);
 
         gsap.to(shift, {
             backdropFilter: `hue-rotate(${Math.random() * 180}deg)`,
@@ -464,7 +495,7 @@ class RandomAnimations {
             }
         }
 
-        document.body.appendChild(plasma);
+        this.appendNode(plasma);
 
         gsap.to(plasma, {
             scale: 2,
@@ -520,11 +551,11 @@ class RandomAnimations {
             });
         }
 
-        document.body.appendChild(trace);
+        this.appendNode(trace);
     }
 
     dataFragmentation() {
-        const fragments = Math.floor(Math.random() * 15 + 10);
+        const fragments = this.scaledCount(Math.floor(Math.random() * 15 + 10), 4);
         const centerX = Math.random() * window.innerWidth;
         const centerY = Math.random() * window.innerHeight;
 
@@ -543,7 +574,7 @@ class RandomAnimations {
                 z-index: 7;
                 transform-origin: center;
             `;
-            document.body.appendChild(fragment);
+            this.appendNode(fragment);
 
             const angle = (i / fragments) * Math.PI * 2;
             const distance = Math.random() * 200 + 50;
@@ -586,7 +617,7 @@ class RandomAnimations {
                 z-index: 1;
                 box-shadow: 0 0 ${size * 2}px rgba(0,255,133,0.5);
             `;
-            document.body.appendChild(particle);
+            this.appendNode(particle);
 
             gsap.to(particle, {
                 y: -(window.innerHeight + 20),
@@ -598,8 +629,9 @@ class RandomAnimations {
         };
 
         // CRITICAL FIX: Store interval ID for cleanup
-        this.particleInterval = setInterval(() => {
-            if (Math.random() > 0.5) createParticle();
+        this.particleInterval = animationRuntime.scheduleInterval(RUNTIME_OWNER, () => {
+            const chance = 0.5 * this.getProfileScale();
+            if (Math.random() < chance) createParticle();
         }, 1000);
     }
 
@@ -612,7 +644,8 @@ class RandomAnimations {
             }
 
             const bg = document.querySelector('.bg');
-            if (bg && Math.random() > 0.7) {
+            const chance = 0.3 * this.getProfileScale();
+            if (bg && Math.random() < chance) {
                 gsap.to(bg, {
                     filter: 'brightness(1.03) saturate(1.05)',  // REDUCED from 1.3/1.5 to prevent bright flashes
                     duration: 0.3,
@@ -623,10 +656,10 @@ class RandomAnimations {
             }
 
             // CRITICAL FIX: Store timeout ID for cleanup
-            this.pulseTimeout = setTimeout(pulse, Math.random() * 10000 + 5000);
+            this.pulseTimeout = this.scheduleTimeout(pulse, Math.random() * 10000 + 5000);
         };
 
-        this.pulseTimeout = setTimeout(pulse, 3000);
+        this.pulseTimeout = this.scheduleTimeout(pulse, 3000);
     }
 
     addSubtleDistortions() {
@@ -637,7 +670,8 @@ class RandomAnimations {
                 return;
             }
 
-            if (Math.random() > 0.8) {
+            const chance = 0.2 * this.getProfileScale();
+            if (Math.random() < chance) {
                 const elements = document.querySelectorAll('.logo-text-wrapper, .image-wrapper');
                 elements.forEach(el => {
                     gsap.to(el, {
@@ -652,10 +686,10 @@ class RandomAnimations {
             }
 
             // CRITICAL FIX: Store timeout ID for cleanup
-            this.distortTimeout = setTimeout(distort, Math.random() * 8000 + 4000);
+            this.distortTimeout = this.scheduleTimeout(distort, Math.random() * 8000 + 4000);
         };
 
-        this.distortTimeout = setTimeout(distort, 5000);
+        this.distortTimeout = this.scheduleTimeout(distort, 5000);
     }
 
     // New warp tunnel effect
@@ -677,7 +711,7 @@ class RandomAnimations {
             z-index: 5;
             opacity: 0;
         `;
-        document.body.appendChild(tunnel);
+        this.appendNode(tunnel);
 
         gsap.to(tunnel, {
             rotation: 360,
@@ -694,7 +728,8 @@ class RandomAnimations {
         const x = Math.random() * window.innerWidth;
         const y = Math.random() * window.innerHeight;
 
-        for (let i = 0; i < 3; i++) {
+        const rippleCount = this.scaledCount(3, 1);
+        for (let i = 0; i < rippleCount; i++) {
             const ripple = document.createElement('div');
             ripple.style.cssText = `
                 position: fixed;
@@ -708,7 +743,7 @@ class RandomAnimations {
                 pointer-events: none;
                 z-index: 4;
             `;
-            document.body.appendChild(ripple);
+            this.appendNode(ripple);
 
             gsap.to(ripple, {
                 width: 300,
@@ -754,7 +789,7 @@ class RandomAnimations {
             z-index: 6;
             filter: blur(1px);
         `;
-        document.body.appendChild(corruption);
+        this.appendNode(corruption);
 
         gsap.to(corruption, {
             x: '100%',
@@ -791,7 +826,7 @@ class RandomAnimations {
             opacity: 0;
             filter: blur(20px);
         `;
-        document.body.appendChild(burst);
+        this.appendNode(burst);
 
         gsap.timeline()
             .to(burst, {
@@ -825,7 +860,8 @@ class RandomAnimations {
             overflow: hidden;
         `;
 
-        for (let i = 0; i < 10; i++) {
+        const lineCount = this.scaledCount(10, 3);
+        for (let i = 0; i < lineCount; i++) {
             const line = document.createElement('div');
             const height = Math.random() * 3 + 1;
             line.style.cssText = `
@@ -850,8 +886,12 @@ class RandomAnimations {
             });
         }
 
-        document.body.appendChild(container);
-        setTimeout(() => container.remove(), 1000);
+        this.appendNode(container);
+        this.scheduleTimeout(() => container.remove(), 1000);
+    }
+
+    setPerformanceProfile(profile) {
+        this.performanceProfile = profile || 'high';
     }
 
     destroy() {
@@ -859,26 +899,16 @@ class RandomAnimations {
         this.isRunning = false;
         this.activeAnimations.clear();
 
-        // CRITICAL FIX: Clear all stored interval/timeout IDs
-        if (this.particleInterval) {
-            clearInterval(this.particleInterval);
-            this.particleInterval = null;
-        }
-
-        if (this.pulseTimeout) {
-            clearTimeout(this.pulseTimeout);
-            this.pulseTimeout = null;
-        }
-
-        if (this.distortTimeout) {
-            clearTimeout(this.distortTimeout);
-            this.distortTimeout = null;
-        }
-
-        if (this.randomSequenceTimeout) {
-            clearTimeout(this.randomSequenceTimeout);
-            this.randomSequenceTimeout = null;
-        }
+        animationRuntime.disposeOwner(RUNTIME_OWNER);
+        this.particleInterval = null;
+        this.pulseTimeout = null;
+        this.distortTimeout = null;
+        this.randomSequenceTimeout = null;
+        this.performanceProfile = 'high';
+        const randomNodes = document.querySelectorAll('[data-random-fx="true"], [data-random-fx="true"] *');
+        gsap.killTweensOf(randomNodes);
+        document.querySelectorAll('[data-random-fx="true"]').forEach(node => node.remove());
+        gsap.killTweensOf(document.querySelectorAll('.bg, .logo-text-wrapper, .image-wrapper'));
 
         console.log('✅ Random animations destroyed successfully');
     }

@@ -15,8 +15,7 @@ async function waitForOnline(control) {
 
 function dir(p: string) { fs.mkdirSync(p, { recursive: true }); return p; }
 
-test('triggers: gallery screenshots and diagnostics', async ({ browser }) => {
-  const context = await browser.newContext();
+test('triggers: gallery screenshots and diagnostics', async ({ context }) => {
   const control = await context.newPage();
   await control.goto('http://localhost:3886/control-panel.html');
   const main = await context.newPage();

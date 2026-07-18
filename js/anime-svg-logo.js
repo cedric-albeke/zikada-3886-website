@@ -1,4 +1,7 @@
 import animeManager from './anime-init.js';
+import animationRuntime from './runtime/animation-runtime.js';
+
+const RUNTIME_OWNER = 'anime-svg-logo';
 
 const anime = animeManager.anime;
 
@@ -296,7 +299,7 @@ window.addEventListener('storage', (e) => {
 
 // Listen for localStorage polling (same-tab communication)
 let lastMessageId = null;
-setInterval(() => {
+animationRuntime.scheduleInterval(RUNTIME_OWNER, () => {
   const messageData = localStorage.getItem('3886_vj_message');
   if (messageData) {
     try {
@@ -313,7 +316,7 @@ setInterval(() => {
       // Ignore JSON parse errors
     }
   }
-}, 100);
+}, 250);
 
 function enableLogoAnimation() {
   if (logoAnimationActive) return;

@@ -34,6 +34,8 @@ import vjReceiver from './vj-receiver.js';
 import performanceOptimizer from './performance-optimizer.js';
 import VisualEffectsController from './visual-effects-complete.js';
 import createPerformanceProfileManager from './performance/profile-manager.js';
+import ambientCanvasRenderer from './ambient-canvas-renderer.js';
+import performanceBus from './performance-bus.js';
 
 // Use safe feature flags system
 const featureFlags = window.SAFE_FEATURE_FLAGS || {
@@ -53,16 +55,22 @@ const featureFlags = window.SAFE_FEATURE_FLAGS || {
 import enhancedWatchdog from './enhanced-watchdog.js';
 // import memoryLeakGuardian from './memory-leak-guardian.js'; // DISABLED - causing aggressive cleanup
 import performanceLadder from './performance-degradation-ladder.js';
-import smartPreloader from './smart-preloader.js';
-import predictivePerformanceAlerting from './predictive-performance-alerting.js';
-import PredictiveTrendAnalysis from './predictive-trend-analysis.js';
-import predictiveLadderIntegration from './predictive-ladder-integration.js';
 import { threeJSParticleOptimizer } from './threejs-particle-optimizer.js';
 import { webglResourceManager } from './webgl-resource-manager.js';
-import { registerMonitor } from './monitor/dashboard.js';
 import { teardownAll } from './runtime/teardown.js';
 import { getPhaseController } from './runtime/phase/PhaseController.js';
+import animationRuntime from './runtime/animation-runtime.js';
 import gsap from 'gsap';
+
+const CHAOS_MONITOR_OWNER = 'chaos-init:fps-monitor';
+const CHAOS_WATCHDOG_OWNER = 'chaos-init:watchdog';
+const CHAOS_CLEANUP_OWNER = 'chaos-init:dom-cleanup';
+const CHAOS_STARTUP_OWNER = 'chaos-init:startup';
+const CHAOS_HOLOGRAPHIC_OWNER = 'chaos-init:holographic-shimmer';
+const CHAOS_RESIZE_OWNER = 'chaos-init:resize';
+const CHAOS_PHASE_OWNER = 'chaos-init:phase-clock';
+const CHAOS_AMBIENT_BURST_OWNER = 'chaos-init:ambient-bursts';
+const CHAOS_OPTIONAL_OWNER = 'chaos-init:optional-subsystems';
 
 // Ensure GSAP is globally available
 if (typeof window !== 'undefined' && !window.gsap) {
@@ -153,35 +161,21 @@ class ChaosInitializer {
     constructor() {
         this.isReady = false;
         this.performanceMode = 'auto';
-        this.fps = 120;
+        this.fps = 60;
         this.fpsHistory = [];
         this.lastFrameTime = performance.now();
+        this.fpsSampleStartedAt = null;
+        this.fpsSampleFrames = 0;
         this.bootTs = performance.now(); // Prevent plasma for first 120s
         this.animeStackLoaded = false;
         this.animeStackPromise = null;
         this.animeEnableListener = null;
         // AUTO phase cadence (default 50s)
         this.phaseDurationMs = 50000;
-        this.lowMotionPhaseMaxDurationMs = 22000;
-        this.lowMotionPhases = new Set([
-            'calm',
-            'glitch',
-            'minimal',
-            'chaotic',
-            'retro',
-            'vaporwave',
-            'cyberpunk',
-            'neon',
-            'aurora',
-            'sunset',
-            'ocean',
-            'forest',
-            'fire',
-            'ice',
-            'galaxy'
-        ]);
         this.phaseTimer = null;
         this.currentPhase = null;
+        this.phaseEffectOwner = null;
+        this.phaseEffectSequence = 0;
         
         // Performance management (with fallbacks if not loaded)
         this.performanceElementManager = window.performanceElementManager || null;
@@ -192,6 +186,11 @@ class ChaosInitializer {
         // Track managed intervals and elements for cleanup
         this.managedIntervals = [];
         this.managedElements = [];
+        this.ambientAnimations = [];
+        this.performanceModeListener = (event) => {
+            this.applyAmbientPerformanceProfile(event?.detail?.profile || event?.detail?.mode || 'high');
+        };
+        this.performanceModeListenerAttached = false;
         
         // Filter management to prevent grey screens
         this.currentBodyFilter = 'none';
@@ -204,6 +203,11 @@ class ChaosInitializer {
         // Predictive performance alerting
         this.predictiveAlertingEnabled = featureFlags.isEnabled('predictiveAlerting');
         this.predictiveTrendAnalysis = null;
+        this.predictivePerformanceAlerting = null;
+        this.predictiveLadderIntegration = null;
+        this.smartPreloader = null;
+        this.monitorDashboard = null;
+        this.lifecycleGeneration = 0;
         this.lastFPSUpdate = 0;
         
         console.log('🚀 ChaosInitializer created with performance management');
@@ -430,28 +434,26 @@ class ChaosInitializer {
      * Handle emergency performance reduction
      */
     handlePerformanceEmergency(level) {
-        if (level === 'critical') {
-            // Disable heavy effects immediately
-            this.disableHeavyEffects();
-            // Set emergency CSS
-            this.applyEmergencyCSS();
+        if (level !== 'critical') return;
+        const manager = window.performanceProfileManager;
+        if (manager && !manager._lockProfile) {
+            manager.applyProfile('low', { reason: 'watchdog-capacity-pressure' });
         }
+        window.dispatchEvent(new CustomEvent('animation:capacity-pressure', {
+            detail: { source: 'chaos-init', severity: 'critical' }
+        }));
     }
     
     /**
      * Handle temporary performance reduction
      */
     handleTemporaryPerformanceReduction(options) {
-        const { level, duration } = options;
-        
-        // Temporarily reduce effects
-        this.reduceEffectsTemporarily(level);
-        
-        // Restore after duration
-        if (duration) {
-            setTimeout(() => {
-                this.restoreEffects();
-            }, duration);
+        const manager = window.performanceProfileManager;
+        if (manager && !manager._lockProfile && manager.currentProfile === 'high') {
+            manager.applyProfile('medium', {
+                reason: 'watchdog-transient-capacity-pressure',
+                level: options?.level
+            });
         }
     }
     
@@ -459,7 +461,6 @@ class ChaosInitializer {
      * Handle performance restoration
      */
     handlePerformanceRestore() {
-        this.restoreEffects();
         this.removeEmergencyCSS();
     }
     
@@ -478,18 +479,12 @@ class ChaosInitializer {
      * Handle soft restart
      */
     handleSoftRestart() {
-        console.log('🔄 Performing soft restart...');
-        
-        // Clear all timers and intervals
-        this.clearAllTimers();
-        
-        // Reset animation states
-        this.resetAnimationStates();
-        
-        // Restart with minimal configuration
-        setTimeout(() => {
-            this.restartMinimal();
-        }, 1000);
+        console.warn('🔄 Watchdog requested a scoped recovery; active authored effects remain intact');
+        const manager = window.performanceProfileManager;
+        if (manager && !manager._lockProfile) {
+            manager.applyProfile('low', { reason: 'watchdog-scoped-recovery' });
+        }
+        window.dispatchEvent(new CustomEvent('chaos:scoped-recovery'));
     }
     
     /**
@@ -515,11 +510,6 @@ class ChaosInitializer {
                 window.intervalManager.performAutoCleanup();
             }
             
-            // 4. Clear cached GSAP transforms
-            if (typeof gsap !== 'undefined') {
-                gsap.set('*', { clearProps: 'transform' });
-            }
-            
             console.log('✅ Memory warning cleanup completed');
         } catch (error) {
             console.error('Memory warning cleanup failed:', error);
@@ -532,50 +522,18 @@ class ChaosInitializer {
     handleMemoryCritical(details) {
         console.error('🚨 Critical memory situation:', details);
         
-        // Emergency cleanup - more aggressive
+        // Preserve active work. A critical sample lowers per-frame cost and
+        // trims only resources that their owners have already released.
         try {
-            // Stop all animations immediately
-            if (typeof gsap !== 'undefined') {
-                gsap.killTweensOf('*');
-                gsap.set('*', { clearProps: 'all' });
+            const manager = window.performanceProfileManager;
+            if (manager && !manager._lockProfile) {
+                manager.applyProfile('low', { reason: 'memory-pressure', details });
             }
-            
-            // Clear all cached elements
-            if (window.performanceElementManager) {
-                window.performanceElementManager.emergencyCleanup();
-            }
-            
-            // Clear all intervals
-            if (window.intervalManager) {
-                window.intervalManager.emergencyStop();
-            }
-            
-            // Clear all timers managed by this class
-            this.clearAllTimers();
-            
-            // Apply emergency performance CSS
-            this.applyEmergencyCSS();
-            
-            // Trigger garbage collection if available
-            if (window.gc) {
-                window.gc();
-            }
-            
-            console.log('💥 Emergency memory cleanup completed');
-            
-            // If we still have issues, restart the app after brief delay
-            setTimeout(() => {
-                console.log('🔄 Initiating soft restart due to memory crisis');
-                this.handleSoftRestart();
-            }, 2000);
-            
+            window.WEBGL_RESOURCE_MANAGER?.performRendererCleanup?.({ releasedOnly: true });
+            window.performanceElementManager?.purge?.();
+            console.log('💥 Memory pressure mitigation applied without truncating active effects');
         } catch (error) {
             console.error('❌ Critical memory cleanup failed:', error);
-            // Last resort: reload the page
-            setTimeout(() => {
-                console.error('🎆 Forcing page reload as last resort');
-                window.location.reload();
-            }, 3000);
         }
     }
     
@@ -652,11 +610,6 @@ class ChaosInitializer {
                 window.WEBGL_RESOURCE_MANAGER.performRendererCleanup();
             }
             
-            // Force GSAP cleanup
-            if (typeof gsap !== 'undefined') {
-                gsap.killTweensOf('*');
-            }
-            
             // Clear animation registry
             if (window.animationRegistry) {
                 window.animationRegistry.cleanup();
@@ -704,40 +657,14 @@ class ChaosInitializer {
      * Apply emergency CSS to reduce performance impact
      */
     applyEmergencyCSS() {
-        if (document.getElementById('emergency-performance-css')) return;
-        
-        const style = document.createElement('style');
-        style.id = 'emergency-performance-css';
-        style.textContent = `
-            /* Emergency performance reduction */
-            .quantum-particles { display: none !important; }
-            .holographic-shimmer { opacity: 0.01 !important; }
-            .energy-field { display: none !important; }
-            .matrix-overlay { opacity: 0.1 !important; }
-            .phase-overlay { display: none !important; }
-            
-            /* Reduce animation complexity */
-            * {
-                animation-duration: 2s !important;
-                transition-duration: 0.1s !important;
-            }
-            
-            /* Disable expensive filters */
-            .blur-effect { filter: none !important; }
-            .glow-effect { box-shadow: none !important; }
-        `;
-        
-        document.head.appendChild(style);
+        document.documentElement.dataset.performancePressure = 'critical';
     }
     
     /**
      * Remove emergency CSS
      */
     removeEmergencyCSS() {
-        const style = document.getElementById('emergency-performance-css');
-        if (style) {
-            style.remove();
-        }
+        delete document.documentElement.dataset.performancePressure;
     }
     
     /**
@@ -762,48 +689,31 @@ class ChaosInitializer {
      * Clear all managed timers and intervals
      */
     clearAllTimers() {
-        // Clear managed intervals
-        this.managedIntervals.forEach(id => {
-            clearInterval(id);
-        });
+        this.managedIntervals.forEach(handle => handle?.clear?.());
         this.managedIntervals = [];
-        
-        // Emit event for other systems to clear their timers
-        const event = new CustomEvent('chaos:clear-timers');
-        window.dispatchEvent(event);
+        this.clearPhaseTimer();
     }
     
     /**
      * Reset animation states
      */
     resetAnimationStates() {
-        // Kill all GSAP animations
-        if (typeof gsap !== 'undefined') {
-            gsap.killTweensOf('*');
+        if (this.currentPhase && window.gsapAnimationRegistry) {
+            window.gsapAnimationRegistry.killOwner(`chaos-phase-${this.currentPhase}`);
         }
-        
-        // Reset phases
         this.currentPhase = null;
-        
-        // Clear phase timer
-        if (this.phaseTimer) {
-            clearTimeout(this.phaseTimer);
-            this.phaseTimer = null;
-        }
+        this.clearPhaseTimer();
     }
     
     /**
      * Restart with minimal configuration
      */
     restartMinimal() {
-        console.log('🔄 Restarting with minimal configuration');
-        
-        // Reinitialize with reduced complexity
-        const event = new CustomEvent('chaos:restart-minimal');
-        window.dispatchEvent(event);
-        
-        // Restart phase system with longer intervals
-        this.phaseDurationMs = Math.max(this.phaseDurationMs * 1.5, 45000); // Increase to 45s minimum
+        console.log('🔄 Applying low-cost render profile without rewriting phase timing');
+        const manager = window.performanceProfileManager;
+        if (manager && !manager._lockProfile) {
+            manager.applyProfile('low', { reason: 'legacy-restart-minimal' });
+        }
     }
 
     setupAnimeIntegration() {
@@ -968,6 +878,23 @@ class ChaosInitializer {
     }
 
     initialize() {
+        if (this.isReady) {
+            console.warn('⚠️ ChaosInitializer already ready; duplicate initialize ignored');
+            return;
+        }
+
+        this.lifecycleGeneration++;
+        const lifecycleGeneration = this.lifecycleGeneration;
+
+        // A full lifecycle restart clears IntervalManager, including its own
+        // housekeeping task. Restore it idempotently before subsystems register.
+        this.intervalManager = window.intervalManager || this.intervalManager;
+        this.intervalManager?.startAutoCleanup?.();
+        if (!this.performanceModeListenerAttached) {
+            window.addEventListener('performanceModeChange', this.performanceModeListener);
+            this.performanceModeListenerAttached = true;
+        }
+
         // Poster mode: If ?poster=1 is present, avoid heavy subsystems and render static hero only for capture
         try {
             const qp = new URLSearchParams(window.location.search || '');
@@ -1031,39 +958,15 @@ class ChaosInitializer {
         // CRITICAL FIX: Moved Performance Degradation Ladder initialization to AFTER
         // ChaosEngine initialization (see below after initChaosEngine() call)
 
-        // Initialize Smart Preloader
-        try {
-            console.log('🚀 Starting Smart Preloader...');
-            
-            // Only start if PWA features are enabled or in development mode
-            if (this.pwaEnabled || this.debugMetrics) {
-                smartPreloader.start();
-                console.log('✅ Smart Preloader active');
-                
-                // Expose for debugging if enabled
-                if (this.debugMetrics) {
-                    window.smartPreloader = smartPreloader;
-                    if (runtimeTestsEnabled()) {
-                        import('./smart-preloader-test.js')
-                            .then(module => {
-                                window.smartPreloaderTest = module.default;
-                            })
-                            .catch(error => console.warn('Smart preloader tests unavailable:', error));
-                    }
-                    console.log('🧪 Debug mode: Preloader testing available via window.testSmartPreloader()');
-                }
-            } else {
-                console.log('💤 Smart Preloader disabled (PWA features not enabled)');
-            }
-        } catch (error) {
-            console.warn('⚠️ Smart Preloader failed to start:', error);
-        }
+        // Optional infrastructure is imported only when enabled. This removes
+        // its parse/compile cost from the normal visual startup path.
+        this.initSmartPreloader(lifecycleGeneration);
         
         // Initialize Predictive Performance Alerting System
-        this.initPredictiveAlerting();
+        this.initPredictiveAlerting(lifecycleGeneration);
         
         // Initialize Performance Monitoring Dashboard if enabled
-        this.initMonitoringDashboard();
+        this.initMonitoringDashboard(lifecycleGeneration);
         
         this.initBackgroundAnimator();
         this.initLogoAnimator();  // Initialize logo animator early
@@ -1101,12 +1004,14 @@ class ChaosInitializer {
             if (window.chaosEngine && window.chaosEngine.renderer) {
                 console.log('🔧 Initializing WebGL Resource Manager...');
                 webglResourceManager.initialize(window.chaosEngine.renderer);
-                if (window.chaosEngine.scene && window.chaosEngine.camera) {
+                if (window.chaosEngine.scene && window.chaosEngine.camera && !window.chaosEngine.softwareRenderer) {
                     webglResourceManager.queueShaderPrecompilation(
                         window.chaosEngine.scene,
                         window.chaosEngine.camera,
                         'high'
                     );
+                } else if (window.chaosEngine.softwareRenderer) {
+                    console.log('💤 Shader precompilation skipped for software renderer');
                 }
                 console.log('✅ WebGL Resource Manager active');
             } else {
@@ -1172,10 +1077,14 @@ class ChaosInitializer {
         this.handleResize();
 
         // Listen for animation phase changes
-        window.addEventListener('animationPhase', (e) => this.handlePhaseChange(e.detail.phase));
+        if (!this._phaseChangeHandler) {
+            this._phaseChangeHandler = (e) => this.handlePhaseChange(e.detail.phase);
+            window.addEventListener('animationPhase', this._phaseChangeHandler);
+        }
 
         // Start the chaos
         this.isReady = true;
+        this.applyAmbientPerformanceProfile(window.performanceProfile || 'high');
         console.log('⚡ CHAOS ENGINE ONLINE');
         try { window.dispatchEvent(new CustomEvent('app:ready', { detail: { ts: Date.now() } })); } catch (_) {}
 
@@ -1186,7 +1095,8 @@ class ChaosInitializer {
 
         // CRITICAL FIX: Increased delay from 2000ms to 5000ms to ensure all DOM elements are ready
         // This prevents race conditions where phase methods try to animate elements that don't exist yet
-        setTimeout(() => {
+        animationRuntime.disposeOwner(CHAOS_STARTUP_OWNER);
+        animationRuntime.scheduleTimeout(CHAOS_STARTUP_OWNER, () => {
             console.log('🚀 Starting animation phases...');
             this.startAnimationPhases();
         }, 5000);
@@ -1234,38 +1144,79 @@ class ChaosInitializer {
         }
     }
 
-    initPerformanceMonitor() {
-        let frameCount = 0;
-        const monitorFPS = () => {
-            const now = performance.now();
-            const delta = now - this.lastFrameTime;
-            const currentFPS = 1000 / delta;
+    async initSmartPreloader(lifecycleGeneration = this.lifecycleGeneration) {
+        if (!this.pwaEnabled && !this.debugMetrics) {
+            console.log('💤 Smart Preloader disabled (PWA features not enabled)');
+            return;
+        }
 
-            this.fpsHistory.push(currentFPS);
-            if (this.fpsHistory.length > 60) {
-                this.fpsHistory.shift();
+        try {
+            console.log('🚀 Loading Smart Preloader...');
+            const module = await import('./smart-preloader.js');
+            const smartPreloader = module.default;
+            if (lifecycleGeneration !== this.lifecycleGeneration) {
+                smartPreloader?.destroy?.();
+                return;
             }
 
-            this.fps = this.fpsHistory.reduce((a, b) => a + b, 0) / this.fpsHistory.length;
+            this.smartPreloader = smartPreloader;
+            smartPreloader.start();
+            console.log('✅ Smart Preloader active');
 
-            // Update predictive alerting system with current FPS
-            this.updatePredictiveAlerting(currentFPS, now);
+            if (this.debugMetrics) {
+                window.smartPreloader = smartPreloader;
+                if (runtimeTestsEnabled()) {
+                    import('./smart-preloader-test.js')
+                        .then(testModule => {
+                            if (lifecycleGeneration === this.lifecycleGeneration) {
+                                window.smartPreloaderTest = testModule.default;
+                            }
+                        })
+                        .catch(error => console.warn('Smart preloader tests unavailable:', error));
+                }
+                console.log('🧪 Debug mode: Preloader testing available via window.testSmartPreloader()');
+            }
+        } catch (error) {
+            console.warn('⚠️ Smart Preloader failed to start:', error);
+        }
+    }
+
+    initPerformanceMonitor() {
+        animationRuntime.disposeOwner(CHAOS_MONITOR_OWNER);
+        this.fpsSampleStartedAt = null;
+        this.fpsSampleFrames = 0;
+        let metricSamples = 0;
+        const monitorFPS = ({ fps }) => {
+            if (!Number.isFinite(fps)) return;
+            this.fpsHistory.push(fps);
+            if (this.fpsHistory.length > 10) this.fpsHistory.shift();
+            this.fps = this.fpsHistory.reduce((a, b) => a + b, 0) / this.fpsHistory.length;
+            const now = performance.now();
+            this.updatePredictiveAlerting(this.fps, now);
 
             // Auto-adjust quality based on performance - less aggressive
-            frameCount++;
-            if (frameCount % 300 === 0 && this.performanceMode === 'auto') {  // Check every 5 seconds
-                if (this.fps < 25 && chaosEngine.isInitialized) {
+            metricSamples++;
+            if (
+                metricSamples % 5 === 0 &&
+                this.performanceMode === 'auto' &&
+                window.__3886_PROFILE_MANAGER_ENABLED !== true
+            ) {
+                if (this.fps < 30 && chaosEngine.isInitialized) {
                     this.setPerformanceMode('low');
-                } else if (this.fps > 55 && this.performanceMode !== 'high') {
+                } else if (this.fps < 45 && chaosEngine.isInitialized) {
+                    this.setPerformanceMode('medium');
+                } else if (this.fps >= 60 && this.performanceMode !== 'high') {
                     this.setPerformanceMode('high');
                 }
             }
 
             this.lastFrameTime = now;
-            requestAnimationFrame(monitorFPS);
         };
 
-        requestAnimationFrame(monitorFPS);
+        monitorFPS(performanceBus.metrics);
+        const unsubscribe = performanceBus.subscribe(monitorFPS);
+        animationRuntime.trackDisposer(CHAOS_MONITOR_OWNER, unsubscribe);
+        this.performanceMonitorRaf = null;
     }
 
     setPerformanceMode(mode) {
@@ -1283,6 +1234,29 @@ class ChaosInitializer {
                 if (chaosEngine.glitchPass) {
                     chaosEngine.glitchPass.enabled = false;
                 }
+                if (typeof chaosEngine.adjustPostProcessing === 'function') {
+                    chaosEngine.adjustPostProcessing('low');
+                }
+                if (typeof chaosEngine.setPixelRatio === 'function') {
+                    chaosEngine.setPixelRatio(0.65);
+                }
+                chaosEngine.updateFrequency = 6;
+                break;
+
+            case 'medium':
+                if (chaosEngine.particles) {
+                    chaosEngine.particles.material.size = 0.4;
+                }
+                if (chaosEngine.glitchPass) {
+                    chaosEngine.glitchPass.enabled = false;
+                }
+                if (typeof chaosEngine.adjustPostProcessing === 'function') {
+                    chaosEngine.adjustPostProcessing('medium');
+                }
+                if (typeof chaosEngine.setPixelRatio === 'function') {
+                    chaosEngine.setPixelRatio(0.85);
+                }
+                chaosEngine.updateFrequency = 4;
                 break;
 
             case 'high':
@@ -1290,6 +1264,13 @@ class ChaosInitializer {
                 if (chaosEngine.particles) {
                     chaosEngine.particles.material.size = 0.5;
                 }
+                if (typeof chaosEngine.adjustPostProcessing === 'function') {
+                    chaosEngine.adjustPostProcessing('high');
+                }
+                if (typeof chaosEngine.setPixelRatio === 'function') {
+                    chaosEngine.setPixelRatio(chaosEngine.basePixelRatio || Math.min(window.devicePixelRatio || 1, 1.5));
+                }
+                chaosEngine.updateFrequency = 2;
                 break;
         }
     }
@@ -1297,24 +1278,37 @@ class ChaosInitializer {
     /**
      * Initialize Predictive Performance Alerting System
      */
-    initPredictiveAlerting() {
+    async initPredictiveAlerting(lifecycleGeneration = this.lifecycleGeneration) {
+        if (!this.predictiveAlertingEnabled) {
+            console.log('💤 Predictive Performance Alerting disabled by feature flag');
+            return;
+        }
+
         try {
-            if (!this.predictiveAlertingEnabled) {
-                console.log('💤 Predictive Performance Alerting disabled by feature flag');
+            console.log('🔮 Loading Predictive Performance Alerting System...');
+            const [alertingModule, trendModule, ladderModule] = await Promise.all([
+                import('./predictive-performance-alerting.js'),
+                import('./predictive-trend-analysis.js'),
+                import('./predictive-ladder-integration.js')
+            ]);
+            if (lifecycleGeneration !== this.lifecycleGeneration) {
+                alertingModule.default?.destroy?.();
+                ladderModule.default?.destroy?.();
                 return;
             }
-            
-            console.log('🔮 Starting Predictive Performance Alerting System...');
-            
+
+            this.predictivePerformanceAlerting = alertingModule.default;
+            this.predictiveLadderIntegration = ladderModule.default;
+
             // Initialize trend analysis
-            this.predictiveTrendAnalysis = new PredictiveTrendAnalysis();
+            this.predictiveTrendAnalysis = new trendModule.default();
             
             // Start predictive alerting system
-            predictivePerformanceAlerting.start();
+            this.predictivePerformanceAlerting.start();
             console.log('✅ Predictive Performance Alerting active');
             
             // Start ladder integration
-            predictiveLadderIntegration.start();
+            this.predictiveLadderIntegration.start();
             console.log('✅ Predictive Ladder Integration active');
             
             // Setup predictive event listeners
@@ -1322,12 +1316,13 @@ class ChaosInitializer {
             
             // Expose for debugging if enabled
             if (this.debugMetrics) {
-                window.predictivePerformanceAlerting = predictivePerformanceAlerting;
+                window.predictivePerformanceAlerting = this.predictivePerformanceAlerting;
                 window.predictiveTrendAnalysis = this.predictiveTrendAnalysis;
-                window.predictiveLadderIntegration = predictiveLadderIntegration;
+                window.predictiveLadderIntegration = this.predictiveLadderIntegration;
                 if (runtimeTestsEnabled()) {
                     import('./predictive-alerting-tests.js')
                         .then(module => {
+                            if (lifecycleGeneration !== this.lifecycleGeneration) return;
                             const predictiveAlertingTestSuite = module.default;
                             window.predictiveAlertingTestSuite = predictiveAlertingTestSuite;
                             window.runPredictiveTests = async (category = 'all') => {
@@ -1352,8 +1347,15 @@ class ChaosInitializer {
      * Setup predictive alerting event listeners
      */
     setupPredictiveEventListeners() {
+        const listen = (type, handler) => {
+            window.addEventListener(type, handler);
+            animationRuntime.trackDisposer(CHAOS_OPTIONAL_OWNER, () => {
+                window.removeEventListener(type, handler);
+            });
+        };
+
         // Listen for predictive ladder transition requests
-        window.addEventListener('predictive-ladder:transition-request', (event) => {
+        listen('predictive-ladder:transition-request', (event) => {
             if (this.debugMetrics) {
                 console.log('🎯 Predictive transition request:', event.detail);
             }
@@ -1369,7 +1371,7 @@ class ChaosInitializer {
         });
         
         // Listen for rollback requests
-        window.addEventListener('predictive-ladder:rollback-request', (event) => {
+        listen('predictive-ladder:rollback-request', (event) => {
             console.log('↩️ Predictive rollback request:', event.detail);
             
             // Forward to performance ladder
@@ -1383,14 +1385,14 @@ class ChaosInitializer {
         });
         
         // Listen for predictive pattern matches
-        window.addEventListener('predictive:pattern:matched', (event) => {
+        listen('predictive:pattern:matched', (event) => {
             if (this.debugMetrics) {
                 console.log('🔍 Performance pattern matched:', event.detail.patternName);
             }
         });
         
         // Listen for predictive events and forward FPS data
-        window.addEventListener('predictive:started', () => {
+        listen('predictive:started', () => {
             this.lastFPSUpdate = performance.now();
         });
     }
@@ -1399,37 +1401,36 @@ class ChaosInitializer {
      * Update predictive alerting system with current FPS data
      */
     updatePredictiveAlerting(currentFPS, timestamp) {
-        if (!this.predictiveAlertingEnabled || !predictivePerformanceAlerting.isActive) {
-            return;
-        }
-        
-        // Throttle updates to avoid overwhelming the system (every 100ms)
+        // The shared FPS event is core infrastructure. It must remain
+        // available even when the optional predictive-alerting feature is off.
         if (timestamp - this.lastFPSUpdate < 100) {
             return;
         }
-        
+
         try {
-            // Update predictive alerting system
-            predictivePerformanceAlerting.updateFPS(currentFPS, timestamp);
-            
-            // Update trend analysis if available
-            if (this.predictiveTrendAnalysis) {
-                this.predictiveTrendAnalysis.processData(currentFPS, timestamp);
-            }
-            
-            // Emit FPS update event for other systems
             const fpsEvent = new CustomEvent('performance:fps:update', {
                 detail: {
                     fps: currentFPS,
                     timestamp,
                     avgFPS: this.fps,
-                    fpsHistory: this.fpsHistory.slice(-10) // Last 10 samples
+                    fpsHistory: this.fpsHistory.slice(-10)
                 }
             });
             window.dispatchEvent(fpsEvent);
-            
             this.lastFPSUpdate = timestamp;
-            
+
+            if (!this.predictiveAlertingEnabled || !this.predictivePerformanceAlerting?.isActive) {
+                return;
+            }
+
+            // Update predictive alerting system
+            this.predictivePerformanceAlerting.updateFPS(currentFPS, timestamp);
+
+            // Update trend analysis if available
+            if (this.predictiveTrendAnalysis) {
+                this.predictiveTrendAnalysis.processData(currentFPS, timestamp);
+            }
+
         } catch (error) {
             if (this.debugMetrics) {
                 console.warn('⚠️ Predictive alerting update failed:', error);
@@ -1440,19 +1441,21 @@ class ChaosInitializer {
     /**
      * Initialize Performance Monitoring Dashboard
      */
-    initMonitoringDashboard() {
+    async initMonitoringDashboard(lifecycleGeneration = this.lifecycleGeneration) {
+        const dashboardEnabled = featureFlags.isEnabled('monitorDashboard') ||
+                                window.__ZIKADA_FLAGS__?.monitorDashboard ||
+                                this.debugMetrics;
+        if (!dashboardEnabled) {
+            console.log('💤 Monitoring Dashboard disabled by feature flag');
+            return;
+        }
+
         try {
-            // Check if monitoring dashboard is enabled via feature flag
-            const dashboardEnabled = featureFlags.isEnabled('monitorDashboard') || 
-                                    window.__ZIKADA_FLAGS__?.monitorDashboard ||
-                                    this.debugMetrics; // Enable in debug mode
-            
-            if (!dashboardEnabled) {
-                console.log('💤 Monitoring Dashboard disabled by feature flag');
+            console.log('📊 Loading Performance Monitoring Dashboard...');
+            const { registerMonitor } = await import('./monitor/dashboard.js');
+            if (lifecycleGeneration !== this.lifecycleGeneration) {
                 return;
             }
-            
-            console.log('📊 Initializing Performance Monitoring Dashboard...');
             
             // Create a simple event bus if ZIKADA_EVENT_BUS doesn't exist
             if (!window.ZIKADA_EVENT_BUS) {
@@ -1483,6 +1486,7 @@ class ChaosInitializer {
             const dashboard = registerMonitor(window.ZIKADA_EVENT_BUS);
             
             if (dashboard) {
+                this.monitorDashboard = dashboard;
                 console.log('✅ Performance Monitoring Dashboard active (Ctrl+Alt+M to toggle)');
                 
                 // Expose for debugging if enabled
@@ -1493,8 +1497,8 @@ class ChaosInitializer {
                 
                 // Auto-show dashboard in debug mode
                 if (this.debugMetrics) {
-                    setTimeout(() => {
-                        dashboard.show();
+                    animationRuntime.scheduleTimeout(CHAOS_OPTIONAL_OWNER, () => {
+                        if (lifecycleGeneration === this.lifecycleGeneration) dashboard.show();
                     }, 2000);
                 }
             } else {
@@ -1614,7 +1618,7 @@ class ChaosInitializer {
             lottieAnimations.init();
             console.log('🌟 Lottie animations initialized');
 
-            // Logo animations are now integrated into logo-animator.js
+            directLogoAnimation.init();
         } catch (error) {
             console.error('Failed to initialize Random Animations:', error);
         }
@@ -1750,52 +1754,13 @@ class ChaosInitializer {
     }
 
     addScanlines() {
-        // Check if scanlines already exist
-        if (document.querySelector('.scanlines')) {
-            return; // Already exists, don't create duplicate
-        }
-        
-        const scanlines = safeCreateElement('div', 'effect', {
-            position: 'fixed',
-            top: '0',
-            left: '0',
-            width: '100%',
-            height: '100%',
-            pointerEvents: 'none',
-            zIndex: '9997',
-            background: `repeating-linear-gradient(
-                0deg,
-                rgba(0, 0, 0, 0.01) 0px,
-                transparent 1px,
-                transparent 2px,
-                rgba(0, 0, 0, 0.01) 3px
-            )`,
-            opacity: '0.001',
-            mixBlendMode: 'multiply'
-        });
-        scanlines.className = 'scanlines';
-        scanlines.setAttribute('data-permanent', 'true'); // Mark as permanent
-        document.body.appendChild(scanlines);
-
-        // Use GSAP registry if available, otherwise direct GSAP
-        if (this.gsapRegistry) {
-            this.gsapRegistry.createAnimation('to', scanlines, {
-                backgroundPosition: '0 4px',
-                duration: 3,
-                repeat: -1,
-                ease: 'sine.inOut'
-            }, 'scanlines-animation', 'background');
-        } else {
-            // Direct GSAP fallback
-            gsap.to(scanlines, {
-                backgroundPosition: '0 4px',
-                duration: 3,
-                repeat: -1,
-                ease: 'sine.inOut'
-            });
-        }
-        
-        console.log('✅ Scanlines animation created (with fallback support)');
+        // Scanlines are composed into the existing 128px ambient texture in
+        // addStaticNoise(). A standalone animated fullscreen gradient forced
+        // an extra software-compositor pass for a four-pixel pattern.
+        document.querySelectorAll('.scanlines').forEach(node => node.remove());
+        this._ambientScanlinesEnabled = true;
+        ambientCanvasRenderer.setScanlinesEnabled(true, 0.035);
+        console.log('✅ Scanlines routed through the shared ambient texture');
     }
 
     addVHSDistortion() {
@@ -1845,75 +1810,8 @@ class ChaosInitializer {
     }
 
     addCyberGrid() {
-        const gridCanvas = safeCreateElement('canvas', 'background', {
-            position: 'fixed',
-            bottom: '0',
-            left: '0',
-            width: '100%',
-            height: '80%',
-            pointerEvents: 'none',
-            zIndex: '-1',
-            opacity: '0.008'
-        });
-        gridCanvas.id = 'cyber-grid';
-        document.body.appendChild(gridCanvas);
-
-        const ctx = gridCanvas.getContext('2d');
-        gridCanvas.width = window.innerWidth;
-        gridCanvas.height = window.innerHeight * 0.8;
-
-        let offset = 0;
-
-        const drawGrid = () => {
-            ctx.clearRect(0, 0, gridCanvas.width, gridCanvas.height);
-
-            // Create perspective grid
-            ctx.strokeStyle = '#00ffff';
-            ctx.lineWidth = 0.5;
-
-            const gridSize = 40;
-            const horizon = 0;
-            const vanishingPointY = -gridCanvas.height * 0.5;
-
-            // Horizontal lines with perspective
-            for (let i = 0; i <= 20; i++) {
-                const y = horizon + (i * i * 2); // Exponential spacing for perspective
-                if (y > gridCanvas.height) break;
-
-                ctx.beginPath();
-                ctx.moveTo(0, y);
-                ctx.lineTo(gridCanvas.width, y);
-                ctx.globalAlpha = 1 - (y / gridCanvas.height) * 0.7;
-                ctx.stroke();
-            }
-
-            // Vertical lines with perspective
-            const centerX = gridCanvas.width / 2;
-            const numLines = 30;
-
-            for (let i = -numLines; i <= numLines; i++) {
-                ctx.beginPath();
-                const startX = centerX + (i * gridSize);
-                const endX = centerX + (i * gridSize * 5);
-
-                ctx.moveTo(startX, horizon);
-                ctx.lineTo(endX, gridCanvas.height);
-                ctx.globalAlpha = 0.3 - Math.abs(i / numLines) * 0.2;
-                ctx.stroke();
-            }
-
-            ctx.globalAlpha = 1;
-        };
-
-        const gridSize = 40; // Define gridSize here
-        const animateGrid = () => {
-            offset += 0.5;
-            if (offset > gridSize) offset = 0;
-            drawGrid();
-            requestAnimationFrame(animateGrid);
-        };
-
-        animateGrid();
+        document.getElementById('cyber-grid')?.remove();
+        ambientCanvasRenderer.setCyberGridEnabled(true);
     }
 
     addGlowEffects() {
@@ -2025,7 +1923,8 @@ class ChaosInitializer {
     }
 
     handleResize() {
-        window.addEventListener('resize', () => {
+        animationRuntime.disposeOwner(CHAOS_RESIZE_OWNER);
+        const handleResize = () => {
             if (chaosEngine.isInitialized) {
                 chaosEngine.handleResize();
             }
@@ -2037,120 +1936,38 @@ class ChaosInitializer {
                 matrixCanvas.height = window.innerHeight;
             }
 
-            const gridCanvas = document.getElementById('cyber-grid');
-            if (gridCanvas) {
-                gridCanvas.width = window.innerWidth;
-                gridCanvas.height = window.innerHeight * 0.8;
-            }
+            ambientCanvasRenderer.resize();
+        };
+        window.addEventListener('resize', handleResize, { passive: true });
+        animationRuntime.trackDisposer(CHAOS_RESIZE_OWNER, () => {
+            window.removeEventListener('resize', handleResize);
         });
     }
 
     addStaticNoise() {
-        // CRITICAL FIX: Create static-noise canvas outside performance manager
-        // to prevent auto-cleanup that was causing noise effect to disappear
-        const canvas = document.createElement('canvas');
-        canvas.id = 'static-noise';
-
-        // Check current noise intensity from FX controller to set initial opacity
-        let initialOpacity = 0.015; // Default
-        let initialDisplay = 'block';
-
+        document.getElementById('static-noise')?.remove();
+        let initialNoiseStrength = 0.25;
         if (window.fxController) {
             const noiseIntensity = window.fxController.getIntensity('noise');
-            if (noiseIntensity === 0) {
-                initialOpacity = 0;
-                initialDisplay = 'none';
-            } else {
-                initialOpacity = (noiseIntensity * 0.05).toFixed(3);
-            }
+            initialNoiseStrength = Math.max(0, Math.min(1, Number(noiseIntensity) || 0));
         }
-
-        canvas.style.cssText = `
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            z-index: 1;
-            opacity: ${initialOpacity};
-            mix-blend-mode: screen;
-            display: ${initialDisplay};
-        `;
-        canvas.width = 256;
-        canvas.height = 256;
-
-        // Add to DOM directly (not through performance manager)
-        document.body.appendChild(canvas);
-
-        const ctx = canvas.getContext('2d');
-
-        // Store references for start/stop control
-        this._noiseCanvas = canvas;
-        this._noiseCtx = ctx;
-
-        // Rendering routine (invoked by rAF loop)
-        this._renderNoiseFrame = () => {
-            if (!this._noiseCtx || !this._noiseCanvas) return;
-            const imageData = this._noiseCtx.createImageData(256, 256);
-            const data = imageData.data;
-            for (let i = 0; i < data.length; i += 4) {
-                const value = Math.random() * 255;
-                data[i] = value;
-                data[i + 1] = value;
-                data[i + 2] = value;
-                data[i + 3] = 255;
-            }
-            this._noiseCtx.putImageData(imageData, 0, 0);
-        };
-
-        // Visibility-aware rAF loop at ~10 FPS
-        this._noiseActive = false;
-        this._noiseRAF = null;
-        this._noiseLastTick = 0;
-        this.startNoiseAnimation();
-        
-        // Pause/resume on tab visibility change
-        window.addEventListener('visibilitychange', () => {
-            if (document.hidden) {
-                this.stopNoiseAnimation();
-            } else {
-                // Only resume if noise is visible and opacity > 0
-                const canvasEl = document.getElementById('static-noise');
-                const isVisible = canvasEl && canvasEl.style.display !== 'none' && parseFloat(canvasEl.style.opacity || '0') > 0;
-                if (isVisible) this.startNoiseAnimation();
-            }
-        });
-
-        console.log('✅ Static noise canvas created (outside performance manager to prevent cleanup)');
+        this._ambientNoiseStrength = initialNoiseStrength;
+        ambientCanvasRenderer.setNoiseStrength(initialNoiseStrength);
+        console.log('✅ Noise routed through the shared ambient texture');
     }
 
     startNoiseAnimation() {
-        const canvasEl = document.getElementById('static-noise');
-        if (!canvasEl || !this._noiseCtx) return;
-        if (this._noiseActive) return;
-        // Only run if noise is actually visible and has opacity
-        const visible = canvasEl.style.display !== 'none' && parseFloat(canvasEl.style.opacity || '0') > 0;
-        if (!visible) return;
-        this._noiseActive = true;
-        const loop = (now) => {
-            if (!this._noiseActive) return;
-            // Throttle to ~10 FPS
-            if (!this._noiseLastTick || (now - this._noiseLastTick) >= 100) {
-                this._noiseLastTick = now;
-                this._renderNoiseFrame && this._renderNoiseFrame();
-            }
-            this._noiseRAF = requestAnimationFrame(loop);
-        };
-        this._noiseRAF = requestAnimationFrame(loop);
+        ambientCanvasRenderer.start();
     }
 
     stopNoiseAnimation() {
-        this._noiseActive = false;
-        if (this._noiseRAF) {
-            cancelAnimationFrame(this._noiseRAF);
-            this._noiseRAF = null;
-        }
+        ambientCanvasRenderer.setNoiseStrength(0);
+        ambientCanvasRenderer.pause();
+    }
+
+    setAmbientNoiseStrength(value) {
+        this._ambientNoiseStrength = Math.max(0, Math.min(1, Number(value) || 0));
+        ambientCanvasRenderer.setNoiseStrength(this._ambientNoiseStrength);
     }
 
     addDataStreams() {
@@ -2189,51 +2006,57 @@ class ChaosInitializer {
 
             // Use GSAP registry if available, otherwise direct GSAP
             if (this.gsapRegistry) {
-                this.gsapRegistry.createAnimation('to', stream, {
+                const animation = this.gsapRegistry.createAnimation('to', stream, {
                     y: window.innerHeight + 200,
                     duration: Math.random() * 10 + 5,
                     repeat: -1,
                     ease: 'linear',
                     delay: Math.random() * 5
                 }, `data-stream-${i}`, 'stream');
+                this.ambientAnimations.push(animation);
             } else {
                 // Fallback to direct GSAP
-                gsap.to(stream, {
+                const animation = gsap.to(stream, {
                     y: window.innerHeight + 200,
                     duration: Math.random() * 10 + 5,
                     repeat: -1,
                     ease: 'linear',
                     delay: Math.random() * 5
                 });
+                this.ambientAnimations.push(animation);
             }
         }
     }
 
     addHolographicShimmer() {
+        animationRuntime.disposeOwner(CHAOS_HOLOGRAPHIC_OWNER);
+        document.querySelectorAll('.holographic-shimmer').forEach(node => node.remove());
         const shimmer = document.createElement('div');
         shimmer.className = 'holographic-shimmer';
         shimmer.style.cssText = `
             position: fixed;
-            top: -100%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
+            top: -12vh;
+            left: -30vw;
+            width: 16vw;
+            height: 124vh;
             pointer-events: none;
             z-index: 3;
-            background: linear-gradient(45deg,
-                transparent 30%,
+            background: linear-gradient(90deg,
+                transparent 10%,
                 rgba(0, 255, 255, 0.05) 50%,
-                transparent 70%);
-            transform: rotate(45deg);
+                transparent 90%);
+            transform: rotate(18deg);
+            will-change: ${chaosEngine.softwareRenderer ? 'auto' : 'transform'};
         `;
         document.body.appendChild(shimmer);
+        animationRuntime.trackNode(CHAOS_HOLOGRAPHIC_OWNER, shimmer);
 
-        gsap.to(shimmer, {
-            y: '200%',
-            duration: 15,
+        animationRuntime.trackAnimation(CHAOS_HOLOGRAPHIC_OWNER, gsap.to(shimmer, {
+            x: '250vw',
+            duration: chaosEngine.softwareRenderer ? 24 : 15,
             repeat: -1,
-            ease: 'linear'  // Smoother continuous movement
-        });
+            ease: 'none'
+        }));
     }
 
     _installPhaseController() {
@@ -2271,6 +2094,8 @@ class ChaosInitializer {
             // Brief pause for cleanup to complete
             await new Promise(r => setTimeout(r, 100));
             if (signal?.aborted) return;
+
+            this.phaseEffectOwner = `chaos-phase-timers:${next}:${++this.phaseEffectSequence}`;
             
             // Run target phase
             try { this._phaseMap.get(next)?.(); } catch (e) { console.warn('Phase runner error', next, e); }
@@ -2282,10 +2107,14 @@ class ChaosInitializer {
 
     getPhaseDuration(phaseName) {
         const configuredDuration = Math.max(5000, Number(this.phaseDurationMs) || 30000);
-        if (this.lowMotionPhases?.has(phaseName)) {
-            return Math.min(configuredDuration, this.lowMotionPhaseMaxDurationMs);
-        }
+        // Performance profiles tune the work performed inside a phase, never
+        // truncate the authored phase itself.
         return configuredDuration;
+    }
+
+    schedulePhaseTimeout(callback, delay) {
+        const owner = this.phaseEffectOwner || 'chaos-phase-timers:unscoped';
+        return animationRuntime.scheduleTimeout(owner, callback, delay);
     }
 
     startAnimationPhases() {
@@ -2346,7 +2175,11 @@ class ChaosInitializer {
 
             // schedule next based on configured phaseDurationMs
             this.clearPhaseTimer();
-            this.phaseTimer = setTimeout(runRandomPhase, this.getPhaseDuration(choice.name));
+            this.phaseTimer = animationRuntime.scheduleTimeout(
+                CHAOS_PHASE_OWNER,
+                runRandomPhase,
+                this.getPhaseDuration(choice.name)
+            );
         };
 
         runRandomPhase();
@@ -2359,12 +2192,16 @@ class ChaosInitializer {
 
     clearPhaseTimer() {
         if (this.phaseTimer) {
-            clearTimeout(this.phaseTimer);
+            this.phaseTimer.clear?.();
             this.phaseTimer = null;
         }
     }
 
     transitionOut() {
+        if (this.phaseEffectOwner) {
+            animationRuntime.disposeOwner(this.phaseEffectOwner);
+            this.phaseEffectOwner = null;
+        }
         // SIMPLIFIED: No filter reset during transitions to prevent grey flashes
         // Let new phase handle its own filter without resetting first
         
@@ -2393,6 +2230,7 @@ class ChaosInitializer {
         temporaryElements.forEach(el => {
             // Skip essential elements
             if (
+                el.dataset.persistentFx === 'true' ||
                 el.classList.contains('matrix-messages') ||
                 el.classList.contains('matrix-blackout') ||
                 el.classList.contains('scanlines') ||
@@ -2420,11 +2258,12 @@ class ChaosInitializer {
     }
 
     startAnimationWatchdog() {
+        animationRuntime.disposeOwner(CHAOS_WATCHDOG_OWNER);
         // Simple watchdog without performance system dependencies
         let checkCount = 0;
 
         // Use regular setInterval with proper cleanup tracking
-        const watchdogIntervalId = setInterval(() => {
+        const watchdogIntervalId = animationRuntime.scheduleInterval(CHAOS_WATCHDOG_OWNER, () => {
             checkCount++;
             const verbose = checkCount % 30 === 0; // Log every 5 minutes
             
@@ -2432,7 +2271,7 @@ class ChaosInitializer {
             let shouldSkipOptimizations = false;
             if (window.safePerformanceMonitor) {
                 const report = window.safePerformanceMonitor.getReport();
-                shouldSkipOptimizations = report.fps.current < 25;
+                shouldSkipOptimizations = report.fps.current < 30;
             }
 
             if (shouldSkipOptimizations) {
@@ -2517,37 +2356,31 @@ class ChaosInitializer {
 
             // REMOVED: Random special logo animation trigger - was creating too many elements
 
-            // Memory monitoring (every check ~30 seconds)
-            if (performance.memory) {
-                const { usedJSHeapSize, jsHeapSizeLimit } = performance.memory;
-                const usagePercent = ((usedJSHeapSize / jsHeapSizeLimit) * 100).toFixed(1);
+            // Memory pressure is structural telemetry, not permission to delete
+            // or restart visuals. The central bus samples it once for every
+            // health consumer.
+            const { memoryBytes, memoryLimitBytes } = performanceBus.metrics;
+            if (memoryBytes > 0 && memoryLimitBytes > 0) {
+                const usagePercent = (memoryBytes / memoryLimitBytes) * 100;
 
                 // Log every 10 checks (~5 minutes)
                 if (checkCount % 10 === 0) {
-                    const usedMB = (usedJSHeapSize / 1048576).toFixed(2);
-                    const limitMB = (jsHeapSizeLimit / 1048576).toFixed(2);
-                    console.log(`📊 Memory: ${usedMB}MB / ${limitMB}MB (${usagePercent}%)`);
+                    const usedMB = (memoryBytes / 1048576).toFixed(2);
+                    const limitMB = (memoryLimitBytes / 1048576).toFixed(2);
+                    console.log(`📊 Memory: ${usedMB}MB / ${limitMB}MB (${usagePercent.toFixed(1)}%)`);
                 }
 
-                // CRITICAL FIX: Increased threshold from 75% to 85% (browsers often use 80-95% normally)
                 if (usagePercent > 85 && checkCount % 2 === 0) {
-                    console.warn(`⚠️ High memory usage: ${usagePercent}% - consider reducing animations`);
-                }
-
-                // CRITICAL FIX: Increased threshold from 85% to 92% (prevents unnecessary cleanup)
-                if (usagePercent > 92) {
-                    console.error(`🚨 Critical memory usage: ${usagePercent}% - triggering emergency cleanup`);
-                    // Force aggressive cleanup
-                    if (window.vjReceiver && typeof window.vjReceiver.aggressiveDOMCleanup === 'function') {
-                        window.vjReceiver.aggressiveDOMCleanup();
-                    }
-                    this.cleanupPhaseElements();
-                }
-
-                // CRITICAL FIX: Increased threshold from 90% to 97% (prevents restart loops)
-                if (usagePercent > 97) {
-                    console.error(`🚨🚨 CRITICAL: Memory at ${usagePercent}% - initiating soft restart`);
-                    setTimeout(() => this.handleSoftRestart(), 2000);
+                    console.warn(`⚠️ High memory usage: ${usagePercent.toFixed(1)}% - reducing future render cost`);
+                    this.handlePerformanceEmergency('critical');
+                    window.dispatchEvent(new CustomEvent('performance:capacity-pressure', {
+                        detail: {
+                            resource: 'js-heap',
+                            count: memoryBytes,
+                            limit: memoryLimitBytes,
+                            source: 'chaos-watchdog'
+                        }
+                    }));
                 }
             }
 
@@ -2561,55 +2394,40 @@ class ChaosInitializer {
     }
 
     startPeriodicDOMCleanup() {
-        // Periodic cleanup of unmanaged DOM elements every 60 seconds (more aggressive)
-        // This prevents accumulation from anime-enhanced-effects and other unmanaged modules
-        this.domCleanupInterval = setInterval(() => {
-            const beforeCount = document.querySelectorAll('*').length;
+        animationRuntime.disposeOwner(CHAOS_CLEANUP_OWNER);
+        // Normal operation is audit-only. Connected visual roots and running
+        // effects are owned by their subsystems and must never be age-evicted.
+        this.domCleanupInterval = animationRuntime.scheduleInterval(CHAOS_CLEANUP_OWNER, () => {
+            const domCount = Number(performanceBus.metrics.domNodes) || 0;
+            window.performanceElementManager?.removeOrphanedElements?.();
 
-            // Use VJ receiver's aggressive cleanup if available
-            if (window.vjReceiver && typeof window.vjReceiver.aggressiveDOMCleanup === 'function') {
-                window.vjReceiver.aggressiveDOMCleanup();
-            } else {
-                // Fallback cleanup
-                this.cleanupPhaseElements();
-
-                // Clean up anime-enhanced-effects elements
-                const animeElements = document.querySelectorAll('.anime-particles, .anime-data-streams, .anime-energy-pulse, .anime-text-glow');
-                animeElements.forEach(el => {
-                    if (!el.hasAttribute('data-permanent')) {
-                        try { el.remove(); } catch {}
-                    }
-                });
-            }
-
-            // Additional cleanup for orphaned GSAP animations
+            // The registry owns completed-animation disposal. The audit only
+            // reports pressure; it never kills a running visual by age.
             if (window.gsapAnimationRegistry && typeof window.gsapAnimationRegistry.size === 'function') {
                 const totalAnims = window.gsapAnimationRegistry.size();
                 if (totalAnims > 100) {
                     console.warn(`⚠️ High GSAP animation count: ${totalAnims}`);
-                    // Cleanup is handled by registry's own budget system
+                    window.gsapAnimationRegistry.performPeriodicCleanup?.();
                 }
             }
 
-            const afterCount = document.querySelectorAll('*').length;
-            const removed = beforeCount - afterCount;
-
-            if (removed > 0) {
-                console.log(`🧹 Periodic DOM cleanup: removed ${removed} elements (${beforeCount} → ${afterCount})`);
+            if (window.lottieAnimations?.isInitialized && !document.querySelector('.lottie-container')) {
+                console.warn('⚠️ Lottie root detached; leaving recovery to explicit System Reset');
             }
 
-            // Log resource status every 5 cleanups (~5 minutes)
+            // Log resource status every 5 audits (~5 minutes)
             if (!this._cleanupCounter) this._cleanupCounter = 0;
             this._cleanupCounter++;
             if (this._cleanupCounter % 5 === 0) {
                 const gsapCount = (window.gsapAnimationRegistry && typeof window.gsapAnimationRegistry.size === 'function')
                     ? window.gsapAnimationRegistry.size()
                     : 0;
-                console.log(`📊 Resources: ${afterCount} DOM nodes, ${gsapCount} GSAP anims`);
+                const runtimeOwners = Object.keys(animationRuntime.getStats().owners).length;
+                console.log(`📊 Resources: ${domCount} DOM nodes, ${gsapCount} GSAP anims, ${runtimeOwners} runtime owners`);
             }
-        }, 60000); // Every 60 seconds (was 120000)
+        }, 60000);
 
-        console.log('📊 Periodic DOM cleanup scheduler started (every 60 seconds)');
+        console.log('📊 Periodic lifecycle audit started (every 60 seconds)');
     }
 
     phaseIntense() {
@@ -2622,8 +2440,7 @@ class ChaosInitializer {
             const bgElement = document.querySelector('.bg');
             if (bgElement) {
                 gsap.to(bgElement, {
-                    rotationZ: '+=90',  // Reduced from 180
-                    scale: 3,  // CRITICAL: Preserve scale to prevent edge reveal
+                    scale: backgroundAnimator.resolveSurfaceScale(3),
                     duration: 8,  // Slower
                     ease: 'power2.inOut'
                 });
@@ -2670,8 +2487,7 @@ class ChaosInitializer {
             const bgElement = document.querySelector('.bg');
             if (bgElement) {
                 gsap.to(bgElement, {
-                    rotationZ: '+=30',
-                    scale: 3,  // CRITICAL: Preserve scale to prevent edge reveal
+                    scale: backgroundAnimator.resolveSurfaceScale(3),
                     duration: 15,
                     ease: 'sine.inOut'
                 });
@@ -2728,7 +2544,7 @@ class ChaosInitializer {
                 el.style.transform = `translate(${Math.random() * 20 - 10}px, ${Math.random() * 20 - 10}px) skew(${Math.random() * 10 - 5}deg)`;
             });
 
-            setTimeout(() => {
+            this.schedulePhaseTimeout(() => {
                 this.safeApplyFilter(document.body, 'none', 0.2);
                 elements.forEach(el => {
                     el.style.transform = 'none';
@@ -2738,7 +2554,7 @@ class ChaosInitializer {
 
         // Reduced glitch bursts (was 10, now 3)
         for (let i = 0; i < 3; i++) {
-            setTimeout(glitchBurst, i * 800);  // Slower interval (was 300ms)
+            this.schedulePhaseTimeout(glitchBurst, i * 800);  // Slower interval (was 300ms)
         }
     }
 
@@ -2879,19 +2695,18 @@ class ChaosInitializer {
         const glitchLineInterval = this.intervalManager.createInterval(() => {
             // Check performance before creating glitch lines
             const performanceStats = this.performanceMonitor.metrics;
-            if (performanceStats.fps < 25 || performanceStats.managedElements > 130) {
+            if (performanceStats.fps < 45 || performanceStats.managedElements > 130) {
                 return; // Skip this cycle if performance is poor
             }
             
             if (Math.random() > 0.85) { // Reduced frequency from 0.8 to 0.85
                 createGlitchLine();
                 if (Math.random() > 0.7) { // Reduced from 0.5 to 0.7
-                    setTimeout(createGlitchLine, 75); // Increased delay from 50 to 75ms
+                    animationRuntime.scheduleTimeout(CHAOS_AMBIENT_BURST_OWNER, createGlitchLine, 75);
                 }
             }
         }, 4500, 'glitch-lines', { // Increased interval from 3000 to 4500ms
-            category: 'effect',
-            maxAge: 200000 // 3.3 minutes max age
+            category: 'effect'
         });
         
         this.managedIntervals.push(glitchLineInterval);
@@ -3057,7 +2872,7 @@ class ChaosInitializer {
         const artifactInterval = this.intervalManager.createInterval(() => {
             // Check performance before creating artifacts
             const performanceStats = this.performanceMonitor.metrics;
-            if (performanceStats.fps < 25 || performanceStats.managedElements > 150) {
+            if (performanceStats.fps < 45 || performanceStats.managedElements > 150) {
                 return; // Skip this cycle if performance is poor
             }
             
@@ -3065,8 +2880,7 @@ class ChaosInitializer {
                 createArtifact();
             }
         }, 5000, 'digital-artifacts', { // Increased interval from 3000 to 5000ms
-            category: 'effect',
-            maxAge: 300000 // 5 minutes max age
+            category: 'effect'
         });
         
         this.managedIntervals.push(artifactInterval);
@@ -3181,7 +2995,7 @@ class ChaosInitializer {
         const corruptionWaveInterval = this.intervalManager.createInterval(() => {
             // Check performance before creating waves
             const performanceStats = this.performanceMonitor.metrics;
-            if (performanceStats.fps < 30 || performanceStats.managedElements > 120) {
+            if (performanceStats.fps < 45 || performanceStats.managedElements > 120) {
                 return; // Skip this cycle if performance is poor
             }
             
@@ -3189,13 +3003,12 @@ class ChaosInitializer {
                 createWave();
                 // Reduced multiple wave creation
                 if (Math.random() > 0.8) { // Reduced from 0.7 to 0.8
-                    setTimeout(createWave, 150);
+                    animationRuntime.scheduleTimeout(CHAOS_AMBIENT_BURST_OWNER, createWave, 150);
                     // Removed third wave to reduce element creation
                 }
             }
         }, 6000, 'corruption-waves', { // Increased interval from 4000 to 6000ms
-            category: 'effect',
-            maxAge: 240000 // 4 minutes max age
+            category: 'effect'
         });
         
         this.managedIntervals.push(corruptionWaveInterval);
@@ -3270,7 +3083,7 @@ class ChaosInitializer {
         const quantumParticleInterval = this.intervalManager.createInterval(() => {
             // Strict performance checks - quantum particles are expensive
             const performanceStats = this.performanceMonitor.metrics;
-            if (performanceStats.fps < 35 || performanceStats.managedElements > 100) {
+            if (performanceStats.fps < 45 || performanceStats.managedElements > 100) {
                 return; // Skip this cycle if performance is poor
             }
             
@@ -3279,8 +3092,7 @@ class ChaosInitializer {
                 createParticle();
             }
         }, 2000, 'quantum-particles', { // Increased interval from 500ms to 2000ms (4x slower!)
-            category: 'particle',
-            maxAge: 180000 // 3 minutes max age
+            category: 'particle'
         });
         
         this.managedIntervals.push(quantumParticleInterval);
@@ -3295,7 +3107,7 @@ class ChaosInitializer {
             if (bgElement) {
                 gsap.to(bgElement, {
                     opacity: 0.03,
-                    scale: 3,  // CRITICAL: Keep at 3 to prevent edge reveal (was 2.2 - BUG!)
+                    scale: backgroundAnimator.resolveSurfaceScale(3),
                     duration: 5,
                     ease: 'power2.inOut'
                 });
@@ -3345,11 +3157,11 @@ class ChaosInitializer {
 
         // Fewer chaos bursts
         for (let i = 0; i < 8; i++) {  // Reduced from 20
-            setTimeout(chaos, i * 300);  // Slower spacing
+            this.schedulePhaseTimeout(chaos, i * 300);  // Slower spacing
         }
 
         // Reset after chaos
-        setTimeout(() => {
+        this.schedulePhaseTimeout(() => {
             gsap.to('.logo-text-wrapper, .image-wrapper, .text-3886', {
                 x: 0,
                 y: 0,
@@ -3399,7 +3211,7 @@ class ChaosInitializer {
         this.safeApplyFilter(document.body, 'contrast(1.1) saturate(1.1)', 1.5);
 
         // Remove after phase
-        setTimeout(() => {
+        this.schedulePhaseTimeout(() => {
             crt.remove();
             style.remove();
             this.safeApplyFilter(document.body, 'none', 1.5);
@@ -3440,7 +3252,7 @@ class ChaosInitializer {
             ease: 'power2.inOut'
         });
 
-        setTimeout(() => {
+        this.schedulePhaseTimeout(() => {
             gsap.to(overlay, {
                 opacity: 0,
                 duration: 1,
@@ -3484,7 +3296,7 @@ class ChaosInitializer {
             duration: 2
         });
 
-        setTimeout(() => {
+        this.schedulePhaseTimeout(() => {
             gsap.to(grid, {
                 opacity: 0,
                 duration: 1,
@@ -3527,7 +3339,7 @@ class ChaosInitializer {
             ease: 'sine.inOut'
         });
 
-        setTimeout(() => {
+        this.schedulePhaseTimeout(() => {
             neonPulse.remove();
             this.safeApplyFilter(document.body, 'none', 2);
         }, 10000);
@@ -3613,21 +3425,54 @@ class ChaosInitializer {
         if (this.blackoutEl) this.blackoutEl.style.opacity = '0';
     }
 
+    destroyOptionalSubsystems() {
+        animationRuntime.disposeOwner(CHAOS_OPTIONAL_OWNER);
+
+        this.smartPreloader?.destroy?.();
+        this.predictivePerformanceAlerting?.destroy?.();
+        this.predictiveLadderIntegration?.destroy?.();
+        this.monitorDashboard?.destroy?.();
+
+        if (window.smartPreloader === this.smartPreloader) delete window.smartPreloader;
+        if (window.predictivePerformanceAlerting === this.predictivePerformanceAlerting) {
+            delete window.predictivePerformanceAlerting;
+        }
+        if (window.predictiveLadderIntegration === this.predictiveLadderIntegration) {
+            delete window.predictiveLadderIntegration;
+        }
+        if (window.predictiveTrendAnalysis === this.predictiveTrendAnalysis) {
+            delete window.predictiveTrendAnalysis;
+        }
+        if (window.monitorDashboard === this.monitorDashboard) delete window.monitorDashboard;
+        if (window.ZIKADA?.monitor) delete window.ZIKADA.monitor;
+
+        this.smartPreloader = null;
+        this.predictivePerformanceAlerting = null;
+        this.predictiveLadderIntegration = null;
+        this.predictiveTrendAnalysis = null;
+        this.monitorDashboard = null;
+    }
+
     /**
      * Comprehensive cleanup method for force restart
      */
     cleanup() {
         console.log('🧹 CHAOS INIT: Comprehensive cleanup starting...');
 
+        this.lifecycleGeneration++;
+        this.destroyOptionalSubsystems();
+
         // Stop all phase animations immediately
-        this.phaseRunning = false;
+        this.stopAnimationPhases();
+        [CHAOS_MONITOR_OWNER, CHAOS_WATCHDOG_OWNER, CHAOS_CLEANUP_OWNER, CHAOS_STARTUP_OWNER, CHAOS_HOLOGRAPHIC_OWNER, CHAOS_RESIZE_OWNER, CHAOS_PHASE_OWNER, CHAOS_AMBIENT_BURST_OWNER, CHAOS_OPTIONAL_OWNER]
+            .forEach(owner => animationRuntime.disposeOwner(owner));
+        this.performanceMonitorRaf = null;
+        this.watchdogIntervalId = null;
+        this.domCleanupInterval = null;
+        this.ambientAnimations.forEach(animation => animation?.kill?.());
+        this.ambientAnimations = [];
 
         // Clear all watchdog and monitoring intervals
-        if (this.watchdogIntervalId) {
-            clearInterval(this.watchdogIntervalId);
-            this.watchdogIntervalId = null;
-        }
-
         if (this.greyFlashPreventionId) {
             clearInterval(this.greyFlashPreventionId);
             this.greyFlashPreventionId = null;
@@ -3649,8 +3494,10 @@ class ChaosInitializer {
 
         // Clear performance history
         this.fpsHistory = [];
-        this.fps = 120;
+        this.fps = 60;
         this.lastFrameTime = performance.now();
+        this.fpsSampleStartedAt = null;
+        this.fpsSampleFrames = 0;
 
         console.log('✅ CHAOS INIT: Comprehensive cleanup completed');
     }
@@ -3658,17 +3505,25 @@ class ChaosInitializer {
     destroy() {
         console.log('💀 Destroying ChaosInitializer and all performance systems...');
 
-        this.phaseRunning = false;
+        this.lifecycleGeneration++;
+        this.destroyOptionalSubsystems();
+
+        this.stopAnimationPhases();
+        [CHAOS_MONITOR_OWNER, CHAOS_WATCHDOG_OWNER, CHAOS_CLEANUP_OWNER, CHAOS_STARTUP_OWNER, CHAOS_HOLOGRAPHIC_OWNER, CHAOS_RESIZE_OWNER, CHAOS_PHASE_OWNER, CHAOS_AMBIENT_BURST_OWNER, CHAOS_OPTIONAL_OWNER]
+            .forEach(owner => animationRuntime.disposeOwner(owner));
+        this.performanceMonitorRaf = null;
+        this.watchdogIntervalId = null;
+        this.domCleanupInterval = null;
+        this.ambientAnimations.forEach(animation => animation?.kill?.());
+        this.ambientAnimations = [];
+        if (this.performanceModeListenerAttached) {
+            window.removeEventListener('performanceModeChange', this.performanceModeListener);
+            this.performanceModeListenerAttached = false;
+        }
         
         // Destroy performance management systems
         if (this.performanceMonitor) {
             this.performanceMonitor.destroy();
-        }
-        
-        // Clear watchdog interval
-        if (this.watchdogIntervalId) {
-            clearInterval(this.watchdogIntervalId);
-            console.log('🗑️ Watchdog interval cleared');
         }
         
         // Clear grey flash prevention interval
@@ -3714,13 +3569,22 @@ class ChaosInitializer {
             chaosEngine.destroy();
         }
         
-        if (textEffects && textEffects.destroy) {
-            textEffects.destroy();
+        if (window.textEffects && typeof window.textEffects.destroy === 'function') {
+            window.textEffects.destroy();
+        }
+
+        if (subtleEffects && subtleEffects.destroy) {
+            subtleEffects.destroy();
+        }
+
+        if (enhancedLogoAnimator && enhancedLogoAnimator.destroy) {
+            enhancedLogoAnimator.destroy();
         }
         
         if (backgroundAnimator && backgroundAnimator.destroy) {
             backgroundAnimator.destroy();
         }
+        ambientCanvasRenderer.destroy();
         
         if (randomAnimations && randomAnimations.destroy) {
             randomAnimations.destroy();
@@ -3735,15 +3599,16 @@ class ChaosInitializer {
             this.opacityObserver.disconnect();
         }
 
-        // Destroy Smart Preloader
-        if (window.smartPreloader && typeof window.smartPreloader.destroy === 'function') {
-            window.smartPreloader.destroy();
-            console.log('✅ Smart Preloader destroyed');
+        if (this._phaseChangeHandler) {
+            window.removeEventListener('animationPhase', this._phaseChangeHandler);
+            this._phaseChangeHandler = null;
         }
-        
+
+        this.isReady = false;
+
         // Enhanced element cleanup using performance selectors
         const elementsToRemove = [
-            '.scanlines', '#cyber-grid', '#static-noise', '.data-streams', 
+            '.scanlines', '#cyber-grid', '#static-noise', '#ambient-effects-canvas', '.data-streams',
             '.holographic-shimmer', '.glitch-lines', '.chromatic-pulse', 
             '.energy-field', '.quantum-particles', '.perf-managed',
             '[data-perf-id]', '.matrix-overlay', '.vhs-overlay'
@@ -3773,7 +3638,7 @@ class ChaosInitializer {
         this.safeApplyFilter(document.body, 'hue-rotate(15deg) saturate(1.4) brightness(1.1) contrast(1.05)', 2.5);
 
         // Reset after duration
-        setTimeout(() => {
+        this.schedulePhaseTimeout(() => {
             gsap.to(document.body, {
                 filter: 'none',
                 duration: 2,
@@ -3792,7 +3657,7 @@ class ChaosInitializer {
         // Deep blue/teal theme safely
         this.safeApplyFilter(document.body, 'hue-rotate(-45deg) saturate(1.2) brightness(0.95)', 2.5);
 
-        setTimeout(() => {
+        this.schedulePhaseTimeout(() => {
             gsap.to(document.body, {
                 filter: 'none',
                 duration: 2,
@@ -3809,7 +3674,7 @@ class ChaosInitializer {
         // Deep green nature theme safely
         this.safeApplyFilter(document.body, 'hue-rotate(60deg) saturate(1.1) brightness(0.98)', 2.5);
 
-        setTimeout(() => {
+        this.schedulePhaseTimeout(() => {
             gsap.to(document.body, {
                 filter: 'none',
                 duration: 2,
@@ -3825,7 +3690,7 @@ class ChaosInitializer {
         // Intense red/orange safely
         this.safeApplyFilter(document.body, 'hue-rotate(25deg) saturate(1.5) brightness(1.05) contrast(1.1)', 2.5);
 
-        setTimeout(() => {
+        this.schedulePhaseTimeout(() => {
             gsap.to(document.body, {
                 filter: 'none',
                 duration: 2,
@@ -3841,7 +3706,7 @@ class ChaosInitializer {
         // Cool blue/white safely
         this.safeApplyFilter(document.body, 'hue-rotate(-30deg) saturate(1.2) brightness(1.05) contrast(1.02)', 2.5);
 
-        setTimeout(() => {
+        this.schedulePhaseTimeout(() => {
             gsap.to(document.body, {
                 filter: 'none',
                 duration: 2,
@@ -3862,7 +3727,7 @@ class ChaosInitializer {
         // Deep purple/violet cosmic theme safely
         this.safeApplyFilter(document.body, 'hue-rotate(90deg) saturate(1.3) brightness(0.95) contrast(1.1)', 2.5);
 
-        setTimeout(() => {
+        this.schedulePhaseTimeout(() => {
             gsap.to(document.body, {
                 filter: 'none',
                 duration: 2,
@@ -3895,7 +3760,12 @@ class ChaosInitializer {
         // Resolve targets once to avoid race conditions and null conversions
         const textNodes = document.querySelectorAll('.logo-text, .text-3886');
         const glowNodes = document.querySelectorAll('.glow');
-        const gridNodes = document.querySelectorAll('#cyber-grid');
+
+        this.ambientAnimations = this.ambientAnimations.filter(animation => {
+            if (!animation || animation._3886ColorAmbient !== true) return true;
+            try { animation.kill(); } catch (_) {}
+            return false;
+        });
 
         // Reset filter to base state before starting animations (only if targets exist)
         if (textNodes && textNodes.length) {
@@ -3910,6 +3780,8 @@ class ChaosInitializer {
         // Preserve ZIKADA text original green colors - NO hue rotation
         if (textNodes && textNodes.length) {
             const textColorTimeline = gsap.timeline({ repeat: -1 });
+            textColorTimeline._3886ColorAmbient = true;
+            this.ambientAnimations.push(textColorTimeline);
             textColorTimeline
                 .to(textNodes, {
                 filter: 'brightness(100%) saturate(100%) contrast(100%)',
@@ -3939,25 +3811,41 @@ class ChaosInitializer {
 
         // Very subtle color pulse for cicada logo
         if (glowNodes && glowNodes.length) {
-            gsap.to(glowNodes, {
+            const glowTween = gsap.to(glowNodes, {
             filter: 'hue-rotate(12deg) saturate(115%) brightness(105%)',
             duration: 12,
             yoyo: true,
             repeat: -1,
             ease: 'sine.inOut'
             });
+            glowTween._3886ColorAmbient = true;
+            this.ambientAnimations.push(glowTween);
         }
 
-        // Subtle color shift for grid
-        if (gridNodes && gridNodes.length) {
-            gsap.to(gridNodes, {
-            filter: 'hue-rotate(20deg)',
-            duration: 20,
-            yoyo: true,
-            repeat: -1,
-            ease: 'sine.inOut'
-            });
-        }
+        // The cyber grid is intentionally near-invisible. Animating a full-
+        // viewport canvas filter for that imperceptible shift wastes a
+        // compositor pass, so the static grid inherits the current scene hue.
+    }
+
+    applyAmbientPerformanceProfile(profile) {
+        this.ambientAnimations.forEach(animation => {
+            try {
+                animation?.resume?.();
+            } catch (_) {}
+        });
+
+        document.querySelectorAll('.scanlines, .data-streams').forEach(node => {
+            node.style.display = '';
+        });
+        document.documentElement.dataset.performanceProfile = profile || 'high';
+        ambientCanvasRenderer.setPerformanceProfile(profile);
+
+        subtleEffects?.setPerformanceProfile?.(profile);
+        enhancedLogoAnimator?.setPerformanceProfile?.(profile);
+        backgroundAnimator?.setPerformanceProfile?.(profile);
+        beehiveBackground?.setPerformanceProfile?.(profile);
+        randomAnimations?.setPerformanceProfile?.(profile);
+        animationRuntime.resumeOwnerAnimations('centerpiece-logo');
     }
 }
 
@@ -3967,6 +3855,19 @@ const chaosInit = new ChaosInitializer();
 
 // Make chaosInit globally accessible for VJ control
 window.chaosInit = chaosInit;
+window.chaosInitializer = chaosInit;
+
+function ensureMatrixMessagesApi() {
+    try {
+        if (matrixMessages && typeof matrixMessages.init === 'function') {
+            matrixMessages.init();
+        }
+        window.matrixMessages = matrixMessages;
+    } catch (error) {
+        console.warn('⚠️ Failed to ensure matrix message API:', error);
+    }
+    return matrixMessages;
+}
 
 // Add immediate console output
 console.log('🎬 Starting chaos initialization...');
@@ -3979,12 +3880,23 @@ window.ChaosControl = {
     destroy: () => chaosInit.destroy(),
     restart: () => {
         chaosInit.destroy();
-        setTimeout(() => chaosInit.init(), 100);
+        if (window.animationRuntime && typeof window.animationRuntime.scheduleTimeout === 'function') {
+            window.animationRuntime.disposeOwner('chaos-control-restart');
+            window.animationRuntime.scheduleTimeout('chaos-control-restart', () => chaosInit.init(), 100);
+        } else {
+            setTimeout(() => chaosInit.init(), 100);
+        }
     },
     // Add test function for matrix messages
     testMatrix: () => {
         console.log('Testing matrix message...');
-        matrixMessages.testMessage();
+        ensureMatrixMessagesApi().testMessage();
+    },
+    showMatrixMessage: (message) => {
+        ensureMatrixMessagesApi().showMessage(message);
+    },
+    cleanupMatrixMessage: () => {
+        ensureMatrixMessagesApi().forceCleanup();
     },
 
     // Lottie animation controls
@@ -4025,97 +3937,9 @@ window.ChaosControl = {
 
 console.log('✅ ChaosControl attached to window');
 
-// Listen for control panel messages (strobe triggers)
-window.addEventListener('storage', (e) => {
-    if (e.key === '3886_vj_message') {
-        try {
-            const message = JSON.parse(e.newValue);
-            if (message.type === 'trigger_effect' && message.effect === 'strobe') {
-                console.log('🔴 Strobe trigger received from control panel');
-                if (window.animeEnhancedEffects && typeof window.animeEnhancedEffects.createStrobeCircles === 'function') {
-                    if (window.animeEnhancedEffects.activeStrobeCircles) {
-                        window.animeEnhancedEffects.removeStrobeCircles();
-                        console.log('🔴 Strobe circles disabled');
-                    } else {
-                        window.animeEnhancedEffects.createStrobeCircles();
-                        console.log('🟢 Strobe circles enabled');
-                    }
-                }
-            }
-        } catch (err) {
-            // Ignore JSON parse errors
-        }
-    }
-});
-
-// Also poll localStorage for same-tab communication (using interval-manager)
-let lastStrobeMessageId = null;
-let chaosStoragePollingHandle = null;
-
-// Use dynamic import to avoid circular dependencies
-import('./interval-manager.js').then(module => {
-    const intervalManager = module.default;
-    
-    chaosStoragePollingHandle = intervalManager.createInterval(() => {
-        const messageData = localStorage.getItem('3886_vj_message');
-        if (messageData) {
-            try {
-                const parsed = JSON.parse(messageData);
-                if (parsed._id && parsed._id !== lastStrobeMessageId) {
-                    lastStrobeMessageId = parsed._id;
-                    if (parsed.type === 'trigger_effect' && parsed.effect === 'strobe') {
-                        console.log('🔴 Strobe trigger received from control panel (polling)');
-                        if (window.animeEnhancedEffects && typeof window.animeEnhancedEffects.createStrobeCircles === 'function') {
-                            if (window.animeEnhancedEffects.activeStrobeCircles) {
-                                window.animeEnhancedEffects.removeStrobeCircles();
-                                console.log('🔴 Strobe circles disabled');
-                            } else {
-                                window.animeEnhancedEffects.createStrobeCircles();
-                                console.log('🟢 Strobe circles enabled');
-                            }
-                        }
-                    }
-                }
-            } catch (e) {
-                // Ignore JSON parse errors
-            }
-        }
-    }, 200, 'chaos-localStorage-poll', {
-        category: 'system',
-        maxAge: Infinity // Keep running until explicitly cleared
-    });
-    
-    // Store handle globally for cleanup
-    window.chaosStoragePollingHandle = chaosStoragePollingHandle;
-}).catch(err => {
-    console.warn('Failed to load interval-manager for chaos localStorage polling, falling back to raw setInterval:', err);
-    // Fallback to raw interval
-    setInterval(() => {
-        const messageData = localStorage.getItem('3886_vj_message');
-        if (messageData) {
-            try {
-                const parsed = JSON.parse(messageData);
-                if (parsed._id && parsed._id !== lastStrobeMessageId) {
-                    lastStrobeMessageId = parsed._id;
-                    if (parsed.type === 'trigger_effect' && parsed.effect === 'strobe') {
-                        console.log('🔴 Strobe trigger received from control panel (polling)');
-                        if (window.animeEnhancedEffects && typeof window.animeEnhancedEffects.createStrobeCircles === 'function') {
-                            if (window.animeEnhancedEffects.activeStrobeCircles) {
-                                window.animeEnhancedEffects.removeStrobeCircles();
-                                console.log('🔴 Strobe circles disabled');
-                            } else {
-                                window.animeEnhancedEffects.createStrobeCircles();
-                                console.log('🟢 Strobe circles enabled');
-                            }
-                        }
-                    }
-                }
-            } catch (e) {
-                // Ignore JSON parse errors
-            }
-        }
-    }, 200);
-});
+// Trigger messages have one owner: vj-receiver.js. The former storage listener
+// and 200 ms polling fallback handled STROBE a second time and toggled a
+// persistent circle system, so a one-shot button could leave permanent work.
 
 // HMR teardown safety for dev
 if (import.meta && import.meta.hot) {

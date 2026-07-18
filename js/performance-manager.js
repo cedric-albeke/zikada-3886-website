@@ -1,8 +1,11 @@
 // Performance Manager for AAA Animation System
 import gsap from 'gsap';
+import performanceBus from './performance-bus.js';
+import animationRuntime from './runtime/animation-runtime.js';
 
 class PerformanceManager {
     constructor() {
+        this.runtimeOwner = 'performance-manager';
         this.fps = 120;
         this.targetFPS = 120;
         this.frameTime = 1000 / 120;
@@ -56,37 +59,23 @@ class PerformanceManager {
     startMonitoring() {
         if (this.isMonitoring) return;
         this.isMonitoring = true;
-
-        const monitor = (currentTime) => {
+        animationRuntime.disposeOwner(this.runtimeOwner);
+        const unsubscribe = performanceBus.subscribe((metrics) => {
             if (!this.isMonitoring) return;
-
-            this.deltaTime = currentTime - this.lastFrameTime;
-            this.lastFrameTime = currentTime;
-
-            if (this.deltaTime > 0) {
-                this.fps = Math.round(1000 / this.deltaTime);
-                this.frameCount++;
-
-                // Keep history of last 60 frames
-                this.fpsHistory.push(this.fps);
-                if (this.fpsHistory.length > 60) {
-                    this.fpsHistory.shift();
-                }
-
-                // Check performance every second
-                if (this.frameCount % 60 === 0) {
-                    this.evaluatePerformance();
-                }
-            }
-
-            requestAnimationFrame(monitor);
-        };
-
-        requestAnimationFrame(monitor);
+            this.fps = metrics.fps;
+            this.deltaTime = this.fps > 0 ? 1000 / this.fps : 0;
+            this.lastFrameTime = performance.now();
+            this.frameCount++;
+            this.fpsHistory = metrics.history.slice(-60);
+            this.evaluatePerformance(metrics);
+        });
+        animationRuntime.trackDisposer(this.runtimeOwner, unsubscribe);
     }
 
-    evaluatePerformance() {
-        const avgFPS = this.fpsHistory.reduce((a, b) => a + b, 0) / this.fpsHistory.length;
+    evaluatePerformance(metrics = performanceBus.metrics) {
+        const avgFPS = this.fpsHistory.length
+            ? this.fpsHistory.reduce((a, b) => a + b, 0) / this.fpsHistory.length
+            : this.fps;
 
         if (!this.profileManagerOwnsQuality()) {
             if (avgFPS < this.thresholds.criticalFPS) {
@@ -99,17 +88,24 @@ class PerformanceManager {
         }
 
         // Check memory usage if available
-        if (performance.memory) {
-            const memoryUsed = performance.memory.usedJSHeapSize;
-            if (memoryUsed > this.thresholds.memoryLimit) {
-                this.triggerCleanup();
-            }
+        const memoryUsed = Number(metrics.memoryBytes) || 0;
+        if (memoryUsed > this.thresholds.memoryLimit) {
+            window.dispatchEvent(new CustomEvent('performance:capacity-pressure', {
+                detail: {
+                    resource: 'js-heap',
+                    count: memoryUsed,
+                    limit: this.thresholds.memoryLimit
+                }
+            }));
         }
 
-        // Check element count
-        const elementCount = document.querySelectorAll('[data-animation]').length;
+        // Capacity pressure is reported, never resolved by deleting live
+        // visuals. Admission/backpressure belongs at each effect-family queue.
+        const elementCount = this.resources.elements.size;
         if (elementCount > this.thresholds.elementLimit) {
-            this.cleanupExcessElements();
+            window.dispatchEvent(new CustomEvent('performance:capacity-pressure', {
+                detail: { resource: 'animation-elements', count: elementCount, limit: this.thresholds.elementLimit }
+            }));
         }
     }
 
@@ -165,9 +161,6 @@ class PerformanceManager {
         const event = new CustomEvent('adjustParticles', { detail: { count: 500 } });
         window.dispatchEvent(event);
 
-        // Simplify animations
-        gsap.globalTimeline.timeScale(0.8);
-
         // Reduce post-processing
         window.dispatchEvent(new CustomEvent('adjustPostProcessing', {
             detail: { quality: 'low' }
@@ -179,9 +172,6 @@ class PerformanceManager {
         const event = new CustomEvent('adjustParticles', { detail: { count: 1000 } });
         window.dispatchEvent(event);
 
-        // Normal animation speed
-        gsap.globalTimeline.timeScale(1);
-
         // Medium post-processing
         window.dispatchEvent(new CustomEvent('adjustPostProcessing', {
             detail: { quality: 'medium' }
@@ -192,9 +182,6 @@ class PerformanceManager {
         // Full particle count
         const event = new CustomEvent('adjustParticles', { detail: { count: 2000 } });
         window.dispatchEvent(event);
-
-        // Normal animation speed
-        gsap.globalTimeline.timeScale(1);
 
         // Full post-processing
         window.dispatchEvent(new CustomEvent('adjustPostProcessing', {
@@ -275,18 +262,9 @@ class PerformanceManager {
     }
 
     cleanupExcessElements() {
-        const animatedElements = document.querySelectorAll('[data-animation]');
-        const excess = animatedElements.length - this.thresholds.elementLimit;
-
-        if (excess > 0) {
-            // Remove oldest elements first
-            for (let i = 0; i < excess && i < animatedElements.length; i++) {
-                const element = animatedElements[i];
-                if (!element.hasAttribute('data-persistent')) {
-                    element.remove();
-                }
-            }
-        }
+        // Compatibility hook used by older controls. It only releases stale
+        // bookkeeping; connected visuals are never age-evicted.
+        this.cleanupElements();
     }
 
     cleanupAnimations() {
@@ -322,23 +300,22 @@ class PerformanceManager {
     // Frame-based execution
     executeOnFrame(callback, frameInterval = 1) {
         let frameCounter = 0;
-        const execute = () => {
+        const owner = `${this.runtimeOwner}:frame-task:${Date.now()}:${Math.random()}`;
+        return animationRuntime.scheduleRafLoop(owner, () => {
             if (frameCounter % frameInterval === 0) {
                 callback();
             }
             frameCounter++;
-            if (this.optimizations.useRAF) {
-                requestAnimationFrame(execute);
-            }
-        };
-        requestAnimationFrame(execute);
+        });
     }
 
     // Performance Stats
     getStats() {
         return {
             fps: this.fps,
-            avgFPS: this.fpsHistory.reduce((a, b) => a + b, 0) / this.fpsHistory.length,
+            avgFPS: this.fpsHistory.length
+                ? this.fpsHistory.reduce((a, b) => a + b, 0) / this.fpsHistory.length
+                : this.fps,
             mode: this.performanceMode,
             elementCount: this.resources.elements.size,
             timerCount: this.resources.timers.size,
@@ -351,6 +328,7 @@ class PerformanceManager {
     // Cleanup all resources
     destroy() {
         this.isMonitoring = false;
+        animationRuntime.disposeOwner(this.runtimeOwner);
 
         // Clear all tracked resources
         this.resources.elements.forEach(el => el.remove());

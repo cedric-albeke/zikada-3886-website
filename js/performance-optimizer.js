@@ -2,14 +2,18 @@
 // Comprehensive optimization for ZIKADA 3886 website
 
 import gsap from 'gsap';
+import performanceBus from './performance-bus.js';
+import animationRuntime from './runtime/animation-runtime.js';
 
 class PerformanceOptimizer {
     constructor() {
+        this.runtimeOwner = 'performance-optimizer-compat';
         this.maxActiveAnimations = 60;
         this.maxTotalAnimations = 125;
         this.maxDOMNodes = 500;
         this.minFPS = 45; // Increased from 30 for smoother experience
         this.cleanupInterval = null;
+        this.lastMetricEvaluationAt = 0;
         this.optimizationLevel = 0; // 0: none, 1: light, 2: medium, 3: heavy
         this.fpsHistory = [];
         this.fpsHistorySize = 10;
@@ -37,10 +41,14 @@ class PerformanceOptimizer {
     }
 
     startMonitoring() {
-        // Monitor every 2 seconds
-        this.cleanupInterval = setInterval(() => {
+        animationRuntime.disposeOwner(this.runtimeOwner);
+        const unsubscribe = performanceBus.subscribe(() => {
+            const now = performance.now();
+            if (now - this.lastMetricEvaluationAt < 2000) return;
+            this.lastMetricEvaluationAt = now;
             this.checkAndOptimize();
-        }, 2000);
+        });
+        animationRuntime.trackDisposer(this.runtimeOwner, unsubscribe);
     }
 
     checkAndOptimize() {
@@ -58,6 +66,12 @@ class PerformanceOptimizer {
         // Only log periodically to reduce console spam
         if (Math.random() < 0.1) { // 10% chance to log
             console.log(`📊 Performance: FPS:${Math.round(avgFPS)} Animations:${metrics.totalAnimations} Memory:${metrics.memory.used}MB`);
+        }
+
+        // The central profile manager owns automatic quality. This legacy
+        // facade remains for diagnostics/manual API compatibility only.
+        if (window.__3886_PROFILE_MANAGER_ENABLED === true || window.performanceProfileManager) {
+            return;
         }
 
         // Determine optimization level needed
@@ -89,9 +103,10 @@ class PerformanceOptimizer {
             this.applyOptimization(stableOptLevel);
         }
 
-        // Always clean up excess animations
         if (metrics.totalAnimations > this.maxTotalAnimations) {
-            this.cleanupAnimations();
+            window.dispatchEvent(new CustomEvent('performance:capacity-pressure', {
+                detail: { resource: 'gsap-animations', count: metrics.totalAnimations, limit: this.maxTotalAnimations }
+            }));
         }
     }
 
@@ -132,6 +147,7 @@ class PerformanceOptimizer {
     getMetrics() {
         const timeline = gsap.globalTimeline;
         const children = timeline.getChildren();
+        const busMetrics = performanceBus.metrics;
         let activeCount = 0;
 
         children.forEach(tween => {
@@ -141,11 +157,10 @@ class PerformanceOptimizer {
         return {
             totalAnimations: children.length,
             activeAnimations: activeCount,
-            domNodes: document.querySelectorAll('*').length,
-            fps: window.safePerformanceMonitor?.metrics?.fps || 60,
+            domNodes: Number(busMetrics.domNodes) || 0,
+            fps: Number(busMetrics.fps) || 60,
             memory: {
-                used: performance.memory ?
-                    Math.round(performance.memory.usedJSHeapSize / 1024 / 1024) : 0
+                used: Math.round((Number(busMetrics.memoryBytes) || 0) / 1024 / 1024)
             }
         };
     }
@@ -239,63 +254,26 @@ class PerformanceOptimizer {
     }
 
     applyLightOptimization() {
-        // Reduce particle effects
-        if (window.chaosEngine?.particles) {
-            gsap.set(window.chaosEngine.particles.material, {
-                opacity: 0.65,
-                size: 0.42
-            });
-        }
-
-        // Slow down some animations
-        gsap.globalTimeline.getChildren().forEach(tween => {
-            if (tween._repeat === -1 && tween.duration() < 2) {
-                tween.timeScale(0.9);
-            }
+        window.performanceProfileManager?.applyProfile?.('medium', {
+            reason: 'legacy-optimizer-manual-light'
         });
-
-        // Preserve scanlines opacity — do not force-hide
-        // (Intentionally left unchanged to keep subtle film/scanline aesthetics)
     }
 
     applyMediumOptimization() {
-        this.applyLightOptimization();
-
-        this.softenNonEssentialEffects();
-
-        // Reduce animation complexity
-        gsap.globalTimeline.getChildren().forEach(tween => {
-            if (tween._repeat === -1) {
-                tween.timeScale(0.78);
-            }
+        window.performanceProfileManager?.applyProfile?.('low', {
+            reason: 'legacy-optimizer-manual-medium'
         });
-
-        // Preserve static noise — do not hide
     }
 
     softenNonEssentialEffects() {
-        this.nonEssentialSelectors.forEach(selector => {
-            document.querySelectorAll(selector).forEach(el => {
-                gsap.to(el, {
-                    opacity: 0.55,
-                    duration: 0.6,
-                    overwrite: 'auto'
-                });
-            });
-        });
+        // Retained as a compatibility no-op. Quality profiles reduce render
+        // cost without dimming or hiding an admitted effect family.
     }
 
     applyHeavyOptimization() {
-        this.applyMediumOptimization();
-
-        console.log('🚨 Heavy optimization - conserving transient effects');
-        this.cleanupAnimations();
-
-        // Hide all particle effects
-        const particleContainers = document.querySelectorAll(
-            '.data-streams, .glitch-lines, .digital-artifacts'
-        );
-        particleContainers.forEach(el => el.remove());
+        window.performanceProfileManager?.applyProfile?.('low', {
+            reason: 'legacy-optimizer-manual-heavy'
+        });
     }
 
     restoreFullEffects() {
@@ -310,26 +288,12 @@ class PerformanceOptimizer {
             });
         }
 
-        // Restore animation speeds
-        gsap.globalTimeline.getChildren().forEach(tween => {
-            tween.timeScale(1);
+        window.performanceProfileManager?.applyProfile?.('high', {
+            reason: 'legacy-optimizer-manual-restore'
         });
 
-        this.nonEssentialSelectors.forEach(selector => {
-            document.querySelectorAll(selector).forEach(el => {
-                gsap.to(el, {
-                    opacity: 1,
-                    duration: 0.8,
-                    overwrite: 'auto'
-                });
-            });
-        });
-
-        // Restore static noise
-        const staticNoise = document.getElementById('static-noise');
-        if (staticNoise) {
-            staticNoise.style.display = 'block';
-        }
+        // Resume the bounded shared ambient renderer without recreating layers.
+        window.ambientCanvasRenderer?.start?.();
 
         // Restart phase animations if stopped
         if (window.chaosInit && !window.chaosInit.phaseRunning) {
@@ -360,7 +324,7 @@ class PerformanceOptimizer {
 
         // Clean up orphaned canvases
         const canvases = document.querySelectorAll('canvas');
-        const essentialCanvasIds = ['chaos-canvas', 'cyber-grid', 'static-noise'];
+        const essentialCanvasIds = ['chaos-canvas', 'cyber-grid', 'static-noise', 'ambient-effects-canvas'];
 
         canvases.forEach(canvas => {
             if (!canvas.id || !essentialCanvasIds.includes(canvas.id)) {
@@ -375,22 +339,24 @@ class PerformanceOptimizer {
 
     setupEventListeners() {
         // Listen for performance warnings
-        window.addEventListener('lowPerformance', () => {
+        const onLowPerformance = () => {
             this.applyOptimization(Math.min(this.optimizationLevel + 1, 2));
-        });
+        };
+        window.addEventListener('lowPerformance', onLowPerformance);
+        animationRuntime.trackDisposer(this.runtimeOwner, () => window.removeEventListener('lowPerformance', onLowPerformance));
 
         // Listen for manual optimization requests
-        window.addEventListener('optimizePerformance', (e) => {
+        const onOptimizePerformance = (e) => {
             if (e.detail?.level !== undefined) {
                 this.applyOptimization(e.detail.level);
             }
-        });
+        };
+        window.addEventListener('optimizePerformance', onOptimizePerformance);
+        animationRuntime.trackDisposer(this.runtimeOwner, () => window.removeEventListener('optimizePerformance', onOptimizePerformance));
     }
 
     destroy() {
-        if (this.cleanupInterval) {
-            clearInterval(this.cleanupInterval);
-        }
+        animationRuntime.disposeOwner(this.runtimeOwner);
         console.log('💀 Performance Optimizer destroyed');
     }
 

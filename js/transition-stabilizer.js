@@ -1,8 +1,12 @@
 // Transition Stabilizer - Prevents flashing and blackouts during scene transitions
 // Ensures smooth, seamless transitions that maintain immersion
 
+import animationRuntime from './runtime/animation-runtime.js';
+
 class TransitionStabilizer {
     constructor() {
+        this.runtimeOwner = 'transition-stabilizer';
+        animationRuntime.disposeOwner(this.runtimeOwner);
         this.isTransitioning = false;
         this.transitionQueue = [];
         this.currentTransition = null;
@@ -173,6 +177,7 @@ class TransitionStabilizer {
             }
         `;
         document.head.appendChild(style);
+        animationRuntime.trackNode(this.runtimeOwner, style);
     }
     
     setupTransitionHandlers() {
@@ -210,12 +215,12 @@ class TransitionStabilizer {
     
     setupTransitionEvents() {
         // Listen for transition requests
-        window.addEventListener('transition-request', (event) => {
+        this.listen('transition-request', (event) => {
             this.queueTransition(event.detail);
         });
         
         // Listen for scene change requests
-        window.addEventListener('scene-change-request', (event) => {
+        this.listen('scene-change-request', (event) => {
             this.queueSceneChange(event.detail);
         });
     }
@@ -229,7 +234,7 @@ class TransitionStabilizer {
         };
         
         // Monitor for stuck transitions
-        setInterval(() => {
+        animationRuntime.scheduleInterval(this.runtimeOwner, () => {
             this.checkForStuckTransitions();
         }, 1000);
     }
@@ -243,9 +248,14 @@ class TransitionStabilizer {
         };
         
         // Listen for transition errors
-        window.addEventListener('transition-error', (event) => {
+        this.listen('transition-error', (event) => {
             this.handleTransitionError(event.detail);
         });
+    }
+
+    listen(type, handler) {
+        window.addEventListener(type, handler);
+        animationRuntime.trackDisposer(this.runtimeOwner, () => window.removeEventListener(type, handler));
     }
     
     async executeStableTransition(prev, next, signal) {
@@ -582,6 +592,7 @@ class TransitionStabilizer {
     }
     
     destroy() {
+        animationRuntime.disposeOwner(this.runtimeOwner);
         // Remove overlay elements
         Object.values(this.overlayElements).forEach(el => {
             if (el && el.parentNode) {

@@ -1,10 +1,12 @@
 // Interval Manager - Tracks and manages all setInterval calls to prevent memory leaks
 
+import animationRuntime from './runtime/animation-runtime.js';
+
 class IntervalManager {
     constructor() {
         this.intervals = new Map(); // Track all managed intervals
         this.intervalCounter = 0;
-        this.maxIntervals = 15; // Tighter maximum concurrent intervals
+        this.maxIntervals = 64; // Diagnostic soft budget; never evicts live work
         
         console.log('⏰ Interval Manager initialized');
     }
@@ -18,17 +20,17 @@ class IntervalManager {
      * @returns {Object} Interval control object
      */
     createInterval(callback, delay, name = 'unnamed', options = {}) {
-        // Check if we're at maximum intervals
+        // Capacity is telemetry only. Deleting the oldest interval can sever
+        // a fully admitted visual halfway through its authored lifetime.
         if (this.intervals.size >= this.maxIntervals) {
-            console.warn(`⚠️ Maximum intervals reached (${this.maxIntervals}). Cleaning up oldest intervals.`);
-            this.cleanupOldestIntervals(5);
+            console.warn(`⚠️ Managed interval soft budget reached (${this.maxIntervals}); preserving active owners.`);
         }
 
         const intervalId = ++this.intervalCounter;
         const intervalName = `${name}-${intervalId}`;
         
-        // Create the actual interval
-        const nativeIntervalId = setInterval(() => {
+        const runtimeOwner = `interval-manager:${intervalName}`;
+        const runtimeToken = animationRuntime.scheduleInterval(runtimeOwner, () => {
             try {
                 // Update last execution time
                 const intervalData = this.intervals.get(intervalId);
@@ -51,7 +53,8 @@ class IntervalManager {
         // Store interval data
         const intervalData = {
             id: intervalId,
-            nativeId: nativeIntervalId,
+            nativeId: runtimeToken,
+            runtimeOwner,
             name: intervalName,
             delay: delay,
             callback: callback,
@@ -60,7 +63,13 @@ class IntervalManager {
             executionCount: 0,
             category: options.category || 'general',
             maxExecutions: options.maxExecutions || null,
-            maxAge: options.maxAge || null,
+            // Wall-clock age is not a cleanup signal. A finite lifetime must
+            // be an explicit authored contract, otherwise ambient producers
+            // remain alive until their owner is disposed.
+            maxAge: options.finiteLifetime === true && Number.isFinite(options.maxAge)
+                ? options.maxAge
+                : null,
+            requestedMaxAge: options.maxAge ?? null,
             essential: options.essential === true,
             isActive: true
         };
@@ -91,7 +100,7 @@ class IntervalManager {
         if (!intervalData) return false;
 
         // Clear the native interval
-        clearInterval(intervalData.nativeId);
+        animationRuntime.disposeOwner(intervalData.runtimeOwner);
         
         // Remove from tracking
         this.intervals.delete(intervalId);
@@ -107,7 +116,7 @@ class IntervalManager {
         const intervalData = this.intervals.get(intervalId);
         if (!intervalData || !intervalData.isActive) return false;
 
-        clearInterval(intervalData.nativeId);
+        animationRuntime.disposeOwner(intervalData.runtimeOwner);
         intervalData.isActive = false;
         
         console.log(`⏸️ Paused interval: ${intervalData.name}`);
@@ -121,8 +130,8 @@ class IntervalManager {
         const intervalData = this.intervals.get(intervalId);
         if (!intervalData || intervalData.isActive) return false;
 
-        // Recreate the interval
-        intervalData.nativeId = setInterval(() => {
+        // Recreate the interval on the shared cadence driver.
+        intervalData.nativeId = animationRuntime.scheduleInterval(intervalData.runtimeOwner, () => {
             try {
                 intervalData.lastExecuted = Date.now();
                 intervalData.executionCount++;
@@ -162,16 +171,9 @@ class IntervalManager {
      * Clean up oldest intervals
      */
     cleanupOldestIntervals(count = 5) {
-        const sortedIntervals = Array.from(this.intervals.values())
-            .filter(data => !data.essential)
-            .sort((a, b) => a.createdAt - b.createdAt)
-            .slice(0, count);
-
-        sortedIntervals.forEach(intervalData => {
-            this.clearInterval(intervalData.id);
-        });
-
-        console.log(`🧹 Cleaned up ${sortedIntervals.length} oldest intervals`);
+        console.warn('cleanupOldestIntervals() is now non-destructive; active intervals retain their authored lifetime.');
+        const removed = this.performAutoCleanup();
+        return Math.min(count, removed);
     }
 
     /**
@@ -194,12 +196,6 @@ class IntervalManager {
             if (data.maxExecutions && data.executionCount >= data.maxExecutions) {
                 shouldRemove = true;
                 console.log(`🔢 Interval ${data.name} exceeded max executions (${data.maxExecutions})`);
-            }
-
-            // Check if stale (no execution in last 2 minutes)
-            if ((now - data.lastExecuted) > 120000) {
-                shouldRemove = true;
-                console.log(`💀 Interval ${data.name} appears stale (no execution in 2 minutes)`);
             }
 
             if (shouldRemove) {
@@ -305,6 +301,9 @@ class IntervalManager {
      * Start automatic cleanup timer
      */
     startAutoCleanup(cleanupInterval = 30000) { // Default: 30 seconds
+        if (this.autoCleanupInterval?.isActive?.()) {
+            return this.autoCleanupInterval;
+        }
         this.autoCleanupInterval = this.createInterval(
             () => this.performAutoCleanup(),
             cleanupInterval,
@@ -313,6 +312,7 @@ class IntervalManager {
         );
         
         console.log(`🧹 Auto-cleanup started (every ${cleanupInterval}ms)`);
+        return this.autoCleanupInterval;
     }
 
     /**

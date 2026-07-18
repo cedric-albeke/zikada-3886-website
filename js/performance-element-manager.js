@@ -1,6 +1,10 @@
 // Safe PerformanceElementManager with proper purge method and lifecycle management
+import animationRuntime from './runtime/animation-runtime.js';
+
 class PerformanceElementManager {
     constructor() {
+        this.monitorOwner = 'performance-element-manager:monitor';
+        this.actionOwner = 'performance-element-manager:actions';
         this.trackedElements = new Set(); // Changed from WeakSet to Set for enumeration
         this.elementMetadata = new WeakMap(); // Store metadata without preventing GC
         this.orphanCheckInterval = null;
@@ -125,8 +129,11 @@ class PerformanceElementManager {
                     shouldPurge = false;
                 }
             } else {
-                // Purge orphaned or old elements
-                shouldPurge = this.isOrphaned(element) || this.isStale(element);
+                // Default purge is bookkeeping-only. Connected elements need
+                // an explicit completion marker or an explicit selector.
+                shouldPurge = this.isOrphaned(element) ||
+                    element.dataset?.lifecycleState === 'complete' ||
+                    element.dataset?.effectComplete === 'true';
             }
             
             if (shouldPurge) {
@@ -167,15 +174,15 @@ class PerformanceElementManager {
         // Phase 1: Remove orphaned elements
         cleanedCount += this.removeOrphanedElements();
         
-        // Phase 2: Remove old effect elements
-        const staleElements = [];
+        // Phase 2: remove only explicitly completed effect elements.
+        const completedElements = [];
         this.trackedElements.forEach(element => {
-            if (this.isStale(element, 30000)) { // 30 seconds age limit in emergency
-                staleElements.push(element);
+            if (element.dataset?.lifecycleState === 'complete' || element.dataset?.effectComplete === 'true') {
+                completedElements.push(element);
             }
         });
         
-        staleElements.forEach(element => {
+        completedElements.forEach(element => {
             try {
                 if (element.parentNode) {
                     element.remove();
@@ -189,31 +196,17 @@ class PerformanceElementManager {
             }
         });
         
-        // Phase 3: If still over threshold, remove effect-related elements
+        // Phase 3: report unresolved pressure. Arbitrary class names and age
+        // are not permission to terminate a connected visual.
         if (this.trackedElements.size > this.memoryUsage.threshold * 0.8) {
-            const effectElements = [];
-            this.trackedElements.forEach(element => {
-                const metadata = this.elementMetadata.get(element);
-                if (metadata?.source?.includes('effect') || 
-                    element.className?.includes('glitch') || 
-                    element.className?.includes('corruption') ||
-                    element.tagName === 'CANVAS') {
-                    effectElements.push(element);
+            window.dispatchEvent(new CustomEvent('performance:capacity-pressure', {
+                detail: {
+                    resource: 'tracked-elements',
+                    count: this.trackedElements.size,
+                    limit: this.memoryUsage.threshold,
+                    emergency: true
                 }
-            });
-            
-            effectElements.slice(0, Math.ceil(effectElements.length / 2)).forEach(element => {
-                try {
-                    if (element.parentNode) {
-                        element.remove();
-                    }
-                    this.untrack(element);
-                    cleanedCount++;
-                } catch (error) {
-                    this.untrack(element);
-                    cleanedCount++;
-                }
-            });
+            }));
         }
         
         this.stats.emergencyCleanups++;
@@ -284,9 +277,11 @@ class PerformanceElementManager {
             
             // Trigger cleanup based on state
             if (this.performanceState === 'emergency') {
-                setTimeout(() => this.emergencyCleanup(), 100);
+                animationRuntime.disposeOwner(this.actionOwner);
+                animationRuntime.scheduleTimeout(this.actionOwner, () => this.emergencyCleanup(), 100);
             } else if (this.performanceState === 'degraded') {
-                setTimeout(() => this.removeOrphanedElements(), 500);
+                animationRuntime.disposeOwner(this.actionOwner);
+                animationRuntime.scheduleTimeout(this.actionOwner, () => this.removeOrphanedElements(), 500);
             }
         }
     }
@@ -309,12 +304,12 @@ class PerformanceElementManager {
     }
 
     startMonitoring() {
-        if (this.orphanCheckInterval) {
-            clearInterval(this.orphanCheckInterval);
+        animationRuntime.disposeOwner(this.monitorOwner);
+        if (document.body) {
+            this.observer.observe(document.body, { childList: true, subtree: true });
         }
-        
         // Regular orphan cleanup every 30 seconds
-        this.orphanCheckInterval = setInterval(() => {
+        this.orphanCheckInterval = animationRuntime.scheduleInterval(this.monitorOwner, () => {
             if (window.SAFE_FLAGS?.CLEANUP_ENABLED !== false) {
                 this.removeOrphanedElements();
             }
@@ -324,10 +319,9 @@ class PerformanceElementManager {
     }
 
     stopMonitoring() {
-        if (this.orphanCheckInterval) {
-            clearInterval(this.orphanCheckInterval);
-            this.orphanCheckInterval = null;
-        }
+        animationRuntime.disposeOwner(this.monitorOwner);
+        animationRuntime.disposeOwner(this.actionOwner);
+        this.orphanCheckInterval = null;
         
         this.observer.disconnect();
         console.log('📊 Performance monitoring stopped');
@@ -450,10 +444,9 @@ class PerformanceElementManager {
     // Destroy the manager
     destroy() {
         console.log('🧹 Destroying PerformanceElementManager...');
-        
         this.stopMonitoring();
-        this.reset();
-        
+        this.trackedElements.clear();
+        this.cleanupHistory = [];
         console.log('✅ PerformanceElementManager destroyed');
     }
 

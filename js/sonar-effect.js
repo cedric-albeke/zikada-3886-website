@@ -1,4 +1,8 @@
 import gsap from 'gsap';
+import animationRuntime from './runtime/animation-runtime.js';
+
+const RUNTIME_OWNER = 'sonar-effect';
+const SESSION_OWNER = 'sonar-effect:session';
 
 class SonarEffect {
     constructor() {
@@ -7,31 +11,36 @@ class SonarEffect {
         this.sonar = null;
         this.blips = [];
         this.sweepAngle = 0;
-        this.sweepInterval = null;
+        this.nextDisplayToken = null;
+        this.phaseHandler = (event) => this.reactToPhase(event.detail.phase);
+        this.isInitialized = false;
     }
 
     init() {
+        if (this.isInitialized) return;
         this.createSonarScreen();
 
         // Start periodic display - show every 45-75 seconds
         this.startPeriodicDisplay();
 
         // Listen for animation phases
-        window.addEventListener('animationPhase', (e) => this.reactToPhase(e.detail.phase));
+        window.addEventListener('animationPhase', this.phaseHandler);
+        animationRuntime.trackDisposer(RUNTIME_OWNER, () => {
+            window.removeEventListener('animationPhase', this.phaseHandler);
+        });
+        this.isInitialized = true;
     }
 
     startPeriodicDisplay() {
-        // Initial delay before first appearance
-        setTimeout(() => {
-            this.show();
+        this.scheduleNextDisplay(15000);
+    }
 
-            // Set up periodic display
-            setInterval(() => {
-                if (!this.isActive) {
-                    this.show();
-                }
-            }, Math.random() * 30000 + 45000); // 45-75 seconds
-        }, 15000); // First appearance after 15 seconds
+    scheduleNextDisplay(delay = Math.random() * 30000 + 45000) {
+        this.nextDisplayToken?.clear();
+        this.nextDisplayToken = animationRuntime.scheduleTimeout(RUNTIME_OWNER, () => {
+            this.nextDisplayToken = null;
+            if (!this.isActive) this.show();
+        }, delay);
     }
 
     createSonarScreen() {
@@ -71,17 +80,6 @@ class SonarEffect {
         // Create sweep line
         this.createSweepLine();
 
-        // Add subtle pulse effect to container
-        gsap.to(this.container, {
-            boxShadow: `
-                inset 0 0 120px rgba(0, 255, 133, 0.08),
-                0 0 80px rgba(0, 255, 133, 0.1)
-            `,
-            duration: 3,
-            yoyo: true,
-            repeat: -1,
-            ease: 'sine.inOut'
-        });
     }
 
     createGridLines() {
@@ -183,19 +181,30 @@ class SonarEffect {
         `;
         sweepContainer.appendChild(trail);
 
-        // Animate trail
-        gsap.to(trail, {
+        this.trail = trail;
+    }
+
+    startSweep() {
+        const ambientTween = gsap.to(this.container, {
+            boxShadow: 'inset 0 0 120px rgba(0, 255, 133, 0.08), 0 0 80px rgba(0, 255, 133, 0.1)',
+            duration: 3,
+            yoyo: true,
+            repeat: -1,
+            ease: 'sine.inOut'
+        });
+        animationRuntime.trackAnimation(SESSION_OWNER, ambientTween);
+
+        const trailTween = gsap.to(this.trail, {
             rotation: 330,
             opacity: 0.5,
             duration: 3,
             repeat: -1,
             ease: 'linear'
         });
-    }
+        animationRuntime.trackAnimation(SESSION_OWNER, trailTween);
 
-    startSweep() {
         // Continuous sweep rotation
-        gsap.to(this.sweep, {
+        const sweepTween = gsap.to(this.sweep, {
             rotation: 360,
             duration: 3,
             repeat: -1,
@@ -205,6 +214,7 @@ class SonarEffect {
                 this.checkBlipDetection();
             }
         });
+        animationRuntime.trackAnimation(SESSION_OWNER, sweepTween);
     }
 
     generateRandomBlips() {
@@ -236,6 +246,7 @@ class SonarEffect {
             `;
 
             this.container.appendChild(blip);
+            animationRuntime.trackNode(SESSION_OWNER, blip);
             this.blips.push({ element: blip, angle: angle, active: false });
 
             // Fade in animation
@@ -246,8 +257,8 @@ class SonarEffect {
             });
 
             // Remove blip after some time
-            setTimeout(() => {
-                gsap.to(blip, {
+            animationRuntime.scheduleTimeout(SESSION_OWNER, () => {
+                const fadeTween = gsap.to(blip, {
                     opacity: 0,
                     scale: 2,
                     duration: 1,
@@ -257,16 +268,17 @@ class SonarEffect {
                         this.blips = this.blips.filter(b => b.element !== blip);
                     }
                 });
+                animationRuntime.trackAnimation(SESSION_OWNER, fadeTween);
             }, Math.random() * 5000 + 3000);
         };
 
         // Create initial blips
         for (let i = 0; i < 3; i++) {
-            setTimeout(() => createBlip(), i * 500);
+            animationRuntime.scheduleTimeout(SESSION_OWNER, () => createBlip(), i * 500);
         }
 
         // Continue creating blips periodically
-        setInterval(() => {
+        animationRuntime.scheduleInterval(SESSION_OWNER, () => {
             if (Math.random() > 0.5 && this.blips.length < 5) {
                 createBlip();
             }
@@ -317,8 +329,9 @@ class SonarEffect {
         `;
 
         this.container.appendChild(ring);
+        animationRuntime.trackNode(SESSION_OWNER, ring);
 
-        gsap.to(ring, {
+        const ringTween = gsap.to(ring, {
             width: 40,
             height: 40,
             opacity: 0,
@@ -326,6 +339,7 @@ class SonarEffect {
             ease: 'power2.out',
             onComplete: () => ring.remove()
         });
+        animationRuntime.trackAnimation(SESSION_OWNER, ringTween);
     }
 
     reactToPhase(phase) {
@@ -355,11 +369,12 @@ class SonarEffect {
         this.isActive = true;
 
         // Fade in
-        gsap.to(this.container, {
+        const showTween = gsap.to(this.container, {
             opacity: 0.3,
             duration: 1,
             ease: 'power2.out'
         });
+        animationRuntime.trackAnimation(SESSION_OWNER, showTween);
 
         // Start animations
         this.startSweep();
@@ -367,7 +382,7 @@ class SonarEffect {
 
         // Auto-hide after 8-12 seconds
         const displayDuration = Math.random() * 4000 + 8000;
-        setTimeout(() => {
+        animationRuntime.scheduleTimeout(SESSION_OWNER, () => {
             this.hide();
         }, displayDuration);
     }
@@ -375,30 +390,31 @@ class SonarEffect {
     hide() {
         if (!this.container || !this.isActive) return;
 
+        animationRuntime.disposeOwner(SESSION_OWNER);
+        this.blips = [];
+
         // Fade out
-        gsap.to(this.container, {
+        const hideTween = gsap.to(this.container, {
             opacity: 0,
             duration: 1,
             ease: 'power2.out',
             onComplete: () => {
                 this.isActive = false;
-                // Clean up blips
-                this.blips.forEach(blip => {
-                    if (blip.element) blip.element.remove();
-                });
-                this.blips = [];
+                this.scheduleNextDisplay();
             }
         });
+        animationRuntime.trackAnimation(RUNTIME_OWNER, hideTween);
     }
 
     destroy() {
-        if (this.sweepInterval) {
-            clearInterval(this.sweepInterval);
-        }
+        animationRuntime.disposeOwner(SESSION_OWNER);
+        animationRuntime.disposeOwner(RUNTIME_OWNER);
+        gsap.killTweensOf([this.container, this.sweep, this.trail]);
         if (this.container) {
             this.container.remove();
         }
         this.isActive = false;
+        this.isInitialized = false;
     }
 }
 

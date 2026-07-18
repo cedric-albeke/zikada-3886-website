@@ -21,8 +21,7 @@ async function waitForVJReceiver(main) {
 }
 
 test.describe('Control Panel Expanded Coverage', () => {
-  test('Scenes: select GLITCH then AUTO; verify receiver scene and phaseRunning', async ({ browser }) => {
-    const context = await browser.newContext();
+  test('Scenes: select GLITCH then AUTO; verify receiver scene and phaseRunning', async ({ context }) => {
 
     const control = await context.newPage();
     await control.goto('http://localhost:3886/control-panel.html');
@@ -54,8 +53,7 @@ await waitForOnline(control, main);
     }).toBeTruthy();
   });
 
-  test('Tempo: speed slider, phase duration, tap BPM, and BPM ripple toggle', async ({ browser }) => {
-    const context = await browser.newContext();
+  test('Tempo: speed slider, phase duration, tap BPM, and BPM ripple toggle', async ({ context }) => {
 
     const control = await context.newPage();
     await control.goto('http://localhost:3886/control-panel.html');
@@ -115,8 +113,7 @@ await waitForOnline(control, main);
     }).toBeTruthy();
   });
 
-  test('Trigger FX: activeFx increases and then settles back', async ({ browser }) => {
-    const context = await browser.newContext();
+  test('Trigger FX: activeFx increases and then settles back', async ({ context }) => {
 
     const control = await context.newPage();
     await control.goto('http://localhost:3886/control-panel.html');
@@ -148,7 +145,18 @@ await waitForOnline(control, main);
     // Trigger a couple more effects to exercise pipeline
     const effects = ['blackout', 'rgbsplit'];
     for (const eff of effects) {
-      await control.locator(`.trigger-btn[data-effect="${eff}"]`).click();
+      const trigger = control.locator(`.trigger-btn[data-effect="${eff}"]`);
+      if (!(await trigger.isVisible())) {
+        const libraryToggle = control.locator('[data-drawer-toggle="fxLibrary"]');
+        if (await libraryToggle.getAttribute('aria-expanded') !== 'true') {
+          await libraryToggle.click();
+        }
+      }
+      await expect(trigger).toBeVisible();
+      await trigger.click();
+      if (await trigger.evaluate((element) => Boolean(element.closest('.panel-drawer')))) {
+        await control.locator('[data-drawer-toggle="fxLibrary"]').click();
+      }
       await expect.poll(async () => {
         return await main.evaluate(() => (window as any).vjReceiver?.activeFx ?? 0);
       }).toBeGreaterThanOrEqual(baseline + 1);

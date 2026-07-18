@@ -1,4 +1,11 @@
 import gsap from 'gsap';
+import animationRuntime from './runtime/animation-runtime.js';
+import ambientCanvasRenderer from './ambient-canvas-renderer.js';
+
+const TEXT_LIFECYCLE_OWNER = 'text-effects:lifecycle';
+let textEffectOwnerSequence = 0;
+
+const createEffectOwner = (family) => `text-effects:${family}:${++textEffectOwnerSequence}`;
 
 // Safe TextEffects implementation with proper lifecycle management
 class TextEffects {
@@ -11,9 +18,9 @@ class TextEffects {
         this.activeEffects = new WeakMap();
         this.timelines = new WeakMap();
         this.trackedElements = new Set(); // Track elements for cleanup
-        this.intervals = new Set(); // For cleanup
         this.canvases = new Set(); // Track created canvases
         this.rafIds = new Set(); // Track RAF IDs
+        this.initialized = false;
         
         // Performance limits
         this.MAX_SCRAMBLE_ELEMENTS = 5;
@@ -36,20 +43,20 @@ class TextEffects {
             });
         });
         
-        this.observer.observe(document.body, {
-            childList: true,
-            subtree: true
-        });
-        
         console.log('✅ Safe TextEffects initialized with lifecycle management');
     }
 
     init() {
+        if (this.initialized) return;
         // Check feature flags before initializing any effects
         if (!window.SAFE_FLAGS?.TEXT_EFFECTS_ENABLED) {
             console.log('💤 TextEffects disabled by feature flag');
             return;
         }
+        this.initialized = true;
+        animationRuntime.disposeOwner(TEXT_LIFECYCLE_OWNER);
+        this.observer.observe(document.body, { childList: true, subtree: true });
+        animationRuntime.trackDisposer(TEXT_LIFECYCLE_OWNER, () => this.observer.disconnect());
         
         this.initializeTextScramble();
         this.initializeGlitchText();
@@ -94,6 +101,7 @@ class TextEffects {
         if (!originalText) return;
         
         const state = {
+            owner: createEffectOwner('scramble'),
             originalText,
             isScrambling: false,
             timeline: null,
@@ -126,7 +134,7 @@ class TextEffects {
                     
                     // Schedule next scramble
                     if (!state.destroyed) {
-                        state.timeoutId = setTimeout(() => {
+                        state.timeoutId = animationRuntime.scheduleTimeout(state.owner, () => {
                             if (!state.destroyed) {
                                 triggerRandomly();
                             }
@@ -136,6 +144,7 @@ class TextEffects {
             });
             
             state.timeline = tl;
+            animationRuntime.trackAnimation(state.owner, tl);
             
             // Create scramble animation using GSAP
             // Use regular function (not arrow) so 'this' refers to the GSAP tween
@@ -176,7 +185,7 @@ class TextEffects {
         };
 
         // Start with initial delay
-        state.timeoutId = setTimeout(triggerRandomly, Math.random() * 3000);
+        state.timeoutId = animationRuntime.scheduleTimeout(state.owner, triggerRandomly, Math.random() * 3000);
     }
 
     initializeGlitchText() {
@@ -226,103 +235,8 @@ class TextEffects {
     }
 
     initializeMatrixRain() {
-        const canvas = document.createElement('canvas');
-        canvas.id = 'matrix-rain-safe';
-        canvas.style.cssText = `
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            z-index: 0;
-            opacity: 0.03;
-            mix-blend-mode: multiply;
-        `;
-
-        const preLoader = document.querySelector('.pre-loader');
-        if (preLoader) {
-            preLoader.appendChild(canvas);
-            this.canvases.add(canvas);
-            
-            // Track with performance manager if available
-            if (window.performanceElementManager?.track) {
-                canvas.__bornAt = Date.now();
-                window.performanceElementManager.track(canvas);
-            }
-        }
-
-        const ctx = canvas.getContext('2d');
-        const resizeCanvas = () => {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-        };
-        resizeCanvas();
-
-        const columns = Math.floor(canvas.width / 20);
-        const drops = Array(columns).fill(0);
-        
-        let lastTime = performance.now();
-        const baseStep = 50; // ms between updates
-        let rafId;
-        
-        const drawMatrix = (currentTime) => {
-            const hidden = document.hidden;
-            const step = hidden ? 200 : baseStep;
-            
-            if (currentTime - lastTime >= step) {
-                try {
-                    ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
-                    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-                    ctx.fillStyle = '#00ff00';
-                    ctx.font = '15px monospace';
-
-                    for (let i = 0; i < drops.length && i < 100; i++) { // Limit iterations
-                        const text = this.matrixChars[Math.floor(Math.random() * this.matrixChars.length)];
-                        ctx.fillText(text, i * 20, drops[i] * 20);
-
-                        if (drops[i] * 20 > canvas.height && Math.random() > 0.975) {
-                            drops[i] = 0;
-                        }
-                        drops[i]++;
-                    }
-                } catch (error) {
-                    console.warn('Matrix canvas render error:', error);
-                }
-                
-                lastTime = currentTime;
-            }
-            
-            rafId = requestAnimationFrame(drawMatrix);
-            this.rafIds.add(rafId);
-        };
-        
-        rafId = requestAnimationFrame(drawMatrix);
-        this.rafIds.add(rafId);
-
-        // Handle resize with debouncing
-        let resizeTimeout;
-        const handleResize = () => {
-            clearTimeout(resizeTimeout);
-            resizeTimeout = setTimeout(resizeCanvas, 250);
-        };
-        
-        window.addEventListener('resize', handleResize);
-        
-        // Store cleanup function
-        const cleanup = () => {
-            if (rafId) {
-                cancelAnimationFrame(rafId);
-                this.rafIds.delete(rafId);
-            }
-            window.removeEventListener('resize', handleResize);
-            clearTimeout(resizeTimeout);
-        };
-        
-        // Store cleanup for later
-        this.activeEffects.set(canvas, { cleanup });
-        this.trackedElements.add(canvas);
+        ambientCanvasRenderer.setMatrixEnabled(true, this.matrixChars);
+        this.matrixAmbientActive = true;
     }
 
     initializeTextBreaking() {
@@ -333,6 +247,7 @@ class TextEffects {
         if (!originalText) return;
         
         const state = {
+            owner: createEffectOwner('breaking'),
             originalText,
             intervalId: null,
             destroyed: false
@@ -357,7 +272,7 @@ class TextEffects {
             enterButton.textContent = corruptedChars.join('');
 
             // Faster restore to reduce visual disruption
-            setTimeout(() => {
+            animationRuntime.scheduleTimeout(state.owner, () => {
                 if (!state.destroyed) {
                     enterButton.textContent = originalText;
                 }
@@ -365,18 +280,12 @@ class TextEffects {
         };
 
         // Less frequent triggering with cleanup
-        state.intervalId = setInterval(() => {
-            if (state.destroyed) {
-                clearInterval(state.intervalId);
-                return;
-            }
-            
+        state.intervalId = animationRuntime.scheduleInterval(state.owner, () => {
+            if (state.destroyed) return;
             if (Math.random() < 0.15) { // Reduced from 0.2
                 corruptText();
             }
         }, 4000); // Increased from 3000ms
-        
-        this.intervals.add(state.intervalId);
 
         // Add CSS effects
         if (!document.getElementById('text-breaking-effects')) {
@@ -442,6 +351,7 @@ class TextEffects {
         
         let activeBlocks = 0;
         const state = {
+            owner: createEffectOwner('corruption'),
             intervalId: null,
             activeBlocks: 0,
             destroyed: false
@@ -449,6 +359,7 @@ class TextEffects {
         
         this.activeEffects.set(corruptionOverlay, state);
         this.trackedElements.add(corruptionOverlay);
+        animationRuntime.trackNode(state.owner, corruptionOverlay);
 
         const createCorruptionBlock = () => {
             if (state.destroyed || activeBlocks >= this.MAX_CORRUPTION_BLOCKS) return;
@@ -477,7 +388,7 @@ class TextEffects {
             activeBlocks++;
 
             // Cleanup block
-            setTimeout(() => {
+            animationRuntime.scheduleTimeout(state.owner, () => {
                 if (block.parentNode) {
                     block.remove();
                     activeBlocks--;
@@ -486,30 +397,24 @@ class TextEffects {
         };
 
         // Much less frequent triggering
-        state.intervalId = setInterval(() => {
-            if (state.destroyed) {
-                clearInterval(state.intervalId);
-                return;
-            }
-            
+        state.intervalId = animationRuntime.scheduleInterval(state.owner, () => {
+            if (state.destroyed) return;
             if (Math.random() < 0.05) { // Reduced from 0.1
                 corruptionOverlay.style.display = 'block';
 
                 // Fewer blocks per burst
                 const blockCount = Math.min(Math.random() * 3 + 2, this.MAX_CORRUPTION_BLOCKS - activeBlocks);
                 for (let i = 0; i < blockCount; i++) {
-                    setTimeout(() => createCorruptionBlock(), i * 50);
+                    animationRuntime.scheduleTimeout(state.owner, () => createCorruptionBlock(), i * 50);
                 }
 
-                setTimeout(() => {
+                animationRuntime.scheduleTimeout(state.owner, () => {
                     if (!state.destroyed) {
                         corruptionOverlay.style.display = 'none';
                     }
                 }, 300); // Reduced from 500
             }
         }, 5000); // Increased from 2000ms
-        
-        this.intervals.add(state.intervalId);
     }
 
     // Clean up effects for a specific element
@@ -522,17 +427,12 @@ class TextEffects {
             if (state.timeline) {
                 state.timeline.kill();
             }
-            
-            // Clean up timeouts
-            if (state.timeoutId) {
-                clearTimeout(state.timeoutId);
+            if (state.isScrambling) {
+                this.activeScrambleCount = Math.max(0, this.activeScrambleCount - 1);
+                state.isScrambling = false;
             }
-            
-            // Clean up intervals
-            if (state.intervalId) {
-                clearInterval(state.intervalId);
-                this.intervals.delete(state.intervalId);
-            }
+
+            if (state.owner) animationRuntime.disposeOwner(state.owner);
             
             // Clean up custom cleanup
             if (state.cleanup) {
@@ -551,10 +451,11 @@ class TextEffects {
     // Clean up all effects
     destroy() {
         console.log('🧹 Destroying SafeTextEffects...');
-        
-        // Clean up all intervals
-        this.intervals.forEach(id => clearInterval(id));
-        this.intervals.clear();
+        this.initialized = false;
+        if (this.matrixAmbientActive) {
+            ambientCanvasRenderer.setMatrixEnabled(false);
+            this.matrixAmbientActive = false;
+        }
         
         // Clean up all RAF IDs
         this.rafIds.forEach(id => cancelAnimationFrame(id));
@@ -579,6 +480,7 @@ class TextEffects {
         
         // Disconnect mutation observer
         this.observer.disconnect();
+        animationRuntime.disposeOwner(TEXT_LIFECYCLE_OWNER);
         
         // Reset counters
         this.activeScrambleCount = 0;

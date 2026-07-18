@@ -1,29 +1,29 @@
 import { test, expect } from '@playwright/test';
 
-// Smoke/snapshot to visualize current layout at large viewport
-// Saves a PNG to test-artifacts/control-panel-layout.png for manual inspection.
+// Smoke/snapshot to visualize the viewport-bound command center.
 
-test('control panel layout snapshot (1440x900)', async ({ page }) => {
-  await page.setViewportSize({ width: 1440, height: 900 });
-  await page.goto('http://localhost:3886/control-panel.html');
+test('control panel layout snapshot (1920x1080)', async ({ page }) => {
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await page.goto('http://localhost:3886/control-panel-v3.html');
   // Wait for critical widgets to be present
   await expect(page.locator('.control-grid')).toBeVisible({ timeout: 10000 });
   await page.waitForTimeout(500); // allow fonts/layout to settle
 
-  await page.screenshot({ path: 'test-artifacts/control-panel-layout.png', fullPage: true });
+  await page.screenshot({ path: 'test-artifacts/control-panel-1920x1080.png', fullPage: false });
 
   // Basic sanity checks for layout regions
-  const scenes = page.locator('.section--scenes');
-  const color = page.locator('.section--color');
-  const tempo = page.locator('.section--tempo');
-  const intensity = page.locator('.section--intensity');
-  const triggers = page.locator('.section--triggers');
-  const ve = page.locator('.section--ve-layers');
-  const animation = page.locator('.section--animation');
+  const scenes = page.locator('.scene-section');
+  const triggers = page.locator('.trigger-fx-section');
+  const ve = page.locator('.visual-effects-section');
+  const animation = page.locator('.animation-section');
+  const eventLog = page.locator('.event-log-section');
 
   await expect(scenes).toBeVisible();
+  await expect(triggers).toBeVisible();
   await expect(ve).toBeVisible();
   await expect(animation).toBeVisible();
+  await expect(eventLog).toBeVisible();
+  await expect(page.locator('.trigger-btn[data-effect="cosmic"]')).toBeVisible();
 
   const panel = page.locator('.control-grid');
   const panelBox = await panel.boundingBox();
@@ -31,14 +31,15 @@ test('control panel layout snapshot (1440x900)', async ({ page }) => {
   const veBox = await ve.boundingBox();
   const animBox = await animation.boundingBox();
 
-  // Scenes should be nearly full width on its own row
+  // At this viewport each operating region must remain inside the panel.
   if (panelBox && scenesBox) {
-    expect(scenesBox.width).toBeGreaterThan(panelBox.width * 0.85);
+    expect(scenesBox.x).toBeGreaterThanOrEqual(panelBox.x);
+    expect(scenesBox.x + scenesBox.width).toBeLessThanOrEqual(panelBox.x + panelBox.width + 1);
   }
 
-  // VE should be below scenes, animation below VE
+  // Scene and animation share a row; layers stay in the right command column.
   if (scenesBox && veBox && animBox) {
-    expect(veBox.y).toBeGreaterThan(scenesBox.y);
-    expect(animBox.y).toBeGreaterThan(veBox.y);
+    expect(Math.abs(animBox.y - scenesBox.y)).toBeLessThan(2);
+    expect(veBox.x).toBeGreaterThan(animBox.x);
   }
 });

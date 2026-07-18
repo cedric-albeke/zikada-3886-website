@@ -1,5 +1,7 @@
 import gsap from 'gsap';
-import filterManager from './filter-manager.js';
+import animationRuntime from './runtime/animation-runtime.js';
+
+const RUNTIME_OWNER = 'subtle-effects';
 
 class SubtleEffects {
     constructor() {
@@ -7,10 +9,20 @@ class SubtleEffects {
         this.glitchElements = [];
         this.floatingParticles = [];
         this.parallaxRaf = null;
+        this.performanceProfile = 'high';
+        this.profileChangeHandler = (event) => {
+            this.setPerformanceProfile(event?.detail?.profile || event?.detail?.mode || 'high');
+        };
     }
 
     init() {
         if (this.initialized) return;
+
+        animationRuntime.disposeOwner(RUNTIME_OWNER);
+        window.addEventListener('performanceModeChange', this.profileChangeHandler);
+        animationRuntime.trackDisposer(RUNTIME_OWNER, () => {
+            window.removeEventListener('performanceModeChange', this.profileChangeHandler);
+        });
 
         this.addFloatingSymbols();
         this.addPeriodicFlicker();
@@ -20,6 +32,13 @@ class SubtleEffects {
         this.addBinaryRain();
         this.addSubtleTextAnimations();
         this.initialized = true;
+        this.setPerformanceProfile(window.performanceProfile || 'high');
+    }
+
+    getProfileScale() {
+        if (this.performanceProfile === 'low') return 0.35;
+        if (this.performanceProfile === 'medium') return 0.7;
+        return 1;
     }
 
     // Floating cicada symbols that appear and disappear
@@ -55,8 +74,8 @@ class SubtleEffects {
         };
 
         // Create a symbol every 3-8 seconds
-        setInterval(() => {
-            if (Math.random() > 0.7) {
+        animationRuntime.scheduleInterval(RUNTIME_OWNER, () => {
+            if (Math.random() < 0.3 * this.getProfileScale()) {
                 createFloatingSymbol();
             }
         }, 3000);
@@ -76,6 +95,7 @@ class SubtleEffects {
         }
 
         const flickerTimeline = gsap.timeline({ repeat: -1 });
+        animationRuntime.trackAnimation(RUNTIME_OWNER, flickerTimeline);
 
         flickerTimeline
             .to(imageWrapper, {
@@ -108,21 +128,18 @@ class SubtleEffects {
     addSubtleParallax() {
         const logoText = document.querySelector('.logo-text-wrapper');
         const imageWrapper = document.querySelector('.image-wrapper');
-        const bg = document.querySelector('.bg');
-
         if (!logoText || !imageWrapper) return;
 
         if (this.parallaxRaf) {
-            cancelAnimationFrame(this.parallaxRaf);
+            this.parallaxRaf.clear?.();
             this.parallaxRaf = null;
         }
 
         const setImageX = gsap.quickSetter(imageWrapper, 'x', 'px');
         const setImageY = gsap.quickSetter(imageWrapper, 'y', 'px');
-        const setBgX = bg ? gsap.quickSetter(bg, 'x', 'px') : null;
-        const setBgY = bg ? gsap.quickSetter(bg, 'y', 'px') : null;
-
-        // Autonomous floating movement instead of mouse tracking
+        // Autonomous floating movement instead of mouse tracking. Keep this
+        // on the compact logo surface; moving the full-viewport background on
+        // every RAF invalidated a million-pixel compositor surface.
         const animateFloat = () => {
             const time = Date.now() * 0.0005;
 
@@ -134,13 +151,12 @@ class SubtleEffects {
 
             setImageX(moveX * 5);
             setImageY(moveY * 3);
-            setBgX?.(moveX * 5);
-            setBgY?.(moveY * 3);
-
-            this.parallaxRaf = requestAnimationFrame(animateFloat);
         };
 
-        animateFloat();
+        const maxFps = this.performanceProfile === 'low'
+            ? 12
+            : (this.performanceProfile === 'medium' ? 20 : 30);
+        this.parallaxRaf = animationRuntime.scheduleRafLoop(RUNTIME_OWNER, animateFloat, { maxFps });
     }
 
     // Easter eggs and secret animations
@@ -149,7 +165,7 @@ class SubtleEffects {
         const konamiCode = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'b', 'a'];
         let konamiIndex = 0;
 
-        document.addEventListener('keydown', (e) => {
+        const handleKonamiKey = (e) => {
             if (e.key === konamiCode[konamiIndex]) {
                 konamiIndex++;
                 if (konamiIndex === konamiCode.length) {
@@ -159,7 +175,9 @@ class SubtleEffects {
             } else {
                 konamiIndex = 0;
             }
-        });
+        };
+        document.addEventListener('keydown', handleKonamiKey);
+        animationRuntime.trackDisposer(RUNTIME_OWNER, () => document.removeEventListener('keydown', handleKonamiKey));
 
         // Time-based easter eggs
         const checkTime = () => {
@@ -178,7 +196,7 @@ class SubtleEffects {
             }
         };
 
-        setInterval(checkTime, 60000); // Check every minute
+        animationRuntime.scheduleInterval(RUNTIME_OWNER, checkTime, 60000); // Check every minute
     }
 
     triggerSecretAnimation() {
@@ -307,11 +325,12 @@ class SubtleEffects {
                 }
             }
 
-            .image-wrapper {
+            .image-2 {
                 animation: rgbShift 20s infinite;
             }
         `;
         document.head.appendChild(style);
+        animationRuntime.trackNode(RUNTIME_OWNER, style);
     }
 
     // Binary rain in specific area
@@ -330,8 +349,16 @@ class SubtleEffects {
             opacity: 0.03;
         `;
         document.body.appendChild(binaryContainer);
+        animationRuntime.trackNode(RUNTIME_OWNER, binaryContainer);
+        animationRuntime.trackDisposer(RUNTIME_OWNER, () => {
+            try { gsap.killTweensOf(binaryContainer.querySelectorAll('*')); } catch (_) {}
+        });
 
         const createBinaryDrop = () => {
+            const childLimit = this.performanceProfile === 'low'
+                ? 3
+                : (this.performanceProfile === 'medium' ? 5 : 8);
+            if (binaryContainer.childElementCount >= childLimit) return;
             const drop = document.createElement('div');
             drop.textContent = Math.random() > 0.5 ? '1' : '0';
             drop.style.cssText = `
@@ -352,11 +379,11 @@ class SubtleEffects {
             });
         };
 
-        setInterval(() => {
-            if (Math.random() > 0.5) {
+        animationRuntime.scheduleInterval(RUNTIME_OWNER, () => {
+            if (Math.random() < 0.35 * this.getProfileScale()) {
                 createBinaryDrop();
             }
-        }, 200);
+        }, 500);
     }
 
     // Add subtle animations to ZIKADA and 3886 texts
@@ -379,24 +406,26 @@ class SubtleEffects {
 
             // ZIKADA text animations after intro
             // Subtle breathing effect
-            gsap.to(targetText, {
+            const breathingTween = gsap.to(targetText, {
                 scale: 1.02,
                 duration: 4,
                 yoyo: true,
                 repeat: -1,
                 ease: 'sine.inOut'
             });
+            animationRuntime.trackAnimation(RUNTIME_OWNER, breathingTween);
 
             // REMOVED floating effect - no continuous movement
 
             // Gentle color shift
-            gsap.to(logoText, {
+            const colorTween = gsap.to(logoText, {
                 filter: 'hue-rotate(10deg) brightness(110%)',
                 duration: 6,
                 yoyo: true,
                 repeat: -1,
                 ease: 'sine.inOut'
             });
+            animationRuntime.trackAnimation(RUNTIME_OWNER, colorTween);
 
             // Occasional glitch without x positioning
             const glitchZikada = () => {
@@ -413,12 +442,13 @@ class SubtleEffects {
                 });
 
                 // Schedule next glitch
-                setTimeout(glitchZikada, Math.random() * 15000 + 10000);
+                this.scheduleTimeout(glitchZikada, Math.random() * 15000 + 10000);
             };
-            setTimeout(glitchZikada, Math.random() * 5000);
+            this.scheduleTimeout(glitchZikada, Math.random() * 5000);
 
             // Text shadow pulse
             const shadowPulse = gsap.timeline({ repeat: -1 });
+            animationRuntime.trackAnimation(RUNTIME_OWNER, shadowPulse);
             shadowPulse
                 .to(logoText, {
                     textShadow: '0 0 20px rgba(0, 255, 133, 0.8), 0 0 40px rgba(0, 255, 133, 0.4)',
@@ -448,13 +478,14 @@ class SubtleEffects {
             // Keep text stable
 
             // Gentle brightness pulse (REDUCED to prevent bright flashes)
-            gsap.to(text3886, {
+            const brightnessTween = gsap.to(text3886, {
                 filter: 'brightness(103%) contrast(105%)',
                 duration: 4,
                 yoyo: true,
                 repeat: -1,
                 ease: 'power2.inOut'
             });
+            animationRuntime.trackAnimation(RUNTIME_OWNER, brightnessTween);
 
             // Occasional subtle pulse (REDUCED intensity)
             const pulse3886 = () => {
@@ -474,12 +505,13 @@ class SubtleEffects {
                 });
 
                 // Schedule next pulse
-                setTimeout(pulse3886, Math.random() * 20000 + 15000);
+                this.scheduleTimeout(pulse3886, Math.random() * 20000 + 15000);
             };
-            setTimeout(pulse3886, Math.random() * 10000);
+            this.scheduleTimeout(pulse3886, Math.random() * 10000);
 
             // Add chromatic aberration effect
             const chromaticTimeline = gsap.timeline({ repeat: -1 });
+            animationRuntime.trackAnimation(RUNTIME_OWNER, chromaticTimeline);
             chromaticTimeline
                 .set(text3886, {
                     textShadow: '2px 0 #ff00ff, -2px 0 #00ffff'
@@ -532,19 +564,33 @@ class SubtleEffects {
                     });
 
                 // Schedule next sync glitch
-                setTimeout(syncGlitch, Math.random() * 25000 + 20000);
+                this.scheduleTimeout(syncGlitch, Math.random() * 25000 + 20000);
             };
-            setTimeout(syncGlitch, Math.random() * 10000 + 5000);
+            this.scheduleTimeout(syncGlitch, Math.random() * 10000 + 5000);
         }
     }
 
-    destroy() {
-        if (this.parallaxRaf) {
-            cancelAnimationFrame(this.parallaxRaf);
-            this.parallaxRaf = null;
-        }
+    scheduleTimeout(callback, delay) {
+        return animationRuntime.scheduleTimeout(RUNTIME_OWNER, () => {
+            if (this.initialized) callback();
+        }, delay);
+    }
 
+    setPerformanceProfile(profile) {
+        this.performanceProfile = profile;
+        animationRuntime.resumeOwnerAnimations(RUNTIME_OWNER);
+        if (this.initialized) this.addSubtleParallax();
+    }
+
+    destroy() {
         this.initialized = false;
+        this.parallaxRaf = null;
+        try {
+            const transientNodes = document.querySelectorAll('.floating-symbol, .binary-rain');
+            gsap.killTweensOf(transientNodes);
+            transientNodes.forEach(node => node.remove());
+        } catch (_) {}
+        animationRuntime.disposeOwner(RUNTIME_OWNER);
     }
 }
 

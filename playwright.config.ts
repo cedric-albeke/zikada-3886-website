@@ -3,6 +3,9 @@ import { defineConfig, devices } from '@playwright/test';
 export default defineConfig({
   timeout: 10 * 60 * 1000, // 10 minutes
   testDir: 'tests/e2e',
+  // Test pages communicate through one origin-wide BroadcastChannel. Running
+  // files in parallel lets unrelated controls mutate the same renderer.
+  workers: 1,
   use: {
     headless: true,
     actionTimeout: 30_000,

@@ -1,14 +1,24 @@
 // Direct Logo Animation - JavaScript-based manipulation
 import gsap from 'gsap';
+import animationRuntime from './runtime/animation-runtime.js';
+
+const RUNTIME_OWNER = 'direct-logo-animation';
+const TEST_OWNER = 'direct-logo-animation:test-sequence';
 
 class DirectLogoAnimation {
     constructor() {
         this.logo = null;
         this.container = null;
         this.isAnimating = false;
+        this.listenerAttached = false;
+        this.breathingTween = null;
     }
 
     init() {
+        if (this.container?.isConnected) {
+            this.startBreathing();
+            return;
+        }
         console.log('🎯 Direct Logo Animation initializing...');
 
         // Find logo element
@@ -16,7 +26,7 @@ class DirectLogoAnimation {
 
         if (!this.logo) {
             console.log('Logo not found, retrying...');
-            setTimeout(() => this.init(), 1000);
+            animationRuntime.scheduleTimeout(RUNTIME_OWNER, () => this.init(), 1000);
             return;
         }
 
@@ -53,19 +63,22 @@ class DirectLogoAnimation {
     }
 
     startBreathing() {
+        this.breathingTween?.kill?.();
         // Use GSAP on the container, not the logo itself
-        gsap.to(this.container, {
+        this.breathingTween = gsap.to(this.container, {
             scale: 1.05,
             duration: 3,
             ease: 'sine.inOut',
             yoyo: true,
             repeat: -1
         });
+        animationRuntime.trackAnimation(RUNTIME_OWNER, this.breathingTween);
     }
 
     setupEventListeners() {
+        if (this.listenerAttached) return;
         // Listen for Lottie animations
-        window.addEventListener('lottieAnimationStart', (event) => {
+        this.lottieStartHandler = (event) => {
             const animationType = event.detail?.name;
             console.log('🎬 Direct animation reacting to Lottie:', animationType);
 
@@ -86,7 +99,13 @@ class DirectLogoAnimation {
                     this.pulse();
                     break;
             }
+        };
+        window.addEventListener('lottieAnimationStart', this.lottieStartHandler);
+        animationRuntime.trackDisposer(RUNTIME_OWNER, () => {
+            window.removeEventListener('lottieAnimationStart', this.lottieStartHandler);
+            this.listenerAttached = false;
         });
+        this.listenerAttached = true;
 
     }
 
@@ -246,11 +265,12 @@ class DirectLogoAnimation {
     // Test methods
     testAll() {
         console.log('🧪 Testing all direct animations...');
+        animationRuntime.disposeOwner(TEST_OWNER);
         this.wobble();
-        setTimeout(() => this.pump(), 1500);
-        setTimeout(() => this.glitch(), 3000);
-        setTimeout(() => this.pulse(), 4500);
-        setTimeout(() => this.bigBounce(), 6000);
+        animationRuntime.scheduleTimeout(TEST_OWNER, () => this.pump(), 1500);
+        animationRuntime.scheduleTimeout(TEST_OWNER, () => this.glitch(), 3000);
+        animationRuntime.scheduleTimeout(TEST_OWNER, () => this.pulse(), 4500);
+        animationRuntime.scheduleTimeout(TEST_OWNER, () => this.bigBounce(), 6000);
     }
 }
 

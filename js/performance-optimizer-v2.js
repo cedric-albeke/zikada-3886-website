@@ -1,8 +1,13 @@
 // Performance Optimizer V2 - Comprehensive performance improvements for ZIKADA 3886
 // Addresses memory leaks, DOM bloat, animation performance, and system stability
 
+import animationRuntime from './runtime/animation-runtime.js';
+import performanceBus from './performance-bus.js';
+
 class PerformanceOptimizerV2 {
     constructor() {
+        this.runtimeOwner = 'performance-optimizer-v2';
+        animationRuntime.disposeOwner(this.runtimeOwner);
         this.optimizations = new Map();
         this.performanceMetrics = {
             fps: 60,
@@ -15,7 +20,8 @@ class PerformanceOptimizerV2 {
         this.cleanupThresholds = {
             domNodes: 5000,
             memory: 100, // MB
-            fps: 30,
+            fps: 45,
+            minimumAcceptableFPS: 30,
             animationCount: 50
         };
         
@@ -45,14 +51,19 @@ class PerformanceOptimizerV2 {
         
         this.currentMode = 'balanced';
         this.isMonitoring = false;
-        this.rafId = null;
+        this.performanceUnsubscribe = null;
+        this.elementCleanupToken = null;
         this.lastFrameTime = 0;
         this.frameCount = 0;
         this.fpsHistory = [];
         this.startedAt = performance.now();
         this.startupGraceMs = 15000;
         this.lowFpsSampleCount = 0;
-        this.requiredLowFpsSamples = 4;
+        this.criticalLowFpsSampleCount = 0;
+        this.requiredLowFpsSamples = 5;
+        this.requiredCriticalLowFpsSamples = 3;
+        this.lastRequestedProfile = 'medium';
+        this.lastStructuralMetricCheckAt = 0;
         
         this.init();
     }
@@ -72,57 +83,53 @@ class PerformanceOptimizerV2 {
         
         this.isMonitoring = true;
         this.startFPSMonitoring();
-        this.startMemoryMonitoring();
-        this.startDOMMonitoring();
         
         // Listen for performance mode changes
-        window.addEventListener('performanceModeChange', (e) => {
+        this.performanceModeHandler = (e) => {
             this.setMode(e.detail.mode || 'balanced');
+        };
+        window.addEventListener('performanceModeChange', this.performanceModeHandler);
+        animationRuntime.trackDisposer(this.runtimeOwner, () => {
+            window.removeEventListener('performanceModeChange', this.performanceModeHandler);
         });
         
         console.log('📊 Performance monitoring started');
     }
     
     startFPSMonitoring() {
-        const measureFPS = (currentTime) => {
-            if (this.lastFrameTime === 0) {
-                this.lastFrameTime = currentTime;
-                this.frameCount = 0;
-            }
-            
-            this.frameCount++;
-            const deltaTime = currentTime - this.lastFrameTime;
-            
-            if (deltaTime >= 1000) { // Update every second
-                const fps = Math.round((this.frameCount * 1000) / deltaTime);
-                this.performanceMetrics.fps = fps;
-                
-                // Keep FPS history for trend analysis
-                this.fpsHistory.push(fps);
-                if (this.fpsHistory.length > 60) { // Keep 60 seconds of history
-                    this.fpsHistory.shift();
-                }
-                
-                // Trigger optimizations only after sustained low FPS outside startup warmup.
-                if (fps < this.cleanupThresholds.fps && this.isPastStartupGrace()) {
-                    this.lowFpsSampleCount++;
-                } else {
-                    this.lowFpsSampleCount = 0;
-                }
+        if (this.performanceUnsubscribe) return;
 
-                if (this.lowFpsSampleCount >= this.requiredLowFpsSamples) {
-                    this.triggerLowFPSOptimizations();
-                    this.lowFpsSampleCount = 0;
-                }
-                
-                this.frameCount = 0;
-                this.lastFrameTime = currentTime;
+        const onMetrics = ({ fps, memoryMB, memoryBytes, memoryLimitBytes, domNodes, activeAnimations }) => {
+            if (!Number.isFinite(fps)) return;
+            this.performanceMetrics.fps = fps;
+            this.performanceMetrics.memory = Number.isFinite(memoryMB)
+                ? Math.round(memoryMB)
+                : Math.round((Number(memoryBytes) || 0) / (1024 * 1024));
+            this.performanceMetrics.domNodes = Number(domNodes) || 0;
+            this.performanceMetrics.activeAnimations = Number(activeAnimations) || 0;
+            this.fpsHistory.push(fps);
+            if (this.fpsHistory.length > 60) this.fpsHistory.shift();
+
+            const now = performance.now();
+            if (now - this.lastStructuralMetricCheckAt < 5000) return;
+            this.lastStructuralMetricCheckAt = now;
+
+            const usagePercent = memoryLimitBytes > 0
+                ? ((Number(memoryBytes) || 0) / memoryLimitBytes) * 100
+                : 0;
+            if (usagePercent > 80) this.triggerMemoryOptimizations();
+            else if (usagePercent > 60) this.triggerModerateMemoryOptimizations();
+            if (this.performanceMetrics.domNodes > this.cleanupThresholds.domNodes) {
+                this.triggerDOMOptimizations();
             }
-            
-            this.rafId = requestAnimationFrame(measureFPS);
         };
-        
-        this.rafId = requestAnimationFrame(measureFPS);
+
+        onMetrics(performanceBus.metrics);
+        this.performanceUnsubscribe = performanceBus.subscribe(onMetrics);
+        animationRuntime.trackDisposer(this.runtimeOwner, () => {
+            this.performanceUnsubscribe?.();
+            this.performanceUnsubscribe = null;
+        });
     }
 
     isPastStartupGrace() {
@@ -130,27 +137,12 @@ class PerformanceOptimizerV2 {
     }
     
     startMemoryMonitoring() {
-        setInterval(() => {
-            if (performance.memory) {
-                const memUsed = performance.memory.usedJSHeapSize / (1024 * 1024);
-                this.performanceMetrics.memory = Math.round(memUsed);
-                
-                if (memUsed > this.cleanupThresholds.memory) {
-                    this.triggerMemoryOptimizations();
-                }
-            }
-        }, 5000); // Check every 5 seconds
+        // Structural metrics are supplied by PerformanceBus. Kept as a
+        // compatibility hook for integrations that called this method.
     }
     
     startDOMMonitoring() {
-        setInterval(() => {
-            const domCount = document.querySelectorAll('*').length;
-            this.performanceMetrics.domNodes = domCount;
-            
-            if (domCount > this.cleanupThresholds.domNodes) {
-                this.triggerDOMOptimizations();
-            }
-        }, 10000); // Check every 10 seconds
+        // Structural metrics are supplied by PerformanceBus.
     }
     
     setupDOMOptimizations() {
@@ -166,47 +158,15 @@ class PerformanceOptimizerV2 {
     }
     
     optimizeDOMQueries() {
-        const originalQuerySelector = document.querySelector;
-        const originalQuerySelectorAll = document.querySelectorAll;
-        
-        // Cache frequently used selectors
+        // Do not monkey-patch document.querySelector/querySelectorAll.
+        // The previous implementation shared one selector cache for single-node
+        // and NodeList lookups, so a querySelector() cache hit could make a later
+        // querySelectorAll() return undefined. Dynamic animation layers must see
+        // the live DOM; global selector overrides caused stale/frozen effects.
         const cache = this.elementCache;
         const CACHE_TTL = 5000; // 5 seconds
-        
-        document.querySelector = function(selector) {
-            const now = Date.now();
-            const cached = cache.get(selector);
-            
-            if (cached && (now - cached.timestamp) < CACHE_TTL) {
-                return cached.element;
-            }
-            
-            const element = originalQuerySelector.call(this, selector);
-            if (element) {
-                cache.set(selector, { element, timestamp: now });
-            }
-            
-            return element;
-        };
-        
-        document.querySelectorAll = function(selector) {
-            const now = Date.now();
-            const cached = cache.get(selector);
-            
-            if (cached && (now - cached.timestamp) < CACHE_TTL) {
-                return cached.elements;
-            }
-            
-            const elements = originalQuerySelectorAll.call(this, selector);
-            if (elements.length > 0) {
-                cache.set(selector, { elements, timestamp: now });
-            }
-            
-            return elements;
-        };
-        
-        // Clean cache periodically
-        setInterval(() => {
+
+        animationRuntime.scheduleInterval(this.runtimeOwner, () => {
             const now = Date.now();
             for (const [key, value] of cache.entries()) {
                 if ((now - value.timestamp) > CACHE_TTL) {
@@ -218,8 +178,9 @@ class PerformanceOptimizerV2 {
     
     setupElementCleanup() {
         const strategy = this.optimizationStrategies[this.currentMode];
-        
-        setInterval(() => {
+
+        if (this.elementCleanupToken) this.elementCleanupToken.clear();
+        this.elementCleanupToken = animationRuntime.scheduleInterval(this.runtimeOwner, () => {
             this.performElementCleanup();
         }, strategy.domCleanupInterval);
     }
@@ -227,56 +188,12 @@ class PerformanceOptimizerV2 {
     performElementCleanup() {
         const now = Date.now();
         if (now - this.performanceMetrics.lastCleanup < 5000) return; // Throttle cleanup
-        
-        let cleanedCount = 0;
-        
-        // Clean up orphaned elements
-        // querySelectorAll doesn't support wildcard class selectors like .anime-*;
-        // use class attribute substring/prefix selectors instead.
-        const orphanedElements = document.querySelectorAll(
-            '[data-temp], [data-effect], [class^="anime-"], [class*=" anime-"], [class^="glitch-"], [class*=" glitch-"], [class^="corruption-"], [class*=" corruption-"]'
-        );
-        orphanedElements.forEach(el => {
-            if (!el.isConnected || this.isElementStale(el)) {
-                try {
-                    el.remove();
-                    cleanedCount++;
-                } catch (e) {
-                    // Ignore removal errors
-                }
-            }
-        });
-        
-        // Clean up old canvas elements
-        const canvases = document.querySelectorAll('canvas');
-        canvases.forEach(canvas => {
-            if (this.isElementStale(canvas, 30000)) { // 30 seconds
-                try {
-                    canvas.remove();
-                    cleanedCount++;
-                } catch (e) {
-                    // Ignore removal errors
-                }
-            }
-        });
-        
-        // Clean up old style elements
-        const styles = document.querySelectorAll('style[data-temp]');
-        styles.forEach(style => {
-            if (this.isElementStale(style, 60000)) { // 1 minute
-                try {
-                    style.remove();
-                    cleanedCount++;
-                } catch (e) {
-                    // Ignore removal errors
-                }
-            }
-        });
-        
-        if (cleanedCount > 0) {
-            this.performanceMetrics.lastCleanup = now;
-            console.log(`🧹 Cleaned up ${cleanedCount} elements`);
-        }
+
+        // Automatic maintenance is audit-only. Connected visuals remain owned
+        // by their effect lifecycle for their complete authored duration.
+        window.performanceElementManager?.removeOrphanedElements?.();
+        window.gsapAnimationRegistry?.performPeriodicCleanup?.();
+        this.performanceMetrics.lastCleanup = now;
     }
     
     isElementStale(element, maxAge = 300000) { // 5 minutes default
@@ -299,76 +216,22 @@ class PerformanceOptimizerV2 {
     }
     
     optimizeRAF() {
-        const originalRAF = window.requestAnimationFrame;
-        const strategy = this.optimizationStrategies[this.currentMode];
-        
-        if (strategy.enableRAFThrottling) {
-            let lastCall = 0;
-            const throttleMs = 16; // ~60fps max
-            
-            window.requestAnimationFrame = (callback) => {
-                const now = performance.now();
-                if (now - lastCall >= throttleMs) {
-                    lastCall = now;
-                    return originalRAF(callback);
-                }
-                return originalRAF(() => {
-                    // Skip this frame
-                });
-            };
-        }
+        // Global RAF monkey-patching used to drop callbacks from unrelated
+        // render loops. Throttling is now owner-scoped via AnimationRuntime.
     }
     
     setupAnimationCleanup() {
         // Monitor active animations
-        setInterval(() => {
+        animationRuntime.scheduleInterval(this.runtimeOwner, () => {
             this.cleanupStaleAnimations();
         }, 30000); // Every 30 seconds
     }
     
     cleanupStaleAnimations() {
-        // Clean up GSAP animations
-        if (window.gsap && window.gsap.globalTimeline) {
-            const timeline = window.gsap.globalTimeline;
-            const children = timeline.getChildren();
-            
-            let cleanedCount = 0;
-            children.forEach(child => {
-                const isActive = typeof child.isActive === 'function' ? child.isActive() : false;
-                const isComplete = typeof child.progress === 'function' ? child.progress() >= 1 : false;
-
-                if (!isActive && (isComplete || this.isAnimationStale(child))) {
-                    child.kill();
-                    cleanedCount++;
-                }
-            });
-            
-            if (cleanedCount > 0) {
-                console.log(`🎬 Cleaned up ${cleanedCount} stale GSAP animations`);
-            }
-        }
-        
-        // Clean up anime.js animations
-        if (window.animeManager && window.animeManager.instances) {
-            const instances = window.animeManager.instances;
-            let cleanedCount = 0;
-            
-            instances.forEach(instance => {
-                if (this.isAnimationStale(instance)) {
-                    try {
-                        instance.pause();
-                        instances.delete(instance);
-                        cleanedCount++;
-                    } catch (e) {
-                        // Ignore cleanup errors
-                    }
-                }
-            });
-            
-            if (cleanedCount > 0) {
-                console.log(`🎬 Cleaned up ${cleanedCount} stale anime.js animations`);
-            }
-        }
+        // Registries know completion state and ownership; wall-clock age alone
+        // must never terminate a visual.
+        window.gsapAnimationRegistry?.performPeriodicCleanup?.();
+        window.animeManager?.cleanupCompleted?.();
     }
     
     isAnimationStale(animation, maxAge = 300000) { // 5 minutes default
@@ -417,43 +280,18 @@ class PerformanceOptimizerV2 {
     }
     
     setupMemoryOptimizations() {
-        // Setup memory pressure handling
-        if ('memory' in performance) {
-            this.setupMemoryPressureHandling();
-        }
-        
         // Setup garbage collection hints
         this.setupGCHints();
     }
     
     setupMemoryPressureHandling() {
-        let lastMemoryCheck = 0;
-        
-        setInterval(() => {
-            const now = Date.now();
-            if (now - lastMemoryCheck < 10000) return; // Check every 10 seconds
-            
-            const memInfo = performance.memory;
-            const usedMB = memInfo.usedJSHeapSize / (1024 * 1024);
-            const totalMB = memInfo.totalJSHeapSize / (1024 * 1024);
-            const limitMB = memInfo.jsHeapSizeLimit / (1024 * 1024);
-            
-            const usagePercent = (usedMB / limitMB) * 100;
-            
-            if (usagePercent > 80) {
-                this.triggerMemoryOptimizations();
-            } else if (usagePercent > 60) {
-                this.triggerModerateMemoryOptimizations();
-            }
-            
-            lastMemoryCheck = now;
-        }, 10000);
+        // PerformanceBus owns memory sampling and pressure dispatch.
     }
     
     setupGCHints() {
         // Suggest garbage collection when appropriate
         if (window.gc) {
-            setInterval(() => {
+            animationRuntime.scheduleInterval(this.runtimeOwner, () => {
                 const memInfo = performance.memory;
                 const usedMB = memInfo.usedJSHeapSize / (1024 * 1024);
                 const limitMB = memInfo.jsHeapSizeLimit / (1024 * 1024);
@@ -491,16 +329,48 @@ class PerformanceOptimizerV2 {
     }
     
     triggerLowFPSOptimizations() {
-        console.log('⚡ Triggering low FPS optimizations');
-        
-        // Reduce animation quality
-        this.reduceAnimationQuality();
-        
-        // Clean up DOM
-        this.performElementCleanup();
-        
-        // Soften non-essential animations without freezing CSS state.
-        this.softenNonEssentialAnimations();
+        console.log('⚡ Requesting lower-cost visual profile');
+        this.applyAdaptivePerformanceProfile();
+    }
+
+    applyAdaptivePerformanceProfile() {
+        const fps = this.performanceMetrics.fps || 60;
+        const profile = this.lastRequestedProfile === 'low' ? 'low' : 'medium';
+
+        try {
+            if (window.performanceProfileManager && typeof window.performanceProfileManager.applyProfile === 'function') {
+                window.performanceProfileManager.applyProfile(profile, {
+                    reason: 'soft-low-fps-optimizer',
+                    fps
+                });
+            }
+        } catch (_) {}
+
+        try {
+            if (window.chaosEngine) {
+                if (typeof window.chaosEngine.adjustPostProcessing === 'function') {
+                    window.chaosEngine.adjustPostProcessing(profile === 'low' ? 'low' : 'medium');
+                }
+                if (typeof window.chaosEngine.setPixelRatio === 'function') {
+                    window.chaosEngine.setPixelRatio(profile === 'low' ? 0.65 : 0.85);
+                }
+                if (typeof window.chaosEngine.updateFrequency === 'number') {
+                    window.chaosEngine.updateFrequency = profile === 'low' ? 6 : 4;
+                }
+            }
+        } catch (_) {}
+
+        try {
+            window.dispatchEvent(new CustomEvent('performance:profile-request', {
+                detail: {
+                    profile,
+                    fps,
+                    targetFPS: 60,
+                    actionFPS: this.cleanupThresholds.fps,
+                    minimumAcceptableFPS: this.cleanupThresholds.minimumAcceptableFPS
+                }
+            }));
+        } catch (_) {}
     }
     
     triggerMemoryOptimizations() {
@@ -549,50 +419,20 @@ class PerformanceOptimizerV2 {
     }
     
     reduceAnimationQuality() {
-        // Reduce particle count
-        const particles = document.querySelectorAll('.particle, .anime-particle');
-        const maxParticles = this.optimizationStrategies[this.currentMode].maxParticles;
-        
-        if (particles.length > maxParticles) {
-            const toRemove = particles.length - maxParticles;
-            for (let i = 0; i < toRemove; i++) {
-                try {
-                    particles[i].remove();
-                } catch (e) {
-                    // Ignore removal errors
-                }
-            }
-        }
-        
-        // Reduce animation complexity
+        // Quality is applied to future sampling/density decisions. Existing
+        // particles and timelines retain their authored lifetime.
         document.documentElement.style.setProperty('--animation-quality', 'low');
+        this.lastRequestedProfile = 'low';
+        this.applyAdaptivePerformanceProfile();
     }
     
     softenNonEssentialAnimations() {
-        // Reduce visual weight of non-essential layers without leaving them paused.
-        const backgroundAnims = document.querySelectorAll('[data-bg-animation]');
-        backgroundAnims.forEach(el => {
-            el.style.opacity = '0.35';
-        });
-        
-        // Reduce particle systems instead of pausing them permanently.
-        const particles = document.querySelectorAll('.particle-system');
-        particles.forEach(el => {
-            el.style.opacity = '0.35';
-        });
+        this.applyAdaptivePerformanceProfile();
     }
     
     cleanupEventListeners() {
-        // This is a simplified cleanup - in a real implementation,
-        // you'd need to track event listeners more carefully
-        const elements = document.querySelectorAll('[data-temp]');
-        elements.forEach(el => {
-            // Clone element to remove all event listeners
-            const newEl = el.cloneNode(true);
-            if (el.parentNode) {
-                el.parentNode.replaceChild(newEl, el);
-            }
-        });
+        // Event listeners are disposed by their owning modules. Cloning live
+        // elements would destroy state and is never a valid automatic cleanup.
     }
     
     setMode(mode) {
@@ -616,8 +456,7 @@ class PerformanceOptimizerV2 {
             window.gsapAnimationRegistry.maxAnimations = strategy.maxAnimations;
         }
         
-        // Update RAF throttling
-        this.optimizeRAF();
+        // Global RAF throttling is intentionally disabled.
     }
     
     getPerformanceMetrics() {
@@ -691,9 +530,9 @@ class PerformanceOptimizerV2 {
     
     // Cleanup method
     destroy() {
-        if (this.rafId) {
-            cancelAnimationFrame(this.rafId);
-        }
+        animationRuntime.disposeOwner(this.runtimeOwner);
+        this.performanceUnsubscribe = null;
+        this.elementCleanupToken = null;
         
         this.elementCache.clear();
         this.throttledOperations.clear();

@@ -8,8 +8,7 @@ function ts() {
   return `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
 }
 
-test('first-load: capture overlay/z-index mutations for ~10s', async ({ browser }) => {
-  const context = await browser.newContext();
+test('first-load: capture overlay/z-index mutations for ~10s', async ({ context }) => {
   const page = await context.newPage();
 
   // Inject overlay observer at init to capture the earliest mutations

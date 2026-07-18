@@ -80,6 +80,10 @@ class PerformanceDegradationLadder {
      * Start the performance monitoring and degradation system
      */
     start(renderer = null, scene = null, composer = null) {
+        if (typeof window !== 'undefined' && window.__3886_PROFILE_MANAGER_ENABLED === true) {
+            console.log('📊 Performance ladder idle: centralized profile manager owns quality');
+            return;
+        }
         if (this.isActive) return;
         
         this.isActive = true;

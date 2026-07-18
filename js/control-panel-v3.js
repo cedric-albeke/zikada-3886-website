@@ -14,27 +14,56 @@ class ControlPanelV3 {
     constructor() {
         this.midiLearnActive = false;
         this.midiController = null;
+        this.initialized = false;
+        this.destroyed = false;
+        this.abortController = new AbortController();
+        this.timeoutIds = new Set();
+        this.rafIds = new Set();
         this.init();
     }
 
     init() {
+        if (this.initialized || this.destroyed) return;
+        this.initialized = true;
         this.setupKeyboardShortcuts();
         this.setupSpeedSliderSync();
         this.enhanceButtonFeedback();
-        this.startUptimeCounter();
         this.initMIDIIntegration();
-        this.initMatrixControls();
-
-        // Ensure the Scene Select section is in view so scene buttons are interactable
-        try {
-            const sceneSection = document.querySelector('.scene-section');
-            if (sceneSection) {
-                // Delay slightly to allow layout to stabilize
-                setTimeout(() => sceneSection.scrollIntoView({ behavior: 'smooth', block: 'center' }), 150);
-            }
-        } catch (_) {}
+        // The professional controller owns uptime, connection state and
+        // performance-mode dispatch. Keeping a second owner here previously
+        // doubled intervals and every L/A/H click.
+        this.listen(window, 'pagehide', () => this.destroy(), { once: true });
+        this.listen(window, 'beforeunload', () => this.destroy(), { once: true });
 
         console.log('🎹️ Control Panel V3 enhancements loaded');
+    }
+
+    listen(target, type, handler, options = {}) {
+        if (this.destroyed) return;
+        target?.addEventListener?.(type, handler, {
+            ...options,
+            signal: this.abortController.signal
+        });
+    }
+
+    scheduleTimeout(callback, delay = 0) {
+        if (this.destroyed) return null;
+        const id = window.setTimeout(() => {
+            this.timeoutIds.delete(id);
+            if (!this.destroyed) callback();
+        }, Math.max(0, Number(delay) || 0));
+        this.timeoutIds.add(id);
+        return id;
+    }
+
+    scheduleFrame(callback) {
+        if (this.destroyed) return null;
+        const id = window.requestAnimationFrame((timestamp) => {
+            this.rafIds.delete(id);
+            if (!this.destroyed) callback(timestamp);
+        });
+        this.rafIds.add(id);
+        return id;
     }
     
     /**
@@ -44,37 +73,12 @@ class ControlPanelV3 {
         // Wait for VJ messaging to be available
         const vjMessaging = window.vjMessaging;
         if (!vjMessaging) {
-            setTimeout(() => this.initMatrixControls(), 100);
+            this.scheduleTimeout(() => this.initMatrixControls(), 100);
             return;
         }
         
-        // Emergency Kill button
-        const emergencyBtn = document.getElementById('emergencyStop');
-        if (emergencyBtn) {
-            emergencyBtn.addEventListener('click', () => {
-                vjMessaging.emergencyKill();
-                this.showButtonFeedback(emergencyBtn, 'KILL ACTIVATED');
-            });
-        }
-        
-        // System Reset button
-        const resetBtn = document.getElementById('systemReset');
-        if (resetBtn) {
-            resetBtn.addEventListener('click', () => {
-                vjMessaging.systemReset();
-                this.showButtonFeedback(resetBtn, 'SYSTEM RESET');
-            });
-        }
-        
-        // System Reload button
-        const reloadBtn = document.getElementById('systemReload');
-        if (reloadBtn) {
-            reloadBtn.addEventListener('click', () => {
-                if (confirm('Reload the entire system? This will restart everything.')) {
-                    vjMessaging.systemReload();
-                }
-            });
-        }
+        // System controls are owned by control-panel-professional.js. Keeping
+        // legacy handlers here sent every KILL/RESET/RELOAD twice.
         
         // Performance mode buttons
         const perfLowBtn = document.getElementById('perfLow');
@@ -82,7 +86,7 @@ class ControlPanelV3 {
         const perfHighBtn = document.getElementById('perfHigh');
         
         if (perfLowBtn) {
-            perfLowBtn.addEventListener('click', () => {
+            this.listen(perfLowBtn, 'click', () => {
                 vjMessaging.setPerformanceMode('low');
                 this.updatePerformanceModeUI('low');
                 this.showButtonFeedback(perfLowBtn, 'LOW MODE');
@@ -90,7 +94,7 @@ class ControlPanelV3 {
         }
         
         if (perfAutoBtn) {
-            perfAutoBtn.addEventListener('click', () => {
+            this.listen(perfAutoBtn, 'click', () => {
                 vjMessaging.setPerformanceMode('auto');
                 this.updatePerformanceModeUI('auto');
                 this.showButtonFeedback(perfAutoBtn, 'AUTO MODE');
@@ -98,7 +102,7 @@ class ControlPanelV3 {
         }
         
         if (perfHighBtn) {
-            perfHighBtn.addEventListener('click', () => {
+            this.listen(perfHighBtn, 'click', () => {
                 vjMessaging.setPerformanceMode('high');
                 this.updatePerformanceModeUI('high');
                 this.showButtonFeedback(perfHighBtn, 'HIGH MODE');
@@ -174,7 +178,7 @@ class ControlPanelV3 {
         button.textContent = message;
         button.classList.add('active');
         
-        setTimeout(() => {
+        this.scheduleTimeout(() => {
             button.textContent = originalText;
             button.classList.remove('active');
         }, 800);
@@ -184,7 +188,7 @@ class ControlPanelV3 {
      * Setup keyboard shortcuts for quick access
      */
     setupKeyboardShortcuts() {
-        document.addEventListener('keydown', (e) => {
+        this.listen(document, 'keydown', (e) => {
             // Don't trigger if typing in an input
             if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
 
@@ -250,7 +254,7 @@ class ControlPanelV3 {
         const speedValue = document.getElementById('speedValue');
 
         if (speedSlider && speedValue) {
-            speedSlider.addEventListener('input', (e) => {
+            this.listen(speedSlider, 'input', (e) => {
                 speedValue.textContent = `${e.target.value}%`;
             });
         }
@@ -258,7 +262,7 @@ class ControlPanelV3 {
         const phaseSlider = document.getElementById('phaseDurationSlider');
         const phaseValue = document.getElementById('phaseValue');
         if (phaseSlider && phaseValue) {
-            phaseSlider.addEventListener('input', (e) => {
+            this.listen(phaseSlider, 'input', (e) => {
                 phaseValue.textContent = `${e.target.value}s`;
             });
         }
@@ -270,14 +274,14 @@ class ControlPanelV3 {
     enhanceButtonFeedback() {
         // Add ripple effect to all buttons
         document.querySelectorAll('.scene-btn, .trigger-btn, .macro-btn, .anim-trigger-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
+            this.listen(btn, 'click', (e) => {
                 this.createRipple(e);
             });
         });
 
         // Scene button active states
         document.querySelectorAll('.scene-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
+            this.listen(btn, 'click', () => {
                 // Remove active from all scene buttons
                 document.querySelectorAll('.scene-btn').forEach(b => b.classList.remove('active'));
                 // Add active to clicked button
@@ -287,7 +291,7 @@ class ControlPanelV3 {
 
         // Performance mode button active states
         document.querySelectorAll('.btn--small[data-mode]').forEach(btn => {
-            btn.addEventListener('click', () => {
+            this.listen(btn, 'click', () => {
                 // Remove active from all mode buttons
                 document.querySelectorAll('.btn--small[data-mode]').forEach(b => b.classList.remove('active'));
                 // Add active to clicked button
@@ -300,12 +304,12 @@ class ControlPanelV3 {
         const disableBtn = document.getElementById('animeDisable');
         
         if (enableBtn && disableBtn) {
-            enableBtn.addEventListener('click', () => {
+            this.listen(enableBtn, 'click', () => {
                 enableBtn.classList.add('active');
                 disableBtn.classList.remove('active');
             });
             
-            disableBtn.addEventListener('click', () => {
+            this.listen(disableBtn, 'click', () => {
                 disableBtn.classList.add('active');
                 enableBtn.classList.remove('active');
             });
@@ -325,6 +329,7 @@ class ControlPanelV3 {
         const y = event.clientY - rect.top;
 
         const ripple = document.createElement('span');
+        ripple.className = 'v3-ripple';
         ripple.style.cssText = `
             position: absolute;
             width: 4px;
@@ -342,29 +347,7 @@ class ControlPanelV3 {
         button.style.overflow = 'hidden';
         button.appendChild(ripple);
 
-        setTimeout(() => ripple.remove(), 600);
-    }
-
-    /**
-     * Start system uptime counter
-     */
-    startUptimeCounter() {
-        const uptimeElement = document.getElementById('systemUptime');
-        if (!uptimeElement) return;
-        
-        const startTime = Date.now();
-        
-        setInterval(() => {
-            const elapsed = Date.now() - startTime;
-            const hours = Math.floor(elapsed / 3600000);
-            const minutes = Math.floor((elapsed % 3600000) / 60000);
-            const seconds = Math.floor((elapsed % 60000) / 1000);
-            
-            const formatted = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-            uptimeElement.textContent = formatted;
-        }, 1000);
-        
-        console.log('⏱️ Uptime counter started');
+        this.scheduleTimeout(() => ripple.remove(), 600);
     }
 
     /**
@@ -377,7 +360,7 @@ class ControlPanelV3 {
                 if (window.midiController) {
                     resolve(window.midiController);
                 } else {
-                    setTimeout(() => {
+                    this.scheduleTimeout(() => {
                         resolve(window.midiController || null);
                     }, 1000);
                 }
@@ -401,26 +384,26 @@ class ControlPanelV3 {
     setupMIDIEventListeners() {
         // MIDI Learn button
         const learnBtn = document.getElementById('midiLearnBtn');
-        learnBtn?.addEventListener('click', () => this.toggleMIDILearn());
+        this.listen(learnBtn, 'click', () => this.toggleMIDILearn());
         
         // Device selection
         const deviceSelect = document.getElementById('midiDeviceSelect');
-        deviceSelect?.addEventListener('change', (e) => this.selectMIDIDevice(e.target.value));
+        this.listen(deviceSelect, 'change', (e) => this.selectMIDIDevice(e.target.value));
         
         // Action buttons
         const loadPresetBtn = document.getElementById('midiLoadPresetBtn');
         const clearBtn = document.getElementById('midiClearBtn');
         const debugBtn = document.getElementById('midiDebugBtn');
         
-        loadPresetBtn?.addEventListener('click', () => this.loadMIDIPreset());
-        clearBtn?.addEventListener('click', () => this.clearAllMappings());
-        debugBtn?.addEventListener('click', () => this.toggleMIDIDebug());
+        this.listen(loadPresetBtn, 'click', () => this.loadMIDIPreset());
+        this.listen(clearBtn, 'click', () => this.clearAllMappings());
+        this.listen(debugBtn, 'click', () => this.toggleMIDIDebug());
         
         // Listen for MIDI events
-        window.addEventListener('midiready', (e) => this.onMIDIReady(e));
-        window.addEventListener('midierror', (e) => this.onMIDIError(e));
-        window.addEventListener('mididevicechange', (e) => this.onMIDIDeviceChange(e));
-        window.addEventListener('midimappinglearned', (e) => this.onMIDIMappingLearned(e));
+        this.listen(window, 'midiready', (e) => this.onMIDIReady(e));
+        this.listen(window, 'midierror', (e) => this.onMIDIError(e));
+        this.listen(window, 'mididevicechange', (e) => this.onMIDIDeviceChange(e));
+        this.listen(window, 'midimappinglearned', (e) => this.onMIDIMappingLearned(e));
         
         // Make V3 controls learnable
         this.makeV3ControlsLearnable();
@@ -448,7 +431,7 @@ class ControlPanelV3 {
             };
             
             // Add to beginning of event chain
-            btn.addEventListener('click', originalClickHandler, { capture: true });
+            this.listen(btn, 'click', originalClickHandler, { capture: true });
         });
 
         // Trigger FX buttons
@@ -468,7 +451,7 @@ class ControlPanelV3 {
                 }
             };
             
-            btn.addEventListener('click', originalClickHandler, { capture: true });
+            this.listen(btn, 'click', originalClickHandler, { capture: true });
         });
 
         // Animation trigger buttons
@@ -488,7 +471,7 @@ class ControlPanelV3 {
                 }
             };
             
-            btn.addEventListener('click', originalClickHandler, { capture: true });
+            this.listen(btn, 'click', originalClickHandler, { capture: true });
         });
 
         // Effect toggle buttons
@@ -508,7 +491,7 @@ class ControlPanelV3 {
                 }
             };
             
-            btn.addEventListener('click', originalClickHandler, { capture: true });
+            this.listen(btn, 'click', originalClickHandler, { capture: true });
         });
 
         // Layer toggle buttons
@@ -528,7 +511,7 @@ class ControlPanelV3 {
                 }
             };
             
-            btn.addEventListener('click', originalClickHandler, { capture: true });
+            this.listen(btn, 'click', originalClickHandler, { capture: true });
         });
 
         // Sliders (speed, phase, BPM)
@@ -539,7 +522,7 @@ class ControlPanelV3 {
 
         Object.entries(sliders).forEach(([sliderId, config]) => {
             const slider = document.getElementById(sliderId);
-            slider?.addEventListener('mousedown', (e) => {
+            this.listen(slider, 'mousedown', (e) => {
                 if (this.midiLearnActive) {
                     this.setMIDILearnTarget({
                         element: slider,
@@ -582,7 +565,7 @@ class ControlPanelV3 {
         this.showToast('MIDI Learn active - Click any control, then move a MIDI controller', 'info', 5000);
         
         // Auto-disable after 30 seconds
-        this.midiLearnTimeout = setTimeout(() => {
+        this.midiLearnTimeout = this.scheduleTimeout(() => {
             this.stopMIDILearn();
             this.showToast('MIDI Learn timed out', 'warning');
         }, 30000);
@@ -596,7 +579,8 @@ class ControlPanelV3 {
         this.clearMIDILearnTarget();
         
         if (this.midiLearnTimeout) {
-            clearTimeout(this.midiLearnTimeout);
+            window.clearTimeout(this.midiLearnTimeout);
+            this.timeoutIds.delete(this.midiLearnTimeout);
             this.midiLearnTimeout = null;
         }
         
@@ -642,7 +626,7 @@ class ControlPanelV3 {
         if (!this.midiController) return;
         
         // Listen for MIDI activity
-        window.addEventListener('midiactivity', (e) => {
+        this.listen(window, 'midiactivity', (e) => {
             this.updateMIDIActivity(e.detail);
         });
     }
@@ -681,7 +665,7 @@ class ControlPanelV3 {
         activityText.classList.add('active');
         
         // Remove active class after animation
-        setTimeout(() => {
+        this.scheduleTimeout(() => {
             activityText.classList.remove('active');
         }, 500);
     }
@@ -696,9 +680,12 @@ class ControlPanelV3 {
     }
 
     onMIDIError(event) {
-        console.error('🎹 V3 MIDI Error:', event.detail);
+        const code = event.detail?.code;
+        const expectedUnavailable = code === 'PERMISSION_DENIED' || code === 'NOT_SUPPORTED';
+        const log = expectedUnavailable ? console.warn : console.error;
+        log('🎹 V3 MIDI Error:', event.detail);
         this.updateMIDIStatus('error');
-        this.showToast(`MIDI Error: ${event.detail.message}`, 'error');
+        this.showToast(`MIDI Error: ${event.detail.message}`, expectedUnavailable ? 'warning' : 'error');
     }
 
     onMIDIDeviceChange(event) {
@@ -853,24 +840,42 @@ class ControlPanelV3 {
         
         document.body.appendChild(toast);
         
-        requestAnimationFrame(() => {
+        this.scheduleFrame(() => {
             toast.style.transform = 'translateX(0)';
         });
         
-        setTimeout(() => {
+        this.scheduleTimeout(() => {
             toast.style.transform = 'translateX(100%)';
-            setTimeout(() => {
+            this.scheduleTimeout(() => {
                 if (toast.parentNode) {
                     toast.parentNode.removeChild(toast);
                 }
             }, 300);
         }, duration);
     }
+
+    destroy() {
+        if (this.destroyed) return;
+        this.destroyed = true;
+        this.abortController.abort();
+        this.timeoutIds.forEach(id => window.clearTimeout(id));
+        this.timeoutIds.clear();
+        this.rafIds.forEach(id => window.cancelAnimationFrame(id));
+        this.rafIds.clear();
+        this.midiLearnTimeout = null;
+        this.midiLearnTarget?.element?.classList?.remove('learn-target-indicator');
+        this.midiController?.stopLearn?.();
+        document.querySelectorAll('.v3-toast, .v3-ripple').forEach(node => node.remove());
+        this.initialized = false;
+        if (window.controlPanelV3 === this) window.controlPanelV3 = null;
+    }
 }
 
 // Add ripple animation styles
-const style = document.createElement('style');
-style.textContent = `
+if (!document.getElementById('control-panel-v3-runtime-styles')) {
+    const style = document.createElement('style');
+    style.id = 'control-panel-v3-runtime-styles';
+    style.textContent = `
     @keyframes rippleEffect {
         from {
             width: 4px;
@@ -884,15 +889,19 @@ style.textContent = `
         }
     }
 `;
-document.head.appendChild(style);
+    document.head.appendChild(style);
+}
+
+const initializeControlPanelV3 = () => {
+    window.controlPanelV3?.destroy?.();
+    window.controlPanelV3 = new ControlPanelV3();
+};
 
 // Initialize when DOM is ready
 if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => {
-        new ControlPanelV3();
-    });
+    document.addEventListener('DOMContentLoaded', initializeControlPanelV3, { once: true });
 } else {
-    new ControlPanelV3();
+    initializeControlPanelV3();
 }
 
 // Export for use in other modules

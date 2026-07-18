@@ -1,6 +1,9 @@
 // CENTERPIECE LOGO ANIMATION SYSTEM
 // Advanced animation system for the ZIKADA SVG logo as the visual centerpiece
 import gsap from 'gsap';
+import animationRuntime from './runtime/animation-runtime.js';
+
+const RUNTIME_OWNER = 'centerpiece-logo';
 
 class CenterpieceLogo {
     constructor() {
@@ -88,6 +91,7 @@ class CenterpieceLogo {
             console.log('🎯 Centerpiece already initialized');
             return;
         }
+        animationRuntime.disposeOwner(RUNTIME_OWNER);
 
         // Try multiple selectors to find the logo - INCLUDING image-2!
         this.logo = document.querySelector('.image-2') ||
@@ -110,8 +114,13 @@ class CenterpieceLogo {
         // Create glow container
         this.createGlowSystem();
 
-        // Start ambient animations
-        this.startAmbientAnimations();
+        this.isInitialized = true;
+
+        // EnhancedLogoAnimator is the single owner of continuous logo
+        // transforms. Keeping a second breathing/rotation/bounce stack here
+        // made GSAP writers fight over the same transform every frame. This
+        // module remains the owner of the complete reactive animation library
+        // and its authored animation cycle.
 
         // Start reactive system
         this.startReactiveSystem();
@@ -119,7 +128,6 @@ class CenterpieceLogo {
         // Start continuous animation cycle
         this.startAnimationCycle();
 
-        this.isInitialized = true;
     }
 
     setupInitialState() {
@@ -182,49 +190,11 @@ class CenterpieceLogo {
         }
     }
 
-    // AMBIENT ANIMATIONS (always running)
+    // Legacy entry point kept for integrations that call it directly. Ambient
+    // motion is intentionally owned by EnhancedLogoAnimator so reactive
+    // centerpiece sequences start from one stable transform state.
     startAmbientAnimations() {
-
-        // MORE VISIBLE breathing
-        this.breathingTimeline = gsap.timeline({ repeat: -1 });
-        this.breathingTimeline
-            .to(this.logo, {
-                scale: this.settings.breathScale.max,
-                duration: 3,  // Faster for visibility
-                ease: 'power2.inOut'
-            })
-            .to(this.logo, {
-                scale: this.settings.breathScale.min,
-                duration: 3,
-                ease: 'power2.inOut'
-            });
-
-        // More visible rotation
-        gsap.to(this.logo, {
-            rotation: 360,
-            duration: 120,  // Faster rotation
-            repeat: -1,
-            ease: 'none'
-        });
-
-        // MORE VISIBLE 3D tilt
-        gsap.to(this.logo, {
-            rotationY: 20,  // Increased tilt
-            rotationX: 10,   // Increased tilt
-            duration: 5,     // Faster
-            yoyo: true,
-            repeat: -1,
-            ease: 'sine.inOut'
-        });
-
-        // Add visible bounce effect
-        gsap.to(this.logo, {
-            y: -10,
-            duration: 2,
-            yoyo: true,
-            repeat: -1,
-            ease: 'power2.inOut'
-        });
+        return this.breathingTimeline;
     }
 
     // BOUNCY ANIMATIONS
@@ -728,11 +698,14 @@ class CenterpieceLogo {
             attributes: true,
             attributeFilter: ['style']
         });
+        animationRuntime.trackDisposer(RUNTIME_OWNER, () => observer.disconnect());
 
         // React to global animation events
-        window.addEventListener('animationPhase', (e) => {
+        const onAnimationPhase = (e) => {
             this.reactToPhase(e.detail.phase);
-        });
+        };
+        window.addEventListener('animationPhase', onAnimationPhase);
+        animationRuntime.trackDisposer(RUNTIME_OWNER, () => window.removeEventListener('animationPhase', onAnimationPhase));
 
         // Random special animations - removed since we have animation cycle
     }
@@ -753,11 +726,11 @@ class CenterpieceLogo {
 
             // Schedule next animation (3-8 seconds randomly)
             const delay = 3000 + Math.random() * 5000;
-            setTimeout(runNextAnimation, delay);
+            animationRuntime.scheduleTimeout(RUNTIME_OWNER, runNextAnimation, delay);
         };
 
         // Start first animation after 2 seconds
-        setTimeout(runNextAnimation, 2000);
+        animationRuntime.scheduleTimeout(RUNTIME_OWNER, runNextAnimation, 2000);
     }
 
     reactToPhase(phase) {
@@ -811,9 +784,10 @@ class CenterpieceLogo {
             animation.eventCallback('onComplete', () => {
                 this.isAnimating = false;
             });
+            animationRuntime.trackAnimation(RUNTIME_OWNER, animation);
         } else {
             // If no timeline returned, reset flag after expected duration
-            setTimeout(() => {
+            animationRuntime.scheduleTimeout(RUNTIME_OWNER, () => {
                 this.isAnimating = false;
             }, 2000);
         }
@@ -836,15 +810,18 @@ class CenterpieceLogo {
     }
 
     destroy() {
+        animationRuntime.disposeOwner(RUNTIME_OWNER);
         if (this.breathingTimeline) this.breathingTimeline.kill();
         if (this.pulseTimeline) this.pulseTimeline.kill();
         if (this.ambientTimeline) this.ambientTimeline.kill();
 
-        gsap.killTweensOf([this.logo, ...this.glowLayers]);
+        gsap.killTweensOf([this.logo, ...(this.glowLayers || [])]);
 
-        this.glowLayers.forEach(layer => layer.remove());
+        (this.glowLayers || []).forEach(layer => layer.remove());
 
         this.isInitialized = false;
+        this.isAnimating = false;
+        this.animationQueue.length = 0;
     }
 }
 

@@ -1,6 +1,10 @@
 // BEEHIVE LOGO BLEND EFFECT
 // Creates a circular masked beehive video that blends through the main logo
 import gsap from 'gsap';
+import animationRuntime from './runtime/animation-runtime.js';
+
+const RUNTIME_OWNER = 'beehive-logo-blend';
+const SESSION_OWNER = 'beehive-logo-blend:session';
 
 class BeehiveLogoBlend {
     constructor() {
@@ -13,7 +17,6 @@ class BeehiveLogoBlend {
 
         // Effect settings - OPTIMIZED FOR PERFORMANCE
         this.settings = {
-            duration: 2000, // Shorter duration to reduce lag
             fadeInTime: 0.3,  // Smoother fade to reduce jarring
             fadeOutTime: 0.3, // Smoother fade
             interval: 90000, // Less frequent - every 90 seconds
@@ -53,10 +56,16 @@ class BeehiveLogoBlend {
         this.startPeriodicDisplay();
 
         // Listen for window resize
-        window.addEventListener('resize', () => this.updateLogoPosition());
+        this.resizeHandler = () => this.updateLogoPosition();
+        window.addEventListener('resize', this.resizeHandler);
 
         // Listen for animation phases
-        window.addEventListener('animationPhase', (e) => this.reactToPhase(e.detail.phase));
+        this.phaseHandler = (event) => this.reactToPhase(event.detail.phase);
+        window.addEventListener('animationPhase', this.phaseHandler);
+        animationRuntime.trackDisposer(RUNTIME_OWNER, () => {
+            window.removeEventListener('resize', this.resizeHandler);
+            window.removeEventListener('animationPhase', this.phaseHandler);
+        });
 
         this.isInitialized = true;
     }
@@ -143,11 +152,11 @@ class BeehiveLogoBlend {
 
     startPeriodicDisplay() {
         // Show after 3 seconds for testing
-        setTimeout(() => {
+        animationRuntime.scheduleTimeout(RUNTIME_OWNER, () => {
             this.show();
 
             // Set up periodic display
-            this.intervalId = setInterval(() => {
+            this.intervalId = animationRuntime.scheduleInterval(RUNTIME_OWNER, () => {
                 if (!this.isActive) {
                     this.show();
                 }
@@ -200,6 +209,7 @@ class BeehiveLogoBlend {
 
         // Create the blend animation timeline
         const tl = gsap.timeline();
+        animationRuntime.trackAnimation(SESSION_OWNER, tl);
 
         // Fade in beehive
         tl.to(this.container, {
@@ -219,20 +229,21 @@ class BeehiveLogoBlend {
             duration: 1.5,
             yoyo: true,
             repeat: 3,
-            ease: 'sine.inOut'
+            ease: 'sine.inOut',
+            onComplete: () => this.hide()
         })
         // REMOVED filter animations for performance
         // Filter effects cause major performance issues
 
-        // Schedule hide
-        setTimeout(() => this.hide(), this.settings.duration);
     }
 
     hide() {
         if (!this.isActive) return;
 
+        animationRuntime.disposeOwner(SESSION_OWNER);
 
         const tl = gsap.timeline();
+        animationRuntime.trackAnimation(RUNTIME_OWNER, tl);
 
         // Fade out beehive and restore logo
         tl.to(this.container, {
@@ -275,13 +286,8 @@ class BeehiveLogoBlend {
     }
 
     destroy() {
-        if (this.intervalId) {
-            clearInterval(this.intervalId);
-        }
-
-        if (this.isActive) {
-            this.hide();
-        }
+        animationRuntime.disposeOwner(SESSION_OWNER);
+        animationRuntime.disposeOwner(RUNTIME_OWNER);
 
         gsap.killTweensOf([this.container, this.videoElement, this.logo]);
 

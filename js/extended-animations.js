@@ -2,6 +2,9 @@ import gsap from 'gsap';
 import matrixConfig from './matrix-config.js';
 import { register as registerEffect, enforceBudget } from './runtime/effects/EffectManager.js';
 import { createNodePool } from './runtime/dom/NodePool.js';
+import animationRuntime from './runtime/animation-runtime.js';
+
+const RUNTIME_OWNER = 'extended-animations';
 
 class ExtendedAnimations {
     constructor() {
@@ -18,6 +21,7 @@ class ExtendedAnimations {
         this.container = null;
         this._effectHandle = null;
         this._budgetDisposer = null;
+        this.backgroundTween = null;
         
         // Rate limiting to prevent DOM growth
         this.lastEffectTime = {};
@@ -47,6 +51,7 @@ class ExtendedAnimations {
             return;
         }
 
+        animationRuntime.disposeOwner(RUNTIME_OWNER);
         this.isRunning = true;
         // Create a single container for extended effects
         this.container = document.querySelector('.extended-effects-root');
@@ -174,7 +179,7 @@ class ExtendedAnimations {
             ease: 'none'
         });
 
-        setTimeout(() => container.remove(), 1000);
+        this.scheduleTimeout(() => container.remove(), 1000);
     }
 
     synthwaveGrid() {
@@ -381,7 +386,7 @@ class ExtendedAnimations {
             if (messageIndex < messages.length) {
                 terminal.textContent += messages[messageIndex] + '\n';
                 messageIndex++;
-                setTimeout(typeMessage, 200);
+                this.scheduleTimeout(typeMessage, 200);
             } else {
                 gsap.to(terminal, {
                     opacity: 0,
@@ -665,7 +670,7 @@ class ExtendedAnimations {
             });
         }
 
-        setTimeout(() => gridContainer.remove(), 2000);
+        this.scheduleTimeout(() => gridContainer.remove(), 2000);
     }
 
     digitalMeltdown() {
@@ -767,12 +772,12 @@ class ExtendedAnimations {
         // Reduced flicker intensity and slowed down
         const flickerSequence = [0.8, 0.6, 0.8, 0.7, 0.8];  // Less dramatic changes
         flickerSequence.forEach((opacity, index) => {
-            setTimeout(() => {
+            this.scheduleTimeout(() => {
                 flicker.style.opacity = String(opacity * 0.05);  // Very subtle
             }, index * 150);  // Slower timing (was 50ms)
         });
 
-        setTimeout(() => flicker.remove(), 1000);  // Longer duration
+        this.scheduleTimeout(() => flicker.remove(), 1000);  // Longer duration
     }
 
     pixelSortGlitch() {
@@ -811,68 +816,59 @@ class ExtendedAnimations {
 
 
     addDynamicBackgroundEffects() {
-        // Continuous dynamic effects for the background
+        // Preserve the authored chromatic pulse on a cheap composited wash.
+        // Animating filter on .bg forced a full viewport raster on every
+        // frame, even though the perceived result was only a faint tint.
+        let wash = document.querySelector('.extended-background-wash');
+        if (!wash) {
+            wash = document.createElement('div');
+            wash.className = 'extended-background-wash';
+            wash.style.cssText = `
+                position: fixed;
+                inset: 0;
+                pointer-events: none;
+                z-index: 0;
+                opacity: 0;
+                background: rgba(0, 255, 133, 0.035);
+                will-change: opacity, background-color;
+                contain: strict;
+            `;
+            (this.container || document.body).appendChild(wash);
+            animationRuntime.trackNode(RUNTIME_OWNER, wash);
+        }
+
+        animationRuntime.trackDisposer(RUNTIME_OWNER, () => {
+            try { this.backgroundTween?.kill?.(); } catch (_) {}
+            this.backgroundTween = null;
+        });
         const pulseBackground = () => {
             if (!this.isRunning) return;
 
-            const bg = document.querySelector('.bg');
-            if (bg) {
-                gsap.to(bg, {
-                    filter: `hue-rotate(${Math.random() * 30}deg) saturate(${1 + Math.random() * 0.5})`,
+            if (wash?.isConnected) {
+                try { this.backgroundTween?.kill?.(); } catch (_) {}
+                const hue = Math.round(Math.random() * 30);
+                this.backgroundTween = gsap.fromTo(wash, {
+                    opacity: 0,
+                    backgroundColor: `hsla(${145 + hue}, 100%, 55%, 0.035)`
+                }, {
+                    opacity: 0.7,
                     duration: 2,
                     yoyo: true,
                     repeat: 1,
-                    ease: 'sine.inOut'
+                    ease: 'sine.inOut',
+                    onComplete: () => gsap.set(wash, { opacity: 0 })
                 });
             }
 
-            setTimeout(pulseBackground, Math.random() * 10000 + 5000);
+            this.scheduleTimeout(pulseBackground, Math.random() * 10000 + 15000);
         };
 
-        setTimeout(pulseBackground, 2000);
+        this.scheduleTimeout(pulseBackground, 5000);
     }
 
     add80sRetroEffects() {
-        // Continuous 80s aesthetic effects
-        const retroWave = () => {
-            if (!this.isRunning) return;
-
-            if (Math.random() > 0.7) {
-                // DISABLED - Retro flash causes bright overlays
-                // Commented out to prevent flashing issues
-                /*
-                const flash = document.createElement('div');
-                flash.style.cssText = `
-                    position: fixed;
-                    top: 0;
-                    left: 0;
-                    width: 100%;
-                    height: 100%;
-                    background: linear-gradient(45deg,
-                        rgba(255,0,255,0.1),
-                        rgba(0,255,255,0.1));
-                    pointer-events: none;
-                    z-index: 200;
-                    opacity: 0;
-                    mix-blend-mode: screen;
-                `;
-                document.body.appendChild(flash);
-
-                gsap.to(flash, {
-                    opacity: 0.2,
-                    duration: 0.3,
-                    ease: 'power2.inOut',
-                    yoyo: true,
-                    repeat: 1,
-                    onComplete: () => flash.remove()
-                });
-                */
-            }
-
-            setTimeout(retroWave, Math.random() * 15000 + 10000);
-        };
-
-        setTimeout(retroWave, 5000);
+        // The former implementation scheduled a permanent no-op timer after
+        // the bright retro flash had been disabled. Keep it intentionally idle.
     }
 
     chromaticWave() {
@@ -960,14 +956,25 @@ class ExtendedAnimations {
         });
     }
 
+    scheduleTimeout(callback, delay) {
+        return animationRuntime.scheduleTimeout(RUNTIME_OWNER, () => {
+            if (this.isRunning) callback();
+        }, delay);
+    }
+
     destroy() {
         this.isRunning = false;
         try { this._effectHandle?.stop?.(); } catch(_){}
         try { this._budgetDisposer?.(); } catch(_){}
         // Remove container contents but keep the root for reuse
         if (this.container) {
-            try { this.container.querySelectorAll('*').forEach(n=>n.remove()); } catch(_){}
+            try {
+                const nodes = this.container.querySelectorAll('*');
+                gsap.killTweensOf(nodes);
+                nodes.forEach(n=>n.remove());
+            } catch(_){}
         }
+        animationRuntime.disposeOwner(RUNTIME_OWNER);
     }
 }
 

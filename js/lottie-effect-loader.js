@@ -1,10 +1,9 @@
-import '@lottiefiles/lottie-player';
-
 // Lottie Effect Loader
 // Looks for /lotties/manifest.json with entries: [{ id, src, loop=true, autoplay=false, speed=1.0, style }]
 // Registers handlers with fxController under keys 'lottie:<id>'
 
 import fxController from './fx-controller.js';
+import { createManagedLottieCanvas } from './lottie-player-factory.js';
 
 async function fetchManifest() {
   try {
@@ -30,16 +29,23 @@ async function fetchManifest() {
 }
 
 function createPlayer(entry) {
-  const isDotLottie = typeof entry.src === 'string' && entry.src.toLowerCase().endsWith('.lottie');
-  const tag = isDotLottie ? 'dotlottie-player' : 'lottie-player';
-  const player = document.createElement(tag);
+  const player = createManagedLottieCanvas({
+    src: entry.src,
+    loop: entry.loop ?? true,
+    speed: entry.speed ?? 1,
+    profile: window.performanceProfile || window.performanceProfileManager?.currentProfile || 'high'
+  });
 
   // Common attributes
   player.setAttribute('mode', 'normal');
   player.setAttribute('background', 'transparent');
   player.setAttribute('loop', String(entry.loop ?? true));
-  player.setAttribute('autoplay', '');
   player.setAttribute('src', entry.src);
+  if (entry.autoplay === true) {
+    player.setAttribute('autoplay', '');
+  } else {
+    player.removeAttribute('autoplay');
+  }
 
   // Speed handling (supported by both players; ignore if not supported)
   const spd = String(entry.speed ?? 1);
@@ -47,7 +53,7 @@ function createPlayer(entry) {
 
   const z = (entry.z ?? entry.tune?.z ?? 5);
   const blend = (entry.blend ?? entry.tune?.blend ?? entry.tune?.blendMode ?? 'screen');
-  const baseStyle = `position: fixed; inset: 0; pointer-events: none; will-change: opacity, transform; contain: layout paint size; mix-blend-mode: ${blend}; z-index: ${z}; opacity: 0; transform: scale(0.97);`;
+  const baseStyle = `position: fixed; inset: 0; width: 100vw; height: 100vh; pointer-events: none; will-change: opacity, transform; contain: layout paint size; mix-blend-mode: ${blend}; z-index: ${z}; opacity: 0; transform: scale(0.97);`;
   player.style.cssText = entry.style || baseStyle;
 
   // Silently handle errors for missing assets - they're optional resources
@@ -96,6 +102,19 @@ function applyTuning(player, entry) {
   } catch {}
 }
 
+function getMaxActiveEffects() {
+  const profile = window.performanceProfile || window.performanceProfileManager?.currentProfile || 'high';
+  if (profile === 'low') return 1;
+  if (profile === 'medium') return 1;
+  return 2;
+}
+
+function canEnableLottieEffect(entryId) {
+  const active = window.lottieEffects || {};
+  if (active[entryId]) return true;
+  return Object.keys(active).length < getMaxActiveEffects();
+}
+
 async function init() {
   const manifest = await fetchManifest();
   if (!manifest.length) return;
@@ -116,8 +135,8 @@ async function init() {
   function dynamicSpeed(base) {
     try {
       const fps = (window.performanceBus?.metrics?.fps) ?? 60;
-      if (fps < 20) return Math.max(0.6, base * 0.7);
-      if (fps < 30) return Math.max(0.75, base * 0.85);
+      if (fps < 30) return Math.max(0.6, base * 0.65);
+      if (fps < 45) return Math.max(0.75, base * 0.85);
       return base;
     } catch { return base; }
   }
@@ -129,6 +148,7 @@ async function init() {
       enable: () => {
         try {
           if (window.lottieEffects[entry.id]) return;
+          if (!canEnableLottieEffect(entry.id)) return;
           const el = createPlayer(entry);
           applyTuning(el, entry);
           // Entrance animation (fade+scale)
@@ -137,6 +157,7 @@ async function init() {
             el.style.transition = 'opacity 320ms ease, transform 320ms ease';
             el.style.opacity = String(el.dataset.targetOpacity ?? '0.6');
             el.style.transform = 'scale(1)';
+            try { if (typeof el.play === 'function') el.play(); } catch {}
           });
           // Performance-aware speed adjustment (no-op if attribute unsupported)
           const baseSpeed = Number(el.getAttribute('speed') || '1');
@@ -151,7 +172,16 @@ async function init() {
           el.style.transition = 'opacity 220ms ease, transform 220ms ease';
           el.style.opacity = '0';
           el.style.transform = 'scale(0.98)';
-          setTimeout(() => { try { el.remove(); } catch {} }, 240);
+          try {
+            if (typeof el.pause === 'function') el.pause();
+            if (String(el.tagName || '').toLowerCase() !== 'dotlottie-player' && typeof el.stop === 'function') {
+              el.stop();
+            }
+          } catch {}
+          setTimeout(() => {
+            try { if (typeof el.destroy === 'function') el.destroy(); } catch {}
+            try { el.remove(); } catch {}
+          }, 240);
           delete window.lottieEffects[entry.id];
         } catch (e) { console.warn('Lottie disable failed', entry.id, e); }
       }

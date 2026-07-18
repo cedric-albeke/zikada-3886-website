@@ -6,6 +6,9 @@
  * Unified communication between control panel and main page
  * Handles BroadcastChannel and postMessage with fallback support
  */
+import animationRuntime from './runtime/animation-runtime.js';
+
+const RUNTIME_OWNER = 'vj-messaging';
 
 const CHANNEL_NAME = 'zikada-vj';
 const MESSAGE_KIND = 'ZIKADA_CONTROL';
@@ -28,6 +31,9 @@ class VJMessaging {
         this.messageHandlers = new Map();
         this.isControlPanel = window.location.pathname.includes('control-panel');
         this.connectionTimeout = null;
+        this.handshakeInterval = null;
+        this.handshakeAttempts = 0;
+        this.maxHandshakeAttempts = 10;
         this.connected = false;
         
         this.initializeBroadcastChannel();
@@ -54,7 +60,7 @@ class VJMessaging {
     }
     
     setupWindowMessageListener() {
-        window.addEventListener('message', (event) => {
+        this.windowMessageHandler = (event) => {
             // Only handle messages from same origin
             if (event.origin !== window.location.origin) return;
             
@@ -62,29 +68,51 @@ class VJMessaging {
             if (data && data.kind === MESSAGE_KIND) {
                 this.handleMessage(data);
             }
+        };
+        window.addEventListener('message', this.windowMessageHandler);
+        animationRuntime.trackDisposer(RUNTIME_OWNER, () => {
+            window.removeEventListener('message', this.windowMessageHandler);
         });
     }
     
     initiateHandshake() {
-        this.sendMessage(MESSAGE_TYPES.PING);
-        
-        // Setup connection timeout
-        this.connectionTimeout = setTimeout(() => {
-            this.connected = false;
-            this.onConnectionChange(false);
-            console.warn('❌ Connection timeout - main page not responding');
-        }, 2000);
-        
         // Listen for pong response
         this.on(MESSAGE_TYPES.PONG, () => {
             this.connected = true;
             if (this.connectionTimeout) {
-                clearTimeout(this.connectionTimeout);
+                this.connectionTimeout.clear();
                 this.connectionTimeout = null;
+            }
+            if (this.handshakeInterval) {
+                this.handshakeInterval.clear();
+                this.handshakeInterval = null;
             }
             this.onConnectionChange(true);
             console.log('✅ Connection established with main page');
         });
+
+        const sendHandshakePing = () => {
+            if (this.connected) return;
+            this.handshakeAttempts++;
+            this.sendMessage(MESSAGE_TYPES.PING);
+
+            if (this.handshakeAttempts >= this.maxHandshakeAttempts) {
+                if (this.handshakeInterval) {
+                    this.handshakeInterval.clear();
+                    this.handshakeInterval = null;
+                }
+                this.connected = false;
+                this.onConnectionChange(false);
+                console.warn('⚠️ Connection handshake pending - main page not responding');
+            }
+        };
+
+        sendHandshakePing();
+        this.handshakeInterval = animationRuntime.scheduleInterval(
+            RUNTIME_OWNER,
+            sendHandshakePing,
+            1000
+        );
     }
     
     sendMessage(type, payload = {}) {
@@ -197,8 +225,12 @@ class VJMessaging {
             this.bc.close();
         }
         if (this.connectionTimeout) {
-            clearTimeout(this.connectionTimeout);
+            this.connectionTimeout.clear();
         }
+        if (this.handshakeInterval) {
+            this.handshakeInterval.clear();
+        }
+        animationRuntime.disposeOwner(RUNTIME_OWNER);
         this.messageHandlers.clear();
     }
 }

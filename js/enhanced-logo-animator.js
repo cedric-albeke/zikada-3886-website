@@ -1,4 +1,7 @@
 import gsap from 'gsap';
+import animationRuntime from './runtime/animation-runtime.js';
+
+const RUNTIME_OWNER = 'enhanced-logo-animator';
 
 class EnhancedLogoAnimator {
     constructor() {
@@ -16,6 +19,8 @@ class EnhancedLogoAnimator {
 
         // Event tracking
         this.eventListeners = [];
+        this.styleElements = [];
+        this.performanceProfile = 'high';
         this.observer = null;
         this.animationFrameId = null;
         this.isInitialized = false;
@@ -36,6 +41,8 @@ class EnhancedLogoAnimator {
     }
 
     init() {
+        if (this.isInitialized) return;
+        animationRuntime.disposeOwner(RUNTIME_OWNER);
         console.log('🎨 Enhanced Logo Animator initializing...');
 
         // Find logo elements
@@ -125,6 +132,7 @@ class EnhancedLogoAnimator {
             }
         `;
         document.head.appendChild(style);
+        this.styleElements.push(style);
 
         if (this.logo.parentElement) {
             this.logo.parentElement.style.position = 'relative';
@@ -163,21 +171,19 @@ class EnhancedLogoAnimator {
             }
 
             .glow-core {
-                background: radial-gradient(circle, rgba(0, 255, 133, 0.4), transparent 40%);
-                filter: blur(20px);
+                background: radial-gradient(circle, rgba(0, 255, 133, 0.32) 0%, rgba(0, 255, 133, 0.12) 24%, transparent 58%);
             }
 
             .glow-mid {
-                background: radial-gradient(circle, rgba(0, 255, 133, 0.2), transparent 60%);
-                filter: blur(40px);
+                background: radial-gradient(circle, rgba(0, 255, 133, 0.16) 0%, rgba(0, 255, 180, 0.06) 38%, transparent 72%);
             }
 
             .glow-outer {
-                background: radial-gradient(circle, rgba(0, 255, 133, 0.1), transparent 70%);
-                filter: blur(60px);
+                background: radial-gradient(circle, rgba(0, 210, 255, 0.08) 0%, rgba(0, 255, 133, 0.03) 50%, transparent 86%);
             }
         `;
         document.head.appendChild(style);
+        this.styleElements.push(style);
 
         if (this.logo.parentElement) {
             this.logo.parentElement.appendChild(glowContainer);
@@ -188,7 +194,7 @@ class EnhancedLogoAnimator {
 
     setupMouseTracking() {
         // Track mouse for proximity reactions
-        document.addEventListener('mousemove', (e) => {
+        const mouseMoveHandler = (e) => {
             this.mousePosition.x = e.clientX;
             this.mousePosition.y = e.clientY;
 
@@ -206,10 +212,12 @@ class EnhancedLogoAnimator {
             if (distance < 200) {
                 this.proximityReaction(distance);
             }
-        });
+        };
+        document.addEventListener('mousemove', mouseMoveHandler);
+        animationRuntime.trackDisposer(RUNTIME_OWNER, () => document.removeEventListener('mousemove', mouseMoveHandler));
 
         // React to clicks near logo
-        document.addEventListener('click', (e) => {
+        const clickHandler = (e) => {
             const logoRect = this.logo.getBoundingClientRect();
             const clickX = e.clientX;
             const clickY = e.clientY;
@@ -218,12 +226,15 @@ class EnhancedLogoAnimator {
                 clickY >= logoRect.top - 100 && clickY <= logoRect.bottom + 100) {
                 this.clickReaction();
             }
-        });
+        };
+        document.addEventListener('click', clickHandler);
+        animationRuntime.trackDisposer(RUNTIME_OWNER, () => document.removeEventListener('click', clickHandler));
     }
 
     startCoreAnimations() {
         // Complex breathing with variable intensity
         this.breathingTimeline = gsap.timeline({ repeat: -1 });
+        animationRuntime.trackAnimation(RUNTIME_OWNER, this.breathingTimeline);
         this.updateBreathing();
 
         // Ambient animations
@@ -232,8 +243,9 @@ class EnhancedLogoAnimator {
         // Energy field animations
         this.animateEnergyField();
 
-        // Micro movements
-        this.startMicroMovements();
+        // The ambient timeline already supplies organic x/rotation drift.
+        // A second recursive tween used to write the same transform channels
+        // and caused visible snapping whenever reactive effects completed.
     }
 
     updateBreathing() {
@@ -267,6 +279,7 @@ class EnhancedLogoAnimator {
     startAmbientAnimations() {
         // Subtle rotation and movement
         this.ambientTimeline = gsap.timeline({ repeat: -1 });
+        animationRuntime.trackAnimation(RUNTIME_OWNER, this.ambientTimeline);
 
         this.ambientTimeline
             .to(this.logo, {
@@ -296,7 +309,7 @@ class EnhancedLogoAnimator {
 
         // Pulsing energy rings
         rings.forEach((ring, index) => {
-            gsap.to(ring, {
+            const tween = gsap.to(ring, {
                 opacity: 0.3 + (index * 0.1),
                 scale: 1 + (index * 0.1),
                 duration: 3 + index,
@@ -305,33 +318,12 @@ class EnhancedLogoAnimator {
                 yoyo: true,
                 delay: index * 0.5
             });
+            animationRuntime.trackAnimation(RUNTIME_OWNER, tween);
         });
     }
 
     startMicroMovements() {
-        // Tiny random movements for organic feel
-        const microMove = () => {
-            if (!this.isInitialized) return;
-
-            const microX = (Math.random() - 0.5) * 2;
-            const microY = (Math.random() - 0.5) * 2;
-            const microRotation = (Math.random() - 0.5) * 0.5;
-
-            gsap.to(this.logo, {
-                x: `+=${microX}`,
-                y: `+=${microY}`,
-                rotation: `+=${microRotation}`,
-                duration: 2,
-                ease: 'power1.inOut',
-                onComplete: () => {
-                    if (this.isInitialized) {
-                        setTimeout(microMove, Math.random() * 3000 + 2000);
-                    }
-                }
-            });
-        };
-
-        microMove();
+        return this.ambientTimeline;
     }
 
     setupEventListeners() {
@@ -352,9 +344,11 @@ class EnhancedLogoAnimator {
         });
 
         // Keyboard interactions
-        document.addEventListener('keypress', (e) => {
+        const keypressHandler = (e) => {
             this.keyboardReaction(e.key);
-        });
+        };
+        document.addEventListener('keypress', keypressHandler);
+        animationRuntime.trackDisposer(RUNTIME_OWNER, () => document.removeEventListener('keypress', keypressHandler));
     }
 
     reactToLottie(detail) {
@@ -801,7 +795,7 @@ class EnhancedLogoAnimator {
             onUpdate: () => this.updateBreathing(),
             onComplete: () => {
                 // Return to normal after duration
-                setTimeout(() => {
+                animationRuntime.scheduleTimeout(RUNTIME_OWNER, () => {
                     gsap.to(this, {
                         energyLevel: originalEnergy,
                         duration: 1,
@@ -852,7 +846,7 @@ class EnhancedLogoAnimator {
             this.cleanEventHistory();
 
             // Schedule next analysis
-            setTimeout(analyzeAndAdapt, 5000);
+            animationRuntime.scheduleTimeout(RUNTIME_OWNER, analyzeAndAdapt, 5000);
         };
 
         analyzeAndAdapt();
@@ -877,6 +871,13 @@ class EnhancedLogoAnimator {
 
         const special = specials[Math.floor(Math.random() * specials.length)];
         special();
+    }
+
+    setPerformanceProfile(profile) {
+        this.performanceProfile = profile;
+        animationRuntime.resumeOwnerAnimations(RUNTIME_OWNER);
+        if (this.energyField) this.energyField.style.display = '';
+        if (this.glowElement) this.glowElement.style.display = '';
     }
 
     spiralBurst() {
@@ -986,6 +987,7 @@ class EnhancedLogoAnimator {
         // Cancel animations
         if (this.animationFrameId) cancelAnimationFrame(this.animationFrameId);
         if (this.observer) this.observer.disconnect();
+        animationRuntime.disposeOwner(RUNTIME_OWNER);
 
         // Remove event listeners
         this.eventListeners.forEach(({ type, handler }) => {
@@ -1000,6 +1002,12 @@ class EnhancedLogoAnimator {
         // Remove created elements
         if (this.glowElement) this.glowElement.remove();
         if (this.energyField) this.energyField.remove();
+        this.styleElements.forEach(style => style.remove());
+        this.styleElements = [];
+        this.eventListeners = [];
+        this.logo = null;
+        this.glowElement = null;
+        this.energyField = null;
     }
 }
 

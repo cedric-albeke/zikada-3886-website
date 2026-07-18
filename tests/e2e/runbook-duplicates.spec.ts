@@ -8,8 +8,7 @@ function ts() {
   return `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
 }
 
-test('runbook: toggle FX and record overlay counts for ~60s', async ({ browser }) => {
-  const context = await browser.newContext();
+test('runbook: toggle FX and record overlay counts for ~60s', async ({ context }) => {
 
   const control = await context.newPage();
   await control.goto('http://localhost:3886/control-panel.html');

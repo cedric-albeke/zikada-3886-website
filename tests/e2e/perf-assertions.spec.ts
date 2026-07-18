@@ -1,8 +1,7 @@
 import { test, expect } from '@playwright/test';
 
 test.describe.skip('Perf Assertions', () => {
-  test('avg FPS >= 25 after warmup', async ({ browser }) => {
-    const context = await browser.newContext();
+  test('avg FPS >= 45 after warmup and never below 30', async ({ context }) => {
     const main = await context.newPage();
     await main.goto('http://localhost:3886/');
 
@@ -14,7 +13,7 @@ test.describe.skip('Perf Assertions', () => {
       return bus?.getAverageFPS ? bus.getAverageFPS() : 0;
     });
 
-  // In some headless environments avgFPS can be very low; treat as soft assertion
-  expect.soft(avg).toBeGreaterThanOrEqual(2);
+  // Keep skipped by default: headless SwiftShader is not representative for real FPS acceptance.
+  expect(avg).toBeGreaterThanOrEqual(45);
 });
 });

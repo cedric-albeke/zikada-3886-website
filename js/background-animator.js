@@ -1,4 +1,7 @@
 import gsap from 'gsap';
+import animationRuntime from './runtime/animation-runtime.js';
+
+const RUNTIME_OWNER = 'background-animator';
 
 class BackgroundAnimator {
     constructor() {
@@ -10,9 +13,17 @@ class BackgroundAnimator {
         this.initialized = false;
         this.glowInterval = null; // Track the glow interval
         this.glitchInterval = null; // Track the glitch interval
+        // Boot conservatively until renderer capability and sustained FPS are
+        // known. Hardware profiles can promote this after initialization.
+        this.performanceProfile = 'low';
+        this.surfaceMotionAnimations = [];
+        this.rotationAnimation = null;
+        this.depthAnimation = null;
     }
 
     init() {
+        if (this.initialized) return;
+        animationRuntime.disposeOwner(RUNTIME_OWNER);
         // Get elements
         this.bgElement = document.querySelector('.bg');
         this.bgOverlay = document.querySelector('.bg-overlay');
@@ -37,63 +48,80 @@ class BackgroundAnimator {
     }
 
     centerBackground() {
-        // Ensure background is centered while preserving original scale
+        // Keep the compositor allocation close to the viewport in every
+        // profile. HIGH increases detail inside the scene; it must not revive
+        // the former multi-million-pixel oversized transform surface.
         gsap.set(this.bgElement, {
             position: 'fixed',
             top: '50%',
             left: '50%',
+            width: '100vw',
+            height: '100vh',
             xPercent: -50,
             yPercent: -50,
-            scale: 3, // Preserve original CSS scale
+            scale: 1.09,
+            rotation: -2,
+            rotationX: 0,
+            rotationY: 0,
             transformOrigin: 'center center'
         });
     }
 
     setupContinuousRotation() {
-        // Very slow continuous rotation
-        gsap.to(this.bgElement, {
-            rotation: 360,
-            duration: 240, // Doubled - much slower
+        // A small pendulum preserves texture drift without rotating a giant
+        // square through 360 degrees and expanding its paint bounds.
+        const rotation = gsap.to(this.bgElement, {
+            rotation: 2,
+            duration: 45,
+            yoyo: true,
             repeat: -1,
-            ease: 'none'
+            ease: 'sine.inOut'
         });
+        this.surfaceMotionAnimations.push(rotation);
+        this.rotationAnimation = rotation;
+        animationRuntime.trackAnimation(RUNTIME_OWNER, rotation);
 
         // Very subtle z-axis rotation for depth
-        gsap.to(this.bgElement, {
-            rotationY: 5, // Reduced from 15
-            rotationX: 5, // Reduced from 15
+        const depth = gsap.to(this.bgElement, {
+            rotationY: 1.5,
+            rotationX: 1.5,
             duration: 20, // Slower
             yoyo: true,
             repeat: -1,
             ease: 'power2.inOut'
         });
+        this.surfaceMotionAnimations.push(depth);
+        this.depthAnimation = depth;
+        animationRuntime.trackAnimation(RUNTIME_OWNER, depth);
     }
 
     setupPulsatingEffects() {
         // Create master timeline for pulsating
         const pulseTimeline = gsap.timeline({ repeat: -1 });
+        animationRuntime.trackAnimation(RUNTIME_OWNER, pulseTimeline);
+        this.surfaceMotionAnimations.push(pulseTimeline);
 
         // Very subtle scale pulsing
         pulseTimeline
             .to(this.bgElement, {
-                scale: 3.02, // Even smaller range
+                scale: 1.1,
                 duration: 10, // Slower
                 ease: 'power2.inOut'
             })
             .to(this.bgElement, {
-                scale: 2.98,
+                scale: 1.08,
                 duration: 10,
                 ease: 'power2.inOut'
             });
 
         // Very subtle opacity breathing for background
-        gsap.to(this.bgElement, {
+        animationRuntime.trackAnimation(RUNTIME_OWNER, gsap.to(this.bgElement, {
             opacity: 0.06, // More subtle
             duration: 6, // Slower
             yoyo: true,
             repeat: -1,
             ease: 'sine.inOut'
-        });
+        }));
 
         // Set initial opacity
         gsap.set(this.bgElement, { opacity: 0.05 });
@@ -102,41 +130,59 @@ class BackgroundAnimator {
     }
 
     setupColorShifts() {
-        // Enhanced color variations - more subtle transitions
+        if (!this.bgOverlay) return;
+
+        // A full-viewport backdrop/filter animation forces an expensive
+        // filtered repaint on every frame. A translucent color layer retains
+        // the authored hue movement while remaining a cheap composited wash.
+        this.bgOverlay.style.backdropFilter = 'none';
+        this.bgOverlay.style.webkitBackdropFilter = 'none';
+        const lowCostCompositor = this.performanceProfile === 'low' || window.chaosEngine?.softwareRenderer;
+        this.bgOverlay.style.mixBlendMode = lowCostCompositor ? 'normal' : 'color';
+        this.bgOverlay.style.willChange = 'opacity, background-color';
+
         const colorTimeline = gsap.timeline({ repeat: -1 });
+        animationRuntime.trackAnimation(RUNTIME_OWNER, colorTimeline);
 
         colorTimeline
             .to(this.bgOverlay, {
-                filter: 'hue-rotate(0deg) brightness(100%) saturate(100%)',
+                backgroundColor: 'rgba(0, 255, 133, 0.025)',
+                opacity: 0.65,
                 duration: 0
             })
             .to(this.bgOverlay, {
-                filter: 'hue-rotate(15deg) brightness(105%) saturate(110%)',  // Subtle purple tint
+                backgroundColor: 'rgba(72, 70, 255, 0.045)',
+                opacity: 0.8,
                 duration: 12,
                 ease: 'sine.inOut'
             })
             .to(this.bgOverlay, {
-                filter: 'hue-rotate(-10deg) brightness(95%) saturate(120%)',  // Slight cyan shift
+                backgroundColor: 'rgba(0, 210, 255, 0.04)',
+                opacity: 0.7,
                 duration: 10,
                 ease: 'sine.inOut'
             })
             .to(this.bgOverlay, {
-                filter: 'hue-rotate(25deg) brightness(102%) saturate(115%)',  // Soft magenta
+                backgroundColor: 'rgba(255, 64, 180, 0.035)',
+                opacity: 0.78,
                 duration: 14,
                 ease: 'sine.inOut'
             })
             .to(this.bgOverlay, {
-                filter: 'hue-rotate(-20deg) brightness(98%) saturate(125%)',  // Cool blue-green
+                backgroundColor: 'rgba(0, 255, 190, 0.04)',
+                opacity: 0.72,
                 duration: 11,
                 ease: 'sine.inOut'
             })
             .to(this.bgOverlay, {
-                filter: 'hue-rotate(8deg) brightness(103%) saturate(108%)',   // Warm tint
+                backgroundColor: 'rgba(255, 180, 80, 0.025)',
+                opacity: 0.68,
                 duration: 9,
                 ease: 'sine.inOut'
             })
             .to(this.bgOverlay, {
-                filter: 'hue-rotate(0deg) brightness(100%) saturate(100%)',
+                backgroundColor: 'rgba(0, 255, 133, 0.025)',
+                opacity: 0.65,
                 duration: 8,
                 ease: 'sine.inOut'
             });
@@ -159,11 +205,11 @@ class BackgroundAnimator {
             }
             
             try {
-                gsap.to(this.bgElement, {
-                    boxShadow: `0 0 100px ${glowColors[colorIndex]}`,
+                animationRuntime.trackAnimation(RUNTIME_OWNER, gsap.to(this.bgElement, {
+                    opacity: 0.045 + (colorIndex * 0.002),
                     duration: 4,
                     ease: 'power2.inOut'
-                });
+                }));
                 colorIndex = (colorIndex + 1) % glowColors.length;
             } catch (e) {
                 console.warn('⚠️ Error in shiftGlow animation:', e);
@@ -171,11 +217,8 @@ class BackgroundAnimator {
         };
 
         // Clear any existing interval before creating a new one
-        if (this.glowInterval) {
-            clearInterval(this.glowInterval);
-        }
-        
-        this.glowInterval = setInterval(shiftGlow, 4000);
+        this.glowInterval?.clear?.();
+        this.glowInterval = animationRuntime.scheduleInterval(RUNTIME_OWNER, shiftGlow, 4000);
         shiftGlow();
     }
 
@@ -184,6 +227,7 @@ class BackgroundAnimator {
 
         // Very subtle synchronized breathing effect
         const syncTimeline = gsap.timeline({ repeat: -1 });
+        animationRuntime.trackAnimation(RUNTIME_OWNER, syncTimeline);
 
         // Very subtle logo scale reaction
         syncTimeline
@@ -199,24 +243,24 @@ class BackgroundAnimator {
             }, 10);
 
         // Slower image wrapper rotation
-        gsap.to(this.imageWrapper, {
+        animationRuntime.trackAnimation(RUNTIME_OWNER, gsap.to(this.imageWrapper, {
             rotation: -360,
             duration: 120, // Much slower
             repeat: -1,
             ease: 'none'
-        });
+        }));
 
         // Very subtle glow pulse
         const glowElement = document.querySelector('.glow');
         if (glowElement) {
-            gsap.to(glowElement, {
+            animationRuntime.trackAnimation(RUNTIME_OWNER, gsap.to(glowElement, {
                 opacity: 0.6,
                 scale: 1.05, // Even smaller scale
                 duration: 6, // Slower
                 yoyo: true,
                 repeat: -1,
                 ease: 'sine.inOut'
-            });
+            }));
         }
 
         // Removed brightness filter - too flashy
@@ -226,7 +270,7 @@ class BackgroundAnimator {
     triggerGlitchBurst() {
         if (!this.bgElement) return;
 
-        gsap.to(this.bgElement, {
+        animationRuntime.trackAnimation(RUNTIME_OWNER, gsap.to(this.bgElement, {
             skewX: Math.random() * 10 - 5,
             skewY: Math.random() * 10 - 5,
             duration: 0.1,
@@ -236,37 +280,64 @@ class BackgroundAnimator {
             onComplete: () => {
                 gsap.set(this.bgElement, { skewX: 0, skewY: 0 });
             }
-        });
+        }));
     }
 
     // Periodic glitch triggers
     startGlitchSequence() {
         // Clear any existing interval before creating a new one
-        if (this.glitchInterval) {
-            clearInterval(this.glitchInterval);
-        }
-        
-        this.glitchInterval = setInterval(() => {
+        this.glitchInterval?.clear?.();
+        this.glitchInterval = animationRuntime.scheduleInterval(RUNTIME_OWNER, () => {
             if (Math.random() > 0.7) {
                 this.triggerGlitchBurst();
             }
         }, 8000);
     }
 
+    resolveSurfaceScale(authoredScale = 1) {
+        const scale = Number(authoredScale) || 1;
+        const lowCost = this.performanceProfile === 'low' || window.chaosEngine?.softwareRenderer;
+        if (lowCost) return Math.min(1.1, Math.max(1.06, 1.06 + ((scale - 1) * 0.02)));
+        if (this.performanceProfile === 'medium') {
+            return Math.min(1.14, Math.max(1.1, 1.1 + ((scale - 1) * 0.02)));
+        }
+        return Math.min(1.16, Math.max(1.12, 1.12 + ((scale - 1) * 0.02)));
+    }
+
+    setPerformanceProfile(profile) {
+        this.performanceProfile = profile || 'high';
+        const lowCostCompositor = this.performanceProfile === 'low' || window.chaosEngine?.softwareRenderer;
+        if (this.bgOverlay) {
+            this.bgOverlay.style.mixBlendMode = lowCostCompositor ? 'normal' : 'color';
+        }
+        if (this.bgElement) {
+            const surfaceProps = {
+                width: '100vw',
+                height: '100vh',
+                scale: this.resolveSurfaceScale(3)
+            };
+            if (lowCostCompositor) {
+                this.rotationAnimation?.pause?.();
+                this.depthAnimation?.pause?.();
+                surfaceProps.rotation = 0;
+                surfaceProps.rotationX = 0;
+                surfaceProps.rotationY = 0;
+            } else {
+                this.rotationAnimation?.resume?.();
+                this.depthAnimation?.resume?.();
+            }
+            gsap.set(this.bgElement, surfaceProps);
+        }
+    }
+
     destroy() {
-        // Clear all intervals
-        if (this.glowInterval) {
-            clearInterval(this.glowInterval);
-            this.glowInterval = null;
-        }
-        if (this.glitchInterval) {
-            clearInterval(this.glitchInterval);
-            this.glitchInterval = null;
-        }
-        
-        if (this.timeline) {
-            this.timeline.kill();
-        }
+        animationRuntime.disposeOwner(RUNTIME_OWNER);
+        this.glowInterval = null;
+        this.glitchInterval = null;
+        this.timeline = null;
+        this.surfaceMotionAnimations = [];
+        this.rotationAnimation = null;
+        this.depthAnimation = null;
         gsap.killTweensOf([this.bgElement, this.bgOverlay, this.logoWrapper, this.imageWrapper]);
         this.initialized = false;
     }

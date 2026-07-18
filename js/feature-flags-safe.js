@@ -31,6 +31,15 @@ class SafeFeatureFlags {
         // Debug flags
         this.DEBUG_FX = this.getFlag(urlParams, 'debugfx', 'DEBUG_FX', false);
         this.DEBUG_PERFORMANCE = this.getFlag(urlParams, 'debugperf', 'DEBUG_PERFORMANCE', false);
+
+        // Optional infrastructure stays cold by default and is loaded only
+        // when explicitly requested. Keep the public names compatible with
+        // ChaosInitializer's feature-flag contract.
+        this.PWA_ENABLED = this.getFlag(urlParams, 'pwa', 'PWA_ENABLED', false);
+        this.SERVICE_WORKER_ENABLED = this.getFlag(urlParams, 'serviceworker', 'SERVICE_WORKER_ENABLED', false);
+        this.INSTALL_PROMPT_ENABLED = this.getFlag(urlParams, 'installprompt', 'INSTALL_PROMPT_ENABLED', false);
+        this.PREDICTIVE_ALERTING_ENABLED = this.getFlag(urlParams, 'predictive', 'PREDICTIVE_ALERTING_ENABLED', false);
+        this.MONITOR_DASHBOARD_ENABLED = this.getFlag(urlParams, 'monitor', 'MONITOR_DASHBOARD_ENABLED', false);
         
         this.logConfig();
     }
@@ -54,6 +63,19 @@ class SafeFeatureFlags {
         this[key] = value;
         localStorage.setItem(key, String(value));
         console.log(`🚩 Feature flag updated: ${key} = ${value}`);
+    }
+
+    isEnabled(flag) {
+        const aliases = {
+            pwaEnabled: 'PWA_ENABLED',
+            serviceWorkerEnabled: 'SERVICE_WORKER_ENABLED',
+            installPrompt: 'INSTALL_PROMPT_ENABLED',
+            debugMetrics: 'DEBUG_PERFORMANCE',
+            predictiveAlerting: 'PREDICTIVE_ALERTING_ENABLED',
+            monitorDashboard: 'MONITOR_DASHBOARD_ENABLED'
+        };
+        const key = aliases[flag] || flag;
+        return this[key] === true;
     }
     
     logConfig() {
@@ -124,6 +146,7 @@ const safeFeatureFlags = new SafeFeatureFlags();
 // Make it globally available
 window.safeFeatureFlags = safeFeatureFlags;
 window.SAFE_FLAGS = safeFeatureFlags; // Shorter alias
+window.SAFE_FEATURE_FLAGS = safeFeatureFlags;
 
 // Expose control functions globally for debugging
 window.enableTextEffects = () => safeFeatureFlags.setFlag('TEXT_EFFECTS_ENABLED', true);

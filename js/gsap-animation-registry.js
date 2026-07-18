@@ -233,7 +233,9 @@ class GSAPAnimationRegistry {
             targets: this.getAnimationTargets(animation),
             duration: animation.duration ? animation.duration() : 0,
             progress: 0,
-            maxAge: options.maxAge || 30000, // Reduced from 60s to 30s for better memory management
+            // Registry age is not a lifecycle. Finite animations release on
+            // completion; infinite/connected visuals live until owner teardown.
+            maxAge: Number.isFinite(options.maxAge) ? options.maxAge : Infinity,
             autoCleanup: options.autoCleanup !== false
         };
 
@@ -463,21 +465,22 @@ class GSAPAnimationRegistry {
             .filter(data => data.category === category && data.isActive);
 
         if (categoryAnimations.length >= categoryConfig.maxAnimations) {
-            // Remove oldest animations in this category
-            const oldestAnimations = categoryAnimations
-                .sort((a, b) => a.createdAt - b.createdAt)
-                .slice(0, categoryAnimations.length - categoryConfig.maxAnimations + 1);
-
-            oldestAnimations.forEach(animationData => {
-                this.killAnimation(animationData.id);
-            });
-
-            log.info(`Enforced limits for category '${category}': removed ${oldestAnimations.length} animations`);
+            window.dispatchEvent(new CustomEvent('performance:capacity-pressure', {
+                detail: {
+                    resource: 'gsap-category',
+                    category,
+                    count: categoryAnimations.length,
+                    limit: categoryConfig.maxAnimations
+                }
+            }));
         }
 
-        // Global limit check
+        // The registry reports pressure; admission queues decide when new
+        // work may start. It never evicts an already-running animation.
         if (this.animations.size > this.maxAnimations) {
-            this.performEmergencyCleanup();
+            window.dispatchEvent(new CustomEvent('performance:capacity-pressure', {
+                detail: { resource: 'gsap-registry', count: this.animations.size, limit: this.maxAnimations }
+            }));
         }
     }
 
@@ -485,7 +488,6 @@ class GSAPAnimationRegistry {
      * Perform periodic cleanup of old and completed animations
      */
     performPeriodicCleanup() {
-        const now = Date.now();
         const toRemove = [];
 
         this.animations.forEach((data, id) => {
@@ -493,11 +495,6 @@ class GSAPAnimationRegistry {
 
             // Check if animation is complete
             if (data.animation && data.animation.progress && data.animation.progress() >= 1) {
-                shouldRemove = true;
-            }
-
-            // Check age limit
-            if ((now - data.createdAt) > data.maxAge) {
                 shouldRemove = true;
             }
 

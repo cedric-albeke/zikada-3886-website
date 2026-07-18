@@ -1,21 +1,26 @@
 import gsap from 'gsap';
+import animationRuntime from './runtime/animation-runtime.js';
+
+const RUNTIME_OWNER = 'timing-controller';
 
 class TimingController {
     constructor() {
-        this.masterTimeline = gsap.timeline({ repeat: -1 });
+        this.masterTimeline = null;
         this.animationSpeed = 1;
         this.intervals = new Map();
         this.timeouts = new Map();
     }
 
     init() {
+        if (this.masterTimeline) return;
         // Create a master timeline that controls overall pacing
         this.setupMasterTimeline();
-        this.syncAnimationSpeeds();
     }
 
     setupMasterTimeline() {
         // Define coordinated timing phases
+        this.masterTimeline = gsap.timeline({ repeat: -1 });
+        animationRuntime.trackAnimation(RUNTIME_OWNER, this.masterTimeline);
         this.masterTimeline
             .to({}, { duration: 10, onStart: () => this.phase('calm') })
             .to({}, { duration: 8, onStart: () => this.phase('buildup') })
@@ -29,40 +34,55 @@ class TimingController {
     }
 
     syncAnimationSpeeds() {
-        // Sync all GSAP animations to a unified time scale
-        gsap.globalTimeline.timeScale(this.animationSpeed);
+        // Compatibility hook only. Global timeScale changes rewrite authored
+        // effect durations and can make unrelated triggers end prematurely.
+        return this.animationSpeed;
     }
 
     setGlobalSpeed(speed) {
         this.animationSpeed = speed;
-        gsap.globalTimeline.timeScale(speed);
+        window.dispatchEvent(new CustomEvent('animation:pacing', {
+            detail: { multiplier: speed }
+        }));
     }
 
     // Centralized interval management for better performance
     addInterval(id, callback, delay) {
         if (this.intervals.has(id)) {
-            clearInterval(this.intervals.get(id));
+            this.intervals.get(id).clear();
         }
-        this.intervals.set(id, setInterval(callback, delay));
+        this.intervals.set(id, animationRuntime.scheduleInterval(
+            `${RUNTIME_OWNER}:interval:${id}`,
+            callback,
+            delay
+        ));
     }
 
     addTimeout(id, callback, delay) {
         if (this.timeouts.has(id)) {
-            clearTimeout(this.timeouts.get(id));
+            this.timeouts.get(id).clear();
         }
-        this.timeouts.set(id, setTimeout(callback, delay));
+        const token = animationRuntime.scheduleTimeout(
+            `${RUNTIME_OWNER}:timeout:${id}`,
+            () => {
+                this.timeouts.delete(id);
+                callback();
+            },
+            delay
+        );
+        this.timeouts.set(id, token);
     }
 
     clearInterval(id) {
         if (this.intervals.has(id)) {
-            clearInterval(this.intervals.get(id));
+            this.intervals.get(id).clear();
             this.intervals.delete(id);
         }
     }
 
     clearTimeout(id) {
         if (this.timeouts.has(id)) {
-            clearTimeout(this.timeouts.get(id));
+            this.timeouts.get(id).clear();
             this.timeouts.delete(id);
         }
     }
@@ -87,24 +107,23 @@ class TimingController {
         });
     }
 
-    // Reduce number of simultaneous animations for performance
+    // Compatibility telemetry only. Killing arbitrary tweens under load hides
+    // the bottleneck and truncates authored animation lifetimes.
     throttleAnimations() {
         const activeAnimations = gsap.getTweensOf('*');
-        if (activeAnimations.length > 30) {
-            // Kill older, less important animations
-            activeAnimations
-                .filter(tween => !tween.data || tween.data.priority !== 'high')
-                .slice(0, 10)
-                .forEach(tween => tween.kill());
-        }
+        window.dispatchEvent(new CustomEvent('animation:capacity-pressure', {
+            detail: { source: RUNTIME_OWNER, activeTweens: activeAnimations.length }
+        }));
+        return activeAnimations.length;
     }
 
     destroy() {
-        this.masterTimeline.kill();
-        this.intervals.forEach(interval => clearInterval(interval));
-        this.timeouts.forEach(timeout => clearTimeout(timeout));
+        animationRuntime.disposeOwner(RUNTIME_OWNER);
+        this.intervals.forEach(interval => interval.clear());
+        this.timeouts.forEach(timeout => timeout.clear());
         this.intervals.clear();
         this.timeouts.clear();
+        this.masterTimeline = null;
     }
 }
 

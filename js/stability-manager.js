@@ -1,18 +1,31 @@
 // Stability Manager - Comprehensive stability improvements for ZIKADA 3886
 // Prevents crashes, handles errors gracefully, and maintains system stability
 
+import animationRuntime from './runtime/animation-runtime.js';
+import performanceBus from './performance-bus.js';
+
 class StabilityManager {
     constructor() {
+        this.runtimeOwner = 'stability-manager';
+        animationRuntime.disposeOwner(this.runtimeOwner);
         this.errorCount = 0;
         this.maxErrors = 10;
         this.errorWindow = 60000; // 1 minute
         this.errorHistory = [];
         this.recoveryAttempts = new Map();
         this.maxRecoveryAttempts = 3;
+        this.startedAt = performance.now();
+        this.startupGraceMs = 20000;
+        this.lowFpsSampleCount = 0;
+        this.requiredLowFpsSamples = 6;
+        this.performanceActionCooldownMs = 30000;
+        this.lastPerformanceActionAt = 0;
+        this.emergencyRecoveryCooldownMs = 60000;
+        this.lastEmergencyRecoveryAt = 0;
         
         this.stabilityChecks = {
             memory: { threshold: 100, action: 'memory' },
-            fps: { threshold: 15, action: 'performance' },
+            fps: { threshold: 45, minimumAcceptable: 30, target: 60, action: 'performance' },
             domNodes: { threshold: 8000, action: 'dom' },
             errors: { threshold: 5, action: 'error' }
         };
@@ -35,7 +48,7 @@ class StabilityManager {
     
     setupErrorHandling() {
         // Global error handler
-        window.addEventListener('error', (event) => {
+        this.listen('error', (event) => {
             // Check if this is a resource loading error for optional resources
             const optionalResourcePatterns = [
                 /manifest\.json$/i,
@@ -67,7 +80,7 @@ class StabilityManager {
         }, true);
         
         // Unhandled promise rejection handler
-        window.addEventListener('unhandledrejection', (event) => {
+        this.listen('unhandledrejection', (event) => {
             const reason = event.reason;
             const reasonStr = String(reason || '');
             
@@ -97,7 +110,7 @@ class StabilityManager {
         });
         
         // Resource loading error handler (for DOM elements like img, script, etc.)
-        window.addEventListener('error', (event) => {
+        this.listen('error', (event) => {
             const optionalResourcePatterns = [
                 /manifest\.json$/i,
                 /\.lottie$/i,
@@ -119,20 +132,19 @@ class StabilityManager {
             // Silently ignore optional resources (Lottie files, manifest, beehive video)
         }, true);
         
-        // Intercept fetch() calls to suppress errors for optional resources
-        this.setupFetchInterceptor();
-        
-        // Intercept console.error to suppress dotlottie-player errors
-        this.setupConsoleInterceptor();
-        
-        // GSAP error handling
-        this.setupGSAPErrorHandling();
-        
-        // Anime.js error handling
-        this.setupAnimeErrorHandling();
-        
-        // Three.js error handling
-        this.setupThreeJSErrorHandling();
+        // Global API monkey-patches were removed. Fetch, console, GSAP, anime
+        // and THREE keep their native/library semantics; this boundary observes
+        // failures without changing unrelated runtime behavior.
+    }
+
+    listen(type, handler, target = window, options) {
+        if (!target || typeof target.addEventListener !== 'function') {
+            options = target;
+            target = window;
+        }
+        target.addEventListener(type, handler, options);
+        animationRuntime.trackDisposer(this.runtimeOwner, () => target.removeEventListener(type, handler, options));
+        return handler;
     }
     
     setupFetchInterceptor() {
@@ -271,12 +283,12 @@ class StabilityManager {
     
     setupStabilityMonitoring() {
         // Monitor system stability every 5 seconds
-        setInterval(() => {
+        animationRuntime.scheduleInterval(this.runtimeOwner, () => {
             this.performStabilityCheck();
         }, 5000);
         
         // Monitor error rate
-        setInterval(() => {
+        animationRuntime.scheduleInterval(this.runtimeOwner, () => {
             this.cleanupErrorHistory();
         }, 10000);
     }
@@ -297,10 +309,12 @@ class StabilityManager {
     }
     
     checkMemoryStability() {
-        if (!performance.memory) return { stable: true };
-        
-        const memUsed = performance.memory.usedJSHeapSize / (1024 * 1024);
-        const memLimit = performance.memory.jsHeapSizeLimit / (1024 * 1024);
+        const memoryBytes = Number(performanceBus.metrics.memoryBytes) || 0;
+        const memoryLimitBytes = Number(performanceBus.metrics.memoryLimitBytes) || 0;
+        if (!memoryBytes || !memoryLimitBytes) return { stable: true };
+
+        const memUsed = memoryBytes / (1024 * 1024);
+        const memLimit = memoryLimitBytes / (1024 * 1024);
         const usagePercent = (memUsed / memLimit) * 100;
         
         const threshold = this.stabilityChecks.memory.threshold;
@@ -310,28 +324,57 @@ class StabilityManager {
             this.triggerStabilityAction('memory', { usagePercent, memUsed, memLimit });
         }
         
-        return { stable: !critical, critical, usagePercent };
+        return { type: 'memory', stable: !critical, critical, usagePercent };
     }
     
     checkFPSStability() {
-        if (window.performanceOptimizerV2) {
-            const metrics = window.performanceOptimizerV2.getPerformanceMetrics();
-            const fps = metrics.fps || 60;
-            const threshold = this.stabilityChecks.fps.threshold;
-            const critical = fps < threshold;
-            
-            if (critical) {
-                this.triggerStabilityAction('performance', { fps, threshold });
+        if (window.performanceBus || window.performanceOptimizerV2) {
+            const fps = window.performanceBus?.metrics?.fps
+                || window.performanceOptimizerV2?.getPerformanceMetrics?.().fps
+                || 60;
+            const profile = window.performanceProfileManager?.currentProfile
+                || window.performanceProfile
+                || 'high';
+            const threshold = profile === 'low'
+                ? 20
+                : (profile === 'medium' ? 32 : this.stabilityChecks.fps.threshold);
+            const belowThreshold = fps < threshold;
+            const inStartupGrace = performance.now() - this.startedAt < this.startupGraceMs;
+
+            if (belowThreshold && !inStartupGrace) {
+                this.lowFpsSampleCount++;
+            } else if (!belowThreshold) {
+                this.lowFpsSampleCount = 0;
             }
-            
-            return { stable: !critical, critical, fps };
+
+            const sustainedLowFps = this.lowFpsSampleCount >= this.requiredLowFpsSamples;
+            const now = Date.now();
+            if (sustainedLowFps && now - this.lastPerformanceActionAt > this.performanceActionCooldownMs) {
+                this.triggerStabilityAction('performance', {
+                    fps,
+                    threshold,
+                    samples: this.lowFpsSampleCount
+                });
+                this.lastPerformanceActionAt = now;
+            }
+
+            return {
+                type: 'performance',
+                stable: !sustainedLowFps,
+                critical: false,
+                degraded: belowThreshold,
+                sustainedLowFps,
+                fps,
+                lowFpsSampleCount: this.lowFpsSampleCount,
+                inStartupGrace
+            };
         }
         
-        return { stable: true };
+        return { type: 'performance', stable: true };
     }
     
     checkDOMStability() {
-        const domCount = document.querySelectorAll('*').length;
+        const domCount = Number(performanceBus.metrics.domNodes) || 0;
         const threshold = this.stabilityChecks.domNodes.threshold;
         const critical = domCount > threshold;
         
@@ -339,7 +382,7 @@ class StabilityManager {
             this.triggerStabilityAction('dom', { domCount, threshold });
         }
         
-        return { stable: !critical, critical, domCount };
+        return { type: 'dom', stable: !critical, critical, domCount };
     }
     
     checkErrorStability() {
@@ -351,7 +394,7 @@ class StabilityManager {
             this.triggerStabilityAction('error', { recentErrors, threshold });
         }
         
-        return { stable: !critical, critical, recentErrors };
+        return { type: 'error', stable: !critical, critical, recentErrors };
     }
     
     handleCriticalStabilityIssue(issues) {
@@ -365,8 +408,12 @@ class StabilityManager {
             }
         });
         
-        // Trigger emergency recovery
-        this.triggerEmergencyRecovery(issues);
+        const emergencyIssues = issues.filter(issue => issue.type !== 'performance');
+        if (emergencyIssues.length === 0) {
+            return;
+        }
+
+        this.triggerEmergencyRecovery(emergencyIssues);
     }
     
     setupCircuitBreakers() {
@@ -467,12 +514,12 @@ class StabilityManager {
     
     setupRecoveryMechanisms() {
         // Auto-recovery for circuit breakers
-        setInterval(() => {
+        animationRuntime.scheduleInterval(this.runtimeOwner, () => {
             this.checkCircuitBreakerRecovery();
         }, 10000);
         
         // Periodic system health check
-        setInterval(() => {
+        animationRuntime.scheduleInterval(this.runtimeOwner, () => {
             this.performSystemHealthCheck();
         }, 30000);
     }
@@ -486,7 +533,7 @@ class StabilityManager {
                 console.log(`🟡 Circuit breaker half-open for: ${type}`);
                 
                 // Test if system is stable
-                setTimeout(() => {
+                animationRuntime.scheduleTimeout(this.runtimeOwner, () => {
                     if (this.isSystemStable(type)) {
                         this.closeCircuitBreaker(type);
                     } else {
@@ -636,17 +683,26 @@ class StabilityManager {
     }
     
     recoverFromGSAPError(error, context) {
-        // Clear GSAP timeline and restart
-        if (window.gsap) {
-            window.gsap.killTweensOf('*');
-        }
+        // A foreign tween error does not establish ownership of every running
+        // timeline. Preserve admitted visuals and let the failing owner report
+        // or dispose its own scope.
+        window.performanceProfileManager?.applyProfile?.('medium', {
+            reason: 'stability-gsap-error',
+            message: String(error?.message || error || 'unknown')
+        });
+        window.dispatchEvent(new CustomEvent('3886:runtime-warning', {
+            detail: { subsystem: 'gsap', context }
+        }));
     }
     
     recoverFromAnimeError(error, context) {
-        // Clear anime.js animations
-        if (window.animeManager) {
-            window.animeManager.killAll();
-        }
+        window.performanceProfileManager?.applyProfile?.('medium', {
+            reason: 'stability-anime-error',
+            message: String(error?.message || error || 'unknown')
+        });
+        window.dispatchEvent(new CustomEvent('3886:runtime-warning', {
+            detail: { subsystem: 'anime', context }
+        }));
     }
     
     recoverFromWebGLError(error, context) {
@@ -696,13 +752,10 @@ class StabilityManager {
     }
     
     handleMemoryPressure(data) {
-        // Trigger memory cleanup
-        if (window.performanceOptimizerV2) {
-            window.performanceOptimizerV2.triggerMemoryOptimizations();
-        }
-        
-        // Disable heavy effects
-        this.disableHeavyEffects();
+        window.performanceProfileManager?.applyProfile?.('low', {
+            reason: 'stability-memory-pressure',
+            usagePercent: data?.usagePercent
+        });
     }
     
     handlePerformanceDegradation(data) {
@@ -710,19 +763,24 @@ class StabilityManager {
         if (window.performanceOptimizerV2) {
             window.performanceOptimizerV2.triggerLowFPSOptimizations();
         }
-        
-        // Reduce animation quality
-        this.reduceAnimationQuality();
+
+        const fps = Number(data?.fps ?? 60);
+        if (fps < this.stabilityChecks.fps.minimumAcceptable) {
+            this.reduceAnimationQuality();
+        } else if (window.performanceProfileManager?.applyProfile) {
+            window.performanceProfileManager.applyProfile('medium', {
+                reason: 'stability-fps-action',
+                fps
+            });
+        }
     }
     
     handleDOMBloat(data) {
-        // Trigger DOM cleanup
-        if (window.performanceOptimizerV2) {
-            window.performanceOptimizerV2.triggerDOMOptimizations();
-        }
-        
-        // Aggressive DOM cleanup
-        this.aggressiveDOMCleanup();
+        window.performanceProfileManager?.applyProfile?.('low', {
+            reason: 'stability-dom-pressure',
+            domNodes: data?.domCount
+        });
+        window.performanceElementManager?.removeOrphanedElements?.();
     }
     
     handleErrorSpike(data) {
@@ -734,24 +792,20 @@ class StabilityManager {
     }
     
     disableHeavyEffects() {
-        // Disable particle systems
-        const particles = document.querySelectorAll('.particle-system');
-        particles.forEach(el => {
-            el.style.display = 'none';
-        });
-        
-        // Disable complex animations
-        const complexAnims = document.querySelectorAll('[data-complex-animation]');
-        complexAnims.forEach(el => {
-            el.style.animation = 'none';
+        window.performanceProfileManager?.applyProfile?.('low', {
+            reason: 'stability-fallback-quality'
         });
     }
     
     reduceAnimationQuality() {
-        // Reduce animation frame rate
-        document.documentElement.style.setProperty('--animation-duration', '0.1s');
-        
-        // Simplify effects
+        try {
+            if (window.performanceProfileManager?.applyProfile) {
+                window.performanceProfileManager.applyProfile('low', {
+                    reason: 'stability-fps-floor'
+                });
+            }
+        } catch (_) {}
+
         const effects = document.querySelectorAll('.effect');
         effects.forEach(el => {
             el.classList.add('simplified');
@@ -759,37 +813,16 @@ class StabilityManager {
     }
     
     pauseNonEssentialAnimations() {
-        // Pause background animations
-        const bgAnims = document.querySelectorAll('[data-bg-animation]');
-        bgAnims.forEach(el => {
-            el.style.animationPlayState = 'paused';
+        window.performanceProfileManager?.applyProfile?.('low', {
+            reason: 'stability-performance-fallback'
         });
     }
     
     aggressiveDOMCleanup() {
-        // Remove all temporary elements (using attribute selectors instead of wildcard class selectors)
-        const tempElements = document.querySelectorAll(
-            '[data-temp], [class^="anime-"], [class*=" anime-"], [class^="glitch-"], [class*=" glitch-"], [class^="corruption-"], [class*=" corruption-"]'
-        );
-        tempElements.forEach(el => {
-            try {
-                el.remove();
-            } catch (e) {
-                // Ignore removal errors
-            }
+        window.performanceProfileManager?.applyProfile?.('low', {
+            reason: 'stability-dom-fallback'
         });
-        
-        // Clear unused canvases
-        const canvases = document.querySelectorAll('canvas');
-        canvases.forEach(canvas => {
-            if (!canvas.isConnected || canvas.width === 0) {
-                try {
-                    canvas.remove();
-                } catch (e) {
-                    // Ignore removal errors
-                }
-            }
-        });
+        window.performanceElementManager?.removeOrphanedElements?.();
     }
     
     disableProblematicFeatures() {
@@ -815,21 +848,34 @@ class StabilityManager {
     }
     
     triggerEmergencyRecovery(issues) {
+        if (!Array.isArray(issues) || issues.length === 0) return;
+
+        const now = Date.now();
+        if (now - this.lastEmergencyRecoveryAt < this.emergencyRecoveryCooldownMs) {
+            console.warn('🚨 Emergency recovery suppressed by cooldown', issues);
+            return;
+        }
+        this.lastEmergencyRecoveryAt = now;
+
         console.log('🚨 Emergency recovery triggered');
         
-        // Stop all animations
-        if (window.gsap) {
-            window.gsap.killTweensOf('*');
-        }
-        
-        if (window.animeManager) {
-            window.animeManager.killAll();
-        }
-        
-        // Clear all caches
-        if (window.performanceOptimizerV2) {
-            window.performanceOptimizerV2.emergencyCleanup();
-        }
+        // Automatic recovery changes render cost and clears bookkeeping only.
+        // It never borrows the operator's emergency-stop semantics.
+        window.performanceProfileManager?.applyProfile?.('low', {
+            reason: 'stability-structural-recovery',
+            issues: issues.map(issue => issue.type)
+        });
+        window.performanceElementManager?.removeOrphanedElements?.();
+        window.gsapAnimationRegistry?.performPeriodicCleanup?.();
+        window.animeManager?.cleanupCompleted?.();
+        window.performanceOptimizerV2?.elementCache?.clear?.();
+        window.dispatchEvent(new CustomEvent('3886:health-alert', {
+            detail: {
+                level: 'critical',
+                source: 'stability-manager',
+                issues: issues.map(issue => issue.type)
+            }
+        }));
         
         // Reset all circuit breakers
         for (const [type, breaker] of this.circuitBreakers.entries()) {
@@ -851,14 +897,15 @@ class StabilityManager {
             fallbackModes: Object.fromEntries(
                 Array.from(this.fallbackModes.entries()).map(([k, v]) => [k, v.enabled])
             ),
-            recoveryAttempts: Object.fromEntries(this.recoveryAttempts)
+            recoveryAttempts: Object.fromEntries(this.recoveryAttempts),
+            lowFpsSampleCount: this.lowFpsSampleCount,
+            lastPerformanceActionAt: this.lastPerformanceActionAt,
+            lastEmergencyRecoveryAt: this.lastEmergencyRecoveryAt
         };
     }
     
     destroy() {
-        // Clean up event listeners
-        window.removeEventListener('error', this.handleError);
-        window.removeEventListener('unhandledrejection', this.handleError);
+        animationRuntime.disposeOwner(this.runtimeOwner);
         
         // Clear data
         this.errorHistory = [];

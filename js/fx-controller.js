@@ -1,5 +1,10 @@
 // FX Controller centralizes effect intensities and provides helpers to apply them
 
+import animationRuntime from './runtime/animation-runtime.js';
+import ambientCanvasRenderer from './ambient-canvas-renderer.js';
+
+const DATA_STREAMS_OWNER = 'fx-controller:data-streams';
+
 class FXController {
   constructor() {
     this.intensities = {
@@ -15,31 +20,48 @@ class FXController {
     this.effectRegistry = {};
     // Track on/off states for toggleable effects
     this.effectStates = this.effectStates || {};
+    this.runtimeOwners = new Set([DATA_STREAMS_OWNER]);
+  }
+
+  _runtimeOwner(name) {
+    const owner = `fx-controller:${name}`;
+    this.runtimeOwners.add(owner);
+    return owner;
   }
 
   // Utility: create overlay lazily under #fx-root with fade-in
   _ensureOverlay(id, styleText) {
+    const owner = this._runtimeOwner(`overlay:${id}`);
+    animationRuntime.disposeOwner(owner);
     let el = document.getElementById(id);
     if (!el) {
       el = document.createElement('div');
       el.id = id;
+      el.dataset.persistentFx = 'true';
       el.style.cssText = styleText;
       el.style.opacity = '0';
       (document.getElementById('fx-root') || document.body).appendChild(el);
       // Fade-in
-      requestAnimationFrame(() => { el.style.transition = 'opacity 300ms ease'; el.style.opacity = '1'; });
+      animationRuntime.scheduleTimeout(owner, () => {
+        el.style.transition = 'opacity 300ms ease';
+        el.style.opacity = '1';
+      }, 16);
+    } else {
+      el.style.opacity = '1';
     }
     return el;
   }
 
   // Utility: fade out and remove overlay by id
   _removeOverlay(id) {
+    const owner = this._runtimeOwner(`overlay:${id}`);
+    animationRuntime.disposeOwner(owner);
     const el = document.getElementById(id);
     if (el) {
       try {
         el.style.transition = 'opacity 200ms ease';
         el.style.opacity = '0';
-        setTimeout(() => { try { el.remove(); } catch {} }, 220);
+        animationRuntime.scheduleTimeout(owner, () => { try { el.remove(); } catch {} }, 220);
       } catch { try { el.remove(); } catch {} }
     }
   }
@@ -174,116 +196,60 @@ class FXController {
 
   // Data streams effect implementation
   applyDataStreamsEffect(enabled) {
-    if (!this.dataStreamsInterval) {
-      if (enabled) {
-        // Create data stream overlay if it doesn't exist
-        let overlay = document.getElementById('data-streams-overlay');
-        if (!overlay) {
-          overlay = document.createElement('div');
-          overlay.id = 'data-streams-overlay';
-          overlay.style.cssText = `
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            z-index: 9999;
-            opacity: 0.25;
-            color: #00ff85;
-            font-family: monospace;
-            font-size: 12px;
-            letter-spacing: 1px;
-            overflow: hidden;
-          `;
-          (document.getElementById('fx-root') || document.body).appendChild(overlay);
-        }
-
-        // Animate data streams
-        // Reduce spawn frequency for stability
-        const SPAWN_INTERVAL_MS = 400;
-        this.dataStreamsInterval = setInterval(() => {
-          // Performance-aware guard
-          try {
-            const fps = (window.performanceBus && window.performanceBus.metrics?.fps) || (window.safePerformanceMonitor && window.safePerformanceMonitor.metrics?.fps) || 60;
-            const dom = document.querySelectorAll('*').length;
-            const childLimit = 60;
-            if (fps < 15 || dom > 4000) return;
-            if (overlay.childNodes.length > childLimit) return;
-          } catch {}
-
-          // Prune oldest if too many children exist
-          try {
-            const maxChildren = 35;
-            while (overlay.childNodes.length > maxChildren) {
-              const first = overlay.firstChild;
-              if (first && first.parentNode) first.parentNode.removeChild(first); else break;
-            }
-          } catch {}
-
-          const stream = document.createElement('div');
-          stream._createdAt = Date.now();
-          stream.style.cssText = `
-            position: absolute;
-            left: ${Math.random() * 100}%;
-            top: -20px;
-            writing-mode: vertical-rl;
-            text-shadow: 0 0 6px rgba(0,255,133,0.6);
-            animation: fall 3.2s linear;
-          `;
-          stream.textContent = Math.random().toString(36).substring(2, 15);
-          overlay.appendChild(stream);
-
-          // Remove after 3s and opportunistically prune stale nodes
-          setTimeout(() => {
-            try { stream.remove(); } catch {}
-            try {
-              const now = Date.now();
-              // Remove any child older than 4s just in case
-              overlay.childNodes.forEach((n) => {
-                try {
-                  const anyNode = n;
-                  if (anyNode && typeof anyNode._createdAt === 'number' && now - anyNode._createdAt > 4000) {
-                    if (anyNode.parentNode) anyNode.parentNode.removeChild(anyNode);
-                  }
-                } catch {}
-              });
-            } catch {}
-          }, 3000);
-        }, SPAWN_INTERVAL_MS);
-
-        // Add CSS animation
-        if (!document.getElementById('data-streams-style')) {
-          const style = document.createElement('style');
-          style.id = 'data-streams-style';
-          style.textContent = `
-            @keyframes fall {
-              to { transform: translateY(100vh); }
-            }
-          `;
-          document.head.appendChild(style);
-        }
-
-        // Keep-alive to guard against accidental overlay removal
-        if (!this.dataStreamsKeepAlive) {
-          this.dataStreamsKeepAlive = setInterval(() => {
-            try {
-              const enabled = this.effectStates && this.effectStates.dataStreams;
-              if (!enabled) return;
-              if (!document.getElementById('data-streams-overlay')) {
-                this.applyDataStreamsEffect(true);
-              }
-            } catch {}
-          }, 2000);
-        }
-      }
-    } else if (!enabled) {
-      clearInterval(this.dataStreamsInterval);
+    if (!enabled) {
+      animationRuntime.disposeOwner(DATA_STREAMS_OWNER);
       this.dataStreamsInterval = null;
-      if (this.dataStreamsKeepAlive) { try { clearInterval(this.dataStreamsKeepAlive); } catch {} this.dataStreamsKeepAlive = null; }
       const overlay = document.getElementById('data-streams-overlay');
       if (overlay) overlay.remove();
+      return;
     }
+
+    if (this.dataStreamsInterval) return;
+    animationRuntime.disposeOwner(DATA_STREAMS_OWNER);
+
+    let overlay = document.getElementById('data-streams-overlay');
+    if (!overlay) {
+      overlay = document.createElement('div');
+      overlay.id = 'data-streams-overlay';
+      overlay.dataset.persistentFx = 'true';
+      overlay.style.cssText = `
+        position: fixed; inset: 0; pointer-events: none; z-index: 9999;
+        opacity: 0.25; color: #00ff85; font-family: monospace;
+        font-size: 12px; letter-spacing: 1px; overflow: hidden;
+      `;
+      (document.getElementById('fx-root') || document.body).appendChild(overlay);
+    }
+
+    if (!document.getElementById('data-streams-style')) {
+      const style = document.createElement('style');
+      style.id = 'data-streams-style';
+      style.textContent = '@keyframes fall { to { transform: translateY(100vh); } }';
+      document.head.appendChild(style);
+    }
+
+    const SPAWN_INTERVAL_MS = 650;
+    const MAX_CHILDREN = 18;
+    this.dataStreamsInterval = animationRuntime.scheduleInterval(DATA_STREAMS_OWNER, () => {
+      if (!overlay.isConnected) {
+        animationRuntime.disposeOwner(DATA_STREAMS_OWNER);
+        this.dataStreamsInterval = null;
+        return;
+      }
+
+      const fps = window.performanceBus?.metrics?.fps || window.safePerformanceMonitor?.metrics?.fps || 60;
+      if (fps < 24 || document.getElementsByTagName('*').length > 3000) return;
+      while (overlay.childElementCount >= MAX_CHILDREN) overlay.firstElementChild?.remove();
+
+      const stream = document.createElement('div');
+      stream.style.cssText = `
+        position: absolute; left: ${Math.random() * 100}%; top: -20px;
+        writing-mode: vertical-rl; text-shadow: 0 0 6px rgba(0,255,133,0.6);
+        animation: fall 3.2s linear;
+      `;
+      stream.textContent = Math.random().toString(36).substring(2, 15);
+      overlay.appendChild(stream);
+      animationRuntime.scheduleTimeout(DATA_STREAMS_OWNER, () => stream.remove(), 3300);
+    }, SPAWN_INTERVAL_MS);
   }
 
   // Strobe circles effect implementation
@@ -293,6 +259,7 @@ class FXController {
     if (enabled && !strobeOverlay) {
       strobeOverlay = document.createElement('div');
       strobeOverlay.id = 'strobe-circles-overlay';
+      strobeOverlay.dataset.persistentFx = 'true';
       strobeOverlay.style.cssText = `
         position: fixed;
         top: 50%;
@@ -334,6 +301,7 @@ class FXController {
         // Create plasma overlay container
         plasmaOverlay = document.createElement('div');
         plasmaOverlay.id = 'plasma-overlay';
+        plasmaOverlay.dataset.persistentFx = 'true';
         plasmaOverlay.style.cssText = `
           position: fixed;
           top: 0;
@@ -410,20 +378,6 @@ class FXController {
           document.head.appendChild(style);
         }
       }
-      // Keep-alive to guard against accidental cleanup
-      if (!this.plasmaKeepAlive) {
-        this.plasmaKeepAlive = setInterval(() => {
-          try {
-            const enabled = this.effectStates && this.effectStates.plasma;
-            if (!enabled) return;
-            let overlay = document.getElementById('plasma-overlay');
-            if (!overlay) {
-              // Recreate quickly if missing
-              this.applyPlasmaEffect(true);
-            }
-          } catch {}
-        }, 2000);
-      }
     } else {
       if (plasmaOverlay) {
         plasmaOverlay.remove();
@@ -432,48 +386,13 @@ class FXController {
       if (plasmaStyle) {
         plasmaStyle.remove();
       }
-      if (this.plasmaKeepAlive) { try { clearInterval(this.plasmaKeepAlive); } catch {} this.plasmaKeepAlive = null; }
     }
   }
 
   // Cyber grid effect implementation
   applyCyberGridEffect(enabled) {
-    let gridOverlay = document.getElementById('cyber-grid-overlay');
-
-    if (enabled && !gridOverlay) {
-      gridOverlay = document.createElement('div');
-      gridOverlay.id = 'cyber-grid-overlay';
-      gridOverlay.style.cssText = `
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        pointer-events: none;
-        z-index: 9997;
-        background-image:
-          linear-gradient(rgba(0, 255, 133, 0.1) 1px, transparent 1px),
-          linear-gradient(90deg, rgba(0, 255, 133, 0.1) 1px, transparent 1px);
-        background-size: 50px 50px;
-        animation: grid-move 10s linear infinite;
-      `;
-      (document.getElementById('fx-root') || document.body).appendChild(gridOverlay);
-
-      // Add grid animation
-      if (!document.getElementById('grid-style')) {
-        const style = document.createElement('style');
-        style.id = 'grid-style';
-        style.textContent = `
-          @keyframes grid-move {
-            0% { transform: translate(0, 0); }
-            100% { transform: translate(50px, 50px); }
-          }
-        `;
-        document.head.appendChild(style);
-      }
-    } else if (!enabled && gridOverlay) {
-      gridOverlay.remove();
-    }
+    document.getElementById('cyber-grid-overlay')?.remove();
+    ambientCanvasRenderer.setCyberGridEnabled(enabled);
   }
 
   // RGB Split Effect
@@ -487,15 +406,15 @@ class FXController {
         rgbStyle.textContent = `
           .rgb-split-target {
             position: relative;
-            text-shadow: 1px 0 #ff0000, -1px 0 #00ffff;
+            text-shadow: var(--fx-rgb-offset, 1px) 0 #ff0000, calc(var(--fx-rgb-offset, 1px) * -1) 0 #00ffff;
             transition: text-shadow 0.2s ease;
           }
           .rgb-split-target.rgb-anim {
             animation: rgb-split 1.2s ease-in-out infinite;
           }
           @keyframes rgb-split {
-            0%, 100% { text-shadow: 1px 0 #ff0000, -1px 0 #00ffff; }
-            50% { text-shadow: -1px 0 #ff0000, 1px 0 #00ffff; }
+            0%, 100% { text-shadow: var(--fx-rgb-offset, 1px) 0 #ff0000, calc(var(--fx-rgb-offset, 1px) * -1) 0 #00ffff; }
+            50% { text-shadow: calc(var(--fx-rgb-offset, 1px) * -1) 0 #ff0000, var(--fx-rgb-offset, 1px) 0 #00ffff; }
           }
         `;
         document.head.appendChild(rgbStyle);
@@ -531,8 +450,8 @@ class FXController {
             content: attr(data-text);
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
-            opacity: 0.7;
-            mix-blend-mode: screen;
+            opacity: var(--fx-chromatic-opacity, 0.7);
+            mix-blend-mode: var(--fx-chromatic-blend, screen);
             pointer-events: none;
           }
           .chromatic-active::before { color: #ff0000; transform: translate(-1px, -1px); }
@@ -557,45 +476,8 @@ class FXController {
 
   // Scanlines Effect
   applyScanlinesEffect(enabled) {
-    let scanlinesOverlay = document.getElementById('scanlines-overlay');
-
-    if (enabled && !scanlinesOverlay) {
-      scanlinesOverlay = document.createElement('div');
-      scanlinesOverlay.id = 'scanlines-overlay';
-      scanlinesOverlay.style.cssText = `
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        pointer-events: none;
-        z-index: 9995;
-        background-image: repeating-linear-gradient(
-          0deg,
-          transparent,
-          transparent 2px,
-          rgba(0, 255, 133, 0.03) 2px,
-          rgba(0, 255, 133, 0.03) 4px
-        );
-        animation: scanlines-move 8s linear infinite;
-      `;
-      (document.getElementById('fx-root') || document.body).appendChild(scanlinesOverlay);
-
-      // Add animation
-      if (!document.getElementById('scanlines-anim-style')) {
-        const style = document.createElement('style');
-        style.id = 'scanlines-anim-style';
-        style.textContent = `
-          @keyframes scanlines-move {
-            0% { background-position: 0 0; }
-            100% { background-position: 0 10px; }
-          }
-        `;
-        document.head.appendChild(style);
-      }
-    } else if (!enabled && scanlinesOverlay) {
-      scanlinesOverlay.remove();
-    }
+    document.getElementById('scanlines-overlay')?.remove();
+    ambientCanvasRenderer.setScanlinesEnabled(true, enabled ? 0.14 : 0.035);
   }
 
   // Vignette Effect
@@ -605,6 +487,7 @@ class FXController {
     if (enabled && !vignetteOverlay) {
       vignetteOverlay = document.createElement('div');
       vignetteOverlay.id = 'vignette-overlay';
+      vignetteOverlay.dataset.persistentFx = 'true';
       vignetteOverlay.style.cssText = `
         position: fixed;
         top: 0;
@@ -628,64 +511,9 @@ class FXController {
 
   // Film Grain Effect
   applyFilmGrainEffect(enabled) {
-    let grainOverlay = document.getElementById('grain-overlay');
-
-    if (enabled && !grainOverlay) {
-      grainOverlay = document.createElement('div');
-      grainOverlay.id = 'grain-overlay';
-      grainOverlay.style.cssText = `
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        pointer-events: none;
-        z-index: 9993;
-        opacity: 0.06;
-        background-repeat: repeat;
-        background-size: 200px 200px;
-        animation: grain-move 0.8s steps(1) infinite;
-      `;
-
-      // Create noise pattern
-      const canvas = document.createElement('canvas');
-      canvas.width = 200;
-      canvas.height = 200;
-      const ctx = canvas.getContext('2d');
-      const imageData = ctx.createImageData(canvas.width, canvas.height);
-      const data = imageData.data;
-
-      for (let i = 0; i < data.length; i += 4) {
-        const noise = Math.random() * 255;
-        data[i] = noise;     // R
-        data[i+1] = noise;   // G
-        data[i+2] = noise;   // B
-        data[i+3] = 255;     // A
-      }
-
-      ctx.putImageData(imageData, 0, 0);
-      grainOverlay.style.backgroundImage = `url(${canvas.toDataURL()})`;
-
-      (document.getElementById('fx-root') || document.body).appendChild(grainOverlay);
-
-      // Add animation
-      if (!document.getElementById('grain-anim-style')) {
-        const style = document.createElement('style');
-        style.id = 'grain-anim-style';
-        style.textContent = `
-          @keyframes grain-move {
-            0%   { background-position: 0 0; }
-            25%  { background-position: -5px -3px; }
-            50%  { background-position: 7px -2px; }
-            75%  { background-position: -4px 6px; }
-            100% { background-position: 0 0; }
-          }
-        `;
-        document.head.appendChild(style);
-      }
-    } else if (!enabled && grainOverlay) {
-      grainOverlay.remove();
-    }
+    document.getElementById('grain-overlay')?.remove();
+    document.getElementById('grain-anim-style')?.remove();
+    ambientCanvasRenderer.setFilmGrainEnabled(enabled, 0.15);
   }
 
   // Aurora Effect (soft animated gradient)
@@ -783,9 +611,9 @@ class FXController {
   _applySideEffect(name, rawValue) {
     const value = rawValue * this.globalMult;
     if (name === 'glitch') {
-      if (window.chaosEngine && window.chaosEngine.glitchPass) {
-        window.chaosEngine.glitchPass.enabled = value > 0.1;
-      }
+      const glitchPass = window.chaosEngine?.glitchPass;
+      if (glitchPass) glitchPass.enabled = value > 0.1;
+      ambientCanvasRenderer.setGlitchStrength(glitchPass ? 0 : value);
     }
     if (name === 'particles') {
       if (window.chaosEngine && window.chaosEngine.particles) {
@@ -809,67 +637,11 @@ class FXController {
       });
     }
     if (name === 'noise') {
-      const noiseCanvas = document.getElementById('static-noise');
-      if (noiseCanvas) {
-        // Primary method: Use the static-noise canvas
-        if (value === 0) {
-          // Completely hide noise when set to 0%
-          noiseCanvas.style.display = 'none';
-          noiseCanvas.style.opacity = '0';
-          if (window.chaosInitializer && typeof window.chaosInitializer.stopNoiseAnimation === 'function') {
-            window.chaosInitializer.stopNoiseAnimation();
-          }
-        } else {
-          // Show and set opacity for non-zero values
-          noiseCanvas.style.display = 'block';
-          noiseCanvas.style.opacity = (value * 0.05).toFixed(3);
-          if (window.chaosInitializer && typeof window.chaosInitializer.startNoiseAnimation === 'function') {
-            window.chaosInitializer.startNoiseAnimation();
-          }
-        }
-
-        // Clear any body background noise fallback when canvas is available
-        if (document.body.style.backgroundImage && document.body.style.backgroundImage.includes('noise')) {
-          document.body.style.removeProperty('background-image');
-        }
-      } else {
-        // FALLBACK: Canvas missing, try to recreate it first
-        console.warn('⚠️ Static noise canvas missing, attempting to recreate...');
-        if (window.chaosInitializer && typeof window.chaosInitializer.addStaticNoise === 'function') {
-          window.chaosInitializer.addStaticNoise();
-          // Try again after recreation
-          const recreatedCanvas = document.getElementById('static-noise');
-          if (recreatedCanvas) {
-            if (value === 0) {
-              // Completely hide noise when set to 0%
-              recreatedCanvas.style.display = 'none';
-              recreatedCanvas.style.opacity = '0';
-              if (window.chaosInitializer && typeof window.chaosInitializer.stopNoiseAnimation === 'function') {
-                window.chaosInitializer.stopNoiseAnimation();
-              }
-            } else {
-              // Show and set opacity for non-zero values
-              recreatedCanvas.style.display = 'block';
-              recreatedCanvas.style.opacity = (value * 0.05).toFixed(3);
-              if (window.chaosInitializer && typeof window.chaosInitializer.startNoiseAnimation === 'function') {
-                window.chaosInitializer.startNoiseAnimation();
-              }
-            }
-            return; // Success, don't use body fallback
-          }
-        }
-
-        // FALLBACK: Use body background SVG noise if canvas recreation failed
-        if (value > 0) {
-          document.body.style.setProperty('background-image',
-            `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Cfilter id='noise'%3E%3CfeTurbulence baseFrequency='0.9' /%3E%3C/filter%3E%3Crect width='100' height='100' filter='url(%23noise)' opacity='${(value * 0.03).toFixed(3)}'/%3E%3C/svg%3E")`,
-            'important'
-          );
-        } else {
-          // Completely remove background noise when set to 0%
-          document.body.style.removeProperty('background-image');
-        }
+      ambientCanvasRenderer.setNoiseStrength(value);
+      if (window.chaosInitializer) {
+        window.chaosInitializer._ambientNoiseStrength = Math.max(0, Math.min(1, value));
       }
+      document.body.style.removeProperty('background-image');
     }
     if (name === 'plasma') {
       const plasmaOverlay = document.getElementById('plasma-overlay');
@@ -912,6 +684,35 @@ class FXController {
         this.applyStrobeCirclesEffect(true);
       }
     }
+  }
+
+  destroy() {
+    this.runtimeOwners.forEach(owner => animationRuntime.disposeOwner(owner));
+    this.runtimeOwners.clear();
+    this.runtimeOwners.add(DATA_STREAMS_OWNER);
+    this.dataStreamsInterval = null;
+    this.dataStreamsKeepAlive = null;
+    this.plasmaKeepAlive = null;
+
+    Object.values(this.effectRegistry || {}).forEach(handler => {
+      try { handler?.disable?.(); } catch (_) {}
+    });
+    Object.keys(this.effectStates || {}).forEach(name => { this.effectStates[name] = false; });
+
+    [
+      'data-streams-overlay', 'strobe-circles-overlay', 'plasma-overlay',
+      'cyber-grid-overlay', 'scanlines-overlay', 'vignette-overlay',
+      'grain-overlay', 'aurora-overlay', 'neon-rings-overlay',
+      'circuit-grid-overlay'
+    ].forEach(id => document.getElementById(id)?.remove());
+    [
+      'data-streams-style', 'strobe-style', 'plasma-style', 'grid-style',
+      'rgb-split-style', 'chromatic-style', 'scanlines-anim-style',
+      'grain-anim-style', 'aurora-style', 'neon-rings-style', 'circuit-style'
+    ].forEach(id => document.getElementById(id)?.remove());
+
+    this.applyHolographicEffect(false);
+    this._applySideEffect('distortion', 0);
   }
 }
 

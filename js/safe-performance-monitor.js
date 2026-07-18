@@ -2,12 +2,15 @@
 // Does NOT patch GSAP or interfere with animations
 
 import { createLogger } from './utils/logger.js';
+import animationRuntime from './runtime/animation-runtime.js';
+import performanceBus from './performance-bus.js';
 
 // Create namespaced logger
 const log = createLogger('monitor');
 
 class SafePerformanceMonitor {
     constructor() {
+        this.runtimeOwner = 'safe-performance-monitor';
         this.metrics = {
             fps: 60,
             fpsHistory: [],
@@ -19,6 +22,8 @@ class SafePerformanceMonitor {
         this.lastFrameTime = performance.now();
         this.frameCount = 0;
         this.isMonitoring = false;
+        this.lastPerformanceWarningAt = 0;
+        this.performanceWarningCooldownMs = 60000;
         
         log.once('monitor:init', () => {
             log.info('Safe Performance Monitor initialized (non-intrusive)');
@@ -30,14 +35,12 @@ class SafePerformanceMonitor {
      */
     startMonitoring() {
         if (this.isMonitoring) return;
-        
+
+        animationRuntime.disposeOwner(this.runtimeOwner);
         this.isMonitoring = true;
         
-        // Start FPS monitoring
+        // One Performance Bus subscription owns FPS, heap and DOM telemetry.
         this.startFPSMonitoring();
-        
-        // Start periodic system checks (very conservative)
-        this.startSystemMonitoring();
         
         log.once('monitor:start', () => {
             log.info('Safe performance monitoring started');
@@ -45,70 +48,46 @@ class SafePerformanceMonitor {
     }
 
     startFPSMonitoring() {
-        const measureFPS = () => {
-            if (!this.isMonitoring) return;
-            
-            const now = performance.now();
-            this.frameCount++;
-            
-            // Calculate FPS every second
-            if (now >= this.lastFrameTime + 1000) {
-                const currentFPS = (this.frameCount * 1000) / (now - this.lastFrameTime);
-                
-                this.metrics.fps = Math.round(currentFPS);
-                this.metrics.fpsHistory.push(this.metrics.fps);
-                
-                // Keep only last 60 seconds
-                if (this.metrics.fpsHistory.length > 60) {
-                    this.metrics.fpsHistory.shift();
-                }
-                
-                this.frameCount = 0;
-                this.lastFrameTime = now;
-            }
-            
-            requestAnimationFrame(measureFPS);
+        const updateMetrics = ({ fps, memoryBytes, domNodes }) => {
+            if (!this.isMonitoring || !Number.isFinite(fps)) return;
+            this.metrics.fps = Math.round(fps);
+            this.metrics.memoryUsage = Number(memoryBytes) || 0;
+            this.metrics.domNodes = Number(domNodes) || 0;
+            this.metrics.fpsHistory.push(this.metrics.fps);
+            if (this.metrics.fpsHistory.length > 60) this.metrics.fpsHistory.shift();
+            this.checkPerformanceIssues();
         };
-        
-        measureFPS();
-    }
 
-    startSystemMonitoring() {
-        // Very conservative monitoring - every 10 seconds
-        setInterval(() => {
-            this.updateSystemMetrics();
-        }, 10000);
-    }
-
-    updateSystemMetrics() {
-        // Memory usage
-        if (performance.memory) {
-            this.metrics.memoryUsage = performance.memory.usedJSHeapSize;
-        }
-        
-        // DOM node count
-        this.metrics.domNodes = document.querySelectorAll('*').length;
-        
-        // Check for performance issues (log only, don't fix)
-        this.checkPerformanceIssues();
+        updateMetrics(performanceBus.metrics);
+        const unsubscribe = performanceBus.subscribe(updateMetrics);
+        animationRuntime.trackDisposer(this.runtimeOwner, unsubscribe);
+        this.fpsLoop = null;
     }
 
     checkPerformanceIssues() {
         const { fps, memoryUsage, domNodes } = this.metrics;
-        
+        const now = Date.now();
+        if (now - this.lastPerformanceWarningAt < this.performanceWarningCooldownMs) {
+            return;
+        }
+
         // Log warnings but DON'T take action
-        if (fps < 15) {
+        if (fps < 30) {
             console.warn(`⚠️ Critical FPS: ${fps} - Consider manual cleanup`);
-        } else if (fps < 30) {
+            this.lastPerformanceWarningAt = now;
+        } else if (fps < 45) {
             console.warn(`⚠️ Low FPS: ${fps} - Monitor performance`);
+            this.lastPerformanceWarningAt = now;
         }
         
         if (domNodes > 3000) {
             console.warn(`⚠️ High DOM node count: ${domNodes} - Consider cleanup`);
+            this.lastPerformanceWarningAt = now;
         }
         
         if (memoryUsage > 500 * 1024 * 1024) { // 500MB
             console.warn(`⚠️ High memory usage: ${this.formatBytes(memoryUsage)}`);
+            this.lastPerformanceWarningAt = now;
         }
     }
 
@@ -227,6 +206,9 @@ class SafePerformanceMonitor {
 
     destroy() {
         this.isMonitoring = false;
+        animationRuntime.disposeOwner(this.runtimeOwner);
+        this.fpsLoop = null;
+        this.systemMonitor = null;
         console.log('💀 Safe Performance Monitor destroyed');
     }
 }

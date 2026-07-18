@@ -1,5 +1,8 @@
 // Lottie Animations Module - Cosmic visual effects system
-import intervalManager from './interval-manager.js';
+import animationRuntime from './runtime/animation-runtime.js';
+import { createManagedLottieCanvas } from './lottie-player-factory.js';
+
+const RUNTIME_OWNER = 'lottie-animations';
 
 class LottieAnimations {
     constructor() {
@@ -18,13 +21,21 @@ class LottieAnimations {
 
         this.containers = {};
         this.isInitialized = false;
-        this.activeIntervals = []; // Track managed interval handles for cleanup
+        this.scheduledTasks = new Map();
+        this.schedulerToken = null;
         // Track fade/display timers and visibility per animation to prevent overlaps
         this.displayTimers = {};
         this.fadeOutTimers = {};
         this.visibleStates = {};
         this.startupTimers = [];
         this.playerReadyStates = {};
+        this.pendingAnimations = [];
+        this.eventController = null;
+        this.maxVisibleByProfile = {
+            high: 2,
+            medium: 1,
+            low: 1
+        };
 
         // Animation configurations - centered and full-width circular animations
         this.config = {
@@ -39,7 +50,8 @@ class LottieAnimations {
                 triggerOnScroll: false,
                 blendMode: 'screen',
                 zIndex: 2,  // Lower z-index
-                displayDuration: 6000,  // Show for 6 seconds
+                cycleDurationMs: 5030,
+                minCycles: 3,
                 displayInterval: 75000  // Every 75 seconds
             },
             planetLogo: {
@@ -53,7 +65,8 @@ class LottieAnimations {
                 triggerOnScroll: false,
                 blendMode: 'screen',  // Better color blending
                 zIndex: 3,  // Lower z-index
-                displayDuration: 8000,  // Show for 8 seconds
+                cycleDurationMs: 2500,
+                minCycles: 6,
                 displayInterval: 60000  // Every 60 seconds
             },
             abstraction: {
@@ -67,7 +80,8 @@ class LottieAnimations {
                 triggerOnScroll: false,
                 blendMode: 'multiply',
                 zIndex: 1,
-                displayDuration: 7000,
+                cycleDurationMs: 9580,
+                minCycles: 2,
                 displayInterval: 85000
             },
             // REMOVED - hexagon animation disabled per request
@@ -98,7 +112,8 @@ class LottieAnimations {
                 triggerOnScroll: false,
                 blendMode: 'add',
                 zIndex: 2,  // Lower z-index
-                displayDuration: 4000,
+                cycleDurationMs: 3000,
+                minCycles: 5,
                 displayInterval: 55000
             },
             sacredGeometry: {
@@ -112,7 +127,8 @@ class LottieAnimations {
                 triggerOnScroll: true,
                 blendMode: 'overlay',
                 zIndex: 1,  // Lowest z-index
-                displayDuration: 9000,
+                cycleDurationMs: 4000,
+                minCycles: 4,
                 displayInterval: 95000
             },
             transparentDiamond: {
@@ -126,7 +142,8 @@ class LottieAnimations {
                 triggerOnScroll: false,
                 blendMode: 'screen',
                 zIndex: 3,  // Lower z-index
-                displayDuration: 3500,
+                cycleDurationMs: 1000,
+                minCycles: 12,
                 displayInterval: 45000
             },
             circuitRound: {
@@ -140,7 +157,8 @@ class LottieAnimations {
                 triggerOnScroll: false,
                 blendMode: 'overlay',
                 zIndex: 2,
-                displayDuration: 6000,
+                cycleDurationMs: 2040,
+                minCycles: 7,
                 displayInterval: 70000  // Every 70 seconds
             },
             geometricalLines: {
@@ -154,7 +172,8 @@ class LottieAnimations {
                 triggerOnScroll: false,
                 blendMode: 'add',
                 zIndex: 1,
-                displayDuration: 8000,
+                cycleDurationMs: 75000,
+                minCycles: 1,
                 displayInterval: 80000  // Every 80 seconds
             },
             circularDots: {
@@ -168,7 +187,8 @@ class LottieAnimations {
                 triggerOnScroll: false,
                 blendMode: 'screen',
                 zIndex: 2,
-                displayDuration: 5000,
+                cycleDurationMs: 2530,
+                minCycles: 5,
                 displayInterval: 65000  // Every 65 seconds
             }
         };
@@ -194,6 +214,9 @@ class LottieAnimations {
             console.warn('⚠️ LottieAnimations already initialized, skipping duplicate initialization');
             return; // Don't destroy and re-create, just skip
         }
+        animationRuntime.disposeOwner(RUNTIME_OWNER);
+        this.eventController?.abort();
+        this.eventController = new AbortController();
         console.log('🌟 Initializing Lottie animations...');
 
         try {
@@ -245,28 +268,27 @@ class LottieAnimations {
             z-index: 1 !important;  /* Ensure animations stay behind everything */
         `;
         document.body.appendChild(mainContainer);
+        animationRuntime.trackNode(RUNTIME_OWNER, mainContainer);
 
-        // Create individual animation containers with dotlottie-player elements
+        // Create lightweight canvas shells. The local player is loaded lazily
+        // only when the clip wins an admission slot.
         ['planetRing', 'planetLogo', 'abstraction', 'morphingParticle', 'sacredGeometry', 'transparentDiamond', 'circuitRound', 'geometricalLines', 'circularDots'].forEach(name => {
-            const container = document.createElement('dotlottie-player');
+            const config = this.config[name];
+            const container = createManagedLottieCanvas({
+                src: config.path,
+                loop: config.loop,
+                speed: 1,
+                profile: this.getPerformanceProfile()
+            });
             container.className = `lottie-${name}`;
             container.id = `lottie-${name}`;
-
-            // Set attributes for dotlottie-player
-            container.setAttribute('src', this.config[name].path);
-            container.setAttribute('background', 'transparent');
             container.setAttribute('speed', '1');
-            container.setAttribute('style', `width: 100%; height: 100%;`);
-
-            if (this.config[name].loop) {
-                container.setAttribute('loop', '');
-            }
             // Don't autoplay - we'll control this with chaos engine
             this.playerReadyStates[name] = false;
             ['ready', 'load', 'loaded', 'complete'].forEach(eventName => {
                 container.addEventListener(eventName, () => {
                     this.playerReadyStates[name] = true;
-                });
+                }, { signal: this.eventController.signal });
             });
             
             // Add error handler to suppress console spam for missing files
@@ -276,17 +298,17 @@ class LottieAnimations {
                 if (wrapper) {
                     wrapper.style.display = 'none';
                 }
-            }, { once: true });
+            }, { once: true, signal: this.eventController.signal });
 
-            const config = this.config[name];
             const wrapperDiv = document.createElement('div');
             wrapperDiv.className = `lottie-wrapper-${name}`;
             wrapperDiv.style.cssText = `
                 position: absolute;
                 ${Object.entries(config.position).map(([key, value]) => `${key}: ${value}`).join('; ')};
                 opacity: 0;
+                display: none;
                 transition: opacity 1.5s ease-in-out;  /* Smoother, slower transitions */
-                mix-blend-mode: ${config.blendMode};
+                mix-blend-mode: ${this.getPerformanceProfile() === 'low' || window.chaosEngine?.softwareRenderer ? 'normal' : config.blendMode};
                 pointer-events: none;
                 z-index: ${config.zIndex || 5};  /* Default to 5 if not specified */
                 width: ${config.size};
@@ -338,7 +360,7 @@ class LottieAnimations {
                 wrapper.style.opacity = this.config.planetRing.opacity.toString();
                 wrapper.style.filter = 'brightness(1)';
             }
-        });
+        }, { signal: this.eventController.signal });
     }
 
     initAbstraction() {
@@ -397,7 +419,7 @@ class LottieAnimations {
                 this.showAnimation('sacredGeometry');
                 this.sacredGeometryTriggered = true;
             }
-        });
+        }, { signal: this.eventController.signal });
     }
 
     initTransparentDiamond() {
@@ -413,7 +435,7 @@ class LottieAnimations {
         wrapper.style.cursor = 'pointer';
         wrapper.addEventListener('click', () => {
             this.createSparkleEffect(wrapper);
-        });
+        }, { signal: this.eventController.signal });
     }
 
     initCircuitRound() {
@@ -429,10 +451,10 @@ class LottieAnimations {
         wrapper.addEventListener('mouseenter', () => {
             wrapper.style.transition = 'transform 1s ease-in-out';
             wrapper.style.transform = `${this.config.circuitRound.position.transform || ''} rotate(5deg)`;
-        });
+        }, { signal: this.eventController.signal });
         wrapper.addEventListener('mouseleave', () => {
             wrapper.style.transform = this.config.circuitRound.position.transform || '';
-        });
+        }, { signal: this.eventController.signal });
     }
 
     initGeometricalLines() {
@@ -460,7 +482,7 @@ class LottieAnimations {
             } else {
                 wrapper.style.filter = 'brightness(1)';
             }
-        });
+        }, { signal: this.eventController.signal });
     }
 
     initCircularDots() {
@@ -476,10 +498,10 @@ class LottieAnimations {
         wrapper.style.cursor = 'pointer';
         wrapper.addEventListener('click', () => {
             wrapper.style.animation = 'dotsPulse 1s ease-out';
-            setTimeout(() => {
+            this.scheduleTimeout(() => {
                 wrapper.style.animation = '';
             }, 1000);
-        });
+        }, { signal: this.eventController.signal });
 
         // Add the pulse animation if it doesn't exist
         if (!document.querySelector('#dots-pulse-style')) {
@@ -512,7 +534,7 @@ class LottieAnimations {
         wrapper.style.cursor = 'pointer';
         wrapper.addEventListener('click', () => {
             this.triggerCosmicBurst();
-        });
+        }, { signal: this.eventController.signal });
     }
 
     // Compute per-animation fade durations with sensible defaults
@@ -530,25 +552,55 @@ class LottieAnimations {
         }
     }
 
+    scheduleTimeout(callback, delay) {
+        return animationRuntime.scheduleTimeout(RUNTIME_OWNER, callback, delay);
+    }
+
+    clearTimer(timer) {
+        timer?.clear?.();
+    }
+
+    getDisplayDuration(name) {
+        const config = this.config[name] || {};
+        const cycleDurationMs = Math.max(0, Number(config.cycleDurationMs) || 0);
+        const minCycles = Math.max(1, Number(config.minCycles) || 1);
+        return Math.max(12000, cycleDurationMs * minCycles, Number(config.displayDuration) || 0);
+    }
+
+    queueAnimation(name) {
+        if (!this.config[name] || this.pendingAnimations.includes(name)) return;
+        if (this.pendingAnimations.length >= Object.keys(this.config).length) return;
+        this.pendingAnimations.push(name);
+    }
+
+    drainAnimationQueue() {
+        while (this.pendingAnimations.length && this.getVisibleAnimationNames().length < this.getMaxVisibleAnimations()) {
+            const name = this.pendingAnimations.shift();
+            this.showAnimation(name, { fromQueue: true });
+        }
+    }
+
     // Fade in utility with timer coordination
     fadeInAnimation(name, targetOpacity, durationMs) {
         const player = this.animations[name];
         if (!player || !player.parentElement) return;
         const wrapper = player.parentElement;
 
-        // Cancel any pending fade-out to avoid fighting transitions
         if (this.fadeOutTimers[name]) {
-            clearTimeout(this.fadeOutTimers[name]);
+            this.clearTimer(this.fadeOutTimers[name]);
             this.fadeOutTimers[name] = null;
         }
 
+        // Opacity-zero canvas trees can remain large compositor surfaces. Keep
+        // dormant clips out of layout/compositing, then mount only the admitted
+        // clip. The forced read happens once per presentation, not per frame.
+        wrapper.style.display = 'block';
+        wrapper.style.opacity = '0';
+        void wrapper.offsetWidth;
         wrapper.style.transition = `opacity ${durationMs}ms ease-in-out, filter ${Math.max(600, durationMs)}ms ease-in-out`;
         wrapper.style.opacity = String(targetOpacity);
 
-        // Subtle enhancement for planetLogo as before
-        if (name === 'planetLogo') {
-            wrapper.style.filter = 'saturate(1.2) brightness(1.05) contrast(1.05) drop-shadow(0 0 15px rgba(0, 255, 200, 0.15))';
-        }
+        wrapper.style.filter = this.getWrapperFilter(name);
 
         this.visibleStates[name] = true;
     }
@@ -556,29 +608,34 @@ class LottieAnimations {
     // Fade out utility; stops playback after the fade completes and emits end event
     fadeOutAnimation(name, durationMs) {
         const player = this.animations[name];
-        if (!player || !player.parentElement) return;
+        if (!player || !player.parentElement || !this.visibleStates[name]) return;
         const wrapper = player.parentElement;
 
         wrapper.style.transition = `opacity ${durationMs}ms ease-in-out, filter ${Math.max(600, durationMs)}ms ease-in-out`;
         wrapper.style.opacity = '0';
         wrapper.style.filter = 'none';
 
-        // Delay stopping playback until after fade completes
-        this.fadeOutTimers[name] = setTimeout(() => {
-            try { 
-                // Only stop if player is ready and not loading
-                this.safeStopPlayer(name, player);
-            } catch (e) { 
-                // Silently handle stop errors during loading
-            }
+        this.fadeOutTimers[name] = this.scheduleTimeout(() => {
+            try { this.safeStopPlayer(name, player); } catch (_) {}
+            wrapper.style.display = 'none';
             this.visibleStates[name] = false;
+            this.fadeOutTimers[name] = null;
+            this.displayTimers[name] = null;
             window.dispatchEvent(new CustomEvent('lottieAnimationEnd', { detail: { name } }));
+            this.drainAnimationQueue();
         }, durationMs + 50);
     }
 
     safeStopPlayer(name, player = this.animations[name]) {
         if (!player) return;
+        if (player.dataset?.lottieManaged === 'true') {
+            try { player.pause?.(); } catch (_) {}
+            return;
+        }
         if (String(player.tagName || '').toLowerCase() === 'dotlottie-player') {
+            try {
+                if (typeof player.pause === 'function') player.pause();
+            } catch (_) {}
             return;
         }
 
@@ -587,37 +644,55 @@ class LottieAnimations {
             (state && state !== 'loading' && state !== 'idle');
 
         try {
-            if (ready && typeof player.stop === 'function') {
-                player.stop();
-            } else if (typeof player.pause === 'function') {
-                player.pause();
-            }
-        } catch (_) {
-            // dotLottie can reject stop/pause while loading; hidden wrappers are enough until ready.
-        }
+            if (ready && typeof player.stop === 'function') player.stop();
+            else if (typeof player.pause === 'function') player.pause();
+        } catch (_) {}
+    }
+
+    getWrapperFilter(name) {
+        if (name !== 'planetLogo') return 'none';
+        const lowCost = this.performanceProfile === 'low' || window.chaosEngine?.softwareRenderer;
+        if (lowCost) return 'none';
+        if (this.performanceProfile === 'medium') return 'saturate(1.1) brightness(1.025)';
+        return 'saturate(1.2) brightness(1.05) contrast(1.05) drop-shadow(0 0 15px rgba(0, 255, 200, 0.15))';
     }
 
     scheduleLottieCycle(name, initialDelayMs, intervalMs = this.config[name]?.displayInterval) {
         if (!this.config[name] || !this.animations[name]) return;
-
-        const timerId = setTimeout(() => {
+        this.registerScheduledTask(`cycle:${name}`, initialDelayMs, intervalMs, () => {
             this.showAnimation(name);
-            const handle = intervalManager.createInterval(() => {
-                this.showAnimation(name);
-            }, intervalMs, `lottie-${name}`, {
-                category: 'animation',
-                maxAge: Infinity
-            });
-            this.activeIntervals.push(handle);
-        }, initialDelayMs);
+        });
+    }
 
-        this.startupTimers.push(timerId);
+    registerScheduledTask(id, initialDelayMs, intervalMs, callback) {
+        this.scheduledTasks.set(id, {
+            dueAt: performance.now() + Math.max(0, initialDelayMs),
+            intervalMs,
+            callback
+        });
+        this.ensureSchedulerLoop();
+    }
+
+    ensureSchedulerLoop() {
+        if (this.schedulerToken) return;
+        this.schedulerToken = animationRuntime.scheduleInterval(RUNTIME_OWNER, () => {
+            const now = performance.now();
+            this.scheduledTasks.forEach((task) => {
+                if (now < task.dueAt) return;
+                try { task.callback(); } catch (error) {
+                    console.error('Lottie scheduler task failed:', error);
+                }
+                const nextDelay = typeof task.intervalMs === 'function'
+                    ? task.intervalMs()
+                    : task.intervalMs;
+                task.dueAt = now + Math.max(1000, Number(nextDelay) || 1000);
+            });
+        }, 1000);
     }
 
     startAnimationCycles() {
         console.log('🎬 Starting Lottie animation cycles');
 
-        // Keep the first minute visually rich, then let longer intervals breathe.
         this.scheduleLottieCycle('planetLogo', 12000);
         this.scheduleLottieCycle('circuitRound', 24000);
         this.scheduleLottieCycle('planetRing', 36000);
@@ -629,37 +704,64 @@ class LottieAnimations {
         this.scheduleLottieCycle('sacredGeometry', 92000);
     }
 
-    showAnimation(name) {
+    showAnimation(name, options = {}) {
         const player = this.animations[name];
         const config = this.config[name];
-        if (!player || !player.parentElement) return;
+        if (!player || !player.parentElement) return false;
+        if (this.visibleStates[name]) return true;
 
-        const wrapper = player.parentElement;
+        if (!this.canShowAnimation(name)) {
+            if (!options.fromQueue) this.queueAnimation(name);
+            return false;
+        }
 
-        // Notify other systems (e.g., direct-logo-animation)
         window.dispatchEvent(new CustomEvent('lottieAnimationStart', { detail: { name } }));
-
-        // Determine fade timings
         const { fadeInMs, fadeOutMs } = this.getFadeDurations(name);
 
-        // Cancel any pending fade-out or display timers to avoid overlaps
         if (this.fadeOutTimers[name]) {
-            clearTimeout(this.fadeOutTimers[name]);
+            this.clearTimer(this.fadeOutTimers[name]);
             this.fadeOutTimers[name] = null;
         }
         if (this.displayTimers[name]) {
-            clearTimeout(this.displayTimers[name]);
+            this.clearTimer(this.displayTimers[name]);
             this.displayTimers[name] = null;
         }
 
-        // Fade in and start playback
         this.fadeInAnimation(name, config.opacity, fadeInMs);
-        try { if (player.play) player.play(); } catch (e) { /* no-op */ }
+        try { if (player.play) player.play(); } catch (_) {}
 
-        // Schedule fade out after the configured display duration
-        this.displayTimers[name] = setTimeout(() => {
+        // Profiles control admission and rendering cost, never clip lifetime.
+        // The fade starts only after complete source cycles were visible.
+        this.displayTimers[name] = this.scheduleTimeout(() => {
             this.fadeOutAnimation(name, fadeOutMs);
-        }, config.displayDuration);
+        }, fadeInMs + this.getDisplayDuration(name));
+        return true;
+    }
+
+    getPerformanceProfile() {
+        return window.performanceProfile ||
+            window.performanceProfileManager?.currentProfile ||
+            'high';
+    }
+
+    getMaxVisibleAnimations() {
+        const profile = this.getPerformanceProfile();
+        return this.maxVisibleByProfile[profile] ?? this.maxVisibleByProfile.high;
+    }
+
+    getVisibleAnimationNames() {
+        return Object.keys(this.visibleStates).filter(name => this.visibleStates[name]);
+    }
+
+    canShowAnimation(name) {
+        if (this.visibleStates[name]) return true;
+        return this.getVisibleAnimationNames().length < this.getMaxVisibleAnimations();
+    }
+
+    enforceConcurrencyLimit() {
+        // A lower profile applies to future admission. Existing clips retain
+        // their visual contract and drain naturally.
+        this.drainAnimationQueue();
     }
 
     setupInteractions() {
@@ -677,7 +779,9 @@ class LottieAnimations {
         // Create reverse rotation scenes
         const createRotationReversal = () => {
             // Every 10-20 seconds, randomly reverse some animations
-            const handle = intervalManager.createInterval(() => {
+            this.registerScheduledTask('rotation-reversal', Math.random() * 10000 + 10000, () => {
+                return Math.random() * 10000 + 10000;
+            }, () => {
                 // Randomly select 2-3 animations to reverse
                 const animations = Object.keys(this.containers);
                 const numToReverse = Math.floor(Math.random() * 2) + 2;
@@ -690,16 +794,12 @@ class LottieAnimations {
                     const wrapper = this.containers[randomAnim]?.parentElement;
                     if (wrapper) {
                         wrapper.style.transition = 'transform 2s cubic-bezier(0.4, 0, 0.2, 1)';
-                        setTimeout(() => {
+                        this.scheduleTimeout(() => {
                             wrapper.style.transition = '';  // Remove transition after
                         }, 2000);
                     }
                 }
-            }, Math.random() * 10000 + 10000, 'lottie-rotationReversal', { // 10-20 seconds
-                category: 'animation',
-                maxAge: Infinity
             });
-            this.activeIntervals.push(handle);
         };
 
         createRotationReversal();
@@ -736,17 +836,13 @@ class LottieAnimations {
 
 
             lastScrollY = currentScrollY;
-        });
+        }, { signal: this.eventController.signal });
 
         // Performance mode integration
         window.addEventListener('performanceModeChange', (event) => {
             const mode = event.detail.mode;
-            if (mode === 'low') {
-                this.pauseAll();
-            } else if (mode === 'high') {
-                this.resumeAll();
-            }
-        });
+            this.setPerformanceProfile(mode);
+        }, { signal: this.eventController.signal });
 
         // Integration with chaos engine phases
         window.addEventListener('chaosPhase', (event) => {
@@ -772,7 +868,7 @@ class LottieAnimations {
                     }
                     break;
             }
-        });
+        }, { signal: this.eventController.signal });
     }
 
     createSparkleEffect(container) {
@@ -831,10 +927,10 @@ class LottieAnimations {
         }
 
         container.appendChild(sparkle);
-        setTimeout(() => sparkle.remove(), 800);
+        this.scheduleTimeout(() => sparkle.remove(), 800);
     }
 
-    triggerCosmicBurst() {
+    triggerCosmicBurst(scope = null) {
         console.log('🌌 Cosmic burst triggered!');
 
         // Create burst effect
@@ -843,8 +939,8 @@ class LottieAnimations {
             position: fixed;
             top: 50%;
             left: 50%;
-            width: 100px;
-            height: 100px;
+            width: 180px;
+            height: 180px;
             background: radial-gradient(circle,
                 rgba(255, 255, 255, 0.4) 0%,  /* White center */
                 rgba(255, 0, 255, 0.3) 20%,   /* Magenta */
@@ -853,7 +949,7 @@ class LottieAnimations {
                 rgba(255, 255, 0, 0.2) 80%,   /* Yellow */
                 transparent 100%);
             border-radius: 50%;
-            transform: translate(-50%, -50%);
+            transform: translate(-50%, -50%) scale(0.45);
             pointer-events: none;
             z-index: 10000;
             animation: cosmicBurst 1s ease-out forwards;
@@ -866,13 +962,11 @@ class LottieAnimations {
             style.textContent = `
                 @keyframes cosmicBurst {
                     0% {
-                        width: 100px;
-                        height: 100px;
+                        transform: translate(-50%, -50%) scale(0.45);
                         opacity: 1;
                     }
                     100% {
-                        width: 2000px;
-                        height: 2000px;
+                        transform: translate(-50%, -50%) scale(12);
                         opacity: 0;
                     }
                 }
@@ -880,16 +974,26 @@ class LottieAnimations {
             document.head.appendChild(style);
         }
 
-        document.body.appendChild(burst);
-        setTimeout(() => burst.remove(), 1000);
+        if (scope?.append) scope.append(burst);
+        else document.body.appendChild(burst);
+        if (scope?.timeout) scope.timeout(() => burst.remove(), 1000);
+        else this.scheduleTimeout(() => burst.remove(), 1000);
 
         // Speed up all animations temporarily
+        const previousSpeeds = new Map();
         Object.values(this.animations).forEach(player => {
             if (player) {
+                previousSpeeds.set(player, player.getAttribute('speed') || '1');
                 player.setAttribute('speed', '3');
-                setTimeout(() => player.setAttribute('speed', '1'), 2000);
             }
         });
+        const restoreSpeeds = () => {
+            previousSpeeds.forEach((speed, player) => {
+                try { player.setAttribute('speed', speed); } catch (_) {}
+            });
+        };
+        if (scope?.cleanup) scope.cleanup(restoreSpeeds);
+        else this.scheduleTimeout(restoreSpeeds, 2000);
     }
 
     createGlowEffect(container) {
@@ -910,18 +1014,43 @@ class LottieAnimations {
         `;
 
         container.appendChild(glow);
-        setTimeout(() => glow.remove(), 5000);
+        this.scheduleTimeout(() => glow.remove(), 5000);
+    }
+
+    setPerformanceProfile(profile) {
+        this.performanceProfile = ['high', 'medium', 'low'].includes(profile) ? profile : 'high';
+        const lowCostCompositor = this.performanceProfile === 'low' || window.chaosEngine?.softwareRenderer;
+        Object.entries(this.animations).forEach(([name, player]) => {
+            try { player?.setPerformanceProfile?.(this.performanceProfile); } catch (_) {}
+            const wrapper = player?.parentElement;
+            if (wrapper) {
+                wrapper.style.mixBlendMode = lowCostCompositor ? 'normal' : (this.config[name]?.blendMode || 'normal');
+                if (this.visibleStates[name]) wrapper.style.filter = this.getWrapperFilter(name);
+            }
+        });
+        // Profile changes adjust admission limits only. Players already on
+        // screen keep running at authored speed until their complete-cycle
+        // contract ends.
+        this.resumeAll();
+        this.enforceConcurrencyLimit();
     }
 
     pauseAll() {
-        Object.values(this.animations).forEach(player => {
-            if (player && player.pause) player.pause();
+        Object.entries(this.animations).forEach(([name, player]) => {
+            if (player && player.pause) {
+                try { player.pause(); } catch (_) {}
+            }
+            if (this.visibleStates[name]) {
+                this.fadeOutAnimation(name, 300);
+            }
         });
     }
 
     resumeAll() {
-        Object.values(this.animations).forEach(player => {
-            if (player && player.play) player.play();
+        Object.entries(this.animations).forEach(([name, player]) => {
+            if (this.visibleStates[name] && player && player.play) {
+                try { player.play(); } catch (_) {}
+            }
         });
     }
 
@@ -949,20 +1078,23 @@ class LottieAnimations {
         
         // Clear all managed intervals
         if (this.startupTimers && this.startupTimers.length > 0) {
-            this.startupTimers.forEach(timerId => clearTimeout(timerId));
+            this.startupTimers.forEach(timer => this.clearTimer(timer));
             this.startupTimers = [];
         }
 
-        if (this.activeIntervals && this.activeIntervals.length > 0) {
-            this.activeIntervals.forEach(handle => {
-                if (handle && typeof handle.clear === 'function') {
-                    handle.clear();
-                }
-            });
-            this.activeIntervals = [];
-            console.log('✅ Lottie intervals cleared');
-        }
+        Object.values(this.displayTimers).forEach(timer => this.clearTimer(timer));
+        Object.values(this.fadeOutTimers).forEach(timer => this.clearTimer(timer));
+        this.displayTimers = {};
+        this.fadeOutTimers = {};
+        this.pendingAnimations = [];
+
+        this.scheduledTasks.clear();
+        this.schedulerToken = null;
         
+        this.eventController?.abort();
+        this.eventController = null;
+        animationRuntime.disposeOwner(RUNTIME_OWNER);
+
         // Stop and destroy all animations
         Object.values(this.animations).forEach(player => {
             if (player) {

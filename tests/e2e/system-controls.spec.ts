@@ -15,11 +15,10 @@ async function waitForOnline(control, main?) {
 }
 
 test.describe.serial('Header System Controls', () => {
-  test('Emergency Stop and System Reset affect engine state', async ({ browser }) => {
-    const context = await browser.newContext();
+  test('Emergency Stop and System Reset affect engine state', async ({ context }) => {
 
     const control = await context.newPage();
-    await control.goto('http://localhost:3886/control-panel.html');
+    await control.goto('http://localhost:3886/control-panel-v3.html');
 
     const main = await context.newPage();
     await main.goto('http://localhost:3886/');
@@ -54,10 +53,9 @@ test.describe.serial('Header System Controls', () => {
     }).toBeTruthy();
   });
 
-  test('System Reload triggers ChaosControl.restart (if available)', async ({ browser }) => {
-    const context = await browser.newContext();
+  test('System Reload triggers ChaosControl.restart (if available)', async ({ context }) => {
     const control = await context.newPage();
-    await control.goto('http://localhost:3886/control-panel.html');
+    await control.goto('http://localhost:3886/control-panel-v3.html');
     const main = await context.newPage();
     await main.goto('http://localhost:3886/');
 await waitForOnline(control, main);

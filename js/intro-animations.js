@@ -1,4 +1,5 @@
 import gsap from 'gsap';
+import backgroundAnimator from './background-animator.js';
 
 class IntroAnimations {
     constructor() {
@@ -79,17 +80,17 @@ class IntroAnimations {
             );
         }
 
-        // Animate background - preserve proper scale of 3
+        // Animate the same authored zoom within the active raster budget.
         const bg = document.querySelector('.bg');
         if (bg) {
             gsap.fromTo(bg,
                 {
-                    scale: 8,
+                    scale: backgroundAnimator.resolveSurfaceScale(8),
                     opacity: 0,
                     rotateX: 0
                 },
                 {
-                    scale: 3, // Preserve correct scale for circular grid effect
+                    scale: backgroundAnimator.resolveSurfaceScale(3),
                     opacity: 0.07, // Match original CSS opacity
                     rotateX: 0,
                     duration: 2,

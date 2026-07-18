@@ -4,6 +4,52 @@
 import MATRIX_MESSAGES from './matrix-message-pool.js';
 import intervalManager from './interval-manager.js';
 
+const SAFE_EFFECT_DEFAULTS = Object.freeze({
+    holographic: false,
+    dataStreams: false,
+    strobeCircles: false,
+    plasma: false,
+    particles: true,
+    noise: false,
+    cyberGrid: false,
+    rgbSplit: false,
+    chromatic: false,
+    scanlines: false,
+    vignette: false,
+    filmgrain: false
+});
+
+const EFFECT_INTENSITY_DEFAULTS = Object.freeze({
+    holographic: 50,
+    dataStreams: 75,
+    strobeCircles: 30,
+    plasma: 15,
+    particles: 50,
+    noise: 25,
+    cyberGrid: 80,
+    rgbSplit: 50,
+    chromatic: 50,
+    scanlines: 50,
+    vignette: 50,
+    filmgrain: 50
+});
+
+const SAFE_LAYER_DEFAULTS = Object.freeze({
+    background: true,
+    'matrix-rain': true,
+    logo: true,
+    particles: true,
+    text: true,
+    overlay: false
+});
+
+const createSafeEffectState = () => Object.fromEntries(
+    Object.entries(SAFE_EFFECT_DEFAULTS).map(([effect, enabled]) => [
+        effect,
+        { enabled, intensity: EFFECT_INTENSITY_DEFAULTS[effect] ?? 50 }
+    ])
+);
+
 class ProfessionalVJControlPanel {
     constructor() {
         // Use localStorage bridge only when BroadcastChannel is unavailable
@@ -17,20 +63,25 @@ class ProfessionalVJControlPanel {
         this.diceRollInterval = null;
         this.diceIntervalSeconds = 12;
         this.diceCountdown = this.diceIntervalSeconds;
-        this.matrixMessageRollThreshold = 68;
+        this.matrixMessageRollThreshold = 90;
         this.lastDiceRoll = 0;
         this.matrixMessages = MATRIX_MESSAGES;
+        this.performanceSamples = [];
+        this.maxPerformanceSamples = 60;
+        this.lastPerformanceSampleAt = 0;
+        this.eventEntries = [];
+        this.maxEventEntries = 80;
+        this.hasEffectStateSync = false;
+        this.initialized = false;
+        this.destroyed = false;
+        this.abortController = new AbortController();
+        this.timeoutIds = new Set();
+        this.rafIds = new Set();
+        this.intervalIds = new Set();
+        this.disposers = new Set();
 
         // Effect states
-        this.effects = {
-            holographic: { enabled: true, intensity: 50 },
-            dataStreams: { enabled: true, intensity: 75 },
-            strobeCircles: { enabled: false, intensity: 30 },
-            plasma: { enabled: true, intensity: 15 },
-            particles: { enabled: true, intensity: 50 },
-            noise: { enabled: true, intensity: 25 },
-            cyberGrid: { enabled: true, intensity: 80 }
-        };
+        this.effects = createSafeEffectState();
 
         // Animation system states
         this.animeSystem = {
@@ -100,25 +151,22 @@ class ProfessionalVJControlPanel {
     waitForAnimation(element, timeoutMs) {
         return new Promise(resolve => {
             if (!element) return resolve();
-            
+
             let done = false;
-            const timeout = setTimeout(() => {
+            let timeout = null;
+            const finish = () => {
                 if (!done) {
                     done = true;
-                    resolve();
-                }
-            }, timeoutMs);
-            
-            const handler = () => {
-                if (!done) {
-                    done = true;
-                    clearTimeout(timeout);
+                    this.clearManagedTimeout(timeout);
+                    element.removeEventListener('animationend', finish);
+                    element.removeEventListener('transitionend', finish);
                     resolve();
                 }
             };
-            
-            element.addEventListener('animationend', handler, { once: true });
-            element.addEventListener('transitionend', handler, { once: true });
+            timeout = this.scheduleTimeout(finish, timeoutMs);
+
+            this.listen(element, 'animationend', finish, { once: true });
+            this.listen(element, 'transitionend', finish, { once: true });
         });
     }
 
@@ -126,12 +174,62 @@ class ProfessionalVJControlPanel {
     _debounce(fn, wait = 32) {
         let t;
         return (...args) => {
-            clearTimeout(t);
-            t = setTimeout(() => fn.apply(this, args), wait);
+            this.clearManagedTimeout(t);
+            t = this.scheduleTimeout(() => fn.apply(this, args), wait);
         };
     }
 
+    listen(target, type, handler, options = {}) {
+        if (this.destroyed) return;
+        target?.addEventListener?.(type, handler, {
+            ...options,
+            signal: this.abortController.signal
+        });
+    }
+
+    scheduleTimeout(callback, delay = 0) {
+        if (this.destroyed) return null;
+        const id = window.setTimeout(() => {
+            this.timeoutIds.delete(id);
+            if (!this.destroyed) callback();
+        }, Math.max(0, Number(delay) || 0));
+        this.timeoutIds.add(id);
+        return id;
+    }
+
+    clearManagedTimeout(id) {
+        if (id === null || id === undefined) return;
+        window.clearTimeout(id);
+        this.timeoutIds.delete(id);
+    }
+
+    scheduleFrame(callback) {
+        if (this.destroyed) return null;
+        const id = window.requestAnimationFrame((timestamp) => {
+            this.rafIds.delete(id);
+            if (!this.destroyed) callback(timestamp);
+        });
+        this.rafIds.add(id);
+        return id;
+    }
+
+    setManagedInterval(name, callback, delay, options = {}) {
+        if (this.destroyed) return null;
+        const id = intervalManager.set(name, () => {
+            if (!this.destroyed) callback();
+        }, delay, options);
+        this.intervalIds.add(id);
+        return id;
+    }
+
+    trackDisposer(disposer) {
+        if (typeof disposer === 'function') this.disposers.add(disposer);
+        return disposer;
+    }
+
     init() {
+        if (this.initialized || this.destroyed) return;
+        this.initialized = true;
         this.initBroadcastChannel();
         // Don't replace the original HTML - just enhance it
         // this.createProfessionalUI();
@@ -140,8 +238,9 @@ class ProfessionalVJControlPanel {
         this.startSystemMonitoring();
         this.startDiceRollCountdown();
         this.startPerformanceMonitoring();
-        // Ensure the scenes section centers the active button on load
-        this.scheduleInitialSceneScroll();
+        this.recordEvent('SYSTEM', 'CONTROL SURFACE READY', 'system');
+        this.listen(window, 'pagehide', () => this.destroy(), { once: true });
+        this.listen(window, 'beforeunload', () => this.destroy(), { once: true });
 
         console.log('🎛️ Professional VJ Control Panel initialized with original HTML');
     }
@@ -178,7 +277,7 @@ class ProfessionalVJControlPanel {
         // Enable LS bridge when BC is not available
         this._useLocalStorageBridge = true;
         // Simplified polling to avoid infinite loops (managed)
-        this.pollInterval = intervalManager.set('prof-panel-localStorage-polling', () => {
+        this.pollInterval = this.setManagedInterval('prof-panel-localStorage-polling', () => {
             try {
                 const response = localStorage.getItem('3886_vj_response');
                 if (response) {
@@ -1082,7 +1181,7 @@ class ProfessionalVJControlPanel {
     initEventListeners() {
         // Scene buttons - with smooth phase transitions
         document.querySelectorAll('.scene-btn').forEach(btn => {
-            btn.addEventListener('click', async () => {
+            this.listen(btn, 'click', async () => {
                 const newScene = btn.dataset.scene;
                 if (newScene === this.currentScene) return; // Skip if already active
                 
@@ -1107,7 +1206,7 @@ class ProfessionalVJControlPanel {
         });
 
         // Anime.js system controls
-        document.getElementById('animeEnable')?.addEventListener('click', () => {
+        this.listen(document.getElementById('animeEnable'), 'click', () => {
             this.animeSystem.enabled = true;
             this.updateAnimeSystemStatus();
             this.sendMessage({
@@ -1116,7 +1215,7 @@ class ProfessionalVJControlPanel {
             });
         });
 
-        document.getElementById('animeDisable')?.addEventListener('click', () => {
+        this.listen(document.getElementById('animeDisable'), 'click', () => {
             this.animeSystem.enabled = false;
             this.updateAnimeSystemStatus();
             this.sendMessage({
@@ -1125,7 +1224,7 @@ class ProfessionalVJControlPanel {
             });
         });
 
-        document.getElementById('animeEmergencyStop')?.addEventListener('click', () => {
+        this.listen(document.getElementById('animeEmergencyStop'), 'click', () => {
             this.animeSystem.enabled = false;
             this.updateAnimeSystemStatus();
             this.sendMessage({
@@ -1134,39 +1233,12 @@ class ProfessionalVJControlPanel {
             });
         });
 
-        // Animation System Toggle Button (V3)
-        document.getElementById('animeToggle')?.addEventListener('click', () => {
-            const btn = document.getElementById('animeToggle');
-            if (!btn) return;
-            
-            const currentState = btn.getAttribute('data-state');
-            const newState = currentState === 'enabled' ? 'disabled' : 'enabled';
-            const isEnabled = newState === 'enabled';
-            
-            // Update button state
-            btn.setAttribute('data-state', newState);
-            btn.querySelector('.toggle-status').textContent = newState.toUpperCase();
-            
-            // Toggle active class
-            if (isEnabled) {
-                btn.classList.add('active');
-            } else {
-                btn.classList.remove('active');
-            }
-            
-            // Update internal state
-            this.animeSystem.enabled = isEnabled;
-            this.updateAnimeSystemStatus();
-            
-            // Send message to main page
-            this.sendMessage({
-                type: isEnabled ? 'anime_enable' : 'anime_disable',
-                timestamp: Date.now()
-            });
-        });
+        // The V3 anime toggle is owned by control-panel-v3.html. Keeping a
+        // second listener here caused one click to enable and immediately
+        // disable the system again.
 
         // Logo controls
-        document.getElementById('logoOutlineToggle')?.addEventListener('click', () => {
+        this.listen(document.getElementById('logoOutlineToggle'), 'click', () => {
             this.animeSystem.logoOutlines = !this.animeSystem.logoOutlines;
             this.updateLogoControlStatus();
             this.sendMessage({
@@ -1176,14 +1248,14 @@ class ProfessionalVJControlPanel {
             });
         });
 
-        document.getElementById('logoPulse')?.addEventListener('click', () => {
+        this.listen(document.getElementById('logoPulse'), 'click', () => {
             this.sendMessage({
                 type: 'logo_pulse_trigger',
                 timestamp: Date.now()
             });
         });
 
-        document.getElementById('logoGlow')?.addEventListener('click', () => {
+        this.listen(document.getElementById('logoGlow'), 'click', () => {
             // Toggle enhanced glow
             this.sendMessage({
                 type: 'logo_glow_toggle',
@@ -1193,19 +1265,26 @@ class ProfessionalVJControlPanel {
 
         // Effect triggers
         document.querySelectorAll('.effect-trigger-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
+            this.listen(btn, 'click', () => {
+                if (btn.disabled) return;
                 const effect = btn.dataset.anime;
                 this.sendMessage({
                     type: 'anime_trigger',
                     effect: effect,
                     timestamp: Date.now()
                 });
+                btn.disabled = true;
+                btn.classList.add('cooldown');
+                this.scheduleTimeout(() => {
+                    btn.disabled = false;
+                    btn.classList.remove('cooldown');
+                }, 800);
             });
         });
 
         // Effect toggles
         document.querySelectorAll('.effect-toggle').forEach(btn => {
-            btn.addEventListener('click', () => {
+            this.listen(btn, 'click', () => {
                 const effect = btn.dataset.effect;
                 const currentState = this.effects[effect]?.enabled || false;
                 const newState = !currentState;
@@ -1224,12 +1303,13 @@ class ProfessionalVJControlPanel {
         });
 
         // BPM Ripple toggle
-        document.getElementById('toggleBpmRipple')?.addEventListener('click', () => {
+        this.listen(document.getElementById('toggleBpmRipple'), 'click', () => {
             const btn = document.getElementById('toggleBpmRipple');
             if (!btn) return;
             const isOn = btn.getAttribute('data-state') === 'on';
             const newState = !isOn;
             btn.setAttribute('data-state', newState ? 'on' : 'off');
+            btn.setAttribute('aria-pressed', String(newState));
             btn.textContent = newState ? 'ON' : 'OFF';
             this.sendMessage({ type: 'bpm_ripple_toggle', enabled: newState, timestamp: Date.now() });
             // If same tab, toggle immediately for responsiveness
@@ -1260,8 +1340,8 @@ class ProfessionalVJControlPanel {
                 }
             };
             const updateSlider = this._debounce(updateImmediate, 32);
-            slider.addEventListener('input', updateSlider);
-            slider.addEventListener('change', updateImmediate);
+            this.listen(slider, 'input', updateSlider);
+            this.listen(slider, 'change', updateImmediate);
         });
 
         // Color controls
@@ -1287,20 +1367,20 @@ class ProfessionalVJControlPanel {
                     });
                 };
                 const updateColor = this._debounce(updateImmediate, 32);
-                slider.addEventListener('input', updateColor);
-                slider.addEventListener('change', updateImmediate);
+                this.listen(slider, 'input', updateColor);
+                this.listen(slider, 'change', updateImmediate);
             }
         });
 
         // Emergency controls
-        document.getElementById('emergencyStop')?.addEventListener('click', () => {
+        this.listen(document.getElementById('emergencyStop'), 'click', () => {
             this.sendMessage({
                 type: 'emergency_stop',
                 timestamp: Date.now()
             });
         });
 
-        document.getElementById('systemReset')?.addEventListener('click', () => {
+        this.listen(document.getElementById('systemReset'), 'click', () => {
             this.resetAllControls();
             this.sendMessage({
                 type: 'system_reset',
@@ -1309,7 +1389,7 @@ class ProfessionalVJControlPanel {
         });
 
         // System reload (full restart)
-        document.getElementById('systemReload')?.addEventListener('click', () => {
+        this.listen(document.getElementById('systemReload'), 'click', () => {
             // Immediate UI feedback
             const container = document.getElementById('connectionStatus');
             if (container) {
@@ -1340,8 +1420,8 @@ class ProfessionalVJControlPanel {
                 });
             };
             const updateSpeed = this._debounce(updateImmediate, 32);
-            speedSlider.addEventListener('input', updateSpeed);
-            speedSlider.addEventListener('change', updateImmediate);
+            this.listen(speedSlider, 'input', updateSpeed);
+            this.listen(speedSlider, 'change', updateImmediate);
         }
 
         const phaseDurationSlider = document.getElementById('phaseDurationSlider');
@@ -1358,8 +1438,8 @@ class ProfessionalVJControlPanel {
                 });
             };
             const updatePhaseDuration = this._debounce(updateImmediate, 32);
-            phaseDurationSlider.addEventListener('input', updatePhaseDuration);
-            phaseDurationSlider.addEventListener('change', updateImmediate);
+            this.listen(phaseDurationSlider, 'input', updatePhaseDuration);
+            this.listen(phaseDurationSlider, 'change', updateImmediate);
         }
 
         // BPM Tap
@@ -1368,7 +1448,7 @@ class ProfessionalVJControlPanel {
         const bpmDisplay = document.getElementById('bpmValue');
         
         if (tapBPMBtn) {
-            tapBPMBtn.addEventListener('click', () => {
+            this.listen(tapBPMBtn, 'click', () => {
                 const now = Date.now();
                 if (this.lastTap && (now - this.lastTap) < 3000) {
                     const bpm = Math.round(60000 / (now - this.lastTap));
@@ -1399,10 +1479,10 @@ class ProfessionalVJControlPanel {
                 this.sendMessage({ type: 'bpm_change', bpm, timestamp: Date.now() });
             };
 
-            bpmInput.addEventListener('change', () => applyBpm(bpmInput.value));
+            this.listen(bpmInput, 'change', () => applyBpm(bpmInput.value));
             
             // Allow Enter key to apply
-            bpmInput.addEventListener('keypress', (e) => {
+            this.listen(bpmInput, 'keypress', (e) => {
                 if (e.key === 'Enter') {
                     e.preventDefault();
                     applyBpm(bpmInput.value);
@@ -1416,8 +1496,8 @@ class ProfessionalVJControlPanel {
                 const step = shift ? 5 : 1;
                 applyBpm(current + delta * step);
             };
-            document.getElementById('bpmUp')?.addEventListener('click', (e) => { e.preventDefault(); bump(1, e.shiftKey); });
-            document.getElementById('bpmDown')?.addEventListener('click', (e) => { e.preventDefault(); bump(-1, e.shiftKey); });
+            this.listen(document.getElementById('bpmUp'), 'click', (e) => { e.preventDefault(); bump(1, e.shiftKey); });
+            this.listen(document.getElementById('bpmDown'), 'click', (e) => { e.preventDefault(); bump(-1, e.shiftKey); });
         }
 
         // FX Intensity sliders (glitch, particles, noise)
@@ -1437,14 +1517,14 @@ class ProfessionalVJControlPanel {
                     });
                 };
                 const updateFX = this._debounce(updateImmediate, 32);
-                slider.addEventListener('input', updateFX);
-                slider.addEventListener('change', updateImmediate);
+                this.listen(slider, 'input', updateFX);
+                this.listen(slider, 'change', updateImmediate);
             }
         });
 
         // Trigger FX buttons (with short cooldown to prevent spam)
         document.querySelectorAll('.trigger-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
+            this.listen(btn, 'click', () => {
                 const effect = btn.dataset.effect;
                 if (btn.disabled) return;
                 this.sendMessage({
@@ -1455,12 +1535,12 @@ class ProfessionalVJControlPanel {
 
                 // Visual feedback
                 btn.classList.add('active');
-                setTimeout(() => btn.classList.remove('active'), 500);
+                this.scheduleTimeout(() => btn.classList.remove('active'), 500);
 
                 // Cooldown
                 btn.disabled = true;
                 btn.classList.add('cooldown');
-                setTimeout(() => { btn.disabled = false; btn.classList.remove('cooldown'); }, 600);
+                this.scheduleTimeout(() => { btn.disabled = false; btn.classList.remove('cooldown'); }, 600);
             });
         });
 
@@ -1471,17 +1551,18 @@ class ProfessionalVJControlPanel {
 
         // Macro triggers
         document.querySelectorAll('.macro-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
+            this.listen(btn, 'click', () => {
                 const macro = btn.dataset.macro;
                 this.sendMessage({ type: 'trigger_macro', macro, settings: this.triggerSettings, timestamp: Date.now() });
                 btn.disabled = true; btn.classList.add('cooldown');
-                setTimeout(() => { btn.disabled = false; btn.classList.remove('cooldown'); }, 1200);
+                this.scheduleTimeout(() => { btn.disabled = false; btn.classList.remove('cooldown'); }, 1200);
             });
         });
 
         // Animation trigger buttons (data-anime)
         document.querySelectorAll('.anim-trigger-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
+            this.listen(btn, 'click', () => {
+                if (btn.disabled) return;
                 const anime = btn.dataset.anime;
                 console.log('Animation trigger clicked:', anime);
 
@@ -1494,18 +1575,19 @@ class ProfessionalVJControlPanel {
 
                 // Visual feedback
                 btn.classList.add('active');
-                setTimeout(() => btn.classList.remove('active'), 500);
-
-                // Also trigger directly if on same page
-                if (window.vjReceiver && typeof window.vjReceiver.handleAnimeTrigger === 'function') {
-                    window.vjReceiver.handleAnimeTrigger(anime);
-                }
+                this.scheduleTimeout(() => btn.classList.remove('active'), 500);
+                btn.disabled = true;
+                btn.classList.add('cooldown');
+                this.scheduleTimeout(() => {
+                    btn.disabled = false;
+                    btn.classList.remove('cooldown');
+                }, 800);
             });
         });
 
         // Performance mode buttons (legacy)
         document.querySelectorAll('.perf-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
+            this.listen(btn, 'click', () => {
                 const mode = btn.dataset.mode;
                 document.querySelectorAll('.perf-btn').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
@@ -1526,7 +1608,7 @@ class ProfessionalVJControlPanel {
         const modeBtns = document.querySelectorAll('.mode-btn');
         if (modeBtns && modeBtns.length) {
             modeBtns.forEach(btn => {
-                btn.addEventListener('click', () => {
+                this.listen(btn, 'click', () => {
                     const mode = btn.dataset.mode;
                     document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
                     btn.classList.add('active');
@@ -1537,7 +1619,7 @@ class ProfessionalVJControlPanel {
         }
 
         // Diagnostics
-        document.getElementById('runAnimDiagnostics')?.addEventListener('click', () => {
+        this.listen(document.getElementById('runAnimDiagnostics'), 'click', () => {
             this.sendMessage({ type: 'run_animation_diagnostics', timestamp: Date.now() });
             const res = document.getElementById('animDiagnosticsResult');
             if (res) res.textContent = 'Running diagnostics...';
@@ -1547,7 +1629,7 @@ class ProfessionalVJControlPanel {
         // Feature removed from control panel
 
         // Anime kill button (different from emergency stop)
-        document.getElementById('animeKill')?.addEventListener('click', () => {
+        this.listen(document.getElementById('animeKill'), 'click', () => {
             this.animeSystem.enabled = false;
             this.updateAnimeSystemStatus();
             this.sendMessage({
@@ -1559,15 +1641,20 @@ class ProfessionalVJControlPanel {
         // === NEW EFFECT & LAYER CONTROLS ===
 
         // Manual dice roll button (if exists)
-        document.getElementById('rollDiceNow')?.addEventListener('click', () => {
+        this.listen(document.getElementById('rollDiceNow'), 'click', () => {
             this.rollDice();
             this.diceCountdown = this.diceIntervalSeconds;
-            this.updateDiceCountdownDisplay();
+            this.updateDiceCountdownDisplay({ instant: true });
+        });
+
+        this.listen(document.getElementById('clearEventLog'), 'click', () => {
+            this.eventEntries.length = 0;
+            this.renderEventLog();
         });
 
         // Effect toggle buttons (delegated) – supports dynamically injected Lottie buttons
         if (!this._effectToggleDelegated) {
-            document.addEventListener('click', (e) => {
+            this.listen(document, 'click', (e) => {
                 const btn = e.target?.closest?.('.effect-toggle-btn');
                 if (!btn) return;
                 const effect = btn.dataset.effect;
@@ -1575,9 +1662,7 @@ class ProfessionalVJControlPanel {
                 const newState = !currentState;
 
                 // Update button UI
-                btn.dataset.state = newState ? 'on' : 'off';
-                btn.textContent = newState ? 'ON' : 'OFF';
-                btn.classList.toggle('active', newState);
+                this.setEffectToggleState(btn, newState);
 
                 // Lazily track effect state in panel state
                 if (!this.effects[effect]) this.effects[effect] = { enabled: newState, intensity: 50 };
@@ -1602,14 +1687,12 @@ class ProfessionalVJControlPanel {
 
         // Layer toggle buttons
         document.querySelectorAll('.layer-toggle-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
+            this.listen(btn, 'click', () => {
                 const layer = btn.dataset.layer;
                 const currentState = btn.dataset.state === 'on';
                 const newState = !currentState;
 
-                btn.dataset.state = newState ? 'on' : 'off';
-                btn.textContent = newState ? 'ON' : 'OFF';
-                btn.classList.toggle('active', newState);
+                this.setLayerToggleState(btn, newState);
 
                 this.sendMessage({
                     type: 'layer_toggle',
@@ -1623,20 +1706,21 @@ class ProfessionalVJControlPanel {
         });
 
         // Master control buttons
-        document.getElementById('toggleAllEffects')?.addEventListener('click', () => {
+        this.listen(document.getElementById('toggleAllEffects'), 'click', () => {
             // Check if majority are on
             const effectBtns = document.querySelectorAll('.effect-toggle-btn');
             const onCount = Array.from(effectBtns).filter(b => b.dataset.state === 'on').length;
             const newState = onCount < effectBtns.length / 2;
 
             effectBtns.forEach(btn => {
-                btn.dataset.state = newState ? 'on' : 'off';
-                btn.textContent = newState ? 'ON' : 'OFF';
-                btn.classList.toggle('active', newState);
+                this.setEffectToggleState(btn, newState);
+                const effect = btn.dataset.effect;
+                if (!this.effects[effect]) this.effects[effect] = { enabled: newState, intensity: 50 };
+                this.effects[effect].enabled = newState;
 
                 this.sendMessage({
                     type: 'effect_toggle',
-                    effect: btn.dataset.effect,
+                    effect,
                     enabled: newState,
                     timestamp: Date.now()
                 });
@@ -1649,16 +1733,14 @@ class ProfessionalVJControlPanel {
             console.log(`All effects toggled to ${newState ? 'ON' : 'OFF'}`);
         });
 
-        document.getElementById('toggleAllLayers')?.addEventListener('click', () => {
+        this.listen(document.getElementById('toggleAllLayers'), 'click', () => {
             // Check if majority are on
             const layerBtns = document.querySelectorAll('.layer-toggle-btn');
             const onCount = Array.from(layerBtns).filter(b => b.dataset.state === 'on').length;
             const newState = onCount < layerBtns.length / 2;
 
             layerBtns.forEach(btn => {
-                btn.dataset.state = newState ? 'on' : 'off';
-                btn.textContent = newState ? 'ON' : 'OFF';
-                btn.classList.toggle('active', newState);
+                this.setLayerToggleState(btn, newState);
 
                 this.sendMessage({
                     type: 'layer_toggle',
@@ -1671,30 +1753,16 @@ class ProfessionalVJControlPanel {
             console.log(`All layers toggled to ${newState ? 'VISIBLE' : 'HIDDEN'}`);
         });
 
-        document.getElementById('resetVisuals')?.addEventListener('click', () => {
-            // Reset all effects to defaults
-            const defaultEffects = {
-                holographic: true,
-                dataStreams: true,
-                strobeCircles: false,
-                plasma: true,
-                particles: true,
-                noise: true,
-                cyberGrid: true,
-                rgbSplit: false,
-                chromatic: false,
-                scanlines: false,
-                vignette: true,
-                filmgrain: false
-            };
-
+        this.listen(document.getElementById('resetVisuals'), 'click', () => {
+            // Return to the same conservative state used on first boot. A
+            // visual reset must reduce uncertainty and load, never enable a
+            // bundle of persistent effects at once.
             document.querySelectorAll('.effect-toggle-btn').forEach(btn => {
                 const effect = btn.dataset.effect;
-                const defaultState = defaultEffects[effect] !== false;
-
-                btn.dataset.state = defaultState ? 'on' : 'off';
-                btn.textContent = defaultState ? 'ON' : 'OFF';
-                btn.classList.toggle('active', defaultState);
+                const defaultState = Boolean(SAFE_EFFECT_DEFAULTS[effect]);
+                this.setEffectToggleState(btn, defaultState);
+                if (!this.effects[effect]) this.effects[effect] = { enabled: defaultState, intensity: 50 };
+                this.effects[effect].enabled = defaultState;
 
                 this.sendMessage({
                     type: 'effect_toggle',
@@ -1708,14 +1776,11 @@ class ProfessionalVJControlPanel {
             this.updateActiveEffectsCount();
             this.updatePerformanceBars();
 
-            // Reset all layers to visible
+            // Preserve the authored base stack while keeping the optional
+            // overlay layer off, matching the initial command-center state.
             document.querySelectorAll('.layer-toggle-btn').forEach(btn => {
-                const isDebug = btn.dataset.layer === 'debug';
-                const defaultState = !isDebug;
-
-                btn.dataset.state = defaultState ? 'on' : 'off';
-                btn.textContent = defaultState ? 'ON' : 'OFF';
-                btn.classList.toggle('active', defaultState);
+                const defaultState = Boolean(SAFE_LAYER_DEFAULTS[btn.dataset.layer]);
+                this.setLayerToggleState(btn, defaultState);
 
                 this.sendMessage({
                     type: 'layer_toggle',
@@ -1730,11 +1795,28 @@ class ProfessionalVJControlPanel {
     }
 
     updateAnimeSystemStatus() {
-        // Update the status text in the original HTML
-        const statusElement = document.getElementById('animeStatus');
-        if (statusElement) {
-            statusElement.textContent = this.animeSystem.enabled ? 'ENABLED' : 'DISABLED';
-            statusElement.className = this.animeSystem.enabled ? 'status-display enabled' : 'status-display';
+        const enabled = Boolean(this.animeSystem.enabled);
+
+        // Keep both the legacy surface and the command-center surface in sync.
+        // Runtime acknowledgements arrive here, so this is the authoritative
+        // correction path when the engine rejects or changes an optimistic UI
+        // toggle made by the operator.
+        const legacyStatus = document.getElementById('animeStatus');
+        if (legacyStatus) {
+            legacyStatus.textContent = enabled ? 'ENABLED' : 'DISABLED';
+            legacyStatus.className = enabled ? 'status-display enabled' : 'status-display';
+        }
+
+        const commandStatus = document.getElementById('animeSystemStatus');
+        if (commandStatus) commandStatus.textContent = enabled ? 'Enabled' : 'Disabled';
+
+        const commandToggle = document.getElementById('animeToggle');
+        if (commandToggle) {
+            commandToggle.dataset.state = enabled ? 'enabled' : 'disabled';
+            commandToggle.classList.toggle('active', enabled);
+            commandToggle.setAttribute('aria-pressed', String(enabled));
+            commandToggle.setAttribute('aria-label', enabled ? 'Disable animation system' : 'Enable animation system');
+            commandToggle.querySelector('.toggle-status')?.replaceChildren(enabled ? 'ON' : 'OFF');
         }
     }
 
@@ -1784,20 +1866,32 @@ class ProfessionalVJControlPanel {
     // Schedule initial scroll after layout is ready
     scheduleInitialSceneScroll() {
         // Two RAFs to ensure layout calculations are settled
-        requestAnimationFrame(() => requestAnimationFrame(() => this.scrollScenesTo()));
+        this.scheduleFrame(() => this.scheduleFrame(() => this.scrollScenesTo()));
+    }
+
+    setEffectToggleState(button, enabled) {
+        if (!button) return;
+        const isEnabled = Boolean(enabled);
+        button.dataset.state = isEnabled ? 'on' : 'off';
+        button.textContent = isEnabled ? 'ON' : 'OFF';
+        button.classList.toggle('active', isEnabled);
+        button.setAttribute('aria-pressed', String(isEnabled));
+    }
+
+    setLayerToggleState(button, enabled) {
+        if (!button) return;
+        const isEnabled = Boolean(enabled);
+        button.dataset.state = isEnabled ? 'on' : 'off';
+        button.textContent = button.closest('.command-center')
+            ? (isEnabled ? '◉' : '○')
+            : (isEnabled ? 'ON' : 'OFF');
+        button.classList.toggle('active', isEnabled);
+        button.setAttribute('aria-pressed', String(isEnabled));
     }
 
     resetAllControls() {
         // Reset all controls to default values
-        this.effects = {
-            holographic: { enabled: true, intensity: 50 },
-            dataStreams: { enabled: true, intensity: 75 },
-            strobeCircles: { enabled: false, intensity: 30 },
-            plasma: { enabled: true, intensity: 15 },
-            particles: { enabled: true, intensity: 50 },
-            noise: { enabled: true, intensity: 25 },
-            cyberGrid: { enabled: true, intensity: 80 }
-        };
+        this.effects = createSafeEffectState();
 
         this.colorMatrix = {
             hue: 0,
@@ -1818,8 +1912,7 @@ class ProfessionalVJControlPanel {
         Object.entries(this.effects).forEach(([effect, state]) => {
             const toggle = document.querySelector(`[data-effect="${effect}"]`);
             if (toggle) {
-                toggle.textContent = state.enabled ? 'ON' : 'OFF';
-                toggle.setAttribute('data-state', state.enabled ? 'on' : 'off');
+                this.setEffectToggleState(toggle, state.enabled);
             }
 
             const slider = document.getElementById(effect + 'Intensity');
@@ -1852,6 +1945,28 @@ class ProfessionalVJControlPanel {
     sendMessage(data) {
         data._id = Date.now().toString(36) + Math.random().toString(36).substr(2);
 
+        const eventLabels = {
+            anime_enable: ['ANIMATION', 'SYSTEM ENABLED', 'success'],
+            anime_disable: ['ANIMATION', 'SYSTEM DISABLED', 'warning'],
+            anime_kill_all: ['ANIMATION', 'KILL ALL', 'danger'],
+            anime_pause_all: ['ANIMATION', 'PAUSE ALL', 'warning'],
+            anime_resume_all: ['ANIMATION', 'RESUME ALL', 'success'],
+            anime_reset_all: ['ANIMATION', 'RESET ALL', 'success'],
+            anime_clear_queue: ['ANIMATION', 'QUEUE CLEARED', 'info'],
+            anime_safe_mode: ['ANIMATION', 'SAFE MODE', 'warning'],
+            anime_trigger: ['ANIMATION', `TRIGGER ${data.effect || data.id || 'UNKNOWN'}`, 'info'],
+            performance_mode: ['PERFORMANCE', `PROFILE ${String(data.mode || 'auto').toUpperCase()}`, 'info'],
+            trigger_effect: ['FX', `TRIGGER ${String(data.effect || 'UNKNOWN').toUpperCase()}`, 'info'],
+            trigger_macro: ['MACRO', String(data.macro || 'UNKNOWN').toUpperCase(), 'warning'],
+            scene_change: ['SCENE', String(data.scene || 'UNKNOWN').toUpperCase(), 'info'],
+            effect_toggle: ['FX', `${String(data.effect || 'UNKNOWN').toUpperCase()} ${data.enabled ? 'ON' : 'OFF'}`, data.enabled ? 'success' : 'warning'],
+            layer_toggle: ['LAYER', `${String(data.layer || 'UNKNOWN').toUpperCase()} ${data.visible ? 'VISIBLE' : 'HIDDEN'}`, data.visible ? 'success' : 'warning'],
+            emergency_stop: ['SYSTEM', 'EMERGENCY STOP', 'danger'],
+            system_reset: ['SYSTEM', 'RESET REQUESTED', 'warning']
+        };
+        const eventLabel = eventLabels[data.type];
+        if (eventLabel) this.recordEvent(...eventLabel);
+
         if (this.channel) {
             this.channel.postMessage(data);
         }
@@ -1879,11 +1994,12 @@ class ProfessionalVJControlPanel {
                     lastMsgElement.textContent = data.message || '—';
                     lastMsgElement.style.color = '#00ff85';
                     lastMsgElement.classList.add('triggered');
-                    setTimeout(() => {
+                    this.scheduleTimeout(() => {
                         lastMsgElement.style.color = '#ff00ff';
                         lastMsgElement.classList.remove('triggered');
                     }, 3000);
                 }
+                this.recordEvent('MATRIX', `MESSAGE ${data.message || '—'}`, 'matrix');
                 break;
             }
             case 'detailed_performance_update': {
@@ -1904,6 +2020,15 @@ class ProfessionalVJControlPanel {
                 break;
             case 'pong':
                 this.lastPingResponse = Date.now();
+                if (data.effectStates) {
+                    this.syncEffectStates(data.effectStates);
+                } else {
+                    this.sendControlConnect();
+                }
+                if (typeof data.animeEnabled === 'boolean') {
+                    this.animeSystem.enabled = data.animeEnabled;
+                    this.updateAnimeSystemStatus();
+                }
                 if (!this.isConnected) {
                     this.isConnected = true;
                     this.updateConnectionStatus(true);
@@ -1911,16 +2036,25 @@ class ProfessionalVJControlPanel {
                 break;
             case 'settings_sync':
                 this.lastPingResponse = Date.now();
+                this.syncEffectStates(data.effectStates || data.settings?.effectStates || {});
+                if (typeof data.animeEnabled === 'boolean' || typeof data.settings?.animeEnabled === 'boolean') {
+                    this.animeSystem.enabled = data.animeEnabled ?? data.settings.animeEnabled;
+                    this.updateAnimeSystemStatus();
+                }
                 if (!this.isConnected) {
                     this.isConnected = true;
                     this.updateConnectionStatus(true);
                 }
+                break;
+            case 'effect_state':
+                this.syncEffectStates({ [data.effect]: Boolean(data.enabled) });
                 break;
             case 'scene_changed': {
                 const scene = (data.scene || '').toLowerCase();
                 this.updateAutoSceneHighlight(scene);
                 // Also center the scene button in view
                 this.scrollScenesTo(scene);
+                this.recordEvent('SCENE', `ACTIVE ${scene.toUpperCase()}`, 'info');
                 break;
             }
             case 'performance_mode_updated': {
@@ -1955,25 +2089,59 @@ class ProfessionalVJControlPanel {
 
     updatePerformanceDisplay(data) {
         if (data.fps !== undefined) {
+            const fpsValue = Math.max(0, Math.round(Number(data.fps) || 0));
+            this.performance.fps = fpsValue;
             const fpsElement = document.getElementById('performanceFPS');
-            if (fpsElement) {
-                fpsElement.textContent = Math.round(data.fps);
-            }
+            const headerFpsElement = document.getElementById('fpsCounter');
+            if (fpsElement) fpsElement.textContent = fpsValue;
+            if (headerFpsElement) headerFpsElement.textContent = fpsValue;
+            this.samplePerformance(data.fps);
         }
 
         if (data.memory !== undefined) {
+            const memoryBytes = Math.max(0, Number(data.memory) || 0);
+            this.performance.memory = memoryBytes > 1024 * 1024
+                ? Math.round(memoryBytes / 1024 / 1024)
+                : Math.round(memoryBytes);
             const memoryElement = document.getElementById('memoryUsage');
             if (memoryElement) {
-                memoryElement.textContent = Math.round(data.memory / 1024 / 1024);
+                memoryElement.textContent = this.performance.memory;
             }
         }
 
-        if (data.activeEffects !== undefined) {
+        const activeEffects = data.activeEffects ?? data.activeFx;
+        if (activeEffects !== undefined) {
+            this.performance.activeEffects = Math.max(0, Number(activeEffects) || 0);
             const effectsElement = document.getElementById('activeEffects');
             if (effectsElement) {
-                effectsElement.textContent = data.activeEffects;
+                effectsElement.textContent = this.performance.activeEffects;
             }
         }
+
+        if (data.domNodes !== undefined) {
+            this.performance.domNodes = Math.max(0, Number(data.domNodes) || 0);
+            const domElement = document.getElementById('domNodes');
+            if (domElement) domElement.textContent = this.performance.domNodes;
+        }
+
+        this.updatePerformanceBars();
+    }
+
+    syncEffectStates(states = {}) {
+        if (Object.keys(states).length > 0) this.hasEffectStateSync = true;
+        Object.entries(states).forEach(([effect, enabled]) => {
+            if (!effect) return;
+            const isEnabled = Boolean(enabled);
+            if (!this.effects[effect]) this.effects[effect] = { enabled: isEnabled, intensity: 50 };
+            this.effects[effect].enabled = isEnabled;
+            document.querySelectorAll(
+                `.effect-toggle-btn[data-effect="${CSS.escape(effect)}"], .effect-toggle[data-effect="${CSS.escape(effect)}"]`
+            ).forEach((button) => {
+                this.setEffectToggleState(button, isEnabled);
+            });
+        });
+        this.updateActiveEffectsCount();
+        this.updatePerformanceBars();
     }
 
     updateConnectionStatus() {
@@ -2017,7 +2185,7 @@ class ProfessionalVJControlPanel {
         this.sendPing();
 
         // Monitor connection with ping/pong (managed)
-        this.connectionInterval = intervalManager.set('prof-panel-connection-monitor', () => {
+        this.connectionInterval = this.setManagedInterval('prof-panel-connection-monitor', () => {
             // Check if last ping was answered
             const timeSinceLastResponse = Date.now() - this.lastPingResponse;
 
@@ -2032,20 +2200,20 @@ class ProfessionalVJControlPanel {
 
             // Send new ping
             this.sendPing();
+            if (!this.hasEffectStateSync) this.sendControlConnect();
         }, this.pingTimeout);
 
         // Listen for pong responses
-        window.addEventListener('storage', (e) => {
+        this.listen(window, 'storage', (e) => {
             if (e.key === '3886_vj_response') {
                 try {
                     const data = JSON.parse(e.newValue);
                     if (data.type === 'pong' || data.type === 'settings_sync') {
-                        this.lastPingResponse = Date.now();
-                        if (!this.isConnected) {
-                            this.isConnected = true;
-                            this.updateConnectionStatus(true);
-                            console.log('📡 Connection established');
-                        }
+                        // VJReceiver mirrors critical handshake payloads to
+                        // localStorage. Process the complete payload so the
+                        // fallback path hydrates states instead of merely
+                        // painting the connection badge green.
+                        this.handleMainPageMessage(data);
                     }
                 } catch (err) {
                     // Ignore parse errors
@@ -2054,7 +2222,7 @@ class ProfessionalVJControlPanel {
         });
 
         // Also check for window focus/blur events
-        window.addEventListener('visibilitychange', () => {
+        this.listen(document, 'visibilitychange', () => {
             if (document.hidden) {
                 // Tab is hidden, but don't immediately disconnect
                 console.log('📡 Control panel tab hidden');
@@ -2066,7 +2234,7 @@ class ProfessionalVJControlPanel {
         });
 
         // Keyboard shortcuts for performance mode: L (low), A (auto), H (high)
-        document.addEventListener('keydown', (e) => {
+        this.listen(document, 'keydown', (e) => {
             const tag = (e.target && e.target.tagName) || '';
             if (tag === 'INPUT' || tag === 'TEXTAREA' || e.target?.isContentEditable) return;
             const k = e.key?.toLowerCase?.();
@@ -2099,24 +2267,25 @@ class ProfessionalVJControlPanel {
         this.updateLastDiceRollDisplay();
 
         // Use interval manager's shared 1Hz ticker instead of custom implementation
-        const ensureTicker = () => {
-            return {
-                subscribe(fn) {
-                    const intervalId = intervalManager.set('prof-panel-dice-ticker-' + Math.random().toString(36).substr(2, 9), fn, 1000);
-                    return () => intervalManager.clear(intervalId);
-                }
-            };
-        };
-        const ticker = ensureTicker();
         if (this._diceUnsub) this._diceUnsub();
-        this._diceUnsub = ticker.subscribe(() => {
+        const diceIntervalId = this.setManagedInterval('prof-panel-dice-ticker', () => {
             this.diceCountdown--;
+            this.updateDiceCountdownDisplay();
             if (this.diceCountdown <= 0) {
                 this.rollDice();
-                this.diceCountdown = this.diceIntervalSeconds;
+                // Keep zero visible briefly so the arc reaches its terminal
+                // state before the next cycle refills without a reverse sweep.
+                this.scheduleTimeout(() => {
+                    this.diceCountdown = this.diceIntervalSeconds;
+                    this.updateDiceCountdownDisplay({ instant: true });
+                }, 180);
             }
-            this.updateDiceCountdownDisplay();
-        });
+        }, 1000);
+        this._diceUnsub = () => {
+            if (diceIntervalId === null) return;
+            intervalManager.clear(diceIntervalId);
+            this.intervalIds.delete(diceIntervalId);
+        };
     }
 
     // Test method to force a high roll (for testing message display)
@@ -2132,7 +2301,7 @@ class ProfessionalVJControlPanel {
             lastMsgElement.textContent = randomMessage;
             lastMsgElement.style.color = '#00ff85';
             lastMsgElement.classList.add('triggered');
-            setTimeout(() => {
+            this.scheduleTimeout(() => {
                 lastMsgElement.style.color = '';
                 lastMsgElement.classList.remove('triggered');
             }, 3000);
@@ -2177,7 +2346,7 @@ class ProfessionalVJControlPanel {
         }
     }
 
-    updateDiceCountdownDisplay() {
+    updateDiceCountdownDisplay({ instant = false } = {}) {
         const countdownEl = document.getElementById('diceCountdown');
         if (countdownEl) {
             countdownEl.textContent = this.diceCountdown;
@@ -2198,11 +2367,18 @@ class ProfessionalVJControlPanel {
         // Update countdown SVG circle animation
         const countdownCircle = document.getElementById('countdownCircle');
         if (countdownCircle) {
-            // Calculate stroke-dashoffset based on countdown.
-            const circumference = 176; // 2 * PI * 28 (radius)
-            const progress = (this.diceIntervalSeconds - this.diceCountdown) / this.diceIntervalSeconds;
-            const offset = circumference * (1 - progress);
-            countdownCircle.style.strokeDashoffset = offset;
+            // Drain a full ring toward zero as the roll approaches. The SVG
+            // pathLength keeps this independent of its rendered size.
+            const circumference = 100; // SVG pathLength normalizes the ring
+            const interval = Math.max(1, this.diceIntervalSeconds);
+            const remaining = Math.max(0, Math.min(1, this.diceCountdown / interval));
+            const offset = circumference * (1 - remaining);
+            countdownCircle.classList.toggle('is-finishing', !instant && remaining === 0);
+            countdownCircle.classList.toggle('is-resetting', instant);
+            countdownCircle.style.strokeDashoffset = String(offset);
+            if (instant) {
+                this.scheduleFrame(() => countdownCircle.classList.remove('is-resetting', 'is-finishing'));
+            }
 
             // Change color based on countdown
             if (this.diceCountdown <= 3) {
@@ -2238,8 +2414,8 @@ class ProfessionalVJControlPanel {
 
         // Update Memory bar
         const memBar = document.querySelector('.mem-bar');
-        if (memBar && window.performanceStatsController) {
-            const memPercent = window.performanceStatsController.memory.percent || 0;
+        if (memBar) {
+            const memPercent = Math.min(100, (this.performance.memory / 2048) * 100);
             memBar.style.width = memPercent + '%';
 
             // Color coding
@@ -2254,8 +2430,8 @@ class ProfessionalVJControlPanel {
 
         // Update DOM bar
         const domBar = document.querySelector('.dom-bar');
-        if (domBar && window.performanceStatsController) {
-            const domNodes = window.performanceStatsController.domNodes || 0;
+        if (domBar) {
+            const domNodes = this.performance.domNodes || 0;
             const domPercent = Math.min((domNodes / 10000) * 100, 100);
             domBar.style.width = domPercent + '%';
 
@@ -2294,29 +2470,142 @@ class ProfessionalVJControlPanel {
         const lastRollEl = document.getElementById('lastDiceRoll');
         if (lastRollEl) {
             const roll = this.lastDiceRoll;
-            const triggered = roll > 90;
+            const triggered = roll >= this.matrixMessageRollThreshold;
 
-            // Simple display showing roll value and trigger status
-            lastRollEl.textContent = `${roll}/100 ${triggered ? '✓' : ''}`;
-
-            // Update color based on trigger
-            lastRollEl.style.color = triggered ? '#00ff41' : '#666';
-            lastRollEl.style.fontWeight = triggered ? 'bold' : 'normal';
+            lastRollEl.textContent = String(roll).padStart(2, '0');
+            lastRollEl.dataset.triggered = String(triggered);
+            const previousRoll = document.getElementById('lastRollValue');
+            if (previousRoll) previousRoll.textContent = String(roll);
 
             // Add pulse animation if triggered
             if (triggered) {
                 lastRollEl.style.animation = 'none';
-                setTimeout(() => {
+                this.scheduleTimeout(() => {
                     lastRollEl.style.animation = 'pulse 0.5s ease';
                 }, 10);
             }
         }
+
+        const thresholdEl = document.getElementById('matrixDiceThreshold');
+        if (thresholdEl) {
+            thresholdEl.textContent = `>= ${this.matrixMessageRollThreshold}`;
+        }
+    }
+
+    samplePerformance(fps) {
+        const value = Number(fps);
+        const now = performance.now();
+        if (!Number.isFinite(value) || now - this.lastPerformanceSampleAt < 800) return;
+        this.lastPerformanceSampleAt = now;
+        this.performanceSamples.push(Math.max(1, Math.min(120, value)));
+        if (this.performanceSamples.length > this.maxPerformanceSamples) {
+            this.performanceSamples.shift();
+        }
+
+        const path = document.getElementById('fpsTrendPath');
+        if (path && this.performanceSamples.length > 1) {
+            const width = 600;
+            const height = 170;
+            const points = this.performanceSamples.map((sample, index) => {
+                const x = (index / (this.maxPerformanceSamples - 1)) * width;
+                const frameTime = Math.min(33.3, 1000 / Math.max(1, sample));
+                const y = height - (frameTime / 33.3) * height;
+                return `${index === 0 ? 'M' : 'L'}${x.toFixed(1)},${y.toFixed(1)}`;
+            });
+            const line = points.join(' ');
+            path.setAttribute('d', line);
+            const area = document.getElementById('fpsTrendArea');
+            if (area) area.setAttribute('d', `${line} L${width},${height} L0,${height} Z`);
+        }
+
+        const recent = this.performanceSamples.slice(-10);
+        const average = recent.reduce((sum, sample) => sum + sample, 0) / Math.max(1, recent.length);
+        const frameTimes = recent.map(sample => 1000 / Math.max(1, sample)).sort((a, b) => a - b);
+        const averageFrameTime = frameTimes.reduce((sum, sample) => sum + sample, 0) / Math.max(1, frameTimes.length);
+        const p95Index = Math.min(frameTimes.length - 1, Math.ceil(frameTimes.length * .95) - 1);
+        const p95 = frameTimes[Math.max(0, p95Index)] || 0;
+        const dropped = this.performanceSamples.filter(sample => sample < 55).length;
+        const droppedPercent = this.performanceSamples.length ? dropped / this.performanceSamples.length * 100 : 0;
+        const averageElement = document.getElementById('averageFrameTime');
+        const p95Element = document.getElementById('p95FrameTime');
+        const droppedElement = document.getElementById('droppedFrames');
+        if (averageElement) averageElement.textContent = `${averageFrameTime.toFixed(1)} ms`;
+        if (p95Element) p95Element.textContent = `${p95.toFixed(1)} ms`;
+        if (droppedElement) droppedElement.textContent = `${dropped} (${droppedPercent.toFixed(1)}%)`;
+        const health = average >= 55 ? 'GOOD' : average >= 42 ? 'DEGRADED' : 'CRITICAL';
+        const tone = average >= 55 ? 'good' : average >= 42 ? 'warning' : 'danger';
+        const healthElement = document.getElementById('performanceHealth');
+        const railHealth = document.getElementById('railHealthText');
+        const qualityProfile = document.getElementById('qualityProfile');
+        const adaptiveState = document.getElementById('adaptiveState');
+        if (qualityProfile) {
+            const inferred = average >= 55 ? 'HIGH' : average >= 42 ? 'MEDIUM' : 'LOW';
+            qualityProfile.textContent = this.performance.mode === 'auto' ? `ADAPTIVE: ${inferred}` : String(this.performance.mode || inferred).toUpperCase();
+        }
+        if (adaptiveState) adaptiveState.textContent = tone === 'good' ? 'STABLE' : health;
+        if (healthElement) {
+            healthElement.textContent = health;
+            healthElement.dataset.tone = tone;
+        }
+        if (railHealth) {
+            railHealth.textContent = tone === 'good' ? 'SYSTEM OK' : `SYSTEM ${health}`;
+            railHealth.dataset.tone = tone;
+        }
+    }
+
+    recordEvent(channel, message, tone = 'info') {
+        this.eventEntries.push({
+            time: new Date().toLocaleTimeString('en-GB', { hour12: false }),
+            channel,
+            message,
+            tone
+        });
+        if (this.eventEntries.length > this.maxEventEntries) {
+            this.eventEntries.splice(0, this.eventEntries.length - this.maxEventEntries);
+        }
+        this.renderEventLog();
+    }
+
+    renderEventLog() {
+        const container = document.getElementById('eventLog');
+        const count = document.getElementById('eventLogCount');
+        if (count) count.textContent = String(this.eventEntries.length);
+        if (!container) return;
+
+        if (this.eventEntries.length === 0) {
+            container.replaceChildren(Object.assign(document.createElement('div'), {
+                className: 'event-log__empty',
+                textContent: 'WAITING FOR OPERATOR INPUT'
+            }));
+            return;
+        }
+
+        const fragment = document.createDocumentFragment();
+        this.eventEntries.forEach((entry) => {
+            const row = document.createElement('div');
+            row.className = `event-log__row event-log__row--${entry.tone}`;
+            row.dataset.tone = entry.tone;
+
+            const time = document.createElement('time');
+            time.className = 'event-log__time';
+            time.textContent = entry.time;
+            const channel = document.createElement('span');
+            channel.className = 'event-log__channel';
+            channel.textContent = entry.channel;
+            const message = document.createElement('span');
+            message.className = 'event-log__message';
+            message.textContent = entry.message;
+            row.append(time, channel, message);
+            fragment.appendChild(row);
+        });
+        container.replaceChildren(fragment);
+        container.scrollTop = container.scrollHeight;
     }
 
     startSystemMonitoring() {
         // Update system uptime (managed)
         const startTime = Date.now();
-        intervalManager.set('prof-panel-system-monitoring', () => {
+        this.systemMonitoringInterval = this.setManagedInterval('prof-panel-system-monitoring', () => {
             const uptime = Date.now() - startTime;
             const hours = Math.floor(uptime / 3600000).toString().padStart(2, '0');
             const minutes = Math.floor((uptime % 3600000) / 60000).toString().padStart(2, '0');
@@ -2337,100 +2626,49 @@ class ProfessionalVJControlPanel {
     }
 
     startPerformanceMonitoring() {
-        // Prefer shared performance bus so values match the main page
-        if (window.performanceBus && typeof window.performanceBus.subscribe === 'function') {
-            window.performanceBus.subscribe(({ fps }) => {
-                const value = Number.isFinite(fps) ? fps : 0;
-                this.performance.fps = value;
-                const fpsElement = document.getElementById('fpsCounter');
-                if (fpsElement) {
-                    fpsElement.textContent = value;
-                    fpsElement.classList.remove('warning', 'danger');
-                    if (value < 30) {
-                        fpsElement.classList.add('danger');
-                    } else if (value < 50) {
-                        fpsElement.classList.add('warning');
-                    }
-                }
-            });
-        } else {
-            // Fallback: local rAF averaging (kept for offline debugging)
-            let frameTimes = [];
-            let lastTime = performance.now();
-            let lastUpdateTime = 0;
-            const updateInterval = 500; // Update every 500ms
-            const measureFPS = (currentTime) => {
-                const deltaTime = currentTime - lastTime;
-                lastTime = currentTime;
-                frameTimes.push(deltaTime);
-                if (frameTimes.length > 60) frameTimes.shift();
-                if (currentTime - lastUpdateTime > updateInterval) {
-                    const avgFrameTime = frameTimes.reduce((a, b) => a + b, 0) / frameTimes.length;
-                    const fps = Math.round(1000 / avgFrameTime);
-                    this.performance.fps = fps;
-                    const fpsElement = document.getElementById('fpsCounter');
-                    if (fpsElement) {
-                        fpsElement.textContent = fps;
-                        fpsElement.classList.remove('warning', 'danger');
-                        if (fps < 30) fpsElement.classList.add('danger');
-                        else if (fps < 50) fpsElement.classList.add('warning');
-                    }
-                    lastUpdateTime = currentTime;
-                }
-                requestAnimationFrame(measureFPS);
-            };
-            requestAnimationFrame(measureFPS);
-        }
-
-        // Memory and DOM monitoring (managed)
-        intervalManager.set('prof-panel-performance-monitoring', () => {
-            // Memory usage (if available)
-            if (performance.memory) {
-                const memUsed = performance.memory.usedJSHeapSize / (1024 * 1024);
-                this.performance.memory = Math.round(memUsed);
-
-                const memElement = document.getElementById('memoryUsage');
-                if (memElement) {
-                    memElement.textContent = this.performance.memory;
-                }
-            }
-
-            // DOM node count
-            this.performance.domNodes = document.querySelectorAll('*').length;
-            const domElement = document.getElementById('domNodes');
-            if (domElement) {
-                domElement.textContent = this.performance.domNodes;
-            }
-
-            // Count active effects
-            let activeCount = 0;
-            for (let effect in this.effects) {
-                if (this.effects[effect].enabled) activeCount++;
-            }
-            const effectsElement = document.getElementById('activeEffects');
-            if (effectsElement) {
-                effectsElement.textContent = activeCount;
-            }
-
-            // Send performance data to main page
-            this.sendMessage({
-                type: 'performance_stats',
-                fps: this.performance.fps,
-                memory: this.performance.memory,
-                domNodes: this.performance.domNodes,
-                activeEffects: activeCount,
-                timestamp: Date.now()
-            });
-        }, 2000); // Update every 2 seconds
-
-        // Request the main page's live performance once per second (managed)
-        intervalManager.set('prof-panel-performance-requests', () => {
+        // The control surface displays engine telemetry, not its own rendering
+        // speed. A local RAF sampler and a second hidden dashboard previously
+        // consumed frames while reporting the wrong page. Request the engine's
+        // canonical metrics at a modest cadence instead.
+        this.sendMessage({ type: 'request_performance', timestamp: Date.now() });
+        this.performanceRequestInterval = this.setManagedInterval('prof-panel-performance-requests', () => {
             this.sendMessage({ type: 'request_performance', timestamp: Date.now() });
-        }, 1000);
+        }, 2000);
+    }
+
+    destroy() {
+        if (this.destroyed) return;
+        this.destroyed = true;
+        this.abortController.abort();
+        this._diceUnsub?.();
+        this._diceUnsub = null;
+        this.intervalIds.forEach(id => intervalManager.clear(id));
+        this.intervalIds.clear();
+        this.timeoutIds.forEach(id => window.clearTimeout(id));
+        this.timeoutIds.clear();
+        this.rafIds.forEach(id => window.cancelAnimationFrame(id));
+        this.rafIds.clear();
+        this.disposers.forEach(disposer => {
+            try { disposer(); } catch (_) {}
+        });
+        this.disposers.clear();
+        if (this.channel) {
+            this.channel.onmessage = null;
+            this.channel.close();
+            this.channel = null;
+        }
+        document.querySelectorAll('.cooldown').forEach(button => {
+            button.classList.remove('cooldown');
+            if ('disabled' in button) button.disabled = false;
+        });
+        this.initialized = false;
+        this.isTransitioning = false;
+        if (window.VJControlPanel === this) window.VJControlPanel = null;
     }
 }
 
 // Initialize the professional control panel
+window.VJControlPanel?.destroy?.();
 const professionalVJPanel = new ProfessionalVJControlPanel();
 window.VJControlPanel = professionalVJPanel;
 

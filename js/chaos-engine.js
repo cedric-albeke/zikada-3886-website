@@ -2,11 +2,13 @@ import * as THREE from 'three';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
-import { GlitchPass } from 'three/examples/jsm/postprocessing/GlitchPass.js';
-import { FilmPass } from 'three/examples/jsm/postprocessing/FilmPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { createNoise3D } from 'simplex-noise';
 import gsap from 'gsap';
+import animationRuntime from './runtime/animation-runtime.js';
+
+const SOFTWARE_RENDER_FPS = 15;
+const SOFTWARE_PARTICLE_CAP = 120;
 
 // Safe GSAP wrapper to prevent null target errors
 function safeGsapTo(targets, vars) {
@@ -37,19 +39,30 @@ class ChaosEngine {
         this.camera = null;
         this.renderer = null;
         this.composer = null;
+        this.bloomPass = null;
         this.clock = new THREE.Clock();
         this.noise3D = createNoise3D();
         this.meshes = [];
         this.particles = null;
         this.glitchPass = null;
         this.chromaticAberrationPass = null;
+        this.chromaPulseTween = null;
+        this.phaseTimeline = null;
+        this.glitchTimeline = null;
+        this.glitchTimerOwner = 'chaos-engine:glitch-timers';
         this.animationPhase = 0;
         this.isInitialized = false;
+        this.isRunning = false;
+        this.animationFrameId = null;
+        this.softwareRenderer = false;
+        this.rendererInfo = '';
 
         // Performance optimizations
         this.particleCount = 500; // PERFORMANCE: Reduced from 800 (was 2000) for better FPS
         this.frameCounter = 0;
         this.updateFrequency = 2; // Update particles every N frames
+        this.renderFpsCap = 60;
+        this.lastRenderAt = 0;
         this.performanceMode = 'high';
         this.originalPositions = null;
         
@@ -71,9 +84,14 @@ class ChaosEngine {
         this.particleAdjustListener = (e) => this.adjustParticleCount(e.detail.count);
         this.postProcessListener = (e) => this.adjustPostProcessing(e.detail.quality);
 
-        // Listen for performance adjustments
+        this.attachEventListeners();
+    }
+
+    attachEventListeners() {
+        if (this._listenersAttached) return;
         window.addEventListener('adjustParticles', this.particleAdjustListener);
         window.addEventListener('adjustPostProcessing', this.postProcessListener);
+        this._listenersAttached = true;
     }
     
     // Three.js resource tracking helper methods
@@ -147,6 +165,8 @@ class ChaosEngine {
             this.destroy();
         }
 
+        this.attachEventListeners();
+
         this.setupRenderer();
 
         // Initialize Three.js Particle Optimizer early with renderer before creating particles
@@ -164,6 +184,7 @@ class ChaosEngine {
         this.createParticles();
         this.setupPostProcessing();
         this.setupAnimations();
+        this.isRunning = true;
         this.animate();
 
         // Adaptive performance based on shared FPS bus
@@ -187,26 +208,29 @@ class ChaosEngine {
             this.currentPixelRatio = this.basePixelRatio;
             this._currentProfile = 'high';
             const thresholds = {
-                // Enter thresholds (hysteresis): leave/add buffers to avoid oscillation
-                highUp: 53,   // need >= 53 avgFPS to climb to high
-                highDown: 45, // drop below -> to medium
-                medUp: 46,    // need >= 46 to climb from low to medium
-                medDown: 33,  // drop below -> to low
+                // Policy: 60 FPS target, 45 FPS action threshold, 30 FPS hard floor.
+                highUp: 60,
+                highDown: 45,
+                medUp: 45,
+                medDown: 30,
             };
             const applyProfile = (profile) => {
                 switch (profile) {
                     case 'low':
-                        this.updateFrequency = 4;
+                        this.updateFrequency = 6;
+                        this.setRenderFpsCap(24);
                         this.adjustPostProcessing('low');
-                        this.setPixelRatio(1);
+                        this.setPixelRatio(0.65);
                         break;
                     case 'medium':
-                        this.updateFrequency = 3;
+                        this.updateFrequency = 4;
+                        this.setRenderFpsCap(40);
                         this.adjustPostProcessing('medium');
-                        this.setPixelRatio(Math.min(1.25, this.basePixelRatio));
+                        this.setPixelRatio(Math.min(0.85, this.basePixelRatio));
                         break;
                     default:
                         this.updateFrequency = 2;
+                        this.setRenderFpsCap(60);
                         this.adjustPostProcessing('high');
                         this.setPixelRatio(this.basePixelRatio);
                         break;
@@ -235,14 +259,22 @@ class ChaosEngine {
     }
 
     setPixelRatio(value) {
-        const v = Math.max(0.75, Math.min(2, Number(value) || 1));
+        const v = Math.max(0.5, Math.min(2, Number(value) || 1));
         if (Math.abs(v - this.currentPixelRatio) < 0.05) return;
         this.currentPixelRatio = v;
         try {
             this.renderer.setPixelRatio(v);
+            if (this.composer && typeof this.composer.setPixelRatio === 'function') {
+                this.composer.setPixelRatio(v);
+            }
             // Trigger a resize to update composer targets
             this.handleResize();
         } catch (_) {}
+    }
+
+    setRenderFpsCap(value) {
+        this.renderFpsCap = Math.max(10, Math.min(120, Number(value) || 60));
+        this.lastRenderAt = 0;
     }
 
     setupRenderer() {
@@ -254,10 +286,28 @@ class ChaosEngine {
             stencil: false,  // PERFORMANCE: Disable stencil buffer if not needed
             depth: true  // Keep depth buffer for 3D rendering
         });
+        try {
+            const gl = this.renderer.getContext();
+            const debugInfo = gl?.getExtension?.('WEBGL_debug_renderer_info');
+            this.rendererInfo = debugInfo
+                ? String(gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL) || '')
+                : String(gl?.getParameter?.(gl.RENDERER) || '');
+            this.softwareRenderer = /swiftshader|llvmpipe|software|microsoft basic render|\bwarp\b/i.test(this.rendererInfo);
+        } catch (_) {
+            this.rendererInfo = '';
+            this.softwareRenderer = false;
+        }
+        if (this.softwareRenderer) {
+            this.particleCount = Math.min(this.particleCount, SOFTWARE_PARTICLE_CAP);
+            this.performanceMode = 'low';
+            this.updateFrequency = Math.max(this.updateFrequency, 6);
+            this.setRenderFpsCap(SOFTWARE_RENDER_FPS);
+            console.warn(`[ChaosEngine] Software renderer detected; starting in safe mode (${this.rendererInfo})`);
+        }
         this.renderer.setSize(window.innerWidth, window.innerHeight);
         // PERFORMANCE: Cap pixel ratio at 1.5 instead of 2 to reduce pixel count by ~44%
         // On a 4K display, pixelRatio=2 means rendering 8K worth of pixels!
-        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+        this.renderer.setPixelRatio(this.softwareRenderer ? 0.5 : Math.min(window.devicePixelRatio, 1.5));
         this.renderer.setClearColor(0x000000, 0);
 
         // Insert canvas behind pre-loader content
@@ -428,7 +478,18 @@ class ChaosEngine {
     }
 
     setupPostProcessing() {
+        if (this.softwareRenderer) {
+            this.composer = null;
+            this.bloomPass = null;
+            this.glitchPass = null;
+            this.filmPass = null;
+            this.chromaticAberrationPass = null;
+            return;
+        }
         this.composer = new EffectComposer(this.renderer);
+        if (typeof this.composer.setPixelRatio === 'function') {
+            this.composer.setPixelRatio(this.renderer.getPixelRatio?.() || 1);
+        }
 
         // Render pass
         const renderPass = new RenderPass(this.scene, this.camera);
@@ -443,6 +504,7 @@ class ChaosEngine {
             0.88  // threshold (increased from 0.85 - less bloom = better performance)
         );
         this.composer.addPass(bloomPass);
+        this.bloomPass = bloomPass;
 
         // Glitch pass (lazy-initialized when needed)
         this.glitchPass = null;
@@ -488,8 +550,12 @@ class ChaosEngine {
     }
 
     setupAnimations() {
+        this.phaseTimeline?.kill();
+        this.glitchTimeline?.kill();
+        animationRuntime.disposeOwner(this.glitchTimerOwner);
+
         // Phase 1: Slow build-up (0-10 seconds)
-        gsap.timeline({ repeat: -1 })
+        this.phaseTimeline = gsap.timeline({ repeat: -1 })
             .to(this, {
                 animationPhase: 1,
                 duration: 10,
@@ -520,13 +586,13 @@ class ChaosEngine {
 
         // Periodic glitch triggers (only if glitch pass is available)
         if (this.glitchPass) {
-            gsap.timeline({ repeat: -1 })
+            this.glitchTimeline = gsap.timeline({ repeat: -1 })
                 .to(this.glitchPass, {
                     duration: 0.1,
                     enabled: true,
                     delay: 3,
                     onComplete: () => {
-                        setTimeout(() => {
+                        animationRuntime.scheduleTimeout(this.glitchTimerOwner, () => {
                             if (this.glitchPass) this.glitchPass.enabled = false;
                         }, Math.random() * 200 + 100);
                     }
@@ -536,7 +602,7 @@ class ChaosEngine {
                     enabled: true,
                     delay: 5,
                     onComplete: () => {
-                        setTimeout(() => {
+                        animationRuntime.scheduleTimeout(this.glitchTimerOwner, () => {
                             if (this.glitchPass) this.glitchPass.enabled = false;
                         }, Math.random() * 300 + 100);
                     }
@@ -545,7 +611,7 @@ class ChaosEngine {
 
         // Chromatic aberration pulsing (only if pass is available)
         if (this.chromaticAberrationPass && this.chromaticAberrationPass.uniforms && this.chromaticAberrationPass.uniforms.amount) {
-            gsap.to(this.chromaticAberrationPass.uniforms.amount, {
+            this.chromaPulseTween = gsap.to(this.chromaticAberrationPass.uniforms.amount, {
                 value: 0.01,
                 duration: 2,
                 yoyo: true,
@@ -580,14 +646,20 @@ class ChaosEngine {
     }
 
     animate() {
-        // Always schedule next frame to keep loop alive
-        requestAnimationFrame(() => this.animate());
+        if (!this.isRunning) return;
+
+        // Store the handle so force-restart/destroy cannot leave zombie render loops.
+        this.animationFrameId = requestAnimationFrame(() => this.animate());
 
         // Skip heavy work in hidden tabs
         if (document.hidden) return;
 
-        const time = this.clock.getElapsedTime();
-        const delta = this.clock.getDelta();
+        const frameNow = performance.now();
+        const minFrameMs = 1000 / this.renderFpsCap;
+        if (this.lastRenderAt && frameNow - this.lastRenderAt < minFrameMs) return;
+        const delta = this.lastRenderAt ? (frameNow - this.lastRenderAt) / 1000 : 0;
+        this.lastRenderAt = frameNow;
+        const time = frameNow / 1000;
 
         // Animate meshes with null checks
         if (Array.isArray(this.meshes)) {
@@ -718,16 +790,41 @@ class ChaosEngine {
     }
 
     hasActivePostProcessing() {
+        const bloom = !!(this.bloomPass && this.bloomPass.enabled);
         const glitch = !!(this.glitchPass && this.glitchPass.enabled);
         const chromaAmt = this.chromaticAberrationPass?.uniforms?.amount?.value || 0;
         const chroma = chromaAmt > 0.001;
         const film = !!(this.filmPass && this.filmPass.enabled);
-        return glitch || chroma || film;
+        return bloom || glitch || chroma || film;
+    }
+
+    stop() {
+        this.isRunning = false;
+        if (this.animationFrameId !== null) {
+            cancelAnimationFrame(this.animationFrameId);
+            this.animationFrameId = null;
+        }
+        this.phaseTimeline?.pause();
+        this.glitchTimeline?.pause();
+        this.chromaPulseTween?.pause();
+        animationRuntime.disposeOwner(this.glitchTimerOwner);
+    }
+
+    start() {
+        if (!this.isInitialized || this.isRunning) return false;
+        this.isRunning = true;
+        this.lastRenderAt = 0;
+        this.clock.start();
+        this.phaseTimeline?.resume();
+        this.glitchTimeline?.resume();
+        if (this.performanceMode === 'high') this.chromaPulseTween?.resume();
+        this.animate();
+        return true;
     }
 
     handleResize() {
         // Defensive checks to prevent errors during reinitialization
-        if (!this.camera || !this.renderer || !this.composer) {
+        if (!this.camera || !this.renderer) {
             console.debug('[ChaosEngine] handleResize called but resources not ready, skipping');
             return;
         }
@@ -740,7 +837,7 @@ class ChaosEngine {
             this.camera.updateProjectionMatrix();
 
             this.renderer.setSize(width, height);
-            this.composer.setSize(width, height);
+            this.composer?.setSize?.(width, height);
         } catch (error) {
             console.warn('[ChaosEngine] Error during handleResize:', error);
         }
@@ -766,48 +863,44 @@ class ChaosEngine {
 
         switch (quality) {
             case 'low':
+                if (this.chromaPulseTween) this.chromaPulseTween.pause();
                 if (this.glitchPass) this.glitchPass.enabled = false;
-                this.chromaticAberrationPass.uniforms.amount.value = 0.0005;
-                // Keep film grain on but at a lower intensity
-                if (!this.filmPass) {
-                    const fp = new FilmPass(0.12, 0.01, 648, false);
-                    fp.enabled = true; this.composer.addPass(fp); this.filmPass = fp;
-                } else {
-                    this.filmPass.enabled = true;
-                    if (this.filmPass.uniforms) {
-                        if (this.filmPass.uniforms.nIntensity) this.filmPass.uniforms.nIntensity.value = 0.12;
-                        if (this.filmPass.uniforms.sIntensity) this.filmPass.uniforms.sIntensity.value = 0.01;
-                    }
+                if (this.filmPass) this.filmPass.enabled = false;
+                if (this.bloomPass) this.bloomPass.enabled = false;
+                if (this.chromaticAberrationPass?.uniforms?.amount) {
+                    this.chromaticAberrationPass.uniforms.amount.value = 0;
                 }
                 break;
             case 'medium':
-                if (!this.glitchPass) { this.glitchPass = new GlitchPass(); this.glitchPass.enabled = true; this.composer.addPass(this.glitchPass); }
-                else this.glitchPass.enabled = true;
-                this.chromaticAberrationPass.uniforms.amount.value = 0.002;
-                // Keep film grain on with moderate intensity
-                if (!this.filmPass) {
-                    const fp = new FilmPass(0.2, 0.015, 648, false);
-                    fp.enabled = true; this.composer.addPass(fp); this.filmPass = fp;
-                } else {
-                    this.filmPass.enabled = true;
-                    if (this.filmPass.uniforms) {
-                        if (this.filmPass.uniforms.nIntensity) this.filmPass.uniforms.nIntensity.value = 0.2;
-                        if (this.filmPass.uniforms.sIntensity) this.filmPass.uniforms.sIntensity.value = 0.015;
-                    }
+                if (this.chromaPulseTween) this.chromaPulseTween.pause();
+                if (this.glitchPass) this.glitchPass.enabled = false;
+                if (this.filmPass) this.filmPass.enabled = false;
+                if (this.bloomPass) {
+                    this.bloomPass.enabled = true;
+                    this.bloomPass.strength = 0.75;
+                    this.bloomPass.radius = 0.22;
+                    this.bloomPass.threshold = 0.9;
+                }
+                if (this.chromaticAberrationPass?.uniforms?.amount) {
+                    this.chromaticAberrationPass.uniforms.amount.value = 0.0015;
                 }
                 break;
             case 'high':
-                if (!this.glitchPass) { this.glitchPass = new GlitchPass(); this.glitchPass.enabled = true; this.composer.addPass(this.glitchPass); }
-                else this.glitchPass.enabled = true;
-                this.chromaticAberrationPass.uniforms.amount.value = 0.005;
-                if (!this.filmPass) { const fp = new FilmPass(0.35, 0.025, 648, false); fp.enabled = true; this.composer.addPass(fp); this.filmPass = fp; }
-                else {
-                    this.filmPass.enabled = true;
-                    if (this.filmPass.uniforms) {
-                        if (this.filmPass.uniforms.nIntensity) this.filmPass.uniforms.nIntensity.value = 0.35;
-                        if (this.filmPass.uniforms.sIntensity) this.filmPass.uniforms.sIntensity.value = 0.025;
-                    }
+                if (this.chromaPulseTween) this.chromaPulseTween.resume();
+                if (this.bloomPass) {
+                    this.bloomPass.enabled = true;
+                    this.bloomPass.strength = 1.2;
+                    this.bloomPass.radius = 0.3;
+                    this.bloomPass.threshold = 0.88;
                 }
+                // Glitch and grain are composed by AmbientCanvasRenderer at a
+                // profile-scaled backing resolution. Keeping equivalent
+                // full-resolution post-processing passes alive here caused
+                // duplicate fullscreen sampling and made GlitchPass permanent
+                // because it was created after its short timeline was built.
+                if (this.glitchPass) this.glitchPass.enabled = false;
+                this.chromaticAberrationPass.uniforms.amount.value = 0.005;
+                if (this.filmPass) this.filmPass.enabled = false;
                 break;
         }
         
@@ -821,10 +914,10 @@ class ChaosEngine {
             let targetPixelRatio;
             switch (quality) {
                 case 'low':
-                    targetPixelRatio = 0.75;
+                    targetPixelRatio = 0.65;
                     break;
                 case 'medium':
-                    targetPixelRatio = 1.0;
+                    targetPixelRatio = 0.85;
                     break;
                 case 'high':
                 default:
@@ -838,9 +931,31 @@ class ChaosEngine {
     }
 
     destroy() {
+        this.stop();
+
         // CRITICAL FIX: Remove event listeners using stored references
         window.removeEventListener('adjustParticles', this.particleAdjustListener);
         window.removeEventListener('adjustPostProcessing', this.postProcessListener);
+        this._listenersAttached = false;
+
+        if (typeof this._perfUnsub === 'function') {
+            try { this._perfUnsub(); } catch (_) {}
+            this._perfUnsub = null;
+        }
+
+        if (this.chromaPulseTween) {
+            this.chromaPulseTween.kill();
+            this.chromaPulseTween = null;
+        }
+        if (this.phaseTimeline) {
+            this.phaseTimeline.kill();
+            this.phaseTimeline = null;
+        }
+        if (this.glitchTimeline) {
+            this.glitchTimeline.kill();
+            this.glitchTimeline = null;
+        }
+        animationRuntime.disposeOwner(this.glitchTimerOwner);
 
         // Dispose tracked geometries
         this.trackedGeometries.forEach(geometry => {
@@ -888,7 +1003,7 @@ class ChaosEngine {
         this.lightCount = 0;
 
         // Remove all remaining children from scene
-        const childrenToRemove = [...this.scene.children];
+        const childrenToRemove = this.scene?.children ? [...this.scene.children] : [];
         childrenToRemove.forEach(child => {
             if (child) {
                 this.scene.remove(child);
@@ -903,6 +1018,8 @@ class ChaosEngine {
         
         // Dispose main renderer
         if (this.renderer) {
+            try { this.renderer.forceContextLoss?.(); } catch (_) {}
+            try { this.renderer.domElement?.remove(); } catch (_) {}
             this.renderer.dispose();
             this.renderer = null;
         }
@@ -914,6 +1031,7 @@ class ChaosEngine {
         this.originalPositions = null;
         this.scene = null;
         this.camera = null;
+        this.isInitialized = false;
         
         // Cleanup particle optimizer
         if (window.THREEJS_PARTICLE_OPTIMIZER) {

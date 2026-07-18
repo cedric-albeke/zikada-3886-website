@@ -8,7 +8,7 @@
     "dev-clean": "npm run kill-servers && npm run clear-cache && vite --port 3886 --host 127.0.0.1 --force",
     "kill-servers": "kill-port 3886 || echo Port 3886 clean",
     "clear-cache": "rimraf node_modules/.vite && rimraf dist && echo Cache cleared",
-    "prebuild": "node scripts/copy-static-assets.js || echo 'Skipping prebuild (assets may already be in public/)'",
+    "prebuild": "node scripts/extract-lottie-json.mjs && node scripts/copy-static-assets.js || echo 'Skipping prebuild (assets may already be in public/)'",
     "build": "vite build",
     "test:runtime": "node scripts/runtime-guardrails.mjs",
     "start": "npx http-server dist -p ${PORT:-3886} -a 0.0.0.0",
@@ -42,15 +42,16 @@
   "license": "UNLICENSED",
   "devDependencies": {
     "@playwright/test": "^1.55.1",
+    "fflate": "^0.8.2",
     "http-server": "^14.1.1",
     "kill-port": "^2.0.1",
     "rimraf": "^6.0.1",
     "vite": "^5.4.20"
   },
   "dependencies": {
-    "@lottiefiles/lottie-player": "^2.0.12",
     "animejs": "^3.2.1",
     "gsap": "^3.13.0",
+    "lottie-web": "^5.13.0",
     "postprocessing": "^6.36.4",
     "simplex-noise": "^4.0.3",
     "three": "^0.169.0"

@@ -8,6 +8,15 @@ import filterManager from './filter-manager.js';
 import fxController from './fx-controller.js';
 import animationManager from './animation-manager.js';
 import vjMessaging, { MESSAGE_TYPES } from './vj-messaging.js';
+import animationRuntime from './runtime/animation-runtime.js';
+import triggerRuntime from './runtime/trigger-runtime.js';
+import performanceBus from './performance-bus.js';
+
+const VJ_LIFECYCLE_OWNER = 'vj-receiver:lifecycle';
+const VJ_PERFORMANCE_OWNER = 'vj-receiver:performance';
+const VJ_BPM_OWNER = 'vj-receiver:bpm-ripple';
+const VJ_HOOK_OWNER = 'vj-receiver:chaos-hook';
+const VJ_DEBUG_OWNER = 'vj-receiver:debug';
 
 // Ensure GSAP is globally available
 if (typeof window !== 'undefined' && !window.gsap) {
@@ -101,6 +110,7 @@ class VJReceiver {
         this.bpmRippleEnabled = false;
         this.bpmRippleInterval = null;
         this.clickRippleEnabled = false; // disable click-based ripple by default to avoid on-click animations
+        this.layerStyleSnapshots = new WeakMap();
         this.currentSettings = {
             colors: {
                 hue: 0,
@@ -128,6 +138,10 @@ class VJReceiver {
 
         this.animeEnabled = false;
         this.activeFx = 0;
+        this.triggerRuntime = triggerRuntime;
+        this.triggerRuntime.setChangeHandler(stats => {
+            this.activeFx = stats.active;
+        });
         this.fpsMonitor = null;
         this.localStoragePollingHandle = null; // Track localStorage polling interval
         
@@ -141,6 +155,10 @@ class VJReceiver {
 
     init() {
         console.log('🎮 VJ Receiver initializing...');
+
+        // Re-initialization and HMR must never stack receiver schedulers.
+        [VJ_LIFECYCLE_OWNER, VJ_PERFORMANCE_OWNER, VJ_BPM_OWNER, VJ_HOOK_OWNER]
+            .forEach(owner => animationRuntime.disposeOwner(owner));
         
         // Initialize VJ messaging system handlers
         this.initVJMessaging();
@@ -158,12 +176,13 @@ class VJReceiver {
         this.setupClickRipple();
 
         // If no control panel connects shortly, enable autonomous MATRIX dice as fallback
-        this._fallbackArmTimeout = setTimeout(() => {
+        this._fallbackArmTimeout = animationRuntime.scheduleTimeout(VJ_LIFECYCLE_OWNER, () => {
             if (!this.hasControlPanel && window.matrixMessages && typeof window.matrixMessages.enableAutonomousDiceMode === 'function') {
                 console.log('🕒 No control panel detected — enabling autonomous MATRIX dice mode');
                 window.matrixMessages.enableAutonomousDiceMode();
                 this._fallbackDiceEnabled = true;
             }
+            this._fallbackArmTimeout = null;
         }, 12000);
     }
     
@@ -330,7 +349,12 @@ class VJReceiver {
                     window.matrixMessages.disableAutonomousDiceMode();
                     this._fallbackDiceEnabled = false;
                 }
-                this.sendMessage({ type: 'pong' });
+                this.sendMessage({
+                    type: 'pong',
+                    settings: this.currentSettings,
+                    effectStates: this.getEffectStates(),
+                    animeEnabled: this.animeEnabled
+                });
                 break;
 
             case 'scene_change':
@@ -438,6 +462,67 @@ class VJReceiver {
                 this.sendAnimeStatus('disabled', false, { success: true });
                 break;
 
+            case 'anime_pause_all':
+                console.log('⏸️ Processing anime_pause_all');
+                try { window.animeManager?.pauseAll?.(); } catch (_) {}
+                try { window.animationManager?.pauseAll?.(); } catch (_) {}
+                try { window.animeEnhancedEffects?.pause?.(); } catch (_) {}
+                this.sendAnimeStatus('paused', this.animeEnabled, {
+                    success: true,
+                    stats: window.animationManager?.getStats?.()
+                });
+                break;
+
+            case 'anime_resume_all':
+                console.log('▶️ Processing anime_resume_all');
+                this.setAnimeFlag(true);
+                try { window.animeManager?.resumeAll?.(); } catch (_) {}
+                try { window.animationManager?.resumeAll?.(); } catch (_) {}
+                try { window.animeEnhancedEffects?.resume?.(); } catch (_) {}
+                this.sendAnimeStatus('resumed', true, {
+                    success: true,
+                    stats: window.animationManager?.getStats?.()
+                });
+                break;
+
+            case 'anime_reset_all':
+                console.log('🔄 Processing anime_reset_all');
+                try { window.animeManager?.killAll?.(); } catch (_) {}
+                try { window.animationManager?.reset?.(); } catch (_) {}
+                this.setAnimeFlag(true);
+                try { window.animeManager?.resumeAll?.(); } catch (_) {}
+                this.sendAnimeStatus('reset', true, {
+                    success: true,
+                    stats: window.animationManager?.getStats?.()
+                });
+                break;
+
+            case 'anime_clear_queue': {
+                const cleared = window.animationManager?.clearQueue?.() || 0;
+                this.sendAnimeStatus('queue_cleared', this.animeEnabled, {
+                    success: true,
+                    cleared,
+                    stats: window.animationManager?.getStats?.()
+                });
+                break;
+            }
+
+            case 'anime_safe_mode':
+                console.log('🛡️ Processing anime_safe_mode');
+                try { window.animeManager?.killAll?.(); } catch (_) {}
+                try { window.animationManager?.cleanup?.(); } catch (_) {}
+                try { window.animationManager?.setSafeMode?.(true); } catch (_) {}
+                this.setPerformanceMode('low');
+                ['strobeCircles', 'plasma', 'dataStreams'].forEach(effect => {
+                    try { this.toggleEffect(effect, false); } catch (_) {}
+                });
+                this.setAnimeFlag(true);
+                this.sendAnimeStatus('safe_mode', true, {
+                    success: true,
+                    stats: window.animationManager?.getStats?.()
+                });
+                break;
+
             case 'anime_kill':
             case 'anime_kill_all':  // Support control panel alias
                 console.log('💀 Processing anime_kill');
@@ -468,6 +553,18 @@ class VJReceiver {
                 this.toggleLayer(data.layer, data.visible);
                 break;
             }
+
+            case 'layer_blend':
+                this.setLayerBlend(data.layer, data.blend);
+                break;
+
+            case 'layer_fx':
+                this.setLayerFx(data.layer, Boolean(data.enabled));
+                break;
+
+            case 'layer_mask':
+                this.setLayerMask(data.layer, Boolean(data.enabled));
+                break;
 
             // Logo animation controls
             case 'logo_pulse_trigger':
@@ -552,6 +649,13 @@ class VJReceiver {
                 if (window.matrixMessages && window.matrixMessages.showMessage) {
                     window.matrixMessages.showMessage(data.message);
                     // Acknowledge immediately that the message display has started
+                    this.sendMessage({
+                        type: 'matrix_message_displayed',
+                        message: data.message,
+                        timestamp: Date.now()
+                    });
+                } else if (window.ChaosControl && typeof window.ChaosControl.showMatrixMessage === 'function') {
+                    window.ChaosControl.showMatrixMessage(data.message);
                     this.sendMessage({
                         type: 'matrix_message_displayed',
                         message: data.message,
@@ -706,9 +810,30 @@ class VJReceiver {
         // Send current settings
         this.sendMessage({
             type: 'settings_sync',
-            settings: this.currentSettings
+            settings: this.currentSettings,
+            effectStates: this.getEffectStates()
         });
         this.sendAnimeStatus('status', this.animeEnabled);
+    }
+
+    getEffectStates() {
+        const states = window.fxController?.effectStates || {};
+        const particleMaterial = window.chaosEngine?.particles?.material;
+        const ambientChannels = window.ambientCanvasRenderer?.getStats?.().channels || {};
+        return {
+            holographic: Boolean(states.holographic),
+            dataStreams: Boolean(states.dataStreams),
+            strobeCircles: Boolean(states.strobeCircles),
+            plasma: Boolean(states.plasma),
+            particles: states.particles ?? Boolean(particleMaterial && particleMaterial.opacity > 0),
+            noise: Boolean(states.noise),
+            cyberGrid: Boolean(states.cyberGrid),
+            rgbSplit: Boolean(states.rgbSplit),
+            chromatic: Boolean(states.chromatic),
+            scanlines: Boolean(states.scanlines),
+            vignette: Boolean(states.vignette),
+            filmgrain: states.filmgrain ?? Boolean(ambientChannels.filmGrain?.enabled)
+        };
     }
 
     changeScene(scene) {
@@ -851,18 +976,22 @@ class VJReceiver {
 
     updateSpeed(value) {
         this.currentSettings.speed = value;
+        const numericValue = Number(value);
+        const speedMultiplier = Number.isFinite(numericValue)
+            ? Math.max(0.1, Math.min(3, numericValue > 10 ? numericValue / 100 : numericValue))
+            : 1;
 
         // Update GSAP global timeline scale
-        gsap.globalTimeline.timeScale(value);
+        gsap.globalTimeline.timeScale(speedMultiplier);
 
         // Keep anime.js timelines in sync when available
         if (window.animeManager && typeof window.animeManager.setSpeed === 'function') {
-            window.animeManager.setSpeed(value);
+            window.animeManager.setSpeed(speedMultiplier);
         }
 
         // Update timing controller if available
         if (window.timingController) {
-            window.timingController.setGlobalSpeed(value);
+            window.timingController.setGlobalSpeed(speedMultiplier);
         }
     }
 
@@ -951,80 +1080,35 @@ class VJReceiver {
     }
 
     triggerEffect(effect) {
-        console.log(`⚡ Triggering effect: ${effect}`);
-        this.activeFx++;
-
-        // Adjust effect strength/duration using fx intensities
-        const mult = window.fxController ? window.fxController.globalMult : 1;
-        const glitchI = window.fxController ? window.fxController.getIntensity('glitch') : 0.5;
-        const particlesI = window.fxController ? window.fxController.getIntensity('particles') : 0.5;
-        const distortionI = window.fxController ? window.fxController.getIntensity('distortion') : 0.5;
-        const noiseI = window.fxController ? window.fxController.getIntensity('noise') : 0.5;
-
-        switch(effect) {
-            case 'strobe':
-                this.triggerStrobe();
-                break;
-            case 'blackout':
-                this.triggerBlackout();
-                break;
-            case 'whiteout':
-                this.triggerWhiteout();
-                break;
-            case 'rgbsplit':
-                this.triggerRGBSplit();
-                break;
-            case 'shake':
-                this.triggerShake();
-                break;
-            case 'ripple':
-                this.triggerRipple();
-                break;
-            case 'pulse':
-                this.triggerPulse();
-                break;
-            case 'matrix-rain':
-                this.triggerMatrixRain();
-                break;
-            case 'cosmic':
-                this.triggerCosmicBurst();
-                break;
-            case 'vignette-pulse':
-                this.triggerVignettePulse();
-                break;
-            case 'scanlines-sweep':
-                this.triggerScanlinesSweep();
-                break;
-            case 'chroma-pulse':
-                this.triggerChromaticPulse();
-                break;
-            case 'noise-burst':
-                this.triggerNoiseBurst();
-                break;
-            case 'grid-flash':
-                this.triggerGridFlash();
-                break;
-            case 'lens-flare':
-                this.triggerLensFlare();
-                break;
-            case 'zoom-blur':
-                this.triggerZoomBlurPulse();
-                break;
-            case 'invert-flicker':
-                this.triggerInvertFlicker();
-                break;
-            case 'spotlight-sweep':
-                this.triggerSpotlightSweep();
-                break;
-            case 'heat-shimmer':
-                this.triggerHeatShimmer();
-                break;
+        const definitions = {
+            strobe: { method: 'triggerStrobe', maxNodes: 1 },
+            blackout: { method: 'triggerBlackout', maxNodes: 1, resources: ['screen-flash'] },
+            whiteout: { method: 'triggerWhiteout', maxNodes: 1, resources: ['screen-flash'] },
+            rgbsplit: { method: 'triggerRGBSplit', maxNodes: 0, resources: ['body-filter'] },
+            shake: { method: 'triggerShake', maxNodes: 8, resources: ['ripple'] },
+            ripple: { method: 'triggerRipple', maxNodes: 8, resources: ['ripple'] },
+            pulse: { method: 'triggerPulse', maxNodes: 0, resources: ['logo-transform'] },
+            'matrix-rain': { method: 'triggerMatrixRain', maxNodes: 16 },
+            cosmic: { method: 'triggerCosmicBurst', maxNodes: 1, resources: ['lottie-speed'] },
+            'vignette-pulse': { method: 'triggerVignettePulse', maxNodes: 1 },
+            'scanlines-sweep': { method: 'triggerScanlinesSweep', maxNodes: 1 },
+            'chroma-pulse': { method: 'triggerChromaticPulse', maxNodes: 0, resources: ['chromatic-pass'] },
+            'noise-burst': { method: 'triggerNoiseBurst', maxNodes: 1, resources: ['noise-intensity'] },
+            'grid-flash': { method: 'triggerGridFlash', maxNodes: 1, resources: ['cyber-grid'] },
+            'lens-flare': { method: 'triggerLensFlare', maxNodes: 1 },
+            'zoom-blur': { method: 'triggerZoomBlurPulse', maxNodes: 0, resources: ['body-filter', 'logo-transform'] },
+            'invert-flicker': { method: 'triggerInvertFlicker', maxNodes: 1, resources: ['screen-flash'] },
+            'spotlight-sweep': { method: 'triggerSpotlightSweep', maxNodes: 1 },
+            'heat-shimmer': { method: 'triggerHeatShimmer', maxNodes: 1 }
+        };
+        const definition = definitions[effect];
+        if (!definition || typeof this[definition.method] !== 'function') {
+            console.warn(`⚠️ Unknown trigger effect ignored: ${effect}`);
+            return false;
         }
 
-        // Decrement active effects counter after effect duration
-        setTimeout(() => {
-            this.activeFx--;
-        }, 2000);
+        console.log(`⚡ Triggering effect: ${effect}`);
+        return this.triggerRuntime.start(effect, scope => this[definition.method](scope), definition);
     }
 
     _mergeTriggerSettings(s) {
@@ -1047,17 +1131,37 @@ class VJReceiver {
     // Macro sequences
     runMacro(id) {
         const speed = this.triggerSettings.speed || 0.6;
-        const delay = (ms) => new Promise(r => setTimeout(r, ms));
         const step = Math.max(80, Math.round(220 - speed * 150));
-        const seq = async (arr) => {
-            for (const e of arr) { this.triggerEffect(e); await delay(step + Math.random()*80); }
+        const owner = 'trigger-macro';
+        animationRuntime.disposeOwner(owner);
+        const seq = (arr) => {
+            let elapsed = 0;
+            arr.forEach((effect, index) => {
+                if (index > 0) elapsed += step + Math.round(Math.random() * 80);
+                animationRuntime.scheduleTimeout(owner, () => this.triggerEffect(effect), elapsed);
+            });
         };
         switch ((id || '').toLowerCase()) {
             case 'glitch':
                 seq(['chroma-pulse', 'rgbsplit', 'invert-flicker', 'scanlines-sweep']);
                 break;
             case 'wave':
-                seq(['spotlight-sweep', 'ripple', 'digital-wave', 'lens-flare']);
+                seq(['spotlight-sweep', 'ripple', 'matrix-rain', 'lens-flare']);
+                break;
+            case 'surge':
+                seq(['matrix-rain', 'chroma-pulse', 'zoom-blur', 'strobe']);
+                break;
+            case 'void':
+                seq(['vignette-pulse', 'blackout', 'noise-burst', 'invert-flicker']);
+                break;
+            case 'signal':
+                seq(['scanlines-sweep', 'rgbsplit', 'grid-flash', 'heat-shimmer']);
+                break;
+            case 'bloom':
+                seq(['spotlight-sweep', 'lens-flare', 'whiteout', 'pulse']);
+                break;
+            case 'collapse':
+                seq(['zoom-blur', 'heat-shimmer', 'blackout', 'strobe']);
                 break;
             default:
                 // impact
@@ -1065,7 +1169,7 @@ class VJReceiver {
         }
     }
 
-    triggerVignettePulse() {
+    triggerVignettePulse(scope) {
         const overlay = document.createElement('div');
         overlay.style.cssText = `
             position: fixed; inset: 0; pointer-events: none; z-index: 10000;
@@ -1073,12 +1177,13 @@ class VJReceiver {
                 rgba(0,0,0,0) 30%, rgba(0,0,0,0.4) 60%, rgba(0,0,0,0.8) 100%);
             opacity: 0;
         `;
-        document.body.appendChild(overlay);
-        gsap.to(overlay, { opacity: 1, duration: 0.15, ease: 'power2.out' });
-        gsap.to(overlay, { opacity: 0, duration: 0.4, ease: 'power2.in', delay: 0.15, onComplete: () => overlay.remove() });
+        scope.append(overlay);
+        scope.trackAnimation(gsap.to(overlay, { opacity: 1, duration: 0.15, ease: 'power2.out' }));
+        scope.trackAnimation(gsap.to(overlay, { opacity: 0, duration: 0.4, ease: 'power2.in', delay: 0.15 }));
+        scope.completeAfter(700);
     }
 
-    triggerScanlinesSweep() {
+    triggerScanlinesSweep(scope) {
         const overlay = document.createElement('div');
         overlay.style.cssText = `
             position: fixed; inset: 0; pointer-events: none; z-index: 10000;
@@ -1086,19 +1191,22 @@ class VJReceiver {
             transform: translateY(-10px);
             opacity: 0.8;
         `;
-        document.body.appendChild(overlay);
-        gsap.to(overlay, { y: window.innerHeight + 10, duration: 0.6, ease: 'linear' });
-        gsap.to(overlay, { opacity: 0, duration: 0.2, delay: 0.45, onComplete: () => overlay.remove() });
+        scope.append(overlay);
+        scope.trackAnimation(gsap.to(overlay, { y: window.innerHeight + 10, duration: 0.6, ease: 'linear' }));
+        scope.trackAnimation(gsap.to(overlay, { opacity: 0, duration: 0.2, delay: 0.45 }));
+        scope.completeAfter(800);
     }
 
-    triggerChromaticPulse() {
+    triggerChromaticPulse(scope) {
         try {
             const ce = window.chaosEngine;
             if (ce && ce.chromaticAberrationPass) {
                 const u = ce.chromaticAberrationPass.uniforms;
                 const base = u.amount.value;
-                gsap.to(u.amount, { value: Math.max(base, 0.01), duration: 0.1, ease: 'power2.out' });
-                gsap.to(u.amount, { value: base, duration: 0.25, delay: 0.12, ease: 'power2.in' });
+                scope.cleanup(() => { u.amount.value = base; });
+                scope.trackAnimation(gsap.to(u.amount, { value: Math.max(base, 0.01), duration: 0.1, ease: 'power2.out' }));
+                scope.trackAnimation(gsap.to(u.amount, { value: base, duration: 0.25, delay: 0.12, ease: 'power2.in' }));
+                scope.completeAfter(500);
                 return;
             }
         } catch {}
@@ -1107,19 +1215,24 @@ class VJReceiver {
             const current = window.getComputedStyle(document.body).filter;
             const pulsedFilter = current === 'none' ? 'hue-rotate(45deg)' : `${current} hue-rotate(45deg)`;
             window.filterManager.applyImmediate(pulsedFilter, { duration: 0.1 });
-            setTimeout(() => {
+            scope.cleanup(() => window.filterManager.applyImmediate(current === 'none' ? 'none' : current, { duration: 0.1 }));
+            scope.timeout(() => {
                 window.filterManager.applyImmediate(current === 'none' ? 'none' : current, { duration: 0.15 });
             }, 250);
+            scope.completeAfter(500);
+            return;
         }
+        scope.finish();
     }
 
-    triggerNoiseBurst() {
+    triggerNoiseBurst(scope) {
         // Prefer fxController intensity pulse
         try {
             if (window.fxController) {
                 const current = window.fxController.getIntensity('noise');
                 window.fxController.setIntensity({ noise: Math.min(1, current + 0.5) });
-                setTimeout(() => window.fxController.setIntensity({ noise: current }), 300);
+                scope.cleanup(() => window.fxController.setIntensity({ noise: current }));
+                scope.completeAfter(350);
                 return;
             }
         } catch {}
@@ -1130,17 +1243,19 @@ class VJReceiver {
             background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Cfilter id='n'%3E%3CfeTurbulence baseFrequency='0.9' /%3E%3C/filter%3E%3Crect width='100' height='100' filter='url(%23n)' opacity='0.9'/%3E%3C/svg%3E");
             background-size: 200px 200px;
         `;
-        document.body.appendChild(overlay);
-        gsap.to(overlay, { opacity: 0, duration: 0.3, ease: 'power2.in', onComplete: () => overlay.remove() });
+        scope.append(overlay);
+        scope.trackAnimation(gsap.to(overlay, { opacity: 0, duration: 0.3, ease: 'power2.in' }));
+        scope.completeAfter(400);
     }
-    triggerGridFlash() {
+    triggerGridFlash(scope) {
         // Pulse cyber grid via fxController state, restore after
         try {
             const fx = window.fxController;
             if (fx) {
                 const wasOn = !!fx.effectStates?.cyberGrid;
                 fx.setEffectEnabled('cyberGrid', true);
-                setTimeout(() => fx.setEffectEnabled('cyberGrid', wasOn), 500);
+                scope.cleanup(() => fx.setEffectEnabled('cyberGrid', wasOn));
+                scope.completeAfter(550);
                 return;
             }
         } catch {}
@@ -1152,11 +1267,12 @@ class VJReceiver {
                 repeating-linear-gradient(0deg, rgba(0,255,133,0.15) 0px, transparent 1px, transparent 40px, rgba(0,255,133,0.15) 40px),
                 repeating-linear-gradient(90deg, rgba(0,255,133,0.15) 0px, transparent 1px, transparent 40px, rgba(0,255,133,0.15) 40px);
         `;
-        document.body.appendChild(grid);
-        gsap.to(grid, { opacity: 0, duration: 0.3, ease: 'power2.in', onComplete: () => grid.remove() });
+        scope.append(grid);
+        scope.trackAnimation(gsap.to(grid, { opacity: 0, duration: 0.3, ease: 'power2.in' }));
+        scope.completeAfter(400);
     }
 
-    triggerLensFlare() {
+    triggerLensFlare(scope) {
         // Lightweight diagonal flare sweep
         const flare = document.createElement('div');
         flare.style.cssText = `
@@ -1164,33 +1280,37 @@ class VJReceiver {
             background: radial-gradient(closest-side, rgba(255,255,255,0.25), rgba(255,255,255,0) 60%);
             mix-blend-mode: screen; opacity: 0; transform: rotate(25deg) translateX(-50%);
         `;
-        document.body.appendChild(flare);
-        gsap.to(flare, { opacity: 1, duration: 0.05, ease: 'power2.out' });
-        gsap.to(flare, { x: window.innerWidth * 1.5, duration: 0.6, ease: 'power2.inOut' });
-        gsap.to(flare, { opacity: 0, duration: 0.25, delay: 0.35, onComplete: () => flare.remove() });
+        scope.append(flare);
+        scope.trackAnimation(gsap.to(flare, { opacity: 1, duration: 0.05, ease: 'power2.out' }));
+        scope.trackAnimation(gsap.to(flare, { x: window.innerWidth * 1.5, duration: 0.6, ease: 'power2.inOut' }));
+        scope.trackAnimation(gsap.to(flare, { opacity: 0, duration: 0.25, delay: 0.35 }));
+        scope.completeAfter(750);
     }
 
-    triggerZoomBlurPulse() {
+    triggerZoomBlurPulse(scope) {
         // Subtle zoom + blur pulse on main elements
         const targets = '.pre-loader, .bg, .image-wrapper, .image-2, .logo-text-wrapper';
         const current = window.getComputedStyle(document.body).filter;
-        gsap.to(targets, { scale: 1.06, duration: 0.12, ease: 'power2.out' });
+        scope.trackAnimation(gsap.to(targets, { scale: 1.06, duration: 0.12, ease: 'power2.out' }));
         // Apply blur via filter-manager
         if (window.filterManager) {
             const blurFilter = current === 'none' ? 'blur(2px)' : `${current} blur(2px)`;
             window.filterManager.applyImmediate(blurFilter, { duration: 0.1 });
         }
-        gsap.to(targets, { scale: 1, duration: 0.25, delay: 0.12, ease: 'power2.in' });
-        setTimeout(() => {
+        scope.trackAnimation(gsap.to(targets, { scale: 1, duration: 0.25, delay: 0.12, ease: 'power2.in' }));
+        scope.cleanup(() => {
+            gsap.set(targets, { clearProps: 'scale' });
             if (window.filterManager) {
                 window.filterManager.applyImmediate(current === 'none' ? 'none' : current, { duration: 0.15 });
             }
-        }, 400);
+        });
+        scope.completeAfter(500);
     }
 
-    triggerInvertFlicker() {
-        // DISABLED: Causes bright white flashes that break immersion
-        // Instead, use a subtle dark pulse
+    triggerInvertFlicker(scope) {
+        // Keep this deliberately dark: a real invert produces an aggressive
+        // white flash. The slightly longer stepped pulse remains readable at
+        // lower frame rates without exceeding the trigger's 700ms budget.
         const overlay = document.createElement('div');
         overlay.style.cssText = `
             position: fixed;
@@ -1200,34 +1320,36 @@ class VJReceiver {
             background: rgba(0, 0, 0, 0.4);
             opacity: 0;
         `;
-        document.body.appendChild(overlay);
+        scope.append(overlay);
         
         try {
-            gsap.to(overlay, {
+            scope.trackAnimation(gsap.to(overlay, {
                 opacity: 1,
-                duration: 0.05,
+                duration: 0.08,
                 yoyo: true,
-                repeat: 1,
-                onComplete: () => overlay.remove()
-            });
+                repeat: 3,
+                ease: 'steps(2)'
+            }));
+            scope.completeAfter(450);
         } catch (e) {
-            overlay.remove();
+            scope.finish();
         }
     }
 
-    triggerSpotlightSweep() {
+    triggerSpotlightSweep(scope) {
         const spot = document.createElement('div');
         spot.style.cssText = `
             position: fixed; inset: 0; pointer-events: none; z-index: 10000;
             background: radial-gradient(350px 350px at -200px 50%, rgba(255,255,255,0.8), rgba(255,255,255,0) 60%);
             mix-blend-mode: screen; opacity: 0.7;
         `;
-        document.body.appendChild(spot);
-        gsap.to(spot, { backgroundPositionX: `${window.innerWidth + 400}px`, duration: 0.7, ease: 'power2.inOut' });
-        gsap.to(spot, { opacity: 0, duration: 0.2, delay: 0.55, onComplete: () => spot.remove() });
+        scope.append(spot);
+        scope.trackAnimation(gsap.to(spot, { backgroundPositionX: `${window.innerWidth + 400}px`, duration: 0.7, ease: 'power2.inOut' }));
+        scope.trackAnimation(gsap.to(spot, { opacity: 0, duration: 0.2, delay: 0.55 }));
+        scope.completeAfter(850);
     }
 
-    triggerHeatShimmer() {
+    triggerHeatShimmer(scope) {
         // Quick heat shimmer overlay using subtle transform noise
         const shim = document.createElement('div');
         shim.style.cssText = `
@@ -1235,11 +1357,12 @@ class VJReceiver {
             background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='w'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.01' numOctaves='2'/%3E%3CfeDisplacementMap in='SourceGraphic' scale='20'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23w)' fill='rgba(255,255,255,0.0)'/%3E%3C/svg%3E");
             background-size: 240px 240px;
         `;
-        document.body.appendChild(shim);
-        gsap.to(shim, { opacity: 0, duration: 0.35, ease: 'power2.in', onComplete: () => shim.remove() });
+        scope.append(shim);
+        scope.trackAnimation(gsap.to(shim, { opacity: 0, duration: 0.35, ease: 'power2.in' }));
+        scope.completeAfter(450);
     }
 
-    triggerStrobe() {
+    triggerStrobe(scope) {
         // Get FX intensities
         const mult = window.fxController ? window.fxController.globalMult : 1;
         const glitchI = window.fxController ? window.fxController.getIntensity('glitch') : 0.5;
@@ -1255,20 +1378,22 @@ class VJReceiver {
             pointer-events: none;
             z-index: 10000;
         `;
-        document.body.appendChild(strobe);
+        scope.append(strobe);
 
         // REDUCED: Faster, shorter strobe animation
-        gsap.to(strobe, {
+        const duration = 0.05 + (0.1 * (1 - glitchI));
+        const repeat = Math.max(1, Math.min(4, Math.round(1 + 3 * glitchI * mult)));
+        scope.trackAnimation(gsap.to(strobe, {
             opacity: 0,
-            duration: 0.05 + (0.1 * (1 - glitchI)), // Reduced from 0.1 + 0.2
-            repeat: Math.max(1, Math.round(1 + 3 * glitchI * mult)), // Reduced from 2 + 6
+            duration,
+            repeat,
             yoyo: true,
-            ease: 'none',
-            onComplete: () => strobe.remove()
-        });
+            ease: 'none'
+        }));
+        scope.completeAfter(Math.ceil(duration * (repeat + 1) * 1000) + 100);
     }
 
-    triggerBlackout() {
+    triggerBlackout(scope) {
         // Get FX intensities
         const glitchI = window.fxController ? window.fxController.getIntensity('glitch') : 0.5;
         
@@ -1284,15 +1409,16 @@ class VJReceiver {
             z-index: 10000;
             opacity: 0;
         `;
-        document.body.appendChild(blackout);
+        scope.append(blackout);
 
-        gsap.timeline()
+        const timeline = gsap.timeline()
             .to(blackout, { opacity: 1, duration: 0.15 + 0.25 * glitchI })
-            .to(blackout, { opacity: 0, duration: 0.2 + 0.3 * (1 - glitchI), delay: 1 })
-            .call(() => blackout.remove());
+            .to(blackout, { opacity: 0, duration: 0.2 + 0.3 * (1 - glitchI), delay: 1 });
+        scope.trackAnimation(timeline);
+        scope.completeAfter(2100);
     }
 
-    triggerWhiteout() {
+    triggerWhiteout(scope) {
         // Get FX intensities
         const glitchI = window.fxController ? window.fxController.getIntensity('glitch') : 0.5;
         
@@ -1308,15 +1434,16 @@ class VJReceiver {
             z-index: 10000;
             opacity: 0;
         `;
-        document.body.appendChild(whiteout);
+        scope.append(whiteout);
 
-        gsap.timeline()
+        const timeline = gsap.timeline()
             .to(whiteout, { opacity: 1, duration: 0.1 + 0.2 * glitchI })
-            .to(whiteout, { opacity: 0, duration: 1 + 1 * (1 - glitchI), ease: 'power2.out' })
-            .call(() => whiteout.remove());
+            .to(whiteout, { opacity: 0, duration: 1 + 1 * (1 - glitchI), ease: 'power2.out' });
+        scope.trackAnimation(timeline);
+        scope.completeAfter(2300);
     }
 
-    triggerRGBSplit() {
+    triggerRGBSplit(scope) {
         // Get FX intensities
         const glitchI = window.fxController ? window.fxController.getIntensity('glitch') : 0.5;
         const originalFilter = window.getComputedStyle(document.body).filter || 'none';
@@ -1326,19 +1453,23 @@ class VJReceiver {
         const d2 = 0.6 + 1.0 * glitchI;
         const d3 = 1.6 + 1.2 * (1 - glitchI);
 
+        const restore = () => filterManager.applyImmediate(originalFilter || 'none', { duration: 0.15, ease: 'power2.out' });
+        scope.cleanup(restore);
+
         // Sequence via Filter Manager (sanitized, atomic transitions)
         filterManager.applyImmediate('hue-rotate(120deg) saturate(2)', { duration: d1, ease: 'power2.inOut' });
-        setTimeout(() => {
+        scope.timeout(() => {
             filterManager.applyImmediate('hue-rotate(-120deg) saturate(2)', { duration: d2, ease: 'power2.inOut' });
-            setTimeout(() => {
+            scope.timeout(() => {
                 filterManager.applyImmediate(originalFilter || 'none', { duration: d3, ease: 'power2.out' });
             }, Math.max(0, Math.round(d2 * 1000)));
         }, Math.max(0, Math.round(d1 * 1000)));
+        scope.completeAfter(Math.round((d1 + d2 + d3) * 1000));
     }
 
-    triggerShake() {
+    triggerShake(scope) {
         // REPLACED: Ripple effect instead of shake
-        this.triggerRipple();
+        this.triggerRipple(scope);
     }
 
     // Public: enable/disable ripple on BPM
@@ -1348,14 +1479,12 @@ class VJReceiver {
     }
 
     setupBpmRippleTimer() {
-        if (this.bpmRippleInterval) {
-            clearInterval(this.bpmRippleInterval);
-            this.bpmRippleInterval = null;
-        }
+        animationRuntime.disposeOwner(VJ_BPM_OWNER);
+        this.bpmRippleInterval = null;
         if (!this.bpmRippleEnabled) return;
         const bpm = this.currentSettings.bpm || 120;
         const period = Math.max(200, Math.floor(60000 / bpm));
-        this.bpmRippleInterval = setInterval(() => {
+        this.bpmRippleInterval = animationRuntime.scheduleInterval(VJ_BPM_OWNER, () => {
             // Center ripple on each beat
             this.triggerRipple();
         }, period);
@@ -1382,7 +1511,8 @@ class VJReceiver {
         this._clickRippleHandler = handler;
     }
 
-    triggerRipple() {
+    triggerRipple(scope) {
+        if (!scope) return this.triggerEffect('ripple');
         // Get FX intensities
         const mult = window.fxController ? window.fxController.globalMult : 1;
         const particlesI = window.fxController ? window.fxController.getIntensity('particles') : 0.5;
@@ -1402,22 +1532,36 @@ class VJReceiver {
                 pointer-events: none;
                 z-index: 9990; /* below blackout (10000) */
             `;
-            document.body.appendChild(svg);
+            scope.append(svg);
         }
         // Match viewport for crisp vectors
         svg.setAttribute('viewBox', `0 0 ${window.innerWidth} ${window.innerHeight}`);
 
         const cx = window.innerWidth / 2;
         const cy = window.innerHeight / 2;
-        this.triggerRippleAt(cx, cy);
+        this.triggerRippleAt(cx, cy, scope);
+        scope.completeAfter(3200);
     }
 
-    triggerRippleAt(x, y) {
+    triggerRippleAt(x, y, scope) {
+        if (!scope) {
+            return this.triggerRuntime.start('ripple', nextScope => {
+                this.triggerRippleAt(x, y, nextScope);
+                nextScope.completeAfter(3200);
+            }, { maxNodes: 8, resources: ['ripple'] });
+        }
         const mult = window.fxController ? window.fxController.globalMult : 1;
         const particlesI = window.fxController ? window.fxController.getIntensity('particles') : 0.5;
 
         let svg = document.getElementById('vj-ripple-svg');
-        if (!svg) return; // safety
+        if (!svg) {
+            svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+            svg.id = 'vj-ripple-svg';
+            svg.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+            svg.setAttribute('viewBox', `0 0 ${window.innerWidth} ${window.innerHeight}`);
+            svg.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:9990';
+            scope.append(svg);
+        }
 
         const cx = Math.max(0, Math.min(window.innerWidth, x));
         const cy = Math.max(0, Math.min(window.innerHeight, y));
@@ -1433,7 +1577,7 @@ class VJReceiver {
         const maxRadius = Math.sqrt(window.innerWidth * window.innerWidth + window.innerHeight * window.innerHeight) * 0.5;
 
         for (let i = 0; i < rippleCount; i++) {
-            setTimeout(() => {
+            scope.timeout(() => {
                 const color = colors[i % colors.length];
                 const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
                 circle.setAttribute('cx', cx);
@@ -1445,47 +1589,51 @@ class VJReceiver {
                 circle.setAttribute('opacity', '0.9');
                 circle.style.filter = `drop-shadow(0 0 ${6 + i * 3}px ${color})`;
                 circle.style.willChange = 'opacity';
-                svg.appendChild(circle);
+                scope.append(circle, svg);
 
                 const targetRadius = maxRadius * (0.45 + 0.2 * i);
-                gsap.to(circle, {
+                scope.trackAnimation(gsap.to(circle, {
                     attr: { r: targetRadius },
                     duration: (1.2 + 1.0 * (1 - particlesI)) * (1 + i * 0.15),
                     ease: 'power2.out'
-                });
-                gsap.to(circle, {
+                }));
+                scope.trackAnimation(gsap.to(circle, {
                     opacity: 0,
                     duration: (1.1 + 1.0 * (1 - particlesI)) * (1 + i * 0.15),
-                    ease: 'power2.out',
-                    onComplete: () => circle.remove()
-                });
+                    ease: 'power2.out'
+                }));
 
                 // Synchronized glow pulse on logo
-                this.logoGlowPulse();
+                this.logoGlowPulse(scope);
             }, i * 120);
         }
     }
 
-    triggerPulse() {
+    triggerPulse(scope) {
+        if (!scope) return this.triggerEffect('pulse');
         // Include main logo in pulse animation
-        gsap.to('.logo-text-wrapper, .image-wrapper, .text-3886, .image-2', {
+        const targets = '.logo-text-wrapper, .image-wrapper, .text-3886, .image-2';
+        scope.trackAnimation(gsap.to(targets, {
             scale: 1.25,  // Slightly bigger pulse
             duration: 0.4,  // Slightly slower
             yoyo: true,
             repeat: 1,
             ease: 'power2.inOut'
-        });
+        }));
+        scope.cleanup(() => gsap.set(targets, { clearProps: 'scale' }));
+        scope.completeAfter(950);
     }
 
-    triggerMatrixRain() {
+    triggerMatrixRain(scope) {
+        if (!scope) return this.triggerEffect('matrix-rain');
         // REPLACED: Digital wave effect instead of matrix rain
-        this.triggerDigitalWave();
+        this.triggerDigitalWave(scope);
     }
 
-    logoGlowPulse() {
+    logoGlowPulse(scope) {
         const targets = document.querySelectorAll('.image-2, .logo-text-wrapper');
         if (!targets.length) return;
-        gsap.fromTo(targets, {
+        const tween = gsap.fromTo(targets, {
             filter: 'drop-shadow(0 0 0px rgba(0,255,133,0))'
         }, {
             filter: 'drop-shadow(0 0 20px rgba(0,255,133,0.9)) drop-shadow(0 0 40px rgba(0,255,133,0.6))',
@@ -1495,20 +1643,24 @@ class VJReceiver {
             clearProps: 'filter',
             ease: 'power1.out'
         });
+        if (scope) scope.trackAnimation(tween);
     }
 
-    triggerDigitalWave() {
-        // Performance-aware guard
-        try {
-            const fps = (window.performanceBus && window.performanceBus.metrics?.fps) || (window.safePerformanceMonitor && window.safePerformanceMonitor.metrics?.fps) || 60;
-            const dom = document.querySelectorAll('*').length;
-            if (fps < 25 || dom > 1500) return;
-        } catch {}
+    triggerDigitalWave(scope) {
+        // Pressure changes density, never whether the admitted effect exists.
+        // Structural metrics come from the shared bus; this trigger performs no
+        // second full-DOM scan and never self-terminates because FPS dipped.
+        const metrics = window.performanceBus?.metrics || {};
+        const fps = Number(metrics.fps) || 60;
+        const dom = Number(metrics.domNodes) || 0;
+        const pressureScale = fps < 25 || dom > 1500
+            ? 0.35
+            : (fps < 40 || dom > 1000 ? 0.6 : 1);
         // Get FX intensities
         const mult = window.fxController ? window.fxController.globalMult : 1;
         const particlesI = window.fxController ? window.fxController.getIntensity('particles') : 0.5;
         
-        const targetBursts = Math.min(15, Math.max(8, Math.round(20 * particlesI * mult)));
+        const targetBursts = Math.min(15, Math.max(3, Math.round(20 * particlesI * mult * pressureScale)));
         for (let i = 0; i < targetBursts; i++) {
             const wave = document.createElement('div');
             wave.style.cssText = `
@@ -1523,23 +1675,90 @@ class VJReceiver {
                 z-index: 10000;
                 box-shadow: 0 0 10px rgba(0, 255, 133, 0.6);
             `;
-            document.body.appendChild(wave);
+            scope.append(wave);
 
-            gsap.to(wave, {
+            scope.trackAnimation(gsap.to(wave, {
                 scale: 15,
                 opacity: 0,
                 duration: Math.random() * (1 + (1 - particlesI)) + 0.4,
                 delay: i * 0.1,
-                ease: 'power2.out',
-                onComplete: () => wave.remove()
-            });
+                ease: 'power2.out'
+            }));
         }
+        scope.completeAfter(2400);
     }
 
-    triggerCosmicBurst() {
-        if (window.lottieAnimations && window.lottieAnimations.triggerCosmicBurst) {
-            window.lottieAnimations.triggerCosmicBurst();
+    triggerCosmicBurst(scope) {
+        if (!scope) return this.triggerEffect('cosmic');
+
+        // Original visual contract: one expanding chromatic ring pulse. Keep
+        // it to one bounded canvas—no particles, orbit lines or geometric
+        // objects competing with the logo composition.
+        const canvas = document.createElement('canvas');
+        const backingScale = Math.min(
+            0.65,
+            960 / Math.max(1, window.innerWidth),
+            540 / Math.max(1, window.innerHeight)
+        );
+        const width = Math.max(1, Math.round(window.innerWidth * backingScale));
+        const height = Math.max(1, Math.round(window.innerHeight * backingScale));
+        canvas.width = width;
+        canvas.height = height;
+        canvas.setAttribute('aria-hidden', 'true');
+        canvas.style.cssText = `
+            position: fixed; inset: 0; width: 100vw; height: 100vh;
+            pointer-events: none; z-index: 10003; opacity: 1;
+        `;
+        scope.append(canvas);
+
+        const context = canvas.getContext('2d', { alpha: true, desynchronized: true });
+        if (!context) {
+            scope.finish();
+            return;
         }
+
+        const centerX = width * 0.5;
+        const centerY = height * 0.5;
+        const maxRadius = Math.min(width, height) * 0.72;
+        const state = { progress: 0 };
+        const draw = () => {
+            const progress = state.progress;
+            const fade = Math.pow(Math.sin(Math.min(1, progress) * Math.PI), 0.72);
+            const radius = maxRadius * (0.08 + progress * 0.92);
+            const coreWidth = Math.max(1.2, Math.min(width, height) * 0.0065);
+            context.clearRect(0, 0, width, height);
+            context.save();
+            context.globalCompositeOperation = 'lighter';
+
+            const color = context.createLinearGradient(centerX - radius, centerY, centerX + radius, centerY);
+            color.addColorStop(0, `rgba(173, 73, 255, ${0.82 * fade})`);
+            color.addColorStop(0.34, `rgba(45, 222, 255, ${0.95 * fade})`);
+            color.addColorStop(0.66, `rgba(71, 255, 179, ${0.9 * fade})`);
+            color.addColorStop(1, `rgba(255, 67, 205, ${0.82 * fade})`);
+
+            context.beginPath();
+            context.arc(centerX, centerY, radius, 0, Math.PI * 2);
+            context.strokeStyle = color;
+            context.lineWidth = coreWidth;
+            context.shadowColor = `rgba(84, 224, 255, ${0.8 * fade})`;
+            context.shadowBlur = coreWidth * 7;
+            context.stroke();
+
+            context.shadowBlur = coreWidth * 2;
+            context.globalAlpha = 0.72 * fade;
+            context.lineWidth = Math.max(0.8, coreWidth * 0.42);
+            context.stroke();
+            context.restore();
+        };
+
+        draw();
+        scope.trackAnimation(gsap.to(state, {
+            progress: 1,
+            duration: 1.8,
+            ease: 'power2.out',
+            onUpdate: draw
+        }));
+        scope.completeAfter(1900);
     }
 
     loadPreset(preset) {
@@ -1617,21 +1836,27 @@ class VJReceiver {
             window.__ANIME_POC_ENABLED = true;
 
             if (window.animeManager && window.animationManager) {
+                try { window.animeManager.resumeAll?.(); } catch (_) {}
+                try { window.animationManager.resumeAll?.(); } catch (_) {}
                 try { window.animeEnhancedEffects?.resume?.(); } catch {}
                 // Kick off the signature logo animation if available (retry for a short window)
                 const tryStart = () => { try { window.enableLogoAnimation?.(); } catch {} };
                 if (typeof window.enableLogoAnimation === 'function') {
                     tryStart();
                 } else {
-                    let retries = 10;
-                    const iv = setInterval(() => {
+                    const retryOwner = 'anime-enable-logo-retry';
+                    animationRuntime.disposeOwner(retryOwner);
+                    const retry = (remaining) => animationRuntime.scheduleTimeout(retryOwner, () => {
                         if (typeof window.enableLogoAnimation === 'function') {
-                            clearInterval(iv);
+                            animationRuntime.disposeOwner(retryOwner);
                             tryStart();
-                        } else if (--retries <= 0) {
-                            clearInterval(iv);
+                        } else if (remaining > 1) {
+                            retry(remaining - 1);
+                        } else {
+                            animationRuntime.disposeOwner(retryOwner);
                         }
                     }, 200);
+                    retry(10);
                 }
                 this.sendAnimeStatus('enabled', true, { success: true });
                 console.log('✅ Anime enabled successfully');
@@ -1916,7 +2141,7 @@ class VJReceiver {
                         const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*';
                         let iterations = 0;
 
-                        const interval = setInterval(() => {
+                        const interval = animationRuntime.scheduleInterval('vj-receiver:text-scramble', () => {
                             el.textContent = originalText.split('').map((char, index) => {
                                 if (index < iterations) {
                                     return originalText[index];
@@ -1926,7 +2151,7 @@ class VJReceiver {
 
                             iterations++;
                             if (iterations > originalText.length) {
-                                clearInterval(interval);
+                                interval.clear();
                             }
                         }, 50);
                     });
@@ -2091,11 +2316,25 @@ class VJReceiver {
     }
 
     emergencyStop() {
-        // Prevent death spiral: enforce cooldown between emergency stops
+        // The fast stop path is deliberately idempotent and never cooldown-gated.
+        // A second press must still kill triggers even while heavy cleanup is cooling down.
+        this.triggerRuntime.stopAll('emergency-stop');
+        animationRuntime.disposeOwner('trigger-macro');
+        this.activeFx = 0;
+        if (window.matrixMessages && typeof window.matrixMessages.forceCleanup === 'function') {
+            window.matrixMessages.forceCleanup();
+        }
+        if (window.chaosEngine && typeof window.chaosEngine.stop === 'function') {
+            window.chaosEngine.stop();
+        }
+        window.chaosInit?.stopAnimationPhases?.();
+        window.chaosInit?.stopNoiseAnimation?.();
+
+        // Prevent death spiral: only the expensive global cleanup is cooldown-gated.
         const now = performance.now();
         const timeSinceLastStop = now - this.lastEmergencyStop;
         
-        if (timeSinceLastStop < this.emergencyStopCooldown) {
+        if (this.lastEmergencyStop > 0 && timeSinceLastStop < this.emergencyStopCooldown) {
             console.warn(`⚠️ Emergency stop on cooldown (${((this.emergencyStopCooldown - timeSinceLastStop) / 1000).toFixed(1)}s remaining)`);
             
             // If we're getting repeated emergency stops, increase the cooldown
@@ -2104,16 +2343,19 @@ class VJReceiver {
                 this.emergencyStopCooldown = Math.min(60000, this.emergencyStopCooldown * 1.5); // Cap at 60s
                 console.warn(`🚨 Repeated emergency stops detected! Increasing cooldown to ${(this.emergencyStopCooldown / 1000).toFixed(0)}s`);
             }
-            return;
+            return true;
         }
         
         this.lastEmergencyStop = now;
         this.emergencyStopCount = 0;
         
-        console.log('🚨 ENHANCED EMERGENCY STOP - Full System Reset!');
+        console.log('🚨 EMERGENCY STOP - entering fail-closed idle state');
         if (window.animeManager && typeof window.animeManager.killAll === 'function') {
             window.animeManager.killAll();
         }
+        this.animeEnabled = false;
+        this.currentSettings.animeEnabled = false;
+        window.__ANIME_POC_ENABLED = false;
 
         // 0. AGGRESSIVE DOM CLEANUP FIRST
         this.aggressiveDOMCleanup();
@@ -2180,33 +2422,26 @@ class VJReceiver {
             if (canvas.id !== 'chaos-canvas' && 
                 canvas.id !== 'matrix-rain' && 
                 canvas.id !== 'static-noise' &&
-                canvas.id !== 'cyber-grid') {
+                canvas.id !== 'cyber-grid' &&
+                canvas.id !== 'ambient-effects-canvas') {
                 canvas.remove();
             }
         });
 
-        // 6. RESET MATRIX MESSAGE SYSTEM
-        if (window.matrixMessages && typeof window.matrixMessages.forceCleanup === 'function') {
-            window.matrixMessages.forceCleanup();
-        }
+        // Fail closed after all intensity resets, which may briefly touch the
+        // shared renderer while applying their zero state.
+        window.ambientCanvasRenderer?.pause?.();
 
-        // 7. FORCE GARBAGE COLLECTION
+        // 6. FORCE GARBAGE COLLECTION
         if (window.gc) {
             window.gc();
         }
 
-        // 8. RESTART SYSTEM CLEANLY WITH FULL RECREATION
-        setTimeout(() => {
-            // Trigger FULL system restart (simulates F5)
-            this.restartEssentialAnimations(); // Now this is a FULL restart
-
-            // Start with auto scene after restart
-            setTimeout(() => {
-                this.changeScene('auto');
-                console.log('✅ Enhanced emergency reset completed - Full system recreated!');
-            }, 2000);
-
-        }, 800); // Even faster recovery since we're doing full restart
+        // Emergency stop must never auto-restart heavy renderers. Recovery is an
+        // explicit System Reset action after the operator has inspected the state.
+        this.sendAnimeStatus('emergency-stop', false, { success: true });
+        console.log('✅ Emergency stop completed; explicit reset required to resume');
+        return true;
     }
 
     executeEmergencyCleanup() {
@@ -2301,41 +2536,20 @@ class VJReceiver {
     }
 
     executePerformanceOptimization() {
-        console.log('🧹 VJ Receiver executing performance optimization...');
-        
-        // Aggressive DOM cleanup first
-        this.aggressiveDOMCleanup();
-        
-        // Trigger cleanup on all performance systems (selective FX focus)
-        if (window.gsapAnimationRegistry && typeof window.gsapAnimationRegistry.killByFilter === 'function') {
-            window.gsapAnimationRegistry.killByFilter({ category: 'effect', excludeEssential: true, olderThan: 10000 });
-            window.gsapAnimationRegistry.killByFilter({ category: 'particle', excludeEssential: true, olderThan: 10000 });
-        } else if (window.gsapAnimationRegistry) {
-            window.gsapAnimationRegistry.performPeriodicCleanup();
-        }
+        console.log('⚙️ VJ Receiver applying low-cost visual quality...');
+
+        // Preserve every running effect and its authored lifetime. Optimization
+        // changes raster/cadence/density through the central quality contract.
+        window.performanceProfileManager?.applyProfile?.('low', {
+            reason: 'operator-performance-optimize'
+        });
+        window.gsapAnimationRegistry?.performPeriodicCleanup?.();
 
         if (window.performanceElementManager && typeof window.performanceElementManager.removeOrphanedElements === 'function') {
             window.performanceElementManager.removeOrphanedElements();
-        } else if (window.performanceElementManager) {
-            window.performanceElementManager.performPeriodicCleanup();
         }
 
-        if (window.intervalManager && typeof window.intervalManager.clearCategory === 'function') {
-            window.intervalManager.clearCategory('effect');
-            window.intervalManager.clearCategory('particle');
-            window.intervalManager.performAutoCleanup();
-        }
-
-        if (window.safePerformanceMonitor) {
-            window.safePerformanceMonitor.safeCleanup();
-        }
-        
-        // Force garbage collection if available
-        if (window.gc) {
-            window.gc();
-        }
-        
-        console.log('✅ Performance optimization completed');
+        console.log('✅ Performance optimization applied without interrupting active visuals');
     }
 
     /**
@@ -2365,7 +2579,8 @@ class VJReceiver {
         this.resetPerformanceSystems();
 
         // Step 7: Restart the entire system (like F5 refresh)
-        setTimeout(() => {
+        animationRuntime.disposeOwner('system-reset');
+        animationRuntime.scheduleTimeout('system-reset', () => {
             console.log('🚀 RESTARTING ENTIRE SYSTEM...');
             this.restartEssentialAnimations();
         }, 1000);
@@ -2378,6 +2593,9 @@ class VJReceiver {
      */
     killAllAnimations() {
         console.log('🚫 Killing all animations...');
+
+        this.triggerRuntime.stopAll('system-reset');
+        animationRuntime.disposeOwner('trigger-macro');
 
         // Kill GSAP animations
         gsap.killTweensOf('*');
@@ -2405,7 +2623,7 @@ class VJReceiver {
         // Remove all temporary elements
         const temporarySelectors = [
             'div[style*="position: fixed"]',
-            'canvas:not(#chaos-canvas):not(#matrix-rain):not(#static-noise):not(#cyber-grid)',
+            'canvas:not(#chaos-canvas):not(#matrix-rain):not(#static-noise):not(#cyber-grid):not(#ambient-effects-canvas)',
             '.phase-overlay',
             '.glitch-overlay',
             '.vhs-overlay',
@@ -2430,7 +2648,8 @@ class VJReceiver {
                     !el.id.includes('chaos-canvas') &&
                     !el.id.includes('matrix-rain') &&
                     !el.id.includes('static-noise') &&
-                    !el.id.includes('cyber-grid')) {
+                    !el.id.includes('cyber-grid') &&
+                    !el.id.includes('ambient-effects-canvas')) {
                     el.remove();
                 }
             });
@@ -2486,9 +2705,17 @@ class VJReceiver {
     clearAllIntervals() {
         console.log('⏰ Clearing all intervals and timeouts...');
 
-        // Clear interval manager intervals
-        if (window.intervalManager && typeof window.intervalManager.emergencyStop === 'function') {
-            window.intervalManager.emergencyStop();
+        this.triggerRuntime.stopAll('system-reset');
+        animationRuntime.disposeOwner('trigger-macro');
+
+        // Preserve essential watchdog/cleanup intervals. Only transient visual
+        // categories are reset; killing system timers made longevity degrade
+        // after every operator reset.
+        if (window.intervalManager && typeof window.intervalManager.clearCategory === 'function') {
+            window.intervalManager.clearCategory('effect');
+            window.intervalManager.clearCategory('particle');
+            window.intervalManager.clearCategory('artifact');
+            window.intervalManager.clearCategory('stream');
         }
 
         // Clear performance element manager
@@ -2545,15 +2772,11 @@ class VJReceiver {
         this.currentSettings.effects = {
             glitch: 0.5,
             particles: 0.5,
-            distortion: 0.5,
-            noise: 0.5
+            distortion: 0,
+            noise: 0.25
         };
-
-        // Reset FX controller
-        if (window.fxController) {
-            window.fxController.setIntensity({ glitch: 0.5, particles: 0.5, distortion: 0.5, noise: 0.5 });
-            window.fxController.setGlobalIntensityMultiplier(1.0);
-        }
+        window.fxController?.setIntensity?.(this.currentSettings.effects);
+        window.fxController?.setGlobalIntensityMultiplier?.(1.0);
 
         // Reset speed
         this.currentSettings.speed = 1.0;
@@ -2598,20 +2821,10 @@ class VJReceiver {
         window.__ANIME_POC_ENABLED = false;
         this.sendAnimeStatus('reset', false, { success: true });
 
-        // Reset FPS counter and restart monitoring
+        // Rebind to the shared performance source. This does not create a
+        // second frame-measurement loop.
         this.activeFx = 0;
-        this.currentFPS = 60; // Reset to default FPS
-
-        // Stop and restart FPS monitoring to prevent Infinity
-        if (this.fpsMonitorRAF) {
-            cancelAnimationFrame(this.fpsMonitorRAF);
-            this.fpsMonitorRAF = null;
-        }
-
-        // Restart FPS monitoring after a short delay
-        setTimeout(() => {
-            this.startPerformanceMonitoring();
-        }, 500);
+        this.startPerformanceMonitoring();
 
         // Force garbage collection if available
         if (window.gc) {
@@ -2665,7 +2878,28 @@ class VJReceiver {
      * This recreates everything exactly as it would be on fresh page load
      */
     restartEssentialAnimations() {
-        console.log('🔄 FULL SYSTEM RESTART - Simulating F5 refresh...');
+        console.log('Performing a clean document reload for full system reset...');
+
+        // A document reload is the only reset that guarantees every module,
+        // WebGL context, listener and observer is recreated exactly once.
+        // In-process reconstruction previously duplicated most subsystems.
+        window.location.reload();
+        return;
+
+        // The former implementation called chaosInit.init(true) and then
+        // independently re-initialized every subsystem a second time. That
+        // duplicated render loops, observers and intervals on each reset.
+        if (window.ChaosControl && typeof window.ChaosControl.restart === 'function') {
+            window.ChaosControl.restart();
+            return;
+        }
+        if (window.chaosInit && typeof window.chaosInit.destroy === 'function' && typeof window.chaosInit.init === 'function') {
+            window.chaosInit.destroy();
+            animationRuntime.scheduleTimeout('system-reset', () => window.chaosInit.init(), 100);
+            return;
+        }
+        window.location.reload();
+        return;
         
         // 1. FORCE RECREATE CHAOS ENGINE (like fresh page load)
         if (window.chaosInit && window.chaosInit.init) {
@@ -2875,72 +3109,16 @@ class VJReceiver {
     }
 
     startPerformanceMonitoring() {
-        // Stop existing monitoring if any
-        if (this.fpsMonitorRAF) {
-            cancelAnimationFrame(this.fpsMonitorRAF);
-            this.fpsMonitorRAF = null;
-        }
+        animationRuntime.disposeOwner(VJ_PERFORMANCE_OWNER);
+        this.fpsMonitorRAF = null;
+        this.currentFPS = performanceBus.getFPS();
 
-        // Monitor FPS with automatic emergency stop
-        let lastTime = performance.now();
-        let frames = 0;
-        let fps = 60;
-        let lowFpsCount = 0;
-        const LOW_FPS_THRESHOLD = 10;
-        const LOW_FPS_DURATION = 5; // seconds
+        const unsubscribe = performanceBus.subscribe(({ fps }) => {
+            if (Number.isFinite(fps)) this.currentFPS = fps;
+        });
+        animationRuntime.trackDisposer(VJ_PERFORMANCE_OWNER, unsubscribe);
 
-        const measureFPS = () => {
-            frames++;
-            const currentTime = performance.now();
-
-            if (currentTime >= lastTime + 1000) {
-                const delta = currentTime - lastTime;
-                // Prevent division by zero or very small numbers that cause Infinity
-                if (delta > 0) {
-                    fps = Math.min(999, (frames * 1000) / delta); // Cap at 999 to prevent Infinity display
-                } else {
-                    fps = 60; // Default fallback
-                }
-                frames = 0;
-                lastTime = currentTime;
-                
-                // AUTO EMERGENCY STOP: Check for critically low FPS
-                // But only after grace period following an emergency stop
-                const timeSinceLastStop = currentTime - this.lastEmergencyStop;
-                const GRACE_PERIOD = 10000; // 10 seconds grace period after emergency stop
-                
-                if (timeSinceLastStop > GRACE_PERIOD) {
-                    if (fps < LOW_FPS_THRESHOLD) {
-                        lowFpsCount++;
-                        console.warn(`⚠️ Low FPS detected: ${fps.toFixed(1)} (${lowFpsCount}/${LOW_FPS_DURATION}s)`);
-                        
-                        if (lowFpsCount >= LOW_FPS_DURATION) {
-                            console.log('🚨 AUTO EMERGENCY STOP: FPS below 10 for 5+ seconds!');
-                            this.emergencyStop();
-                            lowFpsCount = 0; // Reset counter after emergency stop
-                        }
-                    } else {
-                        // Reset low FPS counter when performance recovers
-                        if (lowFpsCount > 0) {
-                            console.log('✅ FPS recovered, resetting low FPS counter');
-                            lowFpsCount = 0;
-                        }
-                    }
-                } else {
-                    // During grace period, don't count low FPS
-                    if (lowFpsCount > 0) {
-                        lowFpsCount = 0;
-                    }
-                }
-            }
-
-            this.currentFPS = fps;
-            this.fpsMonitorRAF = requestAnimationFrame(measureFPS);
-        };
-
-        this.fpsMonitorRAF = requestAnimationFrame(measureFPS);
-        
-        console.log('📈 Performance monitoring started with auto-emergency stop (FPS < 10 for 5s)');
+        console.log('📈 VJ Receiver subscribed to the shared performance bus');
     }
 
     sendPerformanceData() {
@@ -2983,10 +3161,11 @@ class VJReceiver {
     }
 
     hookIntoChaosEngine() {
+        animationRuntime.disposeOwner(VJ_HOOK_OWNER);
         // Wait for chaos engine to be ready
-        const checkChaosEngine = setInterval(() => {
+        const checkChaosEngine = animationRuntime.scheduleInterval(VJ_HOOK_OWNER, () => {
             if (window.chaosInit || window.ChaosControl) {
-                clearInterval(checkChaosEngine);
+                checkChaosEngine.clear();
                 console.log('✅ VJ Receiver hooked into Chaos Engine');
 
                 // Store reference to chaos init
@@ -3009,7 +3188,17 @@ class VJReceiver {
 
     // Add missing methods for control panel integration
     resetAllSystems() {
+        const now = performance.now();
+        if (now - (this._lastSystemResetAt || 0) < 250) {
+            return false;
+        }
+        this._lastSystemResetAt = now;
         console.log('🔄 Resetting all systems to default');
+
+        this.triggerRuntime.stopAll('system-reset');
+        animationRuntime.disposeOwner('trigger-macro');
+        if (window.matrixMessages?.forceCleanup) window.matrixMessages.forceCleanup();
+        if (window.filterManager?.reset) window.filterManager.reset();
 
         // Reset color matrix
         this.resetColors();
@@ -3024,9 +3213,11 @@ class VJReceiver {
         this.currentSettings.effects = {
             glitch: 0.5,
             particles: 0.5,
-            distortion: 0.5,
-            noise: 0.5
+            distortion: 0,
+            noise: 0.25
         };
+        window.fxController?.setIntensity?.(this.currentSettings.effects);
+        window.fxController?.setGlobalIntensityMultiplier?.(1.0);
 
         // Disable anime
         this.setAnimeFlag(false);
@@ -3034,11 +3225,18 @@ class VJReceiver {
         // Set scene to auto
         this.changeScene('auto');
 
+        // Explicit reset is the only recovery path from fail-closed KILL.
+        if (window.chaosEngine && typeof window.chaosEngine.start === 'function') {
+            window.chaosEngine.start();
+        }
+        window.chaosInit?.startNoiseAnimation?.();
+
         // Send confirmation
         this.sendMessage({
             type: 'system_reset_complete',
             timestamp: Date.now()
         });
+        return true;
     }
 
     toggleEffect(effectName, enabled) {
@@ -3067,6 +3265,13 @@ class VJReceiver {
                 }
             },
             particles: () => {
+                // Keep the canonical FX state and the underlying Three.js
+                // material in sync. Previously this branch only hid a legacy
+                // DOM selector, so acknowledgements could report ON while the
+                // runtime state remained false/undefined.
+                if (window.fxController) {
+                    window.fxController.setEffectEnabled('particles', enabled);
+                }
                 const particlesElement = document.querySelector('.chaos-particles');
                 if (particlesElement) {
                     particlesElement.style.display = enabled ? 'block' : 'none';
@@ -3115,6 +3320,13 @@ class VJReceiver {
         } else if (window.fxController) {
             window.fxController.setEffectEnabled(effectName, enabled);
         }
+
+        this.sendMessage({
+            type: 'effect_state',
+            effect: effectName,
+            enabled: Boolean(window.fxController?.effectStates?.[effectName] ?? enabled),
+            timestamp: Date.now()
+        });
 
         // Update active FX count
         this.activeFx = enabled ? this.activeFx + 1 : Math.max(0, this.activeFx - 1);
@@ -3212,6 +3424,58 @@ class VJReceiver {
         });
     }
 
+    getLayerElements(layerName) {
+        const layerMap = {
+            background: '.background-video, .cyber-grid-effect, #cyber-grid-effect, .plasma-field, #plasma-field-canvas, .anime-plasma-field',
+            'matrix-rain': '.matrix-rain, .chaos-matrix, .data-streams-overlay, #data-streams-overlay, .anime-data-streams',
+            logo: '.image-wrapper, .image-2, .image-3, .logo-container, .anime-logo-container, .glow',
+            text: '.text-3886, .logo-text, .scramble-text, .heading-20, .enter-button-wrapper, h1, h2, h3, p',
+            overlay: '#vignette-effect, #vignette-overlay, #scanlines-effect, #scanlines-overlay, #digital-noise-effect, #grain-overlay, #film-grain-effect, #chromatic-aberration, .chaos-overlay',
+            particles: '#particles-effect, .anime-particles, .chaos-particles'
+        };
+        const selector = layerMap[layerName];
+        return selector ? Array.from(document.querySelectorAll(selector)) : [];
+    }
+
+    setLayerBlend(layerName, blend) {
+        const allowed = new Set(['normal', 'multiply', 'screen', 'overlay', 'darken', 'lighten', 'color-dodge', 'color-burn', 'hard-light', 'soft-light', 'difference', 'exclusion', 'hue', 'saturation', 'color', 'luminosity', 'plus-lighter']);
+        const requested = blend === 'add' ? 'plus-lighter' : blend;
+        const safeBlend = allowed.has(requested) ? requested : 'normal';
+        this.getLayerElements(layerName).forEach(element => {
+            element.style.mixBlendMode = safeBlend === 'normal' ? '' : safeBlend;
+        });
+        this.sendMessage({ type: 'layer_blend_updated', layer: layerName, blend: safeBlend, timestamp: Date.now() });
+    }
+
+    setLayerFx(layerName, enabled) {
+        const effectMap = {
+            background: 'cyberGrid',
+            'matrix-rain': 'dataStreams',
+            logo: 'holographic',
+            particles: 'particles',
+            text: 'chromatic',
+            overlay: 'vignette'
+        };
+        const effect = effectMap[layerName];
+        if (effect) this.toggleEffect(effect, enabled);
+        this.sendMessage({ type: 'layer_fx_updated', layer: layerName, enabled, timestamp: Date.now() });
+    }
+
+    setLayerMask(layerName, enabled) {
+        this.getLayerElements(layerName).forEach(element => {
+            if (!this.layerStyleSnapshots.has(element)) {
+                this.layerStyleSnapshots.set(element, {
+                    maskImage: element.style.maskImage,
+                    webkitMaskImage: element.style.webkitMaskImage
+                });
+            }
+            const snapshot = this.layerStyleSnapshots.get(element);
+            element.style.maskImage = enabled ? 'linear-gradient(to bottom, transparent 0%, black 12%, black 88%, transparent 100%)' : snapshot.maskImage;
+            element.style.webkitMaskImage = enabled ? 'linear-gradient(to bottom, transparent 0%, black 12%, black 88%, transparent 100%)' : snapshot.webkitMaskImage;
+        });
+        this.sendMessage({ type: 'layer_mask_updated', layer: layerName, enabled, timestamp: Date.now() });
+    }
+
     showDebugInfo() {
         // Create or update debug overlay
         let debugEl = document.querySelector('.debug-overlay');
@@ -3232,13 +3496,14 @@ class VJReceiver {
                 min-width: 200px;
             `;
             document.body.appendChild(debugEl);
+            animationRuntime.trackNode(VJ_DEBUG_OWNER, debugEl);
         } else {
             debugEl.style.display = 'block';
         }
 
         // Update debug info periodically
         if (!this.debugInterval) {
-            this.debugInterval = setInterval(() => {
+            this.debugInterval = animationRuntime.scheduleInterval(VJ_DEBUG_OWNER, () => {
                 if (debugEl && debugEl.style.display !== 'none') {
                     debugEl.innerHTML = `
                         <div style="font-weight: bold; margin-bottom: 5px;">DEBUG INFO</div>
@@ -3271,6 +3536,13 @@ class VJReceiver {
     
     destroy() {
         console.log('🗑️ VJ Receiver cleanup initiated');
+
+        this.triggerRuntime.stopAll('receiver-destroy');
+        this.triggerRuntime.setChangeHandler(null);
+        animationRuntime.disposeOwner('trigger-macro');
+        animationRuntime.disposeOwner('system-reset');
+        [VJ_LIFECYCLE_OWNER, VJ_PERFORMANCE_OWNER, VJ_BPM_OWNER, VJ_HOOK_OWNER, VJ_DEBUG_OWNER]
+            .forEach(owner => animationRuntime.disposeOwner(owner));
         
         // Clear localStorage polling interval
         if (this.localStoragePollingHandle) {
@@ -3280,28 +3552,16 @@ class VJReceiver {
         }
         
         // Clear BPM ripple interval
-        if (this.bpmRippleInterval) {
-            clearInterval(this.bpmRippleInterval);
-            this.bpmRippleInterval = null;
-        }
+        this.bpmRippleInterval = null;
         
         // Clear debug interval
-        if (this.debugInterval) {
-            clearInterval(this.debugInterval);
-            this.debugInterval = null;
-        }
+        this.debugInterval = null;
         
         // Clear fallback timeout
-        if (this._fallbackArmTimeout) {
-            clearTimeout(this._fallbackArmTimeout);
-            this._fallbackArmTimeout = null;
-        }
+        this._fallbackArmTimeout = null;
         
         // Cancel FPS monitor RAF
-        if (this.fpsMonitorRAF) {
-            cancelAnimationFrame(this.fpsMonitorRAF);
-            this.fpsMonitorRAF = null;
-        }
+        this.fpsMonitorRAF = null;
         
         // Close broadcast channel
         if (this.channel) {

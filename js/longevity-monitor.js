@@ -1,8 +1,13 @@
 // Longevity Monitor - Ensures stable, smooth, diverse operation for hours
 // Monitors animation system health, prevents degradation, and maintains variety
 
+import animationRuntime from './runtime/animation-runtime.js';
+import performanceBus from './performance-bus.js';
+
 class LongevityMonitor {
     constructor() {
+        this.runtimeOwner = 'longevity-monitor';
+        animationRuntime.disposeOwner(this.runtimeOwner);
         this.startTime = Date.now();
         this.runtime = 0;
         this.healthScore = 100;
@@ -12,9 +17,13 @@ class LongevityMonitor {
         this.cleanupInterval = 30000; // 30 seconds
         this.healthCheckInterval = 10000; // 10 seconds
         this.varietyCheckInterval = 60000; // 1 minute
+        this.lastFpsDegradationAction = 0;
+        this.fpsDegradationCooldownMs = 60000;
+        this.lastCorrectiveAction = 0;
+        this.correctiveActionCooldownMs = 60000;
         
         this.thresholds = {
-            fps: { warning: 30, critical: 15 }, // Relaxed for intensive visual effects
+            fps: { target: 60, warning: 45, critical: 30 },
             memory: { warning: 800, critical: 1000 }, // MB - Significantly increased for animations
             domNodes: { warning: 10000, critical: 15000 }, // Increased for animations
             animations: { warning: 100, critical: 200 }, // Increased for visual effects
@@ -63,34 +72,34 @@ class LongevityMonitor {
     
     setupMonitoring() {
         // Monitor system health every 10 seconds
-        setInterval(() => {
+        animationRuntime.scheduleInterval(this.runtimeOwner, () => {
             this.performHealthCheck();
         }, this.healthCheckInterval);
         
         // Check animation variety every minute
-        setInterval(() => {
+        animationRuntime.scheduleInterval(this.runtimeOwner, () => {
             this.checkAnimationVariety();
         }, this.varietyCheckInterval);
         
         // Cleanup stale data every 30 seconds
-        setInterval(() => {
+        animationRuntime.scheduleInterval(this.runtimeOwner, () => {
             this.performMaintenance();
         }, this.cleanupInterval);
     }
     
     setupDiversitySystem() {
         // Rotate animation sets every 5 minutes
-        setInterval(() => {
+        animationRuntime.scheduleInterval(this.runtimeOwner, () => {
             this.rotateAnimationSets();
         }, this.diversityStrategies.rotation.interval);
         
         // Change intensity level every 3 minutes
-        setInterval(() => {
+        animationRuntime.scheduleInterval(this.runtimeOwner, () => {
             this.adjustIntensityLevel();
         }, this.diversityStrategies.intensity.changeInterval);
         
         // Trigger random effects for variety
-        setInterval(() => {
+        animationRuntime.scheduleInterval(this.runtimeOwner, () => {
             this.triggerVarietyEffect();
         }, 30000); // Every 30 seconds
     }
@@ -129,11 +138,13 @@ class LongevityMonitor {
             maxSamples: 3600 // 1 hour of data
         };
         
-        // Update runtime every second
-        setInterval(() => {
+        const updateFromBus = () => {
             this.runtime = Date.now() - this.startTime;
             this.updatePerformanceHistory();
-        }, 1000);
+        };
+        const unsubscribe = performanceBus.subscribe(updateFromBus);
+        animationRuntime.trackDisposer(this.runtimeOwner, unsubscribe);
+        updateFromBus();
     }
     
     performHealthCheck() {
@@ -166,6 +177,9 @@ class LongevityMonitor {
     }
     
     getCurrentFPS() {
+        if (performanceBus.metrics?.fps) {
+            return performanceBus.metrics.fps;
+        }
         if (window.performanceOptimizerV2) {
             return window.performanceOptimizerV2.getPerformanceMetrics().fps || 60;
         }
@@ -173,40 +187,25 @@ class LongevityMonitor {
     }
     
     getCurrentMemoryUsage() {
-        if (performance.memory) {
-            return Math.round(performance.memory.usedJSHeapSize / (1024 * 1024));
-        }
-        return 0;
+        return Math.round(Number(performanceBus.metrics.memoryMB) || 0);
     }
     
     getCurrentDOMNodes() {
-        return document.querySelectorAll('*').length;
+        return Number(performanceBus.metrics.domNodes) || 0;
     }
     
     getCurrentAnimationCount() {
-        let count = 0;
-        
-        // Count GSAP animations
-        if (window.gsap && window.gsap.globalTimeline) {
-            count += window.gsap.globalTimeline.getChildren().length;
-        }
-        
-        // Count anime.js animations
-        if (window.animeManager && window.animeManager.instances) {
-            count += window.animeManager.instances.size;
-        }
-        
-        return count;
+        return Number(performanceBus.metrics.activeAnimations) || 0;
     }
     
     updateHealthScore(metrics) {
         let score = 100;
         
-        // FPS impact (40% weight)
+        // FPS impact (40% weight): 60 target, 45 action, 30 floor.
         if (metrics.fps < this.thresholds.fps.critical) {
             score -= 40;
         } else if (metrics.fps < this.thresholds.fps.warning) {
-            score -= 20;
+            score -= 15;
         }
         
         // Memory impact (25% weight)
@@ -269,15 +268,15 @@ class LongevityMonitor {
     }
     
     handleFPSDegradation(avgFPS) {
+        const now = Date.now();
+        if (now - this.lastFpsDegradationAction < this.fpsDegradationCooldownMs) {
+            return;
+        }
+        this.lastFpsDegradationAction = now;
         console.warn(`⚠️ FPS degradation detected: ${avgFPS.toFixed(1)} FPS`);
-        
-        // Reduce animation quality
-        this.reduceAnimationQuality();
-        
-        // Clean up excess animations
-        this.cleanupExcessAnimations();
-        
-        // Trigger performance optimizations
+
+        // Delegate FPS-only degradation to the soft optimizer. Do not permanently
+        // reduce visual density from FPS alone, especially under software WebGL.
         if (window.performanceOptimizerV2) {
             window.performanceOptimizerV2.triggerLowFPSOptimizations();
         }
@@ -285,35 +284,16 @@ class LongevityMonitor {
     
     handleMemoryGrowth(recentAvg, olderAvg) {
         console.warn(`⚠️ Memory growth detected: ${olderAvg.toFixed(1)}MB → ${recentAvg.toFixed(1)}MB`);
-        
-        // Trigger memory cleanup
-        if (window.performanceOptimizerV2) {
-            window.performanceOptimizerV2.triggerMemoryOptimizations();
-        }
-        
-        // Clean up old elements
-        this.cleanupOldElements();
+        window.performanceProfileManager?.applyProfile?.('low', {
+            reason: 'longevity-memory-growth',
+            memoryMB: recentAvg
+        });
     }
     
     reduceAnimationQuality() {
-        // Reduce particle count
-        const particles = document.querySelectorAll('.particle, .anime-particle');
-        const maxParticles = Math.max(20, particles.length * 0.7);
-        
-        if (particles.length > maxParticles) {
-            const toRemove = particles.length - maxParticles;
-            for (let i = 0; i < toRemove; i++) {
-                try {
-                    particles[i].remove();
-                } catch (e) {
-                    // Ignore removal errors
-                }
-            }
-        }
-        
-        // Reduce animation complexity
-        document.documentElement.style.setProperty('--animation-quality', 'low');
-        document.documentElement.style.setProperty('--particle-count', '0.5');
+        window.performanceProfileManager?.applyProfile?.('low', {
+            reason: 'longevity-quality-pressure'
+        });
     }
     
     cleanupExcessAnimations() {
@@ -322,89 +302,78 @@ class LongevityMonitor {
             const timeline = window.gsap.globalTimeline;
             const children = timeline.getChildren();
             
-            if (children.length > 30) {
-                // Remove oldest animations
-                const toRemove = children.length - 30;
-                for (let i = 0; i < toRemove; i++) {
-                    try {
-                        children[i].kill();
-                    } catch (e) {
-                        // Ignore cleanup errors
-                    }
-                }
-            }
+            children
+                .filter(animation => !animation.isActive?.() && animation.progress?.() >= 1)
+                .forEach(animation => {
+                    try { animation.kill(); } catch (_) {}
+                });
         }
         
         // Clean up anime.js animations
         if (window.animeManager && window.animeManager.instances) {
             const instances = window.animeManager.instances;
-            if (instances.size > 20) {
-                const toRemove = instances.size - 20;
-                let removed = 0;
-                
-                for (const instance of instances) {
-                    if (removed >= toRemove) break;
-                    try {
-                        instance.pause();
-                        instances.delete(instance);
-                        removed++;
-                    } catch (e) {
-                        // Ignore cleanup errors
-                    }
-                }
+            for (const instance of instances) {
+                if (instance?.completed === true) instances.delete(instance);
             }
         }
     }
     
     cleanupOldElements() {
-        const now = Date.now();
-        const maxAge = 300000; // 5 minutes
-        
-        // Clean up old temporary elements (no wildcard class selectors)
+        // Only explicit completion markers authorize removal. DOM age and a
+        // class-name prefix do not describe an effect's authored lifetime.
         const tempElements = document.querySelectorAll(
-            '[data-temp], [class^="anime-"], [class*=" anime-"], [class^="glitch-"], [class*=" glitch-"]'
+            '[data-temp][data-lifecycle-state="complete"], [data-temp][data-effect-complete="true"]'
         );
         tempElements.forEach(el => {
-            const created = el.dataset.created || el.getAttribute('data-created');
-            if (created && (now - parseInt(created)) > maxAge) {
-                try {
-                    el.remove();
-                } catch (e) {
-                    // Ignore removal errors
-                }
-            }
+            try { el.remove(); } catch (_) {}
         });
     }
     
     triggerCorrectiveActions(metrics) {
+        const hasStructuralIssue =
+            metrics.memory > this.thresholds.memory.warning ||
+            metrics.domNodes > this.thresholds.domNodes.warning ||
+            metrics.animations > this.thresholds.animations.critical;
+
+        if (!hasStructuralIssue && metrics.fps < this.thresholds.fps.warning) {
+            this.restoreVisualIntensity();
+            this.handleFPSDegradation(metrics.fps);
+            return;
+        }
+
+        const now = Date.now();
+        if (now - this.lastCorrectiveAction < this.correctiveActionCooldownMs) {
+            return;
+        }
+
         if (this.healthScore < this.thresholds.healthScore.critical) {
             this.triggerEmergencyActions();
         } else if (this.healthScore < this.thresholds.healthScore.warning) {
             this.triggerWarningActions();
+        } else {
+            return;
         }
+
+        this.lastCorrectiveAction = now;
     }
     
     triggerEmergencyActions() {
         console.error('🚨 Emergency actions triggered - Health score critical');
-        
-        // Stop all non-essential animations
-        this.pauseNonEssentialAnimations();
-        
-        // Aggressive cleanup
-        this.aggressiveCleanup();
-        
-        // Reduce to minimal effects
-        this.enableMinimalMode();
+        window.performanceProfileManager?.applyProfile?.('low', {
+            reason: 'longevity-critical-health',
+            score: this.healthScore
+        });
+        window.dispatchEvent(new CustomEvent('3886:health-alert', {
+            detail: { level: 'critical', score: this.healthScore }
+        }));
     }
     
     triggerWarningActions() {
         console.warn('⚠️ Warning actions triggered - Health score low');
-        
-        // Moderate cleanup
-        this.moderateCleanup();
-        
-        // Reduce animation intensity
-        this.reduceAnimationIntensity();
+        window.performanceProfileManager?.applyProfile?.('medium', {
+            reason: 'longevity-warning-health',
+            score: this.healthScore
+        });
     }
     
     pauseNonEssentialAnimations() {
@@ -422,9 +391,10 @@ class LongevityMonitor {
     }
     
     aggressiveCleanup() {
-        // Remove all temporary elements (no wildcard class selectors)
+        // Emergency-only compatibility hook. Even here, connected visuals
+        // need an explicit completion marker before DOM removal.
         const tempElements = document.querySelectorAll(
-            '[data-temp], [class^="anime-"], [class*=" anime-"], [class^="glitch-"], [class*=" glitch-"], [class^="corruption-"], [class*=" corruption-"]'
+            '[data-temp][data-lifecycle-state="complete"], [data-temp][data-effect-complete="true"]'
         );
         tempElements.forEach(el => {
             try {
@@ -466,6 +436,13 @@ class LongevityMonitor {
         
         // Reduce particle density
         document.documentElement.style.setProperty('--particle-density', '0.5');
+    }
+
+    restoreVisualIntensity() {
+        document.documentElement.style.removeProperty('--animation-speed');
+        document.documentElement.style.removeProperty('--particle-density');
+        document.documentElement.style.removeProperty('--effects-enabled');
+        document.documentElement.style.removeProperty('--particles-enabled');
     }
     
     checkAnimationVariety() {
@@ -687,17 +664,7 @@ class LongevityMonitor {
     }
     
     destroy() {
-        // Clean up intervals
-        if (this.healthCheckInterval) {
-            clearInterval(this.healthCheckInterval);
-        }
-        if (this.varietyCheckInterval) {
-            clearInterval(this.varietyCheckInterval);
-        }
-        if (this.cleanupInterval) {
-            clearInterval(this.cleanupInterval);
-        }
-        
+        animationRuntime.disposeOwner(this.runtimeOwner);
         console.log('🧹 Longevity Monitor destroyed');
     }
 }

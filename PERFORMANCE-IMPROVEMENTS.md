@@ -1,5 +1,7 @@
 # ZIKADA 3886 Performance Optimization Report
 
+> **2026 architecture update:** This document contains historical implementation notes. Age-based deletion, FPS-based effect skipping, automatic particle removal and aggressive connected-DOM cleanup described below are no longer the active performance strategy. The current contract preserves admitted visual lifetimes and effect families, reduces raster resolution/cadence/density/compositing cost, queues busy resources, and permits hard interruption only for explicit Emergency Stop or teardown. See `docs/visual-performance-contract.md` for the authoritative runtime rules and current SwiftShader soak results.
+
 ## Date: September 17, 2025
 ## Branch: dev
 
@@ -231,3 +233,13 @@ window.gsapAnimationRegistry.emergencyStop()
 5. **Document performance best practices** for future development
 
 The ZIKADA 3886 website should now maintain stable performance indefinitely, with automatic cleanup preventing the memory leaks that previously caused degradation and eventual failure.
+
+---
+
+## 2026 runtime contract update
+
+The older cleanup-mode descriptions above are retained as historical context and are no longer the engine policy. Performance pressure must not remove, hide, pause or shorten connected visuals. Automatic cleanup is limited to disconnected bookkeeping and explicitly completed work; only authored completion, explicit disable/reset, teardown and Emergency Stop may terminate active effects.
+
+Current optimization acts at the source of cost: shared telemetry, bounded admission queues, pooled assets, DPR/backing resolution, sampling cadence, particle density, spawn rate and compositor/pass selection. Trigger leak watchdogs have a 30-second minimum and are separate from the effect-owned visual duration. Heap pressure lowers future render cost and emits capacity telemetry; it does not invoke aggressive DOM cleanup or automatic soft restart.
+
+The canonical details and current measurements live in `docs/visual-performance-contract.md`.

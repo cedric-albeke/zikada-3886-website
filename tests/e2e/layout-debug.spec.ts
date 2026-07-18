@@ -13,8 +13,7 @@ test('dump grid diagnostics', async ({ page }) => {
     };
   });
   console.log('grid styles:', gridStyles);
-  const areas = ['color','tempo','intensity','triggers','scenes','ve','animation'];
-  for (const cls of ['section--color','section--tempo','section--intensity','section--triggers','section--scenes','section--ve-layers','section--animation']) {
+  for (const cls of ['trigger-fx-section','scene-section','visual-effects-section','animation-section','event-log-section']) {
     const el = page.locator('.' + cls);
     const box = await el.boundingBox();
     const styles = await el.evaluate((n) => {
@@ -36,5 +35,6 @@ test('dump grid diagnostics', async ({ page }) => {
       };
     });
     console.log(cls, box, styles);
+    expect(box).not.toBeNull();
   }
 });

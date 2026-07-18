@@ -13,6 +13,7 @@
  */
 
 import * as THREE from 'three';
+import animationRuntime from './runtime/animation-runtime.js';
 
 export class WebGLResourceManager {
     constructor() {
@@ -56,6 +57,9 @@ export class WebGLResourceManager {
         this.devicePixelRatio = 1.0;
         this.basePixelRatio = 1.0;
         this.cleanupIntervalId = null;
+        this.runtimeOwner = 'webgl-resource-manager';
+        this.resizeOwner = 'webgl-resource-manager:resize';
+        this.resourceWarmupUntil = 0;
         
         // Performance metrics
         this.metrics = {
@@ -80,8 +84,13 @@ export class WebGLResourceManager {
             return;
         }
         
+        animationRuntime.disposeOwner(this.runtimeOwner);
+        animationRuntime.disposeOwner(this.resizeOwner);
+        this.enabled = true;
         this.renderer = renderer;
         this.gl = renderer.getContext();
+        this.resourceHistory = [];
+        this.resourceWarmupUntil = performance.now() + 60000;
         
         // Set up base pixel ratio
         this.basePixelRatio = Math.min(
@@ -105,11 +114,9 @@ export class WebGLResourceManager {
      * Start periodic maintenance tasks
      */
     startPeriodicMaintenance() {
-        if (this.cleanupIntervalId) {
-            clearInterval(this.cleanupIntervalId);
-        }
+        animationRuntime.disposeOwner(this.runtimeOwner);
         
-        this.cleanupIntervalId = setInterval(() => {
+        this.cleanupIntervalId = animationRuntime.scheduleInterval(this.runtimeOwner, () => {
             if (!this.enabled || document.hidden) return;
             
             const now = performance.now();
@@ -220,13 +227,9 @@ export class WebGLResourceManager {
             // Clean up unused render targets
             this.cleanupRenderTargetPool();
             
-            // Force WebGL resource cleanup
-            if (this.gl && this.gl.finish) {
-                this.gl.finish();
-            }
-            
-            // Clean up composer render targets if available
-            this.cleanupComposerTargets();
+            // Never call gl.finish() here. It synchronously waits for the GPU
+            // command queue and can freeze the page (or the whole compositor)
+            // during a busy scene. GPU resources are disposed by their owners.
             
             this.metrics.cleanupsPerformed++;
             console.log('✅ Renderer cleanup completed');
@@ -267,17 +270,9 @@ export class WebGLResourceManager {
      * Clean up composer render targets
      */
     cleanupComposerTargets() {
-        // Clean up EffectComposer render targets if available globally
-        if (window.chaosEngine && window.chaosEngine.composer) {
-            const composer = window.chaosEngine.composer;
-            
-            // Dispose unused passes and their render targets
-            composer.passes.forEach(pass => {
-                if (pass.enabled === false && pass.dispose) {
-                    pass.dispose();
-                }
-            });
-        }
+        // Composer passes are long-lived engine-owned resources. A disabled
+        // pass may be re-enabled by a later quality profile, so periodic
+        // maintenance must never dispose it behind the engine's back.
     }
     
     /**
@@ -366,11 +361,16 @@ export class WebGLResourceManager {
             vertexArrayObjects: this.renderTargetPool.size
         };
         
-        // Add to history
-        this.resourceHistory.push({
-            timestamp: performance.now(),
-            ...this.resourceCounts
-        });
+        const now = performance.now();
+        // Shader programs and composer targets legitimately ramp up during the
+        // first minute. Excluding that warmup prevents false leak alarms from
+        // comparing an uncompiled zero baseline with a stable live scene.
+        if (now >= this.resourceWarmupUntil) {
+            this.resourceHistory.push({
+                timestamp: now,
+                ...this.resourceCounts
+            });
+        }
         
         // Trim history
         if (this.resourceHistory.length > this.maxHistoryLength) {
@@ -387,12 +387,16 @@ export class WebGLResourceManager {
         const current = this.resourceCounts;
         
         // Check for resource leaks
-        if (this.resourceHistory.length > 10) {
-            const baseline = this.resourceHistory[this.resourceHistory.length - 10];
+        if (this.resourceHistory.length >= 10) {
+            const samples = this.resourceHistory.slice(-10);
+            const baseline = samples[0];
             
             Object.keys(current).forEach(key => {
                 const growth = current[key] - baseline[key];
-                if (growth > this.config.resourceLeakThreshold) {
+                const positiveSteps = samples.slice(1).reduce((count, sample, index) => (
+                    sample[key] > samples[index][key] ? count + 1 : count
+                ), 0);
+                if (growth > this.config.resourceLeakThreshold && positiveSteps >= 7) {
                     console.warn(`🚨 Potential ${key} leak detected: +${growth} in 10 samples`);
                     this.metrics.resourceLeaksDetected++;
                     
@@ -409,7 +413,7 @@ export class WebGLResourceManager {
      * Analyze resource history for trends
      */
     analyzeResourceHistory() {
-        if (this.resourceHistory.length < 20) return;
+        if (this.resourceHistory.length < 40) return;
         
         const recent = this.resourceHistory.slice(-20);
         const baseline = this.resourceHistory.slice(-40, -20);
@@ -418,6 +422,7 @@ export class WebGLResourceManager {
             const recentAvg = recent.reduce((sum, entry) => sum + entry[key], 0) / recent.length;
             const baselineAvg = baseline.reduce((sum, entry) => sum + entry[key], 0) / baseline.length;
             
+            if (baselineAvg <= 0) return;
             const growthRate = (recentAvg - baselineAvg) / baselineAvg;
             
             if (growthRate > 0.1) { // 10% growth
@@ -477,9 +482,10 @@ export class WebGLResourceManager {
      */
     triggerResize() {
         if (window.chaosEngine && typeof window.chaosEngine.handleResize === 'function') {
-            requestAnimationFrame(() => {
+            animationRuntime.disposeOwner(this.resizeOwner);
+            animationRuntime.scheduleTimeout(this.resizeOwner, () => {
                 window.chaosEngine.handleResize();
-            });
+            }, 0);
         }
     }
     
@@ -526,10 +532,9 @@ export class WebGLResourceManager {
         this.enabled = false;
         
         // Clear periodic maintenance
-        if (this.cleanupIntervalId) {
-            clearInterval(this.cleanupIntervalId);
-            this.cleanupIntervalId = null;
-        }
+        animationRuntime.disposeOwner(this.runtimeOwner);
+        animationRuntime.disposeOwner(this.resizeOwner);
+        this.cleanupIntervalId = null;
         
         // Dispose all render targets
         this.renderTargetPool.forEach(targets => {
@@ -550,6 +555,8 @@ export class WebGLResourceManager {
         
         // Clear history
         this.resourceHistory = [];
+        this.renderer = null;
+        this.gl = null;
         
         console.log('🧹 WebGL Resource Manager disposed');
     }

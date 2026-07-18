@@ -1,8 +1,16 @@
 // ZIKADA 3886 MIDI Feedback Manager
 // Handles LED feedback for MIDI controllers
 
+import animationRuntime from './runtime/animation-runtime.js';
+
+let midiFeedbackSequence = 0;
+
 class MIDIFeedbackManager {
     constructor(midiController) {
+        this.runtimeOwner = `midi-feedback:${++midiFeedbackSequence}`;
+        this.processorOwner = `${this.runtimeOwner}:processor`;
+        this.testOwners = new Set();
+        this.destroyed = false;
         this.midiController = midiController;
         this.deviceProfiles = new Map();
         this.feedbackState = new Map(); // Track current LED states
@@ -92,8 +100,12 @@ class MIDIFeedbackManager {
         if (window.BroadcastChannel) {
             try {
                 this.feedbackChannel = new BroadcastChannel('3886_vj_control');
-                this.feedbackChannel.addEventListener('message', (event) => {
+                const channelHandler = (event) => {
                     this.handleStateUpdate(event.data);
+                };
+                this.feedbackChannel.addEventListener('message', channelHandler);
+                animationRuntime.trackDisposer(this.runtimeOwner, () => {
+                    this.feedbackChannel?.removeEventListener('message', channelHandler);
                 });
             } catch (e) {
                 console.warn('🔥 Could not subscribe to feedback channel:', e);
@@ -101,13 +113,17 @@ class MIDIFeedbackManager {
         }
         
         // Subscribe to direct state changes
-        window.addEventListener('effecttoggle', (e) => {
+        const effectHandler = (e) => {
             this.updateEffectLED(e.detail.effect, e.detail.enabled);
-        });
+        };
+        window.addEventListener('effecttoggle', effectHandler);
+        animationRuntime.trackDisposer(this.runtimeOwner, () => window.removeEventListener('effecttoggle', effectHandler));
         
-        window.addEventListener('scenechange', (e) => {
+        const sceneHandler = (e) => {
             this.updateSceneLEDs(e.detail.scene);
-        });
+        };
+        window.addEventListener('scenechange', sceneHandler);
+        animationRuntime.trackDisposer(this.runtimeOwner, () => window.removeEventListener('scenechange', sceneHandler));
         
         // Throttled feedback processing
         this.startFeedbackProcessor();
@@ -163,7 +179,7 @@ class MIDIFeedbackManager {
         console.log(`🔥 Unregistered device: ${deviceId}`);
     }
     
-    initializeLEDs(deviceId) {
+    initializeLEDs(deviceId, { immediate = false } = {}) {
         const device = this.feedbackState.get(deviceId);
         if (!device) return;
         
@@ -173,7 +189,11 @@ class MIDIFeedbackManager {
         for (const [controlType, range] of Object.entries(profile.controls)) {
             if (range.start !== undefined && range.end !== undefined) {
                 for (let note = range.start; note <= range.end; note += range.step || 1) {
-                    this.queueFeedback(deviceId, note, profile.colors.off, profile.channel);
+                    if (immediate) {
+                        this.sendFeedback({ deviceId, note, velocity: profile.colors.off, channel: profile.channel });
+                    } else {
+                        this.queueFeedback(deviceId, note, profile.colors.off, profile.channel);
+                    }
                 }
             }
         }
@@ -338,6 +358,7 @@ class MIDIFeedbackManager {
     }
     
     queueFeedback(deviceId, note, velocity, channel = 1) {
+        if (this.destroyed) return;
         // Avoid duplicate updates
         const key = `${deviceId}_${note}_${channel}`;
         const currentState = this.feedbackState.get(deviceId)?.leds.get(key);
@@ -356,14 +377,21 @@ class MIDIFeedbackManager {
         if (this.feedbackState.has(deviceId)) {
             this.feedbackState.get(deviceId).leds.set(key, velocity);
         }
+        this.startFeedbackProcessor();
     }
     
     startFeedbackProcessor() {
+        if (this.destroyed || this.feedbackProcessorActive || this.feedbackQueue.length === 0) return;
+        this.feedbackProcessorActive = true;
+        animationRuntime.disposeOwner(this.processorOwner);
+
         const processBatch = () => {
-            if (this.feedbackQueue.length === 0 || this.isProcessing) {
-                requestAnimationFrame(processBatch);
+            if (this.feedbackQueue.length === 0) {
+                this.feedbackProcessorActive = false;
+                animationRuntime.disposeOwner(this.processorOwner);
                 return;
             }
+            if (this.isProcessing) return;
             
             this.isProcessing = true;
             
@@ -375,10 +403,9 @@ class MIDIFeedbackManager {
             }
             
             this.isProcessing = false;
-            requestAnimationFrame(processBatch);
         };
-        
-        requestAnimationFrame(processBatch);
+
+        animationRuntime.scheduleRafLoop(this.processorOwner, processBatch, { maxFps: 30 });
     }
     
     sendFeedback(feedback) {
@@ -452,6 +479,9 @@ class MIDIFeedbackManager {
         
         const { profile } = device;
         const colors = Object.values(profile.colors).filter(c => c > 0);
+        const testOwner = `${this.runtimeOwner}:test:${deviceId}`;
+        animationRuntime.disposeOwner(testOwner);
+        this.testOwners.add(testOwner);
         
         // Light up grid in sequence with different colors
         let delay = 0;
@@ -460,11 +490,11 @@ class MIDIFeedbackManager {
                 for (let note = range.start; note <= range.end; note += range.step || 1) {
                     const color = colors[note % colors.length];
                     
-                    setTimeout(() => {
+                    animationRuntime.scheduleTimeout(testOwner, () => {
                         this.queueFeedback(deviceId, note, color, profile.channel);
                         
                         // Turn off after 200ms
-                        setTimeout(() => {
+                        animationRuntime.scheduleTimeout(testOwner, () => {
                             this.queueFeedback(deviceId, note, profile.colors.off, profile.channel);
                         }, 200);
                     }, delay);
@@ -478,15 +508,21 @@ class MIDIFeedbackManager {
     }
     
     destroy() {
-        if (this.feedbackChannel) {
-            this.feedbackChannel.close();
-        }
-        
         // Turn off all LEDs
         for (const [deviceId] of this.feedbackState) {
-            this.initializeLEDs(deviceId);
+            this.initializeLEDs(deviceId, { immediate: true });
         }
-        
+
+        this.destroyed = true;
+        animationRuntime.disposeOwner(this.processorOwner);
+        animationRuntime.disposeOwner(this.runtimeOwner);
+        this.testOwners.forEach(owner => animationRuntime.disposeOwner(owner));
+        this.testOwners.clear();
+        this.feedbackQueue.length = 0;
+        this.feedbackProcessorActive = false;
+        this.feedbackChannel?.close?.();
+        this.feedbackChannel = null;
+
         console.log('🔥 MIDI Feedback Manager destroyed');
     }
 }

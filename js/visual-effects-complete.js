@@ -1,6 +1,10 @@
 // Complete Visual Effects Implementation
 // Properly handles all visual effects for the control panel
 import filterManager from './filter-manager.js';
+import animationRuntime from './runtime/animation-runtime.js';
+import ambientCanvasRenderer from './ambient-canvas-renderer.js';
+
+const VISUAL_EFFECTS_OWNER = 'visual-effects-controller';
 
 class VisualEffectsController {
     constructor() {
@@ -16,6 +20,12 @@ class VisualEffectsController {
     }
 
     createEffectContainers() {
+        const existing = document.getElementById('visual-effects-container');
+        if (existing) {
+            this.effectElements.container = existing;
+            return;
+        }
+
         // Main effects container
         const container = document.createElement('div');
         container.id = 'visual-effects-container';
@@ -30,6 +40,7 @@ class VisualEffectsController {
         `;
         document.body.appendChild(container);
         this.effectElements.container = container;
+        animationRuntime.trackNode(VISUAL_EFFECTS_OWNER, container);
     }
 
     setupMessageListener() {
@@ -39,7 +50,7 @@ class VisualEffectsController {
             return;
         }
         // Listen for control panel messages only when vj-receiver is not available (legacy fallback)
-        window.addEventListener('storage', (e) => {
+        const handleStorage = (e) => {
             if (e.key === '3886_vj_message') {
                 try {
                     const message = JSON.parse(e.newValue);
@@ -50,6 +61,10 @@ class VisualEffectsController {
                     console.error('Failed to parse message:', err);
                 }
             }
+        };
+        window.addEventListener('storage', handleStorage);
+        animationRuntime.trackDisposer(VISUAL_EFFECTS_OWNER, () => {
+            window.removeEventListener('storage', handleStorage);
         });
     }
 
@@ -151,45 +166,15 @@ class VisualEffectsController {
 
     // Cyber Grid Effect
     enableCyberGrid() {
-        if (this.effectElements.cyberGrid) return;
-
-        const grid = document.createElement('div');
-        grid.id = 'cyber-grid-effect';
-        grid.style.cssText = `
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-image:
-                repeating-linear-gradient(0deg, rgba(0,255,133,0.1) 0px, transparent 1px, transparent 40px, rgba(0,255,133,0.1) 40px),
-                repeating-linear-gradient(90deg, rgba(0,255,133,0.1) 0px, transparent 1px, transparent 40px, rgba(0,255,133,0.1) 40px);
-            pointer-events: none;
-            z-index: 1;
-            animation: gridMove 10s linear infinite;
-        `;
-        (document.getElementById('fx-root') || document.body).appendChild(grid);
-        this.effectElements.cyberGrid = grid;
-
-        // Add animation
-        if (!document.getElementById('cyber-grid-style')) {
-            const style = document.createElement('style');
-            style.id = 'cyber-grid-style';
-            style.textContent = `
-                @keyframes gridMove {
-                    0% { transform: translate(0, 0); }
-                    100% { transform: translate(40px, 40px); }
-                }
-            `;
-            document.head.appendChild(style);
-        }
+        document.getElementById('cyber-grid-effect')?.remove();
+        delete this.effectElements.cyberGrid;
+        ambientCanvasRenderer.setCyberGridEnabled(true);
     }
 
     disableCyberGrid() {
-        if (this.effectElements.cyberGrid) {
-            this.effectElements.cyberGrid.remove();
-            delete this.effectElements.cyberGrid;
-        }
+        document.getElementById('cyber-grid-effect')?.remove();
+        delete this.effectElements.cyberGrid;
+        ambientCanvasRenderer.setCyberGridEnabled(false);
     }
 
     // RGB Split Effect
@@ -243,46 +228,15 @@ class VisualEffectsController {
 
     // Scanlines Effect
     enableScanlines() {
-        const scanlines = document.createElement('div');
-        scanlines.id = 'scanlines-effect';
-        scanlines.style.cssText = `
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: repeating-linear-gradient(
-                0deg,
-                transparent,
-                transparent 2px,
-                rgba(0,0,0,0.3) 2px,
-                rgba(0,0,0,0.3) 4px
-            );
-            pointer-events: none;
-            z-index: 9997;
-            animation: scanlineMove 8s linear infinite;
-        `;
-        (document.getElementById('fx-root') || document.body).appendChild(scanlines);
-        this.effectElements.scanlines = scanlines;
-
-        if (!document.getElementById('scanlines-style')) {
-            const style = document.createElement('style');
-            style.id = 'scanlines-style';
-            style.textContent = `
-                @keyframes scanlineMove {
-                    0% { transform: translateY(0); }
-                    100% { transform: translateY(4px); }
-                }
-            `;
-            document.head.appendChild(style);
-        }
+        document.getElementById('scanlines-effect')?.remove();
+        delete this.effectElements.scanlines;
+        ambientCanvasRenderer.setScanlinesEnabled(true, 0.14);
     }
 
     disableScanlines() {
-        if (this.effectElements.scanlines) {
-            this.effectElements.scanlines.remove();
-            delete this.effectElements.scanlines;
-        }
+        document.getElementById('scanlines-effect')?.remove();
+        delete this.effectElements.scanlines;
+        ambientCanvasRenderer.setScanlinesEnabled(true, 0.035);
     }
 
     // Vignette Effect
@@ -315,81 +269,28 @@ class VisualEffectsController {
 
     // Film Grain Effect
     enableFilmGrain() {
-        const grain = document.createElement('div');
-        grain.id = 'film-grain-effect';
-        grain.style.cssText = `
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            z-index: 9995;
-            opacity: 0.15;
-        `;
-        (document.getElementById('fx-root') || document.body).appendChild(grain);
-        this.effectElements.filmGrain = grain;
-
-        // Animated grain using canvas
-        const canvas = document.createElement('canvas');
-        canvas.width = 200;
-        canvas.height = 200;
-        canvas.style.cssText = 'width: 100%; height: 100%;';
-        grain.appendChild(canvas);
-
-        const ctx = canvas.getContext('2d');
-        const animateGrain = () => {
-            if (!this.effectElements.filmGrain) return;
-
-            const imageData = ctx.createImageData(200, 200);
-            const data = imageData.data;
-
-            for (let i = 0; i < data.length; i += 4) {
-                const noise = Math.random() * 255;
-                data[i] = noise;     // Red
-                data[i+1] = noise;   // Green
-                data[i+2] = noise;   // Blue
-                data[i+3] = 25;      // Alpha
-            }
-
-            ctx.putImageData(imageData, 0, 0);
-            requestAnimationFrame(animateGrain);
-        };
-        animateGrain();
+        document.getElementById('film-grain-effect')?.remove();
+        delete this.effectElements.filmGrain;
+        ambientCanvasRenderer.setFilmGrainEnabled(true, 0.15);
     }
 
     disableFilmGrain() {
-        if (this.effectElements.filmGrain) {
-            this.effectElements.filmGrain.remove();
-            delete this.effectElements.filmGrain;
-        }
+        document.getElementById('film-grain-effect')?.remove();
+        delete this.effectElements.filmGrain;
+        ambientCanvasRenderer.setFilmGrainEnabled(false);
     }
 
     // Noise Effect (Digital Noise)
     enableNoise() {
-        const noiseOverlay = document.createElement('div');
-        noiseOverlay.id = 'digital-noise-effect';
-        noiseOverlay.style.cssText = `
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-image: url('data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="100" height="100"%3E%3Cfilter id="noise"%3E%3CfeTurbulence baseFrequency="0.9" numOctaves="4" /%3E%3C/filter%3E%3Crect width="100" height="100" filter="url(%23noise)" opacity="0.05"/%3E%3C/svg%3E');
-            pointer-events: none;
-            z-index: 2;
-            mix-blend-mode: multiply;
-            opacity: 0.3;
-        `;
-        document.body.appendChild(noiseOverlay);
-        this.effectElements.noise = noiseOverlay;
+        document.getElementById('digital-noise-effect')?.remove();
+        delete this.effectElements.noise;
+        ambientCanvasRenderer.setNoiseStrength(0.25);
     }
 
     disableNoise() {
-        if (this.effectElements.noise) {
-            this.effectElements.noise.remove();
-            delete this.effectElements.noise;
-        }
+        document.getElementById('digital-noise-effect')?.remove();
+        delete this.effectElements.noise;
+        ambientCanvasRenderer.setNoiseStrength(0);
     }
 
     // Particles Effect
@@ -488,7 +389,10 @@ class VisualEffectsController {
 
     // Plasma Field
     enablePlasmaField() {
-        const plasmaCanvas = document.getElementById('plasma-field-canvas');
+        let plasmaCanvas = document.getElementById('plasma-field-canvas');
+        if (!plasmaCanvas && window.animeEnhancedEffects?.createPlasmaField) {
+            plasmaCanvas = window.animeEnhancedEffects.createPlasmaField();
+        }
         if (plasmaCanvas && plasmaCanvas.startEffect) {
             plasmaCanvas.startEffect();
         }
@@ -499,6 +403,13 @@ class VisualEffectsController {
         if (plasmaCanvas && plasmaCanvas.stopEffect) {
             plasmaCanvas.stopEffect();
         }
+    }
+
+    destroy() {
+        Array.from(this.activeEffects).forEach(effectName => this.disableEffect(effectName));
+        animationRuntime.disposeOwner(VISUAL_EFFECTS_OWNER);
+        this.activeEffects.clear();
+        this.effectElements = {};
     }
 }
 
